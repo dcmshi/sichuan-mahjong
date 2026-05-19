@@ -1,0 +1,23 @@
+{
+  "name": "Sichuan Mahjong",
+  "short_name": "Mahjong",
+  "description": "Local 4-player Sichuan Mahjong (Bloody Rules)",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#14532d",
+  "theme_color": "#14532d",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

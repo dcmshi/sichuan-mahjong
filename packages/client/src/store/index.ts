@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { Seat, PlayerView, GameEvent, LobbyPlayer, RoundResult, ServerMsg } from '@sichuan-mahjong/engine';
 
-export type Screen = 'landing' | 'hostSetup' | 'joinForm' | 'lobby' | 'game' | 'roundEnd';
+export type Screen = 'landing' | 'hostSetup' | 'joinForm' | 'lobby' | 'game' | 'roundEnd' | 'about';
 
 export interface GameStore {
   screen: Screen;
@@ -24,9 +24,16 @@ export interface GameStore {
   // Round end
   roundResult: RoundResult | null;
 
+  // Cumulative scores across rounds this match (seat → total)
+  matchScores: Record<number, number>;
+
   // Connection status
   connected: boolean;
   reconnecting: boolean;
+
+  // Settings
+  soundEnabled: boolean;
+  toggleSound: () => void;
 
   // Actions
   goTo: (s: Screen) => void;
@@ -50,14 +57,17 @@ export const useStore = create<GameStore>((set, get) => ({
   view: null,
   lastEvents: [],
   roundResult: null,
+  matchScores: {},
   connected: false,
   reconnecting: false,
+  soundEnabled: true,
 
   goTo: (screen) => set({ screen }),
   setPlayerName: (playerName) => set({ playerName }),
   setCode: (code) => set({ code }),
   setConnected: (connected) => set({ connected, reconnecting: false }),
   setReconnecting: (reconnecting) => set({ reconnecting }),
+  toggleSound: () => set(s => ({ soundEnabled: !s.soundEnabled })),
 
   handleServerMsg: (msg) => {
     switch (msg.t) {
@@ -85,9 +95,16 @@ export const useStore = create<GameStore>((set, get) => ({
         });
         break;
 
-      case 'roundEnd':
-        set({ roundResult: msg.results, screen: 'roundEnd' });
+      case 'roundEnd': {
+        // Accumulate match scores
+        const prev = get().matchScores;
+        const next = { ...prev };
+        for (const p of msg.results.players) {
+          next[p.seat] = (next[p.seat] ?? 0) + p.scoreDelta;
+        }
+        set({ roundResult: msg.results, matchScores: next, screen: 'roundEnd' });
         break;
+      }
 
       case 'error':
         console.warn('[server error]', msg.code, msg.message);
@@ -107,6 +124,7 @@ export const useStore = create<GameStore>((set, get) => ({
       view: null,
       lastEvents: [],
       roundResult: null,
+      matchScores: {},
       connected: false,
       reconnecting: false,
     }),

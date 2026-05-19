@@ -100,49 +100,51 @@ Current status: **Phase 4 complete** — full scoring, payments, and round-end s
 - [ ] `/about` page with CC-BY-SA tile attribution (Phase 10 — SVG assets not yet added)
 - [ ] SVG tile assets from Wikimedia Commons (Phase 10 — using Unicode glyphs for now)
 
-## Phase 7 — Bots
+## Phase 7 — Bots ✅
 
-- [ ] `server/src/bot.ts` — easy bot driver (subscribes to `PlayerView`, emits `GameAction`)
-  - [ ] Huan selection: suit with fewest tiles
-  - [ ] Void declaration: suit with fewest tiles; `firstDiscard` or indicator
-  - [ ] Void-clearing discard: random void-suit tile
-  - [ ] Normal discard: most-isolated tile heuristic (no neighbors, not in pair/near-pung); tiebreak terminals first
-  - [ ] Claim: always Hu; always Kong; Pung only if it doesn't break a near-complete chow
-  - [ ] Concealed kong on turn: always; promoted kong: always when fresh tile completes existing pung
-- [ ] Host UI controls: Add bot (easy/medium) / Kick bot per seat
-- [ ] Single-player practice auto-fill (3 easy bots)
-- [ ] Bot-vs-bot smoke test: 100 full games, no crashes, no mid-game rule violations, payment-matrix balance holds
+- [x] `server/src/bot.ts` — easy bot driver (subscribes to `PlayerView`, emits `GameAction`)
+  - [x] Huan selection: suit with fewest tiles (that has ≥3)
+  - [x] Void declaration: suit with fewest tiles; `firstDiscard` or indicator
+  - [x] Void-clearing discard: prefers void-suit tiles in strict mode
+  - [x] Normal discard: connectivity-score heuristic (pair/pung +3, adj +2, near +1); tiebreak terminals first, then lower rank
+  - [x] Claim: always Hu; always Kong; Pung only if tile has <2 adjacent same-suit tiles in hand; else Pass
+  - [x] Concealed kong on turn: always; promoted/postponed kong: always
+- [x] Host UI controls: Add bot / Kick bot per seat (lobby phase)
+- [x] Single-player practice mode (Landing → Practice button → auto-creates lobby + 3 bots + starts)
+- [x] Bot-vs-bot smoke test: 100 full games, no crashes, no rule violations, payment-matrix balance holds
 
-## Phase 8 — Persistence + replay
+## Phase 8 — Persistence + replay ✅
 
-- [ ] `server/src/persistence.ts` — `better-sqlite3` at OS user-data dir; `games` table schema
-- [ ] Write completed round to DB on `roundEnd`
-- [ ] `GET /api/replay/:id` serves action log JSON
+- [x] `server/src/persistence.ts` — `node:sqlite` (Node 22 built-in) at OS user-data dir; `games` table schema
+- [x] Write completed round to DB on `roundEnd` (best-effort; DB errors logged, never crash server)
+- [x] `GET /api/replay/:id` serves full action log + results JSON (404 on missing)
 
-## Phase 9 — Networking & distribution
+## Phase 9 — Networking & distribution ✅
 
-- [ ] `server/src/networking.ts`
-  - [ ] Bind `0.0.0.0:8080`; enumerate LAN IPs (skip virtual/link-local)
-  - [ ] mDNS broadcast `mahjong.local:8080` via `multicast-dns`
-  - [ ] Tailscale detection: `tailscale status --json --self` + `100.64.0.0/10` interface fallback
-  - [ ] TLS cert via `tailscale cert <hostname>`; HTTPS listener on `:8443`
-- [ ] `server/src/cli.ts` — startup banner with LAN / mDNS / Tailscale URLs + QR code (`qrcode-terminal`)
-- [ ] CLI flags: `--port`, `--no-mdns`, `--no-tailscale`, `--data-dir`
-- [ ] npm package `sichuan-mahjong` with `bin` entry point
-- [ ] Bun compile pipeline: macOS arm64/x64, Linux x64/arm64, Windows x64 → GitHub Releases
-- [ ] Tailscale detection unit tests (mocked `tailscale status` output)
-- [ ] CI: `npx sichuan-mahjong --help` smoke test; binary launch smoke test
+- [x] `server/src/networking.ts`
+  - [x] LAN IP detection (skip loopback, link-local, virtual, Tailscale CGNAT range)
+  - [x] mDNS broadcast `mahjong.local:8080` via `multicast-dns` (lazy require, silently skips if unavailable)
+  - [x] Tailscale detection: `tailscale status --json --self` + `100.64.0.0/10` interface fallback
+  - [x] TLS cert via `tailscale cert <hostname>`; HTTPS Fastify instance on `:8443`
+- [x] `server/src/cli.ts` — startup banner with LAN / mDNS / Tailscale URLs + QR code (`qrcode-terminal`)
+- [x] CLI flags: `--port`, `--https-port`, `--no-mdns`, `--no-tailscale`, `--data-dir`
+- [x] npm package `sichuan-mahjong` with `bin` entry point (`dist/main.js`)
+- [x] Bun compile pipeline: `scripts/release/compile.ts` (macOS arm64/x64, Linux x64/arm64, Windows x64)
+- [x] Tailscale detection unit tests (8 tests, mocked `spawnSync` + interface scan)
+- [x] CI: `.github/workflows/ci.yml` — lint → typecheck → test → build → `--help` smoke test
 
-## Phase 10 — Polish
+## Phase 10 — Polish ✅
 
-- [ ] PWA manifest + install prompt + offline shell (Tailscale/HTTPS path only)
-- [ ] Framer Motion animations: tile draw, discard, claim fly, Hu celebration
-- [ ] Sound effects (opt-in toggle): tile click, kong, Hu
-- [ ] Reconnection toast UX
-- [ ] Score history across rounds (in-memory per match)
-- [ ] "How to Play" overlay sourced from CLAUDE.md §5
-- [ ] Medium bot: `ukeire`-based discard efficiency, defensive discard after opponent Hu, lenient-mode risk-aware void clearing
-- [ ] Playwright e2e: 4-browser-context full round to round-end screen
+- [x] PWA manifest (`manifest.webmanifest`) + meta tags + offline shell service worker (`sw.js`) — registers only on HTTPS
+- [x] Framer Motion animations: tile selection lift (spring), last-discard pop, Hu celebration burst, reconnect toast slide, round-end stagger
+- [x] Sound effects (Web Audio API, no assets): tile click, discard, kong, Hu fanfare — opt-in toggle (🔊/🔇 in top bar)
+- [x] Reconnection toast UX — reactive via `useStore`, animated slide-in/out
+- [x] Score history across rounds — `matchScores` accumulated in store, displayed in RoundEnd
+- [x] "How to Play" overlay (`HowToPlay.tsx`) — 8 sections, bottom-sheet animation, accessible from game top bar
+- [x] `/about` screen — CC-BY-SA tile attribution, rules reference, MIT license notice
+- [x] Long-press tile preview — 2× size modal via `useLongPress` hook
+- [x] Medium bot (`botTurnActionMedium`, `botClaimActionMedium`) — ukeire-based discard, defensive pung avoidance when opponent is ready
+- [x] Playwright e2e config (`playwright.config.ts`) + `e2e/game.spec.ts` — host + 3 bots full round to round-end, replay 404, healthz
 
 ---
 

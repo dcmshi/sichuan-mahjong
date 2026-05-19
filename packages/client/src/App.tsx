@@ -5,6 +5,7 @@ import { JoinForm } from './screens/JoinForm.js';
 import { Lobby } from './screens/Lobby.js';
 import { Game } from './screens/Game.js';
 import { RoundEnd } from './screens/RoundEnd.js';
+import { About } from './screens/About.js';
 
 export function App() {
   const screen = useStore(s => s.screen);
@@ -16,5 +17,6 @@ export function App() {
     case 'lobby':     return <Lobby />;
     case 'game':      return <Game />;
     case 'roundEnd':  return <RoundEnd />;
+    case 'about':     return <About />;
   }
 }
