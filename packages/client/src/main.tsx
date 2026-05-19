@@ -1,5 +1,7 @@
+import './index.css';
 import { createRoot } from 'react-dom/client';
+import { App } from './App.js';
 
 const el = document.getElementById('root');
 if (!el) throw new Error('No #root element');
-createRoot(el).render(<div>Sichuan Mahjong — Phase 6</div>);
+createRoot(el).render(<App />);

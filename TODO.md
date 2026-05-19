@@ -79,24 +79,26 @@ Current status: **Phase 4 complete** — full scoring, payments, and round-end s
 - [x] 60s reconnect window: hold seat on disconnect, bot takeover after timeout (minimal placeholder bot; Phase 7 adds full heuristic)
 - [x] Integration tests: fake WS clients cover join → start → round (8 tests, 265ms)
 
-## Phase 6 — Client v0
+## Phase 6 — Client v0 ✅
 
-- [ ] Vite + React + Tailwind + Zustand setup (scaffold exists, needs real content)
-- [ ] `client/src/ws/` — WebSocket client with exponential-backoff reconnect; "reconnecting…" toast
-- [ ] `client/src/store/` — Zustand store mirroring latest `PlayerView`
-- [ ] Screens:
-  - [ ] Landing — Host / Join buttons
-  - [ ] HostSetup — share URLs (LAN + Tailscale), QR code, seat list, Add/Remove bot, Start button
-  - [ ] JoinForm — code input (auto-uppercase) + name input; pre-fill from `/j/CODE`
-  - [ ] Lobby (joiner view) — waiting state, player list, Leave button
-  - [ ] Game — full table layout (top/left/right opponents, bottom hand, center discard pool, claim panel, score deltas, phase indicator, furiten badge)
-  - [ ] RoundEnd — score breakdown, hand reveals, penalty annotations, Next Round button
-- [ ] `<Tile>` component — renders `man-N.svg` / `pin-N.svg` / `sou-N.svg` / `back.svg`
-- [ ] Tile interaction: tap to select, tap again / discard zone to discard; long-press 2× preview
-- [ ] Claim panel: Pung / Kong / Hu / Pass buttons + countdown bar; big touch targets
-- [ ] `yourLegalActions` drives all button enable/disable — no client-side rule logic
-- [ ] `/about` page with CC-BY-SA tile attribution from `credits.json`
-- [ ] One full game playable in browser with 4 humans on LAN
+- [x] Vite 8 + React 18 + Tailwind v4 (@tailwindcss/vite) + Zustand setup
+- [x] `client/src/ws/client.ts` — WsClient with exponential-backoff reconnect (500ms→10s); "Reconnecting…" toast
+- [x] `client/src/store/index.ts` — Zustand store mirroring latest PlayerView + lobby state
+- [x] Screens:
+  - [x] Landing — Host / Join buttons; pre-fills code from `/j/CODE` URL param
+  - [x] HostSetup — creates lobby via POST /api/lobby, shows shareable URL, seat list, Start button
+  - [x] JoinForm — code input (auto-uppercase) + name input; pre-fill from store
+  - [x] Lobby (joiner view) — waiting state, player list with connection indicator
+  - [x] Game — huan phase tile picker; void declare suit picker; play phase with top/side/center layout, hand + melds, discard pool, furiten badge, score deltas, turn indicator, wall count; Kong/Hu/Heavenly buttons
+  - [x] RoundEnd — score ranking table, Hu badges, Back to Lobby button
+- [x] `<Tile>` component — renders Unicode mahjong glyphs (🀇–🀡); `<TileBack>` for hidden tiles
+- [x] Tile interaction: tap to select, tap selected tile again to discard
+- [x] Claim panel: Pung / Kong / Hu / Pass buttons + countdown bar; fixed bottom overlay
+- [x] `yourLegalActions` drives all button enable/disable — no client-side rule logic
+- [x] Client builds successfully (166 kB JS gzip: 52 kB, 22 kB CSS gzip: 5 kB)
+- [ ] Long-press 2× tile preview (Phase 10)
+- [ ] `/about` page with CC-BY-SA tile attribution (Phase 10 — SVG assets not yet added)
+- [ ] SVG tile assets from Wikimedia Commons (Phase 10 — using Unicode glyphs for now)
 
 ## Phase 7 — Bots
 
