@@ -7,10 +7,12 @@
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
     "lint": "biome check .",
-    "format": "biome format --write ."
+    "format": "biome format --write .",
+    "e2e": "playwright test"
   },
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
+    "@playwright/test": "^1.60.0",
     "typescript": "^5.7.0"
   }
 }

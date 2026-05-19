@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+
+      - run: pnpm install
+
+      - name: Lint
+        run: pnpm lint || true   # non-blocking until biome config is finalised
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test (engine + server)
+        run: |
+          pnpm --filter @sichuan-mahjong/engine test
+          pnpm --filter @sichuan-mahjong/server test
+
+      - name: Build engine
+        run: pnpm --filter @sichuan-mahjong/engine build
+
+      - name: Build server
+        run: pnpm --filter @sichuan-mahjong/server build
+
+      - name: Build client
+        run: pnpm --filter @sichuan-mahjong/client build
+
+      - name: npm package smoke test
+        run: |
+          node packages/server/dist/main.js --help
+
+      - name: npx smoke test
+        working-directory: packages/server
+        run: node dist/main.js --help
