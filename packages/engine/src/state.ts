@@ -40,13 +40,26 @@ export type PendingVoid = {
   firstDiscardTile: TileId | null;
 };
 
+export type KongPaymentEntry = {
+  declarer: Seat;
+  kongSeq: number;
+  paidBy: Seat;
+  amount: number;
+  refunded: boolean;
+};
+
 export type ClaimWindow = {
   tile: TileId;
   from: Seat;
-  afterKong: boolean;
+  afterKong: boolean;   // true = robbing window; only Hu claims valid
   deadline: number;
-  passed: Set<Seat>;
-  claims: Map<Seat, { kind: 'pung' | 'kong' | 'hu' }>;
+  passed: [boolean, boolean, boolean, boolean];
+  claims: [
+    { kind: 'pung' | 'kong' | 'hu' } | null,
+    { kind: 'pung' | 'kong' | 'hu' } | null,
+    { kind: 'pung' | 'kong' | 'hu' } | null,
+    { kind: 'pung' | 'kong' | 'hu' } | null,
+  ];
 };
 
 export type PlayerState = {
@@ -81,10 +94,24 @@ export type GameState = {
   firstTurnDone: [boolean, boolean, boolean, boolean];
   lastDiscard: { tile: TileId; from: Seat; claimable: boolean; afterKong: boolean } | null;
   lastDrawWasKongReplacement: boolean;
+  lastDrawnTile: TileId | null;
+  turnDrawNeeded: boolean;
+  wallEndReached: boolean;
+  anyClaimsHappened: boolean;
   pendingClaims: ClaimWindow | null;
+  pendingKongTile: {
+    seat: Seat;
+    tile: TileId;
+    kongSubtype: 'promoted' | 'postponed';
+    paidAmounts: Array<{ from: Seat; amount: number }>;
+  } | null;
   pendingHuan: (TileId[] | null)[];
   pendingVoid: (PendingVoid | null)[];
   penaltyPot: number;
+  kongPaymentLog: KongPaymentEntry[];
+  nextKongSeq: number;
+  huOrder: Seat[];
+  nextDealer: Seat;
   history: import('./actions.js').GameAction[];
   startedAt: number;
 };
@@ -129,7 +156,6 @@ export function createGame(
     players[i]!.hand = sortTiles(wall.slice(idx, idx + 13));
     idx += 13;
   }
-  // East's 14th tile
   players[0]!.hand = sortTiles([...players[0]!.hand, wall[idx]!]);
   idx += 1;
 
@@ -149,10 +175,19 @@ export function createGame(
     firstTurnDone: [false, false, false, false],
     lastDiscard: null,
     lastDrawWasKongReplacement: false,
+    lastDrawnTile: null,
+    turnDrawNeeded: false,  // East starts with 14 tiles; no draw needed
+    wallEndReached: false,
+    anyClaimsHappened: false,
     pendingClaims: null,
+    pendingKongTile: null,
     pendingHuan: [null, null, null, null],
     pendingVoid: [null, null, null, null],
     penaltyPot: 0,
+    kongPaymentLog: [],
+    nextKongSeq: 0,
+    huOrder: [],
+    nextDealer: 0,
     history: [],
     startedAt: Date.now(),
   };

@@ -4,3 +4,6 @@ export * from './melds.js';
 export * from './state.js';
 export * from './actions.js';
 export * from './hand.js';
+export * from './claims.js';
+export * from './views.js';
+export * from './scoring.js';

@@ -72,6 +72,14 @@ function runToWallEnd(seed: string, voidDiscardRule: 'strict' | 'lenient'): Game
     const disc = applyAction(state, { t: 'discard', seat, tile });
     if (!disc.ok) throw new Error(`discard seat ${seat} failed: ${disc.reason} (tile ${tile})`);
     state = disc.state;
+    if (state.phase !== 'play') break;
+
+    // Expire any claim window immediately (phase 1 test: no claims)
+    if (state.pendingClaims !== null) {
+      const exp = applyAction(state, { t: 'claimWindowExpire' });
+      if (!exp.ok) throw new Error(`claimWindowExpire failed: ${exp.reason}`);
+      state = exp.state;
+    }
   }
 
   return state;
