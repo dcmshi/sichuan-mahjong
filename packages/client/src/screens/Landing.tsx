@@ -1,8 +1,12 @@
+import { useState } from 'react';
 import { useStore } from '../store/index.js';
+import { WsClient, makeWsUrl, setWsClient, sendAction } from '../ws/client.js';
 
 export function Landing() {
-  const goTo = useStore(s => s.goTo);
-  const setCode = useStore(s => s.setCode);
+  const [practiceLoading, setPracticeLoading] = useState(false);
+  const [practiceError, setPracticeError] = useState('');
+  const store = useStore();
+  const { goTo, setCode, setPlayerName } = store;
 
   // Check URL for pre-filled code (from /j/:code redirect)
   const urlCode = new URLSearchParams(window.location.search).get('code') ?? '';
@@ -10,6 +14,42 @@ export function Landing() {
   function handleJoin() {
     if (urlCode) setCode(urlCode.toUpperCase());
     goTo('joinForm');
+  }
+
+  async function startPractice() {
+    setPracticeLoading(true);
+    setPracticeError('');
+    const name = 'You';
+    try {
+      const res = await fetch('/api/lobby', { method: 'POST' });
+      if (!res.ok) throw new Error('server error');
+      const { code, hostToken } = await res.json() as { code: string; hostToken: string };
+      setCode(code);
+      setPlayerName(name);
+
+      const ws = new WsClient(makeWsUrl(code, hostToken), {
+        onMessage: (msg) => {
+          store.handleServerMsg(msg);
+          if (msg.t === 'joined') {
+            // Add 3 bots then start
+            sendAction({ t: 'addBot', difficulty: 'easy' });
+            sendAction({ t: 'addBot', difficulty: 'easy' });
+            sendAction({ t: 'addBot', difficulty: 'easy' });
+          }
+          if (msg.t === 'lobby' && msg.canStart) {
+            sendAction({ t: 'startGame' });
+          }
+        },
+        onConnect: () => store.setConnected(true),
+        onDisconnect: () => store.setReconnecting(true),
+      });
+      setWsClient(ws);
+      ws.send({ t: 'join', name });
+    } catch {
+      setPracticeError('Could not start practice — is the server running?');
+    } finally {
+      setPracticeLoading(false);
+    }
   }
 
   return (
@@ -33,11 +73,26 @@ export function Landing() {
         >
           {urlCode ? `Join ${urlCode}` : 'Join a Game'}
         </button>
+        <button
+          className="w-full py-4 bg-emerald-700 hover:bg-emerald-600 active:bg-emerald-800 rounded-2xl font-bold text-xl text-white shadow-lg disabled:opacity-50"
+          onClick={() => void startPractice()}
+          disabled={practiceLoading}
+        >
+          {practiceLoading ? 'Starting…' : 'Practice (vs Bots)'}
+        </button>
+        {practiceError && <p className="text-red-400 text-sm text-center">{practiceError}</p>}
       </div>
 
       <p className="text-green-400 text-xs text-center max-w-xs">
         Host runs the server on their machine. Friends connect over LAN or Tailscale.
       </p>
+
+      <button
+        className="text-green-500 hover:text-green-300 text-xs underline"
+        onClick={() => goTo('about')}
+      >
+        About &amp; Credits
+      </button>
     </div>
   );
 }

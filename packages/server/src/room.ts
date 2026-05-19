@@ -5,7 +5,6 @@ import {
   createGame,
   projectView,
   DEFAULT_CONFIG,
-  tileTypeOf,
 } from '@sichuan-mahjong/engine';
 import type {
   GameState,
@@ -16,8 +15,9 @@ import type {
   GameConfig,
   ServerMsg,
   RoundResult,
-  TileId,
 } from '@sichuan-mahjong/engine';
+import { botHuanAction, botVoidAction, botTurnAction, botClaimAction } from './bot.js';
+import { saveGameWithCode } from './persistence.js';
 
 const RECONNECT_TIMEOUT_MS = 60_000;
 const BOT_THINK_MS = 150;
@@ -171,7 +171,7 @@ export class GameRoom {
   }
 
   // -------------------------------------------------------------------------
-  // Bot logic (minimal placeholder — Phase 7 replaces with full heuristic)
+  // Bot logic
   // -------------------------------------------------------------------------
 
   private isBotOrOffline(seat: Seat): boolean {
@@ -181,41 +181,13 @@ export class GameRoom {
   }
 
   private botHuanSelect(seat: Seat): void {
-    if (this.state.phase !== 'huan') return;
-    if (this.state.pendingHuan[seat] != null) return;
-    const player = this.state.players[seat];
-    if (!player) return;
-
-    const bySuit: [TileId[], TileId[], TileId[]] = [[], [], []];
-    for (const t of player.hand) {
-      const si = Math.floor(tileTypeOf(t) / 9) as 0 | 1 | 2;
-      bySuit[si].push(t);
-    }
-    const chosen = bySuit.find(tiles => tiles.length >= 3);
-    if (!chosen || chosen.length < 3) return;
-    this.applyAndPropagate({ t: 'huanSelect', seat, tiles: [chosen[0]!, chosen[1]!, chosen[2]!] });
+    const action = botHuanAction(this.state, seat);
+    if (action) this.applyAndPropagate(action);
   }
 
   private botVoidDeclare(seat: Seat): void {
-    if (this.state.phase !== 'voidDeclare') return;
-    if (this.state.pendingVoid[seat] != null) return;
-    const player = this.state.players[seat];
-    if (!player) return;
-
-    const bySuit: [TileId[], TileId[], TileId[]] = [[], [], []];
-    for (const t of player.hand) {
-      const si = Math.floor(tileTypeOf(t) / 9) as 0 | 1 | 2;
-      bySuit[si].push(t);
-    }
-    // Pick suit with fewest tiles as void
-    let minIdx: 0 | 1 | 2 = 0;
-    if (bySuit[1].length < bySuit[minIdx].length) minIdx = 1;
-    if (bySuit[2].length < bySuit[minIdx].length) minIdx = 2;
-
-    const suits = ['man', 'pin', 'sou'] as const;
-    const suit = suits[minIdx];
-    const firstDiscard = bySuit[minIdx][0] ?? null;
-    this.applyAndPropagate({ t: 'declareVoid', seat, suit, firstDiscard });
+    const action = botVoidAction(this.state, seat);
+    if (action) this.applyAndPropagate(action);
   }
 
   private botActIfNeeded(seat: Seat): void {
@@ -229,7 +201,7 @@ export class GameRoom {
     if (!player || player.status === 'hu') return;
 
     setTimeout(() => {
-      const action = this.pickBotDiscard(seat);
+      const action = botTurnAction(this.state, seat);
       if (action !== null) this.applyAndPropagate(action);
     }, BOT_THINK_MS);
   }
@@ -245,28 +217,11 @@ export class GameRoom {
       if (!this.isBotOrOffline(seat)) continue;
 
       setTimeout(() => {
-        if (this.state.pendingClaims !== null && !this.state.pendingClaims.passed[seat]) {
-          this.applyAndPropagate({ t: 'pass', seat });
-        }
+        if (this.state.pendingClaims === null || this.state.pendingClaims.passed[seat]) return;
+        const action = botClaimAction(this.state, seat);
+        this.applyAndPropagate(action);
       }, BOT_THINK_MS);
     }
-  }
-
-  private pickBotDiscard(seat: Seat): GameAction | null {
-    const player = this.state.players[seat];
-    if (!player) return null;
-
-    let candidates = player.hand;
-    if (this.state.config.voidDiscardRule === 'strict' && !player.voidCleared && player.voidedSuit !== null) {
-      const suitMap: Record<string, number> = { man: 0, pin: 1, sou: 2 };
-      const si = suitMap[player.voidedSuit] ?? 0;
-      const voidTiles = player.hand.filter(t => Math.floor(tileTypeOf(t) / 9) === si);
-      if (voidTiles.length > 0) candidates = voidTiles;
-    }
-
-    const tile = candidates[0];
-    if (tile === undefined) return null;
-    return { t: 'discard', seat, tile };
   }
 
   // -------------------------------------------------------------------------
@@ -302,6 +257,16 @@ export class GameRoom {
     for (const [, ws] of this.connections) {
       this.send(ws, { t: 'roundEnd', results });
     }
+
+    // Persist to SQLite (best-effort; don't crash the server on DB error)
+    try {
+      saveGameWithCode(this.code, this.state, results);
+    } catch (err) {
+      console.error('[persistence] Failed to save game:', err);
+    }
+
+    const listeners = this.roundEndListeners.splice(0);
+    for (const fn of listeners) fn(this.state);
   }
 
   private send(ws: WebSocket, msg: ServerMsg): void {
@@ -325,6 +290,16 @@ export class GameRoom {
       connected: s.connected,
     }));
   }
+
+  /** Returns a Promise that resolves when the round reaches roundEnd. */
+  waitForRoundEnd(): Promise<GameState> {
+    if (this.state.phase === 'roundEnd') return Promise.resolve(this.state);
+    return new Promise<GameState>(resolve => {
+      this.roundEndListeners.push(resolve);
+    });
+  }
+
+  private roundEndListeners: Array<(state: GameState) => void> = [];
 }
 
 // In-memory registry

@@ -186,6 +186,30 @@ function handleLobbyMessage(
       break;
     }
 
+    case 'addBot': {
+      if (!isHost) { send(_ws, { t: 'error', code: 'not_host', message: 'Only the host can add bots.' }); return; }
+      const lobby = getLobby(code);
+      if (!lobby) return;
+      const open = findOpenSeat(lobby);
+      if (open === null) { send(_ws, { t: 'error', code: 'lobby_full', message: 'No open seats.' }); return; }
+      const botToken = issueToken(code, open, 'player');
+      lobby.slots[open] = { name: `Bot ${open + 1}`, isBot: true, token: botToken, connected: true };
+      broadcastLobbyTo(code, hostToken);
+      break;
+    }
+
+    case 'kickBot': {
+      if (!isHost) { send(_ws, { t: 'error', code: 'not_host', message: 'Only the host can kick bots.' }); return; }
+      const lobby = getLobby(code);
+      if (!lobby) return;
+      const kickSeat = (msg as { t: 'kickBot'; seat: Seat }).seat;
+      const slot = lobby.slots[kickSeat];
+      if (!slot?.isBot) { send(_ws, { t: 'error', code: 'not_bot', message: 'That seat is not a bot.' }); return; }
+      lobby.slots[kickSeat] = null;
+      broadcastLobbyTo(code, hostToken);
+      break;
+    }
+
     case 'leave': {
       getLobbyConns(code).delete(seat);
       const lobby = getLobby(code);

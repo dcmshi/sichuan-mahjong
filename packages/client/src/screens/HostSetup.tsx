@@ -97,15 +97,34 @@ export function HostSetup() {
       <div className="flex flex-col gap-2">
         {SEAT_WINDS.map((wind, i) => {
           const p = store.lobbyPlayers[i];
+          const isMe = i === store.seat;
           return (
-            <div key={i} className="flex items-center gap-3 bg-black/20 rounded-xl px-3 py-2.5">
+            <div key={i} className="flex items-center gap-2 bg-black/20 rounded-xl px-3 py-2.5">
               <span className="text-green-400 text-sm w-14">{wind}</span>
               {p?.name ? (
-                <span className="font-semibold">{p.name}</span>
+                <>
+                  <span className="font-semibold flex-1">{p.name}{isMe && <span className="ml-1 text-xs text-amber-400">(you)</span>}</span>
+                  {p.isBot && (
+                    <button
+                      className="text-xs bg-red-700 hover:bg-red-600 px-2 py-1 rounded"
+                      onClick={() => sendAction({ t: 'kickBot', seat: i as 0|1|2|3 })}
+                    >
+                      Kick
+                    </button>
+                  )}
+                  {!p.isBot && p.connected && <span className="text-green-400 text-xs">●</span>}
+                </>
               ) : (
-                <span className="text-white/40 italic text-sm">waiting…</span>
+                <>
+                  <span className="text-white/40 italic text-sm flex-1">empty</span>
+                  <button
+                    className="text-xs bg-blue-700 hover:bg-blue-600 px-2 py-1 rounded"
+                    onClick={() => sendAction({ t: 'addBot', difficulty: 'easy' })}
+                  >
+                    + Bot
+                  </button>
+                </>
               )}
-              {p?.connected && <span className="ml-auto text-green-400 text-xs">●</span>}
             </div>
           );
         })}
