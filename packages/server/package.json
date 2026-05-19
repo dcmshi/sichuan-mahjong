@@ -1,0 +1,17 @@
+{
+  "name": "@sichuan-mahjong/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@sichuan-mahjong/engine": "workspace:*"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.0"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "name": "@sichuan-mahjong/engine",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "fast-check": "^3.22.0",
+    "vitest": "^2.1.0"
+  }
+}

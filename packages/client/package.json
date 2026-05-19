@@ -1,0 +1,25 @@
+{
+  "name": "@sichuan-mahjong/client",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "typecheck": "tsc --noEmit",
+    "preview": "vite preview",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@sichuan-mahjong/engine": "workspace:*",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.0",
+    "vite": "^5.4.0",
+    "vite-plugin-pwa": "^0.20.0",
+    "vitest": "^2.1.0"
+  }
+}
