@@ -1,0 +1,24 @@
+import { randomUUID } from 'node:crypto';
+import type { Seat } from '@sichuan-mahjong/engine';
+
+export type TokenData = {
+  code: string;
+  seat: Seat;
+  role: 'host' | 'player';
+};
+
+const store = new Map<string, TokenData>();
+
+export function issueToken(code: string, seat: Seat, role: 'host' | 'player'): string {
+  const token = randomUUID();
+  store.set(token, { code, seat, role });
+  return token;
+}
+
+export function resolveToken(token: string): TokenData | undefined {
+  return store.get(token);
+}
+
+export function revokeToken(token: string): void {
+  store.delete(token);
+}

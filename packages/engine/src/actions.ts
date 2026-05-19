@@ -583,6 +583,7 @@ function completePromotedPostponedKong(
   if (meldIdx === -1) return [];
 
   const pungMeld = player.melds[meldIdx]!;
+  if (pungMeld.kind !== 'pung') return [];
   player.melds[meldIdx] = {
     kind: 'kong',
     tile: pungMeld.tile,

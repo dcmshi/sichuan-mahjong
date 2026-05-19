@@ -7,3 +7,4 @@ export * from './hand.js';
 export * from './claims.js';
 export * from './views.js';
 export * from './scoring.js';
+export * from './protocol.js';

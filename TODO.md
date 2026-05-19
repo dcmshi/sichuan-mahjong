@@ -68,16 +68,16 @@ Current status: **Phase 4 complete** — full scoring, payments, and round-end s
 - [ ] False-Hu penalty — TODO(rule): no false-Hu detection yet
 - [ ] Replay-test corpus: canned games per fan combination + penalty path
 
-## Phase 5 — Server
+## Phase 5 — Server ✅
 
-- [ ] `server/src/http.ts` — Fastify routes: `POST /api/lobby`, `GET /api/lobby/:code`, `GET /api/replay/:id`, `GET /healthz`, `GET /j/:code`
-- [ ] `server/src/ws.ts` — WebSocket gateway on `/ws/:code?token=…`; token validation; seat binding
-- [ ] `server/src/tokens.ts` — host token + player token issuance and validation
-- [ ] `server/src/lobby.ts` — lobby create/join, seat management, `canStart` logic
-- [ ] `server/src/room.ts` — `GameRoom` owns `GameState`; broadcasts `PlayerView` after each action; routes `ClientMsg` to `applyAction`
-- [ ] Lobby code generator (4-char, alphabet excludes I/O/0/1)
-- [ ] 60s reconnect window: hold seat on disconnect, bot takeover after timeout
-- [ ] Integration tests: fake WS clients cover join → start → round
+- [x] `server/src/http.ts` — Fastify routes: `POST /api/lobby`, `GET /api/lobby/:code`, `GET /api/replay/:id`, `GET /healthz`, `GET /j/:code`
+- [x] `server/src/ws.ts` — WebSocket gateway on `/ws/:code?token=…`; token validation; seat binding
+- [x] `server/src/tokens.ts` — host token + player token issuance and validation
+- [x] `server/src/lobby.ts` — lobby create/join, seat management, `canStart` logic
+- [x] `server/src/room.ts` — `GameRoom` owns `GameState`; broadcasts `PlayerView` after each action; routes `ClientMsg` to `applyAction`
+- [x] Lobby code generator (4-char, alphabet excludes I/O/0/1)
+- [x] 60s reconnect window: hold seat on disconnect, bot takeover after timeout (minimal placeholder bot; Phase 7 adds full heuristic)
+- [x] Integration tests: fake WS clients cover join → start → round (8 tests, 265ms)
 
 ## Phase 6 — Client v0
 
