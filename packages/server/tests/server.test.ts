@@ -1,4 +1,9 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+// node:sqlite is a native built-in; Vite 5 can't bundle it — mock before any imports touch it
+vi.mock('../src/persistence.js', () => ({
+  saveGameWithCode: vi.fn(),
+  getGame: vi.fn().mockReturnValue(null),
+}));
 import Fastify from 'fastify';
 import fastifyWebsocket from '@fastify/websocket';
 import WebSocket from 'ws';

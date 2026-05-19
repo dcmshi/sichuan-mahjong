@@ -3,6 +3,7 @@ import { createLobby, getLobby, canStart, findOpenSeat } from './lobby.js';
 import { issueToken, resolveToken } from './tokens.js';
 import { createRoom, getRoom } from './room.js';
 import type { RoomSlot } from './room.js';
+import { getGame } from './persistence.js';
 
 export async function registerHttpRoutes(app: FastifyInstance): Promise<void> {
   // Liveness
@@ -30,9 +31,22 @@ export async function registerHttpRoutes(app: FastifyInstance): Promise<void> {
     return { exists: true, players, canStart: canStart(lobby) };
   });
 
-  // Replay (Phase 8 — stub)
-  app.get<{ Params: { id: string } }>('/api/replay/:id', async (_req, reply) => {
-    return reply.code(501).send({ error: 'not_implemented' });
+  // Replay — returns persisted action log for a completed round
+  app.get<{ Params: { id: string } }>('/api/replay/:id', async (req, reply) => {
+    const id = parseInt(req.params.id, 10);
+    if (Number.isNaN(id)) return reply.code(400).send({ error: 'invalid_id' });
+    const record = getGame(id);
+    if (!record) return reply.code(404).send({ error: 'not_found' });
+    return reply.send({
+      id: record.id,
+      code: record.code,
+      seed: record.seed,
+      config: record.config,
+      startedAt: record.startedAt,
+      endedAt: record.endedAt,
+      actionLog: record.actionLog,
+      results: record.results,
+    });
   });
 
   // Client entry point: redirect to client SPA (client is Phase 6; stub for now)
