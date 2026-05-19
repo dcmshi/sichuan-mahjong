@@ -3,3 +3,4 @@ export * from './tiles.js';
 export * from './melds.js';
 export * from './state.js';
 export * from './actions.js';
+export * from './hand.js';

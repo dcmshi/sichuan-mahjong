@@ -1,7 +1,8 @@
-import type { GameState, Seat, PendingVoid } from './state.js';
+import type { GameState, Seat, PendingVoid, HuRecord } from './state.js';
 import { huPlayerCount, isVoidSuitTile } from './state.js';
 import type { Suit, TileId } from './tiles.js';
-import { sortTiles, suitOf } from './tiles.js';
+import { sortTiles, suitOf, tileTypeOf } from './tiles.js';
+import { isWinningHand } from './hand.js';
 
 // ---------------------------------------------------------------------------
 // Action types
@@ -50,7 +51,8 @@ export type GameEvent =
   | { e: 'voidPhaseComplete' }
   | { e: 'drew'; seat: Seat; tile: TileId }
   | { e: 'discarded'; seat: Seat; tile: TileId }
-  | { e: 'roundEnd'; reason: 'wallExhausted' };
+  | { e: 'hu'; seat: Seat; record: HuRecord }
+  | { e: 'roundEnd'; reason: 'wallExhausted' | 'threeHu' };
 
 export type ActionResult =
   | { ok: true;  state: GameState; events: GameEvent[] }
@@ -324,6 +326,55 @@ function applyDiscard(state: GameState, action: Extract<GameAction, { t: 'discar
   return ok(s, [{ e: 'discarded', seat, tile }]);
 }
 
+function applyDeclareHuOnDraw(state: GameState, action: Extract<GameAction, { t: 'declareHuOnDraw' }>): ActionResult {
+  if (state.phase !== 'play') return fail('wrong_phase');
+  const { seat } = action;
+  if (seat !== state.turn) return fail('wrong_turn');
+
+  const player = state.players[seat]!;
+  if (player.status !== 'playing') return fail('wrong_turn');
+
+  const shape = isWinningHand(player.hand, player.melds, player.voidedSuit);
+  if (shape === null) return fail('not_a_winning_hand' as RuleViolation);
+
+  // Derive subtype from context (Phase 2: earthly/winAfterKong/underTheSea deferred to Phase 4)
+  const subtype = 'normal' as HuRecord['subtype'];
+
+  // The winning tile is the last drawn tile (last element added to sorted hand — approximate)
+  // A proper implementation tracks lastDrawn; for Phase 2 we use a sentinel
+  const winningTile = player.hand[player.hand.length - 1]!;
+
+  const record: HuRecord = {
+    seat,
+    subtype,
+    fans: [],
+    handValue: 1,
+    winningTile,
+    byDiscard: false,
+    discarder: null,
+  };
+
+  const s = clone(state);
+  s.players[seat]!.status = 'hu';
+  s.players[seat]!.hu = record;
+  s.history.push(action);
+
+  const events: GameEvent[] = [{ e: 'hu', seat, record }];
+
+  // Check if 3 players now have hu → round ends
+  if (huPlayerCount(s) >= 3) {
+    s.phase = 'roundEnd';
+    events.push({ e: 'roundEnd', reason: 'threeHu' });
+    return ok(s, events);
+  }
+
+  // Advance turn past the hu player
+  s.turn = nextActiveSeat(s, seat);
+  s.turnNumber += 1;
+
+  return ok(s, events);
+}
+
 // ---------------------------------------------------------------------------
 // Public entry point
 // ---------------------------------------------------------------------------
@@ -334,12 +385,12 @@ export function applyAction(state: GameState, action: GameAction): ActionResult 
     case 'declareVoid':       return applyDeclareVoid(state, action);
     case 'draw':              return applyDraw(state, action);
     case 'discard':           return applyDiscard(state, action);
+    case 'declareHuOnDraw':   return applyDeclareHuOnDraw(state, action);
 
     // Stubs for phases not yet implemented — reject gracefully
     case 'claim':
     case 'pass':
     case 'declareKongOnTurn':
-    case 'declareHuOnDraw':
     case 'declareHeavenly':
     case 'claimWindowExpire':
       return fail('wrong_phase');
