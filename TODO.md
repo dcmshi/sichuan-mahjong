@@ -64,7 +64,7 @@ Current status: **Phase 4 complete** — full scoring, payments, and round-end s
 - [x] Dealer rotation between rounds (§5.10) — `state.nextDealer`
 - [x] `GameEvent` delta log: `huPayment`, `kongPayment`, `kongRefund`, `buTingPayout`, `voidPenalty`
 - [x] Property tests: payment-matrix balance (`sum(scoreDelta) + penaltyPot = 0`); compatibility matrix; tile conservation
-- [ ] Set-with-void-suit penalty (48-point) — TODO(rule): meld-containing-void-suit not yet enforced
+- [x] Set-with-void-suit penalty (48-point) — fires on pung/kong/concealed-kong of voided suit; `voidMeldPenalty` event
 - [ ] False-Hu penalty — TODO(rule): no false-Hu detection yet
 - [ ] Replay-test corpus: canned games per fan combination + penalty path
 

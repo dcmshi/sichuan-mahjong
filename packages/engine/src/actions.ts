@@ -83,6 +83,7 @@ export type GameEvent =
   | { e: 'kongRefund'; from: Seat; to: Seat; amount: number; reason: 'robbed' | 'shootAfterKong' | 'wallEnd' }
   | { e: 'buTingPayout'; from: Seat; to: Seat; amount: number }
   | { e: 'voidPenalty'; seat: Seat; amount: number }
+  | { e: 'voidMeldPenalty'; seat: Seat; amount: number }
   | { e: 'roundEnd'; reason: 'wallExhausted' | 'threeHu' };
 
 export type ActionResult =
@@ -496,6 +497,16 @@ function applyHuResolution(s: GameState, winners: Seat[], robbingTile?: TileId, 
   return events;
 }
 
+/** Apply the 48-point void-meld penalty if the meld suit matches the player's voided suit. */
+function applyVoidMeldPenalty(s: GameState, seat: Seat, suit: Suit, events: GameEvent[]): void {
+  const player = s.players[seat]!;
+  if (player.voidedSuit !== null && suit === player.voidedSuit) {
+    player.scoreDelta -= 48;
+    s.penaltyPot += 48;
+    events.push({ e: 'voidMeldPenalty', seat, amount: 48 });
+  }
+}
+
 function applyKongClaim(s: GameState, winner: Seat): GameEvent[] {
   const tile = s.lastDiscard!.tile;
   const from = s.lastDiscard!.from;
@@ -532,11 +543,13 @@ function applyKongClaim(s: GameState, winner: Seat): GameEvent[] {
   pay(s, from, winner, 2);
   logKongPayments(s, winner, [{ from, amount: 2 }]);
 
-  return [
+  const events: GameEvent[] = [
     { e: 'claimed', seat: winner, kind: 'kong', tile },
     { e: 'kongPayment', from, to: winner, amount: 2, subtype: 'exposed' },
     { e: 'kongReplacement', seat: winner, tile: replacement },
   ];
+  applyVoidMeldPenalty(s, winner, suitOf(tile), events);
+  return events;
 }
 
 function applyPungClaim(s: GameState, winner: Seat): GameEvent[] {
@@ -563,7 +576,9 @@ function applyPungClaim(s: GameState, winner: Seat): GameEvent[] {
   s.turnNumber += 1;
   s.turnDrawNeeded = false;
 
-  return [{ e: 'claimed', seat: winner, kind: 'pung', tile }];
+  const events: GameEvent[] = [{ e: 'claimed', seat: winner, kind: 'pung', tile }];
+  applyVoidMeldPenalty(s, winner, suitOf(tile), events);
+  return events;
 }
 
 /** Complete a promoted/postponed kong after the robbing window passes with no claims. */
@@ -944,6 +959,7 @@ function applyDeclareKongOnTurn(
       ...payers.map(from => ({ e: 'kongPayment' as const, from, to: seat, amount: 2, subtype: 'concealed' as const })),
       { e: 'kongReplacement', seat, tile: replacement },
     ];
+    applyVoidMeldPenalty(s, seat, tile.suit, events);
     return ok(s, events);
   }
 

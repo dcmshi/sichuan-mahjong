@@ -682,3 +682,53 @@ describe('Phase 4 — property test: payment balance', () => {
     ), { numRuns: 50 });
   });
 });
+
+// ─── Void-meld penalty ────────────────────────────────────────────────────────
+
+describe('Phase 4 — void-meld penalty', () => {
+  it('concealed kong of voided suit emits voidMeldPenalty and deducts 48 pts', () => {
+    // Player 0 voids 'sou'; holds all 4 copies of sou-1 — concealed kong should trigger penalty
+    const hand0: TileId[] = [
+      tid(S(1), 0), tid(S(1), 1), tid(S(1), 2), tid(S(1), 3),
+      tid(M(1), 0), tid(M(2), 0), tid(M(3), 0), tid(M(4), 0), tid(M(5), 0),
+    ];
+    const state = makeState({ hands: [hand0, [], [], []], voidedSuit: 'sou' });
+
+    const result = applyAction(state, {
+      t: 'declareKongOnTurn', seat: 0,
+      tile: tileFromType(S(1)), subtype: 'concealed',
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    const penaltyEvent = result.events.find(e => e.e === 'voidMeldPenalty');
+    expect(penaltyEvent).toEqual({ e: 'voidMeldPenalty', seat: 0, amount: 48 });
+
+    // Players 1-3 each pay 2 to P0 (+6), then penalty deducts 48 → -42
+    expect(result.state.players[0]!.scoreDelta).toBe(6 - 48);
+    expect(result.state.penaltyPot).toBe(48);
+
+    // Payment balance holds
+    const totalDelta = result.state.players.reduce((sum, p) => sum + p.scoreDelta, 0);
+    expect(totalDelta + result.state.penaltyPot).toBe(0);
+  });
+
+  it('concealed kong of non-voided suit does NOT trigger penalty', () => {
+    // Player 0 voids 'sou'; kong is man-1 → no penalty
+    const hand0: TileId[] = [
+      tid(M(1), 0), tid(M(1), 1), tid(M(1), 2), tid(M(1), 3),
+      tid(M(2), 0), tid(M(3), 0), tid(M(4), 0), tid(M(5), 0), tid(M(6), 0),
+    ];
+    const state = makeState({ hands: [hand0, [], [], []], voidedSuit: 'sou' });
+
+    const result = applyAction(state, {
+      t: 'declareKongOnTurn', seat: 0,
+      tile: tileFromType(M(1)), subtype: 'concealed',
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    expect(result.events.find(e => e.e === 'voidMeldPenalty')).toBeUndefined();
+    expect(result.state.penaltyPot).toBe(0);
+  });
+});
