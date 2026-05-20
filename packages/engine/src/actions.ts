@@ -80,10 +80,12 @@ export type GameEvent =
   | { e: 'hu'; seat: Seat; record: HuRecord }
   | { e: 'huPayment'; from: Seat; to: Seat; amount: number }
   | { e: 'kongPayment'; from: Seat; to: Seat; amount: number; subtype: 'concealed' | 'exposed' | 'promoted' }
-  | { e: 'kongRefund'; from: Seat; to: Seat; amount: number; reason: 'robbed' | 'shootAfterKong' | 'wallEnd' }
+  | { e: 'kongRefund'; from: Seat; to: Seat; amount: number; reason: 'robbed' | 'shootAfterKong' | 'wallEnd' | 'falseHu' }
   | { e: 'buTingPayout'; from: Seat; to: Seat; amount: number }
   | { e: 'voidPenalty'; seat: Seat; amount: number }
   | { e: 'voidMeldPenalty'; seat: Seat; amount: number }
+  | { e: 'falseHu'; seat: Seat }
+  | { e: 'falseHuPayment'; from: Seat; to: Seat; amount: number }
   | { e: 'roundEnd'; reason: 'wallExhausted' | 'threeHu' };
 
 export type ActionResult =
@@ -200,7 +202,7 @@ function logKongPayments(
 function refundLogEntries(
   s: GameState,
   predicate: (e: KongPaymentEntry) => boolean,
-  reason: 'shootAfterKong' | 'wallEnd',
+  reason: 'shootAfterKong' | 'wallEnd' | 'falseHu',
 ): GameEvent[] {
   const events: GameEvent[] = [];
   for (const entry of s.kongPaymentLog) {
@@ -363,6 +365,7 @@ function resolveAndApply(s: GameState): GameEvent[] {
   const resolution = resolveWindow(s);
   const events: GameEvent[] = [{ e: 'claimWindowClosed' }];
 
+  detectAndApplyFalseHuClaims(s, events);
   applyFuritenAndCloseWindow(s);
 
   if (resolution === null) {
@@ -398,6 +401,7 @@ function resolveRobbingWindow(s: GameState): GameEvent[] {
   const kongInfo = s.pendingKongTile!;
   const events: GameEvent[] = [{ e: 'claimWindowClosed' }];
 
+  detectAndApplyFalseHuClaims(s, events);
   applyFuritenAndCloseWindow(s);
   s.pendingKongTile = null;
 
@@ -495,6 +499,44 @@ function applyHuResolution(s: GameState, winners: Seat[], robbingTile?: TileId, 
   s.turnNumber += 1;
   s.turnDrawNeeded = true;
   return events;
+}
+
+/**
+ * Apply the false-Hu penalty: offender pays 8 to each non-Hu opponent;
+ * all offender's unrefunded kong payments are refunded.
+ */
+function applyFalseHuPenalty(s: GameState, seat: Seat, events: GameEvent[]): void {
+  events.push({ e: 'falseHu', seat });
+  for (let i = 0; i < 4; i++) {
+    const to = i as Seat;
+    if (to === seat) continue;
+    if (s.players[to]!.status === 'hu') continue;
+    pay(s, seat, to, 8);
+    events.push({ e: 'falseHuPayment', from: seat, to, amount: 8 });
+  }
+  events.push(...refundLogEntries(s, entry => entry.declarer === seat, 'falseHu'));
+}
+
+/**
+ * Detect explicit Hu claims in the current window that are hand-invalid (not merely
+ * furiten-blocked) and apply the false-Hu penalty to each such seat.
+ * Must be called before pendingClaims is cleared.
+ */
+function detectAndApplyFalseHuClaims(s: GameState, events: GameEvent[]): void {
+  const w = s.pendingClaims!;
+  for (let i = 0; i < 4; i++) {
+    const seat = i as Seat;
+    if (w.claims[seat]?.kind !== 'hu') continue;
+    if (seat === w.from) continue;
+    if (s.players[seat]!.status === 'hu') continue;
+    const player = s.players[seat]!;
+    const isValid =
+      (player.voidedSuit === null || suitOf(w.tile) !== player.voidedSuit) &&
+      isWinningHand([...player.hand, w.tile], player.melds, player.voidedSuit) !== null;
+    if (!isValid) {
+      applyFalseHuPenalty(s, seat, events);
+    }
+  }
 }
 
 /** Apply the 48-point void-meld penalty if the meld suit matches the player's voided suit. */
@@ -1027,7 +1069,14 @@ function applyDeclareHuOnDraw(state: GameState, action: Extract<GameAction, { t:
   if (state.turnDrawNeeded) return fail('wrong_turn');
 
   const shape = isWinningHand(player.hand, player.melds, player.voidedSuit);
-  if (shape === null) return fail('not_a_winning_hand');
+  if (shape === null) {
+    // Hand is not winning — false Hu. Apply penalty and let the player discard.
+    const s = clone(state);
+    s.history.push(action);
+    const events: GameEvent[] = [];
+    applyFalseHuPenalty(s, seat, events);
+    return ok(s, events);
+  }
 
   const winningTile = state.lastDrawnTile ?? player.hand[player.hand.length - 1]!;
 

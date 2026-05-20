@@ -3,7 +3,7 @@ import fc from 'fast-check';
 import { createGame, DEFAULT_CONFIG } from '../src/state.js';
 import type { GameState, Seat } from '../src/state.js';
 import { applyAction } from '../src/actions.js';
-import type { GameAction } from '../src/actions.js';
+import type { GameAction, GameEvent } from '../src/actions.js';
 import { computeLegalActions } from '../src/views.js';
 import type { TileId, TileType } from '../src/tiles.js';
 import { tileFromType, tileToType, tileTypeOf, suitOf } from '../src/tiles.js';
@@ -680,6 +680,125 @@ describe('Phase 4 — property test: payment balance', () => {
         return total === 0;
       },
     ), { numRuns: 50 });
+  });
+});
+
+// ─── False-Hu penalty ────────────────────────────────────────────────────────
+
+describe('Phase 4 — false-Hu penalty', () => {
+  it('declareHuOnDraw with invalid hand applies penalty instead of failing', () => {
+    // P0 hand has 13 tiles (no winning shape) — false Hu on draw
+    const hand0: TileId[] = [
+      tid(M(1), 0), tid(M(3), 0), tid(M(5), 0), tid(M(7), 0), tid(M(9), 0),
+      tid(P(1), 0), tid(P(3), 0), tid(P(5), 0), tid(P(7), 0), tid(P(9), 0),
+      tid(S(2), 0), tid(S(4), 0), tid(S(6), 0),
+    ];
+    const state = makeState({ hands: [hand0, [], [], []], lastDrawnTile: tid(M(9), 0) });
+
+    const result = applyAction(state, { t: 'declareHuOnDraw', seat: 0 });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    expect(result.events.some(e => e.e === 'falseHu')).toBe(true);
+    // P0 pays 8 to each of P1, P2, P3 → −24 total
+    expect(result.state.players[0]!.scoreDelta).toBe(-24);
+    expect(result.state.players[1]!.scoreDelta).toBe(8);
+    expect(result.state.players[2]!.scoreDelta).toBe(8);
+    expect(result.state.players[3]!.scoreDelta).toBe(8);
+    // Redistributive — penaltyPot unchanged
+    expect(result.state.penaltyPot).toBe(0);
+    // Game continues: still P0's turn, discard needed
+    expect(result.state.phase).toBe('play');
+    expect(result.state.turn).toBe(0);
+  });
+
+  it('false-Hu via draw refunds offender kong payments', () => {
+    // Seed P0 with 1 kong payment in log, then false Hu → that payment is refunded
+    const hand0: TileId[] = [
+      tid(M(1), 0), tid(M(3), 0), tid(M(5), 0), tid(M(7), 0), tid(M(9), 0),
+      tid(P(1), 0), tid(P(3), 0), tid(P(5), 0), tid(P(7), 0), tid(P(9), 0),
+      tid(S(2), 0), tid(S(4), 0), tid(S(6), 0),
+    ];
+    const state = makeState({ hands: [hand0, [], [], []], lastDrawnTile: tid(M(9), 0) });
+    // Manually add a kong payment: P1 paid 2 to P0 earlier
+    state.kongPaymentLog.push({ declarer: 0, kongSeq: 0, paidBy: 1, amount: 2, refunded: false });
+    state.players[0]!.scoreDelta = 2;
+    state.players[1]!.scoreDelta = -2;
+
+    const result = applyAction(state, { t: 'declareHuOnDraw', seat: 0 });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    const refundEvents = result.events.filter(e => e.e === 'kongRefund');
+    expect(refundEvents.length).toBe(1);
+    // Kong refund reason is 'falseHu'
+    expect((refundEvents[0] as { reason: string }).reason).toBe('falseHu');
+    // P0 gave back the 2 from kong, then paid 8×3=24 in false-Hu → scoreDelta = 2 - 2 - 24 = -24
+    expect(result.state.players[0]!.scoreDelta).toBe(-24);
+    // P1 got 2 back from refund, then received 8 from false-Hu → -2 + 2 + 8 = 8
+    expect(result.state.players[1]!.scoreDelta).toBe(8);
+  });
+
+  it('false-Hu claim in window applies penalty; valid claim still resolves', () => {
+    // P0 discards man-5-1.
+    // P1 has a winning hand that completes on man-5 → valid Hu.
+    // P2 has 2 copies of man-5 (can pung, so NOT auto-passed) but the hand
+    //    doesn't actually form a winning shape → explicitly claims 'hu' → false Hu.
+    // P3 has an empty hand → auto-passed.
+    const winTile = tid(M(5), 1);
+    const p1Hand: TileId[] = [
+      tid(M(1), 0), tid(M(1), 1), tid(M(1), 2),
+      tid(M(2), 0), tid(M(2), 1), tid(M(2), 2),
+      tid(M(3), 0), tid(M(3), 1), tid(M(3), 2),
+      tid(M(4), 0), tid(M(4), 1), tid(M(4), 2),
+      tid(M(5), 0),  // pair of M5 completes with winTile
+    ];
+    // P2: 2 copies of M5 (to avoid auto-pass) + scattered tiles (no winning shape)
+    const p2Hand: TileId[] = [
+      tid(M(5), 2), tid(M(5), 3),
+      tid(P(1), 0), tid(P(3), 0), tid(P(5), 0), tid(P(7), 0), tid(P(9), 0),
+      tid(M(7), 0), tid(M(8), 0), tid(M(9), 0),
+      tid(S(2), 0), tid(S(4), 0), tid(S(6), 0),
+    ];
+    const p0Hand: TileId[] = [winTile, tid(M(6), 0), tid(M(7), 1)];
+
+    let state = makeState({
+      hands: [p0Hand, p1Hand, p2Hand, []],
+      turn: 0,
+      turnDrawNeeded: false,
+      voidedSuit: 'sou',  // voidCleared=true (default) so P0 can freely discard man
+    });
+
+    // P0 discards
+    let r = applyAction(state, { t: 'discard', seat: 0, tile: winTile });
+    expect(r.ok).toBe(true);
+    state = (r as { ok: true; state: GameState }).state;
+    expect(state.pendingClaims).not.toBeNull();
+    // P3 should have been auto-passed
+    expect(state.pendingClaims!.passed[3]).toBe(true);
+    // P2 should NOT be auto-passed (can pung)
+    expect(state.pendingClaims!.passed[2]).toBe(false);
+
+    // P1 claims valid Hu
+    r = applyAction(state, { t: 'claim', seat: 1, claim: { kind: 'hu' } });
+    expect(r.ok).toBe(true);
+    state = (r as { ok: true; state: GameState }).state;
+
+    // P2 claims false Hu — this is the last act, triggering resolution
+    r = applyAction(state, { t: 'claim', seat: 2, claim: { kind: 'hu' } });
+    expect(r.ok).toBe(true);
+    const events = (r as { ok: true; events: GameEvent[] }).events;
+    const finalState = (r as { ok: true; state: GameState }).state;
+
+    // P1 wins legitimately
+    expect(finalState.players[1]!.status).toBe('hu');
+    // False-Hu fired for P2
+    const falseHuEvent = events.find(e => e.e === 'falseHu');
+    expect(falseHuEvent).toBeDefined();
+    expect((falseHuEvent as { seat: number }).seat).toBe(2);
+    // P2 paid 8 to each non-Hu non-self player (P0, P3; P1 is Hu by now)
+    const falsePayments = events.filter(e => e.e === 'falseHuPayment') as Array<{ from: number; to: number; amount: number }>;
+    expect(falsePayments.every(p => p.from === 2 && p.amount === 8)).toBe(true);
   });
 });
 
