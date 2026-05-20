@@ -4,18 +4,11 @@ import { tileTypeOf, tileFromType } from '@sichuan-mahjong/engine';
 import type { TileId } from '@sichuan-mahjong/engine';
 import { useLongPress } from '../hooks/useLongPress.js';
 
-// Unicode mahjong tile codepoints
-const TILE_CHARS: Record<string, string[]> = {
-  man: ['🀇', '🀈', '🀉', '🀊', '🀋', '🀌', '🀍', '🀎', '🀏'],
-  pin: ['🀙', '🀚', '🀛', '🀜', '🀝', '🀞', '🀟', '🀠', '🀡'],
-  sou: ['🀐', '🀑', '🀒', '🀓', '🀔', '🀕', '🀖', '🀗', '🀘'],
-};
-
 const SIZE_CLASSES = {
-  sm: 'w-8 h-11 text-2xl',
-  md: 'w-10 h-14 text-3xl',
-  lg: 'w-14 h-20 text-5xl',
-  xl: 'w-20 h-28 text-7xl',
+  sm: 'w-8 h-11',
+  md: 'w-10 h-14',
+  lg: 'w-14 h-20',
+  xl: 'w-20 h-28',
 };
 
 export type TileProps = {
@@ -28,7 +21,7 @@ export type TileProps = {
 
 export function Tile({ id, selected = false, lastDiscard = false, onClick, size = 'md' }: TileProps) {
   const { suit, rank } = tileFromType(tileTypeOf(id));
-  const char = TILE_CHARS[suit]?.[rank - 1] ?? '?';
+  const src = `/tiles/${suit}-${rank}.svg`;
   const [preview, setPreview] = useState(false);
 
   const longPress = useLongPress(
@@ -40,7 +33,7 @@ export function Tile({ id, selected = false, lastDiscard = false, onClick, size 
     <>
       <motion.div
         className={[
-          'tile bg-white border-gray-300 text-black select-none',
+          'tile bg-white border-gray-300 select-none overflow-hidden',
           SIZE_CLASSES[size],
           lastDiscard ? 'tile-last-discard' : '',
           onClick ? 'cursor-pointer' : 'cursor-default',
@@ -54,7 +47,7 @@ export function Tile({ id, selected = false, lastDiscard = false, onClick, size 
         onPointerUp={() => { longPress.onPointerUp(); setPreview(false); }}
         onClick={onClick ? () => { if (!longPress.pointerHandledRef.current) onClick(id); } : undefined}
       >
-        {char}
+        <img src={src} alt={`${suit}-${rank}`} className="w-full h-full object-contain" draggable={false} />
       </motion.div>
 
       {/* Long-press 2× preview */}
@@ -71,9 +64,9 @@ export function Tile({ id, selected = false, lastDiscard = false, onClick, size 
               initial={{ scale: 0.5 }}
               animate={{ scale: 1 }}
               exit={{ scale: 0.5 }}
-              className={`tile bg-white text-black ${SIZE_CLASSES.xl}`}
+              className={`tile bg-white overflow-hidden ${SIZE_CLASSES.xl}`}
             >
-              {char}
+              <img src={src} alt={`${suit}-${rank}`} className="w-full h-full object-contain" draggable={false} />
             </motion.div>
           </motion.div>
         )}
@@ -83,5 +76,9 @@ export function Tile({ id, selected = false, lastDiscard = false, onClick, size 
 }
 
 export function TileBack({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
-  return <div className={`tile tile-back ${SIZE_CLASSES[size]}`}>🀫</div>;
+  return (
+    <div className={`tile tile-back overflow-hidden ${SIZE_CLASSES[size]}`}>
+      <img src="/tiles/back.svg" alt="tile back" className="w-full h-full object-contain" draggable={false} />
+    </div>
+  );
 }

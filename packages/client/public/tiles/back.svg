@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg version="1.1" id="back"
+     xmlns="http://www.w3.org/2000/svg" x="0px" y="0px"
+     viewBox="0 0 210 255"
+     style="enable-background:new 0 0 210 255;" xml:space="preserve">
+  <style type="text/css">
+    .b0{fill:#000000;}
+    .b1{fill:#005F00;}
+    .b2{fill:#CDDACD;}
+    .b3{fill:#FFFFFF;}
+    .b4{fill:#D0E4CC;}
+    .b5{fill:#147E48;}
+    .b6{fill:#1a5c2a;}
+  </style>
+  <!-- Outer black shape (same silhouette as face tiles) -->
+  <g transform="matrix(1.0005937,0,0,1,-1.3758072,203.40625)">
+    <g>
+      <!-- Black outer rounded rectangle -->
+      <path class="b0" d="M60.7-203.4l46.1,0.2l68.4-0.2c22.9-0.1,36.1,15.9,36.1,40.4V-8.4c0,12.3-14,27.7-21.4,35.7
+          c-7.4,8-22.1,24.3-33.6,24.3h-113C20.4,51.6,2,46,2,21.4L1.7-140.9c0-6.4,17.3-24.3,24.8-32.4C33.9-181.3,49.2-203.5,60.7-203.4z"/>
+      <!-- Dark green ring -->
+      <path class="b1" d="M69.5-190.7H174c13.8,0,24.8,11.1,24.9,24.9l0.9,152.4c0,2-12.6,32-25.8,32H69.5
+          c-13.8,0-24.9-11.1-24.9-24.9v-159.5C44.6-179.6,55.7-190.7,69.5-190.7z"/>
+      <!-- Light green ring -->
+      <path class="b2" d="M54.5-175.8h99.6c13.7,0,24.9,11.2,24.9,24.9V8.6c0,13.8-11.1,24.9-24.9,24.9H54.5
+          c-13.7,0-24.9-11.2-24.9-24.9v-159.4C29.6-164.6,40.8-175.8,54.5-175.8z"/>
+      <!-- White ring -->
+      <path class="b3" d="M44.6-160.8h104.5c13.7,0,24.9,11.2,24.9,24.9V13.6c0,13.8-11.1,24.9-24.9,24.9H44.6
+          c-13.7,0-24.9-11.2-24.9-24.9v-149.5C19.7-149.6,30.8-160.8,44.6-160.8z"/>
+      <!-- Inner field — solid green (tile back color) -->
+      <path class="b4" d="M34.6-150.8h109.5c11,0,19.9,8.9,19.9,19.9V18.6c0,11-8.9,19.9-19.9,19.9H34.6
+          c-11,0-19.9-8.9-19.9-19.9v-149.5C14.7-141.9,23.6-150.8,34.6-150.8z"/>
+      <!-- Corner decoration (top-right) -->
+      <circle class="b3" cx="191.3" cy="-178.2" r="2.8"/>
+    </g>
+  </g>
+  <!-- Back pattern: a centered diamond grid on the inner field -->
+  <!-- Inner field occupies roughly x=14..164, y=52..218 in viewBox coords -->
+  <g opacity="0.55">
+    <!-- Diagonal lines creating a lattice -->
+    <line x1="14" y1="52"  x2="164" y2="218" stroke="#147E48" stroke-width="4"/>
+    <line x1="39" y1="52"  x2="164" y2="193" stroke="#147E48" stroke-width="4"/>
+    <line x1="64" y1="52"  x2="164" y2="168" stroke="#147E48" stroke-width="4"/>
+    <line x1="89" y1="52"  x2="164" y2="143" stroke="#147E48" stroke-width="4"/>
+    <line x1="114" y1="52" x2="164" y2="118" stroke="#147E48" stroke-width="4"/>
+    <line x1="139" y1="52" x2="164" y2="93"  stroke="#147E48" stroke-width="4"/>
+    <line x1="14" y1="77"  x2="139" y2="218" stroke="#147E48" stroke-width="4"/>
+    <line x1="14" y1="102" x2="114" y2="218" stroke="#147E48" stroke-width="4"/>
+    <line x1="14" y1="127" x2="89" y2="218"  stroke="#147E48" stroke-width="4"/>
+    <line x1="14" y1="152" x2="64" y2="218"  stroke="#147E48" stroke-width="4"/>
+    <line x1="14" y1="177" x2="39" y2="218"  stroke="#147E48" stroke-width="4"/>
+    <!-- Anti-diagonal lines -->
+    <line x1="14" y1="218" x2="164" y2="52"  stroke="#147E48" stroke-width="4"/>
+    <line x1="14" y1="193" x2="139" y2="52"  stroke="#147E48" stroke-width="4"/>
+    <line x1="14" y1="168" x2="114" y2="52"  stroke="#147E48" stroke-width="4"/>
+    <line x1="14" y1="143" x2="89" y2="52"   stroke="#147E48" stroke-width="4"/>
+    <line x1="14" y1="118" x2="64" y2="52"   stroke="#147E48" stroke-width="4"/>
+    <line x1="14" y1="93"  x2="39" y2="52"   stroke="#147E48" stroke-width="4"/>
+    <line x1="39" y1="218" x2="164" y2="143" stroke="#147E48" stroke-width="4"/>
+    <line x1="64" y1="218" x2="164" y2="168" stroke="#147E48" stroke-width="4"/>
+    <line x1="89" y1="218" x2="164" y2="193" stroke="#147E48" stroke-width="4"/>
+    <line x1="114" y1="218" x2="164" y2="218" stroke="#147E48" stroke-width="4"/>
+  </g>
+  <!-- Central circular emblem -->
+  <circle cx="89" cy="135" r="32" fill="#005F00" opacity="0.85"/>
+  <circle cx="89" cy="135" r="27" fill="#147E48" opacity="0.9"/>
+  <!-- Simplified mahjong character 麻 suggestion — just a stylized square pattern -->
+  <rect x="75" y="121" width="28" height="28" fill="none" stroke="#FFFFFF" stroke-width="3"/>
+  <line x1="89" y1="121" x2="89" y2="149" stroke="#FFFFFF" stroke-width="2.5"/>
+  <line x1="75" y1="135" x2="103" y2="135" stroke="#FFFFFF" stroke-width="2.5"/>
+  <line x1="82" y1="121" x2="82" y2="149" stroke="#FFFFFF" stroke-width="1.5" opacity="0.7"/>
+  <line x1="96" y1="121" x2="96" y2="149" stroke="#FFFFFF" stroke-width="1.5" opacity="0.7"/>
+  <line x1="75" y1="128" x2="103" y2="128" stroke="#FFFFFF" stroke-width="1.5" opacity="0.7"/>
+  <line x1="75" y1="142" x2="103" y2="142" stroke="#FFFFFF" stroke-width="1.5" opacity="0.7"/>
+</svg>
