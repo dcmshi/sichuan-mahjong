@@ -446,7 +446,7 @@ function applyHuResolution(s: GameState, winners: Seat[], robbingTile?: TileId, 
     }
 
     const score = calcHandScore(
-      player.hand, player.melds, player.voidedSuit,
+      [...player.hand, actualWinTile], player.melds, player.voidedSuit,
       actualWinTile, subtype,
       s.config.fanCap, s.config.enableHeavenlyEarthly,
     );
