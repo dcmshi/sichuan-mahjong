@@ -96,9 +96,9 @@ Current status: **Phase 4 complete** — full scoring, payments, and round-end s
 - [x] Claim panel: Pung / Kong / Hu / Pass buttons + countdown bar; fixed bottom overlay
 - [x] `yourLegalActions` drives all button enable/disable — no client-side rule logic
 - [x] Client builds successfully (166 kB JS gzip: 52 kB, 22 kB CSS gzip: 5 kB)
-- [ ] Long-press 2× tile preview (Phase 10)
-- [ ] `/about` page with CC-BY-SA tile attribution (Phase 10 — SVG assets not yet added)
-- [ ] SVG tile assets from Wikimedia Commons (Phase 10 — using Unicode glyphs for now)
+- [x] Long-press 2× tile preview — `useLongPress` hook, 2× size modal
+- [x] `/about` screen — CC-BY-SA tile attribution, rules reference, MIT license notice
+- [x] SVG tile assets from Wikimedia Commons — 27 face SVGs + custom back, served from `/tiles/`
 
 ## Phase 7 — Bots ✅
 
@@ -150,4 +150,5 @@ Current status: **Phase 4 complete** — full scoring, payments, and round-end s
 
 ## CI pipeline (spans phases)
 
-- [ ] GitHub Actions: lint (Biome) → typecheck → vitest → build → e2e (Playwright) → package smoke
+- [x] GitHub Actions: lint → typecheck → vitest → build → package smoke
+- [x] Add Playwright e2e step to CI — installs chromium then runs `pnpm e2e` after build steps
