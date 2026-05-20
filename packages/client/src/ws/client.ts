@@ -13,6 +13,7 @@ export class WsClient {
   private retries = 0;
   private timer: ReturnType<typeof setTimeout> | null = null;
   private closed = false;
+  private queue: string[] = [];
 
   constructor(
     private readonly url: string,
@@ -22,8 +23,11 @@ export class WsClient {
   }
 
   send(msg: ClientMsg): void {
+    const data = JSON.stringify(msg);
     if (this.ws?.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify(msg));
+      this.ws.send(data);
+    } else {
+      this.queue.push(data);
     }
   }
 
@@ -42,6 +46,8 @@ export class WsClient {
     ws.onopen = () => {
       this.retries = 0;
       this.cbs.onConnect();
+      for (const data of this.queue) ws.send(data);
+      this.queue = [];
     };
 
     ws.onmessage = (e: MessageEvent<string>) => {

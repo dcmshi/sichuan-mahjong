@@ -1,11 +1,25 @@
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { existsSync } from 'node:fs';
 import type { FastifyInstance } from 'fastify';
+import fastifyStatic from '@fastify/static';
 import { createLobby, getLobby, canStart, findOpenSeat } from './lobby.js';
 import { issueToken, resolveToken } from './tokens.js';
 import { createRoom, getRoom } from './room.js';
 import type { RoomSlot } from './room.js';
 import { getGame } from './persistence.js';
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+// Client dist is two levels up from packages/server/dist → packages/client/dist
+const CLIENT_DIST = path.resolve(__dirname, '../../client/dist');
+
 export async function registerHttpRoutes(app: FastifyInstance): Promise<void> {
+  // Serve client SPA from packages/client/dist (present in monorepo dev and npm-packed builds)
+  if (existsSync(CLIENT_DIST)) {
+    await app.register(fastifyStatic, { root: CLIENT_DIST, prefix: '/', wildcard: false });
+    app.setNotFoundHandler(async (_req, reply) => reply.sendFile('index.html'));
+  }
+
   // Liveness
   app.get('/healthz', async () => ({ ok: true }));
 

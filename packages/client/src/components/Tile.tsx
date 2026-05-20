@@ -52,6 +52,7 @@ export function Tile({ id, selected = false, lastDiscard = false, onClick, size 
         onPointerLeave={() => { longPress.onPointerLeave(); setPreview(false); }}
         onPointerCancel={() => { longPress.onPointerCancel(); setPreview(false); }}
         onPointerUp={() => { longPress.onPointerUp(); setPreview(false); }}
+        onClick={onClick ? () => { if (!longPress.pointerHandledRef.current) onClick(id); } : undefined}
       >
         {char}
       </motion.div>

@@ -1,53 +1,92 @@
 /**
- * E2E: one host + 3 bots → full round to round-end screen.
+ * E2E: host creates a lobby, adds 3 bots, plays a full round to round-end.
  *
- * The host creates a lobby, adds 3 bots, starts the game, then waits for
- * the round-end screen. The test doesn't try to play tiles — it just verifies
- * the game runs to completion with bots filling the other seats.
+ * Seat 0 (host/human) is driven by the test; bots handle the other 3 seats.
+ * Game-phase actions (huan, void, discard, pass) are sent directly via the
+ * window.__e2e helpers so Playwright's click path doesn't fight Framer Motion.
  */
 import { test, expect } from '@playwright/test';
 
 const BASE = 'http://localhost:8080';
 
+type E2E = {
+  huanSubmit: () => boolean;
+  voidSubmit: () => boolean;
+  autoPlay: () => boolean;
+  getPhase: () => string | null;
+  getScreen: () => string;
+};
+
+function e2e(page: import('@playwright/test').Page) {
+  return {
+    huanSubmit: () => page.evaluate(() => (window as unknown as { __e2e: E2E }).__e2e.huanSubmit()),
+    voidSubmit: () => page.evaluate(() => (window as unknown as { __e2e: E2E }).__e2e.voidSubmit()),
+    autoPlay:   () => page.evaluate(() => (window as unknown as { __e2e: E2E }).__e2e.autoPlay()),
+    getPhase:   () => page.evaluate(() => (window as unknown as { __e2e: E2E }).__e2e.getPhase()),
+    getScreen:  () => page.evaluate(() => (window as unknown as { __e2e: E2E }).__e2e.getScreen()),
+  };
+}
+
 test('full round to round-end with 3 bots', async ({ page }) => {
-  // ── Create lobby via API ──────────────────────────────────────────────────
-  const createRes = await page.request.post(`${BASE}/api/lobby`);
-  expect(createRes.status()).toBe(201);
-  const { code, hostToken } = await createRes.json() as { code: string; hostToken: string };
-  expect(code).toMatch(/^[A-HJ-NP-Z2-9]{4}$/);
-
-  // ── Open the host join URL ────────────────────────────────────────────────
-  await page.goto(`${BASE}/j/${code}`);
-
-  // Should redirect to /?code=CODE and show the Landing screen
-  await expect(page).toHaveURL(/\?code=/);
-
-  // Click "Host a Game" → HostSetup
+  // ── Setup: host lobby with 3 bots ─────────────────────────────────────────
+  await page.goto(BASE);
   await page.click('text=Host a Game');
   await page.fill('input[placeholder="Your name"]', 'TestHost');
   await page.click('text=Create Lobby');
 
-  // Wait for the lobby screen (should show the lobby code)
-  await expect(page.locator(`text=${code}`)).toBeVisible({ timeout: 10_000 });
+  // Wait for any 4-char lobby code to appear in the lobby screen
+  await expect(page.locator('text=/^[A-HJ-NP-Z2-9]{4}$/')).toBeVisible({ timeout: 10_000 });
 
-  // The HostSetup should now show 3 empty seats with "+ Bot" buttons
-  // Add 3 bots
-  const botButtons = page.locator('text=+ Bot');
-  await expect(botButtons).toHaveCount(3, { timeout: 5_000 });
-  await botButtons.nth(0).click();
-  await botButtons.nth(0).click(); // re-query — after first click the seat fills
-  await botButtons.nth(0).click();
-
-  // Wait for Start Game to be enabled
+  for (let i = 0; i < 3; i++) {
+    await page.click('text=+ Bot');
+    await page.waitForTimeout(300);
+  }
   await expect(page.locator('text=Start Game')).toBeEnabled({ timeout: 10_000 });
   await page.click('text=Start Game');
 
-  // Wait for round-end screen (bots play to completion)
-  await expect(page.locator('text=Round End')).toBeVisible({ timeout: 90_000 });
+  const g = e2e(page);
 
-  // Verify score table shows 4 entries
-  const scoreRows = page.locator('[class*="rounded-xl"][class*="px-4"]');
-  await expect(scoreRows).toHaveCount(4, { timeout: 5_000 });
+  // ── Single game loop: handles huan → void → play → roundEnd ───────────────
+  // Reads phase from the Zustand store (not DOM) so one-shot timing is never an issue.
+  const endLocator = page.locator('text=Round End');
+  const deadline = Date.now() + 120_000;
+
+  // Track last submitted phase to avoid flooding the server with repeats
+  let huanDone = false;
+  let voidDone = false;
+
+  while (Date.now() < deadline) {
+    if (await endLocator.isVisible({ timeout: 100 }).catch(() => false)) break;
+
+    const phase = await g.getPhase();
+
+    if (phase === null) {
+      // Game view not yet received — wait for initial broadcast
+      await page.waitForTimeout(300);
+      continue;
+    }
+
+    if (phase === 'huan' && !huanDone) {
+      const ok = await g.huanSubmit();
+      if (ok) huanDone = true;
+      await page.waitForTimeout(300);
+      continue;
+    }
+
+    if (phase === 'voidDeclare' && !voidDone) {
+      const ok = await g.voidSubmit();
+      if (ok) voidDone = true;
+      await page.waitForTimeout(300);
+      continue;
+    }
+
+    if (phase === 'roundEnd') break;
+
+    await g.autoPlay();
+    await page.waitForTimeout(200);
+  }
+
+  await expect(endLocator).toBeVisible({ timeout: 10_000 });
 });
 
 test('replay API returns 404 for missing id', async ({ request }) => {

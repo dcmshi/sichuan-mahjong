@@ -19,6 +19,7 @@
     "start": "node dist/main.js"
   },
   "dependencies": {
+    "@fastify/static": "^9.1.3",
     "@fastify/websocket": "^11.2.0",
     "@sichuan-mahjong/engine": "workspace:*",
     "fastify": "^5.8.5",
