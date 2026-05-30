@@ -1,9 +1,5 @@
 /// <reference types="vite/client" />
 
-interface ImportMetaEnv {
-  /** Set at build time to include the Playwright __e2e test helpers. */
-  readonly VITE_E2E?: string;
-}
-interface ImportMeta {
-  readonly env: ImportMetaEnv;
-}
+/** Compile-time flag (see vite.config.ts `define`): true in dev and e2e builds,
+ *  false in release builds — gates the window.__e2e Playwright helpers. */
+declare const __E2E__: boolean;

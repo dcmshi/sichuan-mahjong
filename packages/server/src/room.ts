@@ -197,7 +197,12 @@ export class GameRoom {
 
   private applyAndPropagate(action: GameAction): void {
     const result = applyAction(this.state, action);
-    if (!result.ok) return;
+    if (!result.ok) {
+      // Actions are validated before dispatch, so a rejection is unexpected —
+      // log it (rather than silently freezing the turn loop) to aid diagnosis.
+      console.warn(`[room ${this.code}] action ${action.t} rejected: ${result.reason} (phase=${this.state.phase} turn=${this.state.turn})`);
+      return;
+    }
     this.state = result.state;
     this.afterStateChange(result.events);
   }

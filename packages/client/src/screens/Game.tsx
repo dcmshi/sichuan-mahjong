@@ -233,7 +233,10 @@ function KongButtons({ view, seat }: { view: PlayerView; seat: number }) {
     <div className="flex gap-2">
       {kongActions.map((a, i) => {
         if (a.t !== 'declareKongOnTurn') return null;
-        const { suit, rank } = tileFromType(tileTypeOf(a.tile as unknown as TileId));
+        // a.tile is a Tile ({suit, rank}) already — not a TileId. (The old
+        // `tileTypeOf(a.tile as TileId)` produced undefined and crashed the app
+        // whenever a kong was offered.)
+        const { suit, rank } = a.tile;
         return (
           <button
             key={i}
