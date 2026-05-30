@@ -482,13 +482,15 @@ function PlayPhase({ view }: { view: PlayerView }) {
           axis="x"
           values={handOrder}
           onReorder={setHandOrder}
-          className="flex gap-1.5 overflow-x-auto pb-1 list-none"
+          className="flex gap-1 pb-1 list-none justify-center"
         >
           {handOrder.map(id => (
             <Reorder.Item
               key={id}
               value={id}
-              className={`shrink-0 ${legalDiscards.has(id) ? '' : 'opacity-60'}`}
+              // Shrink-to-fit: every tile flexes to share the row width (capped so
+              // small hands don't balloon), so the whole hand fits with no scroll.
+              className={`flex-1 min-w-0 max-w-[42px] ${legalDiscards.has(id) ? '' : 'opacity-60'}`}
               onPointerDown={(e) => { tapStart.current = { x: e.clientX, y: e.clientY }; }}
               onPointerUp={(e) => {
                 const s = tapStart.current;
@@ -498,7 +500,7 @@ function PlayPhase({ view }: { view: PlayerView }) {
               }}
               whileDrag={{ scale: 1.08, zIndex: 10 }}
             >
-              <Tile id={id} selected={selectedTile === id} interactive={false} />
+              <Tile id={id} selected={selectedTile === id} interactive={false} fill />
             </Reorder.Item>
           ))}
         </Reorder.Group>

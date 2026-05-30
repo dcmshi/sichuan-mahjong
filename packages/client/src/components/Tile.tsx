@@ -24,9 +24,11 @@ export type TileProps = {
    * the tap + drag gestures, so they don't fight the tile's own handlers.
    */
   interactive?: boolean;
+  /** Fill the parent's width (height follows the aspect-ratio) instead of a fixed size. */
+  fill?: boolean;
 };
 
-export function Tile({ id, selected = false, lastDiscard = false, onClick, size = 'md', interactive = true }: TileProps) {
+export function Tile({ id, selected = false, lastDiscard = false, onClick, size = 'md', interactive = true, fill = false }: TileProps) {
   const { suit, rank } = tileFromType(tileTypeOf(id));
   const src = `/tiles/${suit}-${rank}.svg`;
   const [preview, setPreview] = useState(false);
@@ -51,7 +53,7 @@ export function Tile({ id, selected = false, lastDiscard = false, onClick, size 
       <motion.div
         className={[
           'tile select-none overflow-hidden',
-          SIZE_CLASSES[size],
+          fill ? 'w-full' : SIZE_CLASSES[size],
           selected ? 'is-selected' : '',
           lastDiscard ? 'tile-last-discard' : '',
           interactive && onClick ? 'cursor-pointer' : 'cursor-default',
