@@ -200,7 +200,8 @@ export class GameRoom {
     if (!result.ok) {
       // Actions are validated before dispatch, so a rejection is unexpected —
       // log it (rather than silently freezing the turn loop) to aid diagnosis.
-      console.warn(`[room ${this.code}] action ${action.t} rejected: ${result.reason} (phase=${this.state.phase} turn=${this.state.turn})`);
+      const detail = result.detail ? ` — ${result.detail}` : '';
+      console.warn(`[room ${this.code}] action ${action.t} rejected: ${result.reason}${detail} (phase=${this.state.phase} turn=${this.state.turn})`);
       return;
     }
     this.state = result.state;

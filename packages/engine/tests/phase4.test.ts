@@ -1066,3 +1066,34 @@ describe('Phase 4 — dealer rotation on multi-Hu discard', () => {
     expect(s.nextDealer).toBe(2); // the lone first winner
   });
 });
+
+// ─── Top-level error guard ─────────────────────────────────────────────────────
+describe('Phase 4 — applyAction error guard', () => {
+  it('converts an unexpected internal throw into a typed internal_error', () => {
+    // Inconsistent state: a claim window is open but lastDiscard is null. Resolving
+    // it dereferences lastDiscard! deep in the engine → would throw uncaught. The
+    // top-level guard must turn that into a typed failure, not crash the caller.
+    const s = makeState({ hands: [[], [], [], []] });
+    s.pendingClaims = {
+      tile: tid(M(1), 0), from: 1, afterKong: false, deadline: 0,
+      passed: [false, false, false, false],
+      claims: [null, null, null, null],
+    };
+    s.lastDiscard = null;
+
+    const r = applyAction(s, { t: 'claimWindowExpire' });
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.reason).toBe('internal_error');
+      expect(typeof r.detail).toBe('string'); // cause preserved for diagnosis
+    }
+    // Input state untouched (applyAction works on a clone).
+    expect(s.phase).toBe('play');
+  });
+
+  it('is transparent for valid actions (guard adds no overhead to the happy path)', () => {
+    const s = makeState({ hands: [winHand(), [], [], []] });
+    const r = applyAction(s, { t: 'declareHuOnDraw', seat: 0 });
+    expect(r.ok).toBe(true);
+  });
+});

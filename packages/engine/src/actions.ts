@@ -63,7 +63,8 @@ export type RuleViolation =
   | 'not_east_first_turn'
   | 'not_own_turn'
   | 'already_hu'
-  | 'furiten_blocks_hu';
+  | 'furiten_blocks_hu'
+  | 'internal_error';
 
 export type GameEvent =
   | { e: 'dealt' }
@@ -91,7 +92,7 @@ export type GameEvent =
 
 export type ActionResult =
   | { ok: true;  state: GameState; events: GameEvent[] }
-  | { ok: false; reason: RuleViolation };
+  | { ok: false; reason: RuleViolation; detail?: string };
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -1234,7 +1235,7 @@ function applyDeclareHeavenly(state: GameState, action: Extract<GameAction, { t:
 // Public entry point
 // ---------------------------------------------------------------------------
 
-export function applyAction(state: GameState, action: GameAction): ActionResult {
+function dispatchAction(state: GameState, action: GameAction): ActionResult {
   switch (action.t) {
     case 'huanSelect':        return applyHuanSelect(state, action);
     case 'declareVoid':       return applyDeclareVoid(state, action);
@@ -1246,5 +1247,20 @@ export function applyAction(state: GameState, action: GameAction): ActionResult 
     case 'declareKongOnTurn': return applyDeclareKongOnTurn(state, action);
     case 'declareHuOnDraw':   return applyDeclareHuOnDraw(state, action);
     case 'declareHeavenly':   return applyDeclareHeavenly(state, action);
+  }
+}
+
+/**
+ * Apply an action to the state, returning the next state + events or a typed
+ * RuleViolation. A top-level guard converts any unexpected throw (e.g. a stale
+ * non-null assertion reached out of order) into `internal_error` rather than an
+ * uncaught exception, so a caller never crashes — `state` is left untouched and
+ * the cause is surfaced in `detail` for diagnosis.
+ */
+export function applyAction(state: GameState, action: GameAction): ActionResult {
+  try {
+    return dispatchAction(state, action);
+  } catch (err) {
+    return { ok: false, reason: 'internal_error', detail: err instanceof Error ? err.message : String(err) };
   }
 }
