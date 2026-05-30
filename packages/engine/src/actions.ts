@@ -1,5 +1,5 @@
 import type { GameState, Seat, PendingVoid, HuRecord, ClaimWindow, KongPaymentEntry } from './state.js';
-import { huPlayerCount, isVoidSuitTile } from './state.js';
+import { huPlayerCount } from './state.js';
 import type { Suit, TileId, Tile } from './tiles.js';
 import { sortTiles, suitOf, tileTypeOf, tileFromType, tileToType } from './tiles.js';
 import { isWinningHand, isTenpai } from './hand.js';
@@ -1092,6 +1092,48 @@ function applyDeclareKongOnTurn(
   return ok(s, events);
 }
 
+/**
+ * Shared settlement for a self-drawn / declared win (Hu-on-draw, Heavenly, Earthly):
+ * mark the winner, pay (handValue + 1) from each non-Hu player, then either end the
+ * round (3-Hu or wall exhausted) or pass the turn on.
+ */
+function applySelfDrawHu(
+  state: GameState,
+  action: GameAction,
+  seat: Seat,
+  record: HuRecord,
+): ActionResult {
+  const s = clone(state);
+  applyHuStatus(s, seat, record);
+  s.firstTurnDone[seat] = true;
+  s.history.push(action);
+
+  const events: GameEvent[] = [{ e: 'hu', seat, record }];
+
+  const selfDrawAmount = record.handValue + 1;
+  for (let i = 0; i < 4; i++) {
+    const payer = i as Seat;
+    if (payer === seat) continue;
+    if (s.players[payer]!.status === 'hu') continue;
+    pay(s, payer, seat, selfDrawAmount);
+    events.push({ e: 'huPayment', from: payer, to: seat, amount: selfDrawAmount });
+  }
+
+  if (huPlayerCount(s) >= 3) {
+    transitionToRoundEnd(s, 'threeHu', events);
+    return ok(s, events);
+  }
+  if (s.wallEndReached) {
+    transitionToRoundEnd(s, 'wallExhausted', events);
+    return ok(s, events);
+  }
+
+  s.turn = nextActiveSeat(s, seat);
+  s.turnNumber += 1;
+  s.turnDrawNeeded = true;
+  return ok(s, events);
+}
+
 function applyDeclareHuOnDraw(state: GameState, action: Extract<GameAction, { t: 'declareHuOnDraw' }>): ActionResult {
   if (state.phase !== 'play') return fail('wrong_phase');
   if (state.pendingClaims !== null) return fail('wrong_phase');
@@ -1146,36 +1188,7 @@ function applyDeclareHuOnDraw(state: GameState, action: Extract<GameAction, { t:
     discarder: null,
   };
 
-  const s = clone(state);
-  applyHuStatus(s, seat, record);
-  s.firstTurnDone[seat] = true;
-  s.history.push(action);
-
-  const events: GameEvent[] = [{ e: 'hu', seat, record }];
-
-  // Self-draw: each non-Hu player pays (handValue + 1)
-  const selfDrawAmount = score.handValue + 1;
-  for (let i = 0; i < 4; i++) {
-    const payer = i as Seat;
-    if (payer === seat) continue;
-    if (s.players[payer]!.status === 'hu') continue;
-    pay(s, payer, seat, selfDrawAmount);
-    events.push({ e: 'huPayment', from: payer, to: seat, amount: selfDrawAmount });
-  }
-
-  if (huPlayerCount(s) >= 3) {
-    transitionToRoundEnd(s, 'threeHu', events);
-    return ok(s, events);
-  }
-  if (s.wallEndReached) {
-    transitionToRoundEnd(s, 'wallExhausted', events);
-    return ok(s, events);
-  }
-
-  s.turn = nextActiveSeat(s, seat);
-  s.turnNumber += 1;
-  s.turnDrawNeeded = true;
-  return ok(s, events);
+  return applySelfDrawHu(state, action, seat, record);
 }
 
 function applyDeclareHeavenly(state: GameState, action: Extract<GameAction, { t: 'declareHeavenly' }>): ActionResult {
@@ -1214,32 +1227,7 @@ function applyDeclareHeavenly(state: GameState, action: Extract<GameAction, { t:
     discarder: null,
   };
 
-  const s = clone(state);
-  applyHuStatus(s, seat, record);
-  s.firstTurnDone[seat] = true;
-  s.history.push(action);
-
-  const events: GameEvent[] = [{ e: 'hu', seat, record }];
-
-  // Self-draw: each non-Hu pays (handValue + 1)
-  const selfDrawAmount = score.handValue + 1;
-  for (let i = 0; i < 4; i++) {
-    const payer = i as Seat;
-    if (payer === seat) continue;
-    if (s.players[payer]!.status === 'hu') continue;
-    pay(s, payer, seat, selfDrawAmount);
-    events.push({ e: 'huPayment', from: payer, to: seat, amount: selfDrawAmount });
-  }
-
-  if (huPlayerCount(s) >= 3) {
-    transitionToRoundEnd(s, 'threeHu', events);
-    return ok(s, events);
-  }
-
-  s.turn = nextActiveSeat(s, seat);
-  s.turnNumber += 1;
-  s.turnDrawNeeded = true;
-  return ok(s, events);
+  return applySelfDrawHu(state, action, seat, record);
 }
 
 // ---------------------------------------------------------------------------
