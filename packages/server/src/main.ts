@@ -7,6 +7,7 @@ import { registerHttpRoutes } from './http.js';
 import { registerWsRoutes } from './ws.js';
 import { getLanIp, startMdns, getTailscaleInfo, getTailscaleCert, getServerUrls } from './networking.js';
 import { parseCli, printBanner, printQr } from './cli.js';
+import { restoreRoomsFromDisk, flushAllRooms } from './room.js';
 
 async function buildApp(serverOptions: { https?: { key: string; cert: string } } = {}): Promise<ReturnType<typeof Fastify>> {
   const app = Fastify({ logger: false, ...serverOptions });
@@ -22,6 +23,14 @@ async function main(): Promise<void> {
 
   // Propagate data-dir override before persistence module initializes
   if (dataDir) process.env['SICHUAN_DATA_DIR'] = dataDir;
+
+  // Resume any in-progress games persisted before a previous shutdown/crash.
+  try {
+    const resumed = restoreRoomsFromDisk();
+    if (resumed > 0) console.log(`\u{267B}️  Resumed ${resumed} in-progress game(s) from disk.`);
+  } catch (err) {
+    console.error('[resume] error during restore:', err);
+  }
 
   const lanIp = getLanIp();
   const tailscaleInfo = useTailscale ? getTailscaleInfo() : null;
@@ -63,6 +72,18 @@ async function main(): Promise<void> {
   });
 
   if (lanIp) printQr(`http://${lanIp}:${port}`);
+
+  // Graceful shutdown: flush live games to disk so a restart can resume them.
+  let shuttingDown = false;
+  const shutdown = (signal: string) => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    console.log(`\n${signal} received — saving in-progress games…`);
+    try { flushAllRooms(); } catch (err) { console.error('[shutdown] flush failed:', err); }
+    process.exit(0);
+  };
+  process.on('SIGINT', () => shutdown('SIGINT'));
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
 }
 
 main().catch(err => {

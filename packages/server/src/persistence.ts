@@ -31,6 +31,12 @@ CREATE TABLE IF NOT EXISTS games (
   results     TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_games_started ON games(started_at);
+
+CREATE TABLE IF NOT EXISTS live_rooms (
+  code          TEXT PRIMARY KEY,
+  snapshot_json TEXT NOT NULL,
+  updated_at    INTEGER NOT NULL
+);
 `;
 
 let db: DatabaseSync | null = null;
@@ -91,6 +97,36 @@ export function saveGameWithCode(
     JSON.stringify(results),
   ) as { lastInsertRowid: number | bigint };
   return Number(info.lastInsertRowid);
+}
+
+// ---------------------------------------------------------------------------
+// Live-room snapshots — survive a server restart (host-shutdown resume)
+// ---------------------------------------------------------------------------
+
+/** Persist (or replace) the live snapshot for an in-progress room. */
+export function saveLiveRoom(code: string, snapshot: unknown): void {
+  const database = getDb();
+  database
+    .prepare(
+      'INSERT INTO live_rooms (code, snapshot_json, updated_at) VALUES (?, ?, ?) ' +
+        'ON CONFLICT(code) DO UPDATE SET snapshot_json = excluded.snapshot_json, updated_at = excluded.updated_at',
+    )
+    .run(code, JSON.stringify(snapshot), Date.now());
+}
+
+/** Load all persisted live-room snapshots (called once at server boot). */
+export function loadLiveRooms(): Array<{ code: string; snapshot: unknown }> {
+  const database = getDb();
+  const rows = database.prepare('SELECT code, snapshot_json FROM live_rooms').all() as Array<{
+    code: string;
+    snapshot_json: string;
+  }>;
+  return rows.map(r => ({ code: r.code, snapshot: JSON.parse(r.snapshot_json) as unknown }));
+}
+
+export function deleteLiveRoom(code: string): void {
+  const database = getDb();
+  database.prepare('DELETE FROM live_rooms WHERE code = ?').run(code);
 }
 
 export function getGame(id: number): GameRecord | null {

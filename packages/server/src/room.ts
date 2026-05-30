@@ -19,15 +19,26 @@ import type {
   RoundResult,
 } from '@sichuan-mahjong/engine';
 import { botHuanAction, botVoidAction, botTurnAction, botClaimAction } from './bot.js';
-import { saveGameWithCode } from './persistence.js';
+import { saveGameWithCode, saveLiveRoom, loadLiveRooms, deleteLiveRoom } from './persistence.js';
+import { tokensForCode, importToken } from './tokens.js';
 
 const RECONNECT_TIMEOUT_MS = 60_000;
 const BOT_THINK_MS = 150;
+const PERSIST_DEBOUNCE_MS = 1000;
 
 export type RoomSlot = {
   name: string;
   isBot: boolean;
   connected: boolean;
+};
+
+/** Serializable snapshot of a live room, persisted so the game survives a restart. */
+export type RoomSnapshot = {
+  code: string;
+  state: GameState;
+  slots: RoomSlot[];
+  isHumanSeat: boolean[];
+  tokens: Array<{ token: string; code: string; seat: Seat; role: 'host' | 'player' }>;
 };
 
 export class GameRoom {
@@ -41,6 +52,7 @@ export class GameRoom {
   private spectators: Set<WebSocket> = new Set();
   private disconnectTimers: Map<Seat, ReturnType<typeof setTimeout>> = new Map();
   private claimWindowTimer: ReturnType<typeof setTimeout> | null = null;
+  private persistTimer: ReturnType<typeof setTimeout> | null = null;
   private started = false;
 
   constructor(code: string, slots: RoomSlot[], config: Partial<GameConfig> = {}) {
@@ -89,6 +101,7 @@ export class GameRoom {
   /** Host-triggered: end the match — notify clients and tear down the room. */
   endMatch(): void {
     for (const [, ws] of this.connections) this.send(ws, { t: 'matchEnd' });
+    if (this.persistTimer !== null) { clearTimeout(this.persistTimer); this.persistTimer = null; }
     deleteRoom(this.code);
   }
 
@@ -128,7 +141,12 @@ export class GameRoom {
     if (slot) slot.connected = false;
 
     if (this.state.phase === 'roundEnd') return;
+    this.armDisconnectTimer(seat);
+  }
 
+  /** Start the 60s bot-takeover countdown for a disconnected/not-yet-connected seat. */
+  private armDisconnectTimer(seat: Seat): void {
+    if (this.disconnectTimers.has(seat)) return;
     const timer = setTimeout(() => {
       this.disconnectTimers.delete(seat);
       const s = this.slots[seat];
@@ -164,6 +182,77 @@ export class GameRoom {
   private afterStateChange(events: GameEvent[]): void {
     this.broadcastViews(events);
     this.scheduleNext();
+    this.schedulePersist();
+  }
+
+  // -------------------------------------------------------------------------
+  // Live-state persistence (host-shutdown resume)
+  // -------------------------------------------------------------------------
+
+  /** Build a serializable snapshot of this room (state + slots + tokens). */
+  serialize(): RoomSnapshot {
+    return {
+      code: this.code,
+      state: this.state,
+      slots: this.slots.map(s => ({ ...s })),
+      isHumanSeat: [...this.isHumanSeat],
+      tokens: tokensForCode(this.code).map(t => ({
+        token: t.token,
+        code: t.code,
+        seat: t.seat,
+        role: t.role,
+      })),
+    };
+  }
+
+  /** Reconstruct a room from a snapshot after a server restart. No live connections yet. */
+  static restore(snap: RoomSnapshot): GameRoom {
+    const room = new GameRoom(
+      snap.code,
+      snap.slots.map(s => ({ ...s, connected: false })),
+      snap.state.config,
+    );
+    room.state = snap.state;
+    room.isHumanSeat = [...snap.isHumanSeat];
+    room.started = snap.state.phase !== undefined;
+    return room;
+  }
+
+  /**
+   * Resume play after a restore: drive bots, and arm bot-takeover timers for
+   * human seats that haven't reconnected yet so the game can't stall forever.
+   */
+  resumeAfterRestore(): void {
+    this.started = true;
+    for (let s = 0; s < 4; s++) {
+      const seat = s as Seat;
+      const slot = this.slots[seat];
+      if (!slot || !this.isHumanSeat[seat] || slot.connected) continue;
+      this.armDisconnectTimer(seat);
+    }
+    this.scheduleNext();
+  }
+
+  private schedulePersist(): void {
+    if (this.persistTimer !== null) return;
+    this.persistTimer = setTimeout(() => {
+      this.persistTimer = null;
+      this.persistNow();
+    }, PERSIST_DEBOUNCE_MS);
+  }
+
+  /** Write the current snapshot immediately (best-effort; never throws to caller). */
+  persistNow(): void {
+    if (!this.started) return;
+    try {
+      if (this.state.phase === 'roundEnd') {
+        // Keep the snapshot so a restart resumes at the round-end screen,
+        // but a finished match is torn down via endMatch() → deleteLiveRoom.
+      }
+      saveLiveRoom(this.code, this.serialize());
+    } catch (err) {
+      console.error('[persistence] Failed to snapshot live room:', err);
+    }
   }
 
   private scheduleNext(): void {
@@ -371,4 +460,41 @@ export function getRoom(code: string): GameRoom | undefined {
 
 export function deleteRoom(code: string): void {
   rooms.delete(code);
+  try { deleteLiveRoom(code); } catch { /* best-effort */ }
+}
+
+/**
+ * Rehydrate in-progress rooms from disk after a server restart. Re-registers
+ * each room's tokens so disconnected players can reconnect and resume.
+ * Returns the number of rooms restored.
+ */
+export function restoreRoomsFromDisk(): number {
+  let restored = 0;
+  let snapshots: Array<{ code: string; snapshot: unknown }>;
+  try {
+    snapshots = loadLiveRooms();
+  } catch (err) {
+    console.error('[resume] Failed to load live rooms:', err);
+    return 0;
+  }
+  for (const { snapshot } of snapshots) {
+    try {
+      const snap = snapshot as RoomSnapshot;
+      for (const t of snap.tokens) {
+        importToken(t.token, { code: t.code, seat: t.seat, role: t.role });
+      }
+      const room = GameRoom.restore(snap);
+      rooms.set(room.code, room);
+      room.resumeAfterRestore();
+      restored++;
+    } catch (err) {
+      console.error('[resume] Failed to restore a room:', err);
+    }
+  }
+  return restored;
+}
+
+/** Flush all live rooms to disk (called on graceful shutdown). */
+export function flushAllRooms(): void {
+  for (const room of rooms.values()) room.persistNow();
 }

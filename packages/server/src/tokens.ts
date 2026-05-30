@@ -22,3 +22,17 @@ export function resolveToken(token: string): TokenData | undefined {
 export function revokeToken(token: string): void {
   store.delete(token);
 }
+
+/** All issued tokens belonging to a lobby/room code (for snapshotting). */
+export function tokensForCode(code: string): Array<{ token: string } & TokenData> {
+  const result: Array<{ token: string } & TokenData> = [];
+  for (const [token, data] of store) {
+    if (data.code === code) result.push({ token, ...data });
+  }
+  return result;
+}
+
+/** Re-register a token with a known value (used when restoring rooms after restart). */
+export function importToken(token: string, data: TokenData): void {
+  store.set(token, data);
+}

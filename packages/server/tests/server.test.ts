@@ -3,6 +3,9 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 vi.mock('../src/persistence.js', () => ({
   saveGameWithCode: vi.fn(),
   getGame: vi.fn().mockReturnValue(null),
+  saveLiveRoom: vi.fn(),
+  loadLiveRooms: vi.fn().mockReturnValue([]),
+  deleteLiveRoom: vi.fn(),
 }));
 import Fastify from 'fastify';
 import fastifyWebsocket from '@fastify/websocket';
@@ -404,6 +407,72 @@ describe('Reconnection reclaim', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Host-shutdown live-state resume
+// ---------------------------------------------------------------------------
+
+describe('Live-room resume', () => {
+  const fakeWs = () =>
+    ({ readyState: 1, OPEN: 1, send() {} }) as unknown as import('@fastify/websocket').WebSocket;
+
+  it('serialize/restore round-trips game state, slots, and human seats', async () => {
+    const { GameRoom } = await import('../src/room.js');
+    const room = new GameRoom('SNAP', [
+      { name: 'Alice', isBot: false, connected: false },
+      { name: 'Bob', isBot: false, connected: false },
+      { name: 'Bot 3', isBot: true, connected: false },
+      { name: 'Bot 4', isBot: true, connected: false },
+    ]);
+    room.connect(0, fakeWs());
+    room.start();
+
+    const before = room.getState();
+    const snap = room.serialize();
+    expect(snap.code).toBe('SNAP');
+    expect(snap.isHumanSeat).toEqual([true, true, false, false]);
+
+    // Round-trip through JSON, as the DB would.
+    const restored = GameRoom.restore(JSON.parse(JSON.stringify(snap)));
+    const after = restored.getState();
+
+    expect(after.phase).toBe(before.phase);
+    expect(after.turn).toBe(before.turn);
+    expect(after.dealer).toBe(before.dealer);
+    expect(after.players.map(p => p.hand.length)).toEqual(before.players.map(p => p.hand.length));
+    expect(after.seed).toBe(before.seed);
+    // Restored room has no live connections.
+    expect(restored.getLobbyPlayers().every(p => !p.connected)).toBe(true);
+  });
+
+  it('restoreRoomsFromDisk recreates rooms and re-registers tokens', async () => {
+    const persistence = await import('../src/persistence.js');
+    const { GameRoom, restoreRoomsFromDisk, getRoom } = await import('../src/room.js');
+    const { resolveToken } = await import('../src/tokens.js');
+
+    // Build a room, snapshot it, then feed that snapshot back via the mocked loader.
+    const room = new GameRoom('RSTR', [
+      { name: 'Alice', isBot: false, connected: false },
+      { name: 'Bot 2', isBot: true, connected: false },
+      { name: 'Bot 3', isBot: true, connected: false },
+      { name: 'Bot 4', isBot: true, connected: false },
+    ]);
+    room.start();
+    const snap = room.serialize();
+    // Inject a token that should be re-registered on restore.
+    snap.tokens = [{ token: 'tok-rstr-0', code: 'RSTR', seat: 0, role: 'host' }];
+
+    vi.mocked(persistence.loadLiveRooms).mockReturnValueOnce([
+      { code: 'RSTR', snapshot: JSON.parse(JSON.stringify(snap)) },
+    ]);
+
+    const n = restoreRoomsFromDisk();
+    expect(n).toBe(1);
+    expect(getRoom('RSTR')).toBeDefined();
+    const td = resolveToken('tok-rstr-0');
+    expect(td).toEqual({ code: 'RSTR', seat: 0, role: 'host' });
   });
 });
 

@@ -59,10 +59,9 @@ e2e/game.spec.ts   Playwright full-round test
 
 ---
 
-## Intentional v1 deferrals
+## Status
 
-All engine/server/client/bot/scoring work is complete. The items below are
-deliberate v1 scope cuts, not unfinished work — see [ARCHITECTURE.md §12](./ARCHITECTURE.md#12-open-questions--explicit-deferrals).
-
-- Host shutdown midgame (server dies with host)
-- Tailscale node-sharing automation (manual via admin console)
+All v1 work and all originally-deferred features are complete — see
+[ARCHITECTURE.md §12](./ARCHITECTURE.md#12-open-questions--explicit-deferrals)
+for the per-item history. Host-shutdown resume and Tailscale node-sharing
+automation (the last two deferrals) are now implemented.

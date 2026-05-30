@@ -776,7 +776,7 @@ GitHub Actions: build engine → lint → typecheck → test (vitest) → build 
 Tag in code as `// TODO(rule):` so they're greppable.
 
 1. **Reconnection > 60s** — ✅ Done: bot takeover holds for the rest of the round; a reconnected human reclaims their seat at the next round (`GameRoom.nextRound` recomputes `isBot` from `isHumanSeat` + connection state). See §6.5.
-2. **Host shutdown midgame** — server dies when host quits. Other players see disconnect. Acceptable for v1.
+2. **Host shutdown midgame** — ✅ Done: in-progress rooms are snapshotted to SQLite (`live_rooms` table) — debounced on every state change and flushed on graceful shutdown (SIGINT/SIGTERM). On boot, `restoreRoomsFromDisk()` rehydrates each room and re-registers its tokens, so players reconnect with their saved token and resume; unconnected human seats arm the normal 60s bot-takeover so play never stalls. Snapshots are deleted on `endMatch`. (A hard crash loses at most the last ~1s of actions.)
 3. **Match length** — ✅ Done: host starts each next round (`nextRound`; dealer rotates to `nextDealer` via `startNextRound`) or ends the match (`endMatch` → `matchEnd`). Running totals accumulate client-side across rounds.
 4. **i18n** — ✅ Done: UI strings externalized to a dependency-free catalog (`client/src/i18n/`) in English, Simplified Chinese (zh-Hans), and Traditional Chinese (zh-Hant), with an EN/简/繁 toggle persisted to `localStorage`. Tile faces stay glyph-based (language-neutral).
 5. **Spectators** — ✅ Done: connect to `/ws/:code?spectate=1` (no token/seat) to receive hand-hiding `spectate` views (`projectSpectatorView`); client has a read-only "Watch a Game" board.

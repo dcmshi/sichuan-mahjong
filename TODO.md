@@ -162,4 +162,5 @@ Current status: **All phases complete** — engine, server, client, bots, persis
 - [x] Reconnection > 60s reclaim — reconnected human reclaims seat at next round
 - [x] Spectators — view-only `?spectate=1` connection + hand-hiding projection + read-only board
 - [x] i18n — en / 简体 / 繁體 string catalog + toggle (persisted to localStorage)
-- [ ] _Deferred (justified):_ host-shutdown live-state resume; Tailscale node-sharing automation
+- [x] Host-shutdown live-state resume — snapshot rooms+tokens to SQLite, rehydrate on boot
+- [ ] Tailscale node-sharing automation — auto-create a device share invite via the Tailscale API
