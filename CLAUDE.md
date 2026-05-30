@@ -66,5 +66,4 @@ deliberate v1 scope cuts, not unfinished work — see [ARCHITECTURE.md §12](./A
 
 - Host shutdown midgame (server dies with host)
 - i18n (English only)
-- Spectators (architecture allows; not built)
 - Tailscale node-sharing automation (manual via admin console)

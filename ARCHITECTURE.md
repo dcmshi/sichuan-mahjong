@@ -27,13 +27,14 @@ Changelog from v1: full Novikov PDF audit complete. East's first turn no longer 
 - Any cloud-hosted backend, matchmaking service, or persistent infrastructure
 - Public-internet hosting via tunneling (Cloudflare/ngrok/etc.) — possible v2
 - Accounts, friends lists, persistent rankings
-- Spectator mode
 - Tournaments, brackets, scheduled matches
 - Voice chat
 - Native mobile apps
 - Phone-as-host (phones can join, can't host)
 - Other mahjong variants
-- Flower Pig house rule (see §5.9 — defer to a possible later toggle)
+
+(Spectator mode and the Flower Pig house rule were originally deferred but have since
+been added as post-v1 features — see §12.)
 
 ---
 
@@ -778,7 +779,7 @@ Tag in code as `// TODO(rule):` so they're greppable.
 2. **Host shutdown midgame** — server dies when host quits. Other players see disconnect. Acceptable for v1.
 3. **Match length** — ✅ Done: host starts each next round (`nextRound`; dealer rotates to `nextDealer` via `startNextRound`) or ends the match (`endMatch` → `matchEnd`). Running totals accumulate client-side across rounds.
 4. **i18n** — English only in v1. Tile names use English + pinyin tooltips.
-5. **Spectators** — out of v1. Architecture allows: a "view-only" token subscribing to a generic public view (no player hand exposed).
+5. **Spectators** — ✅ Done: connect to `/ws/:code?spectate=1` (no token/seat) to receive hand-hiding `spectate` views (`projectSpectatorView`); client has a read-only "Watch a Game" board.
 6. **Flower Pig house rule** — ✅ Done: opt-in `enableFlowerPig` config (default off); a non-Hu player ending with all 3 suits pays each opponent `2^fanCap`. See §5.9.
 7. **Tailscale node-sharing automation** — manual via admin console in v1. Tailscale's API can automate this; v2.
 8. **Set-with-void-suit meld penalty** — ✅ Done: 48-point deduction enforced on pung/kong/concealed-kong of voided suit (`voidMeldPenalty` event).

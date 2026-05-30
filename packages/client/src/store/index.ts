@@ -1,7 +1,7 @@
 import { create } from 'zustand';
-import type { Seat, PlayerView, GameEvent, LobbyPlayer, RoundResult, ServerMsg } from '@sichuan-mahjong/engine';
+import type { Seat, PlayerView, SpectatorView, GameEvent, LobbyPlayer, RoundResult, ServerMsg } from '@sichuan-mahjong/engine';
 
-export type Screen = 'landing' | 'hostSetup' | 'joinForm' | 'lobby' | 'game' | 'roundEnd' | 'about';
+export type Screen = 'landing' | 'hostSetup' | 'joinForm' | 'lobby' | 'game' | 'roundEnd' | 'about' | 'spectateForm' | 'spectate';
 
 export interface GameStore {
   screen: Screen;
@@ -20,6 +20,9 @@ export interface GameStore {
   // Game
   view: PlayerView | null;
   lastEvents: GameEvent[];
+
+  // Spectator
+  spectatorView: SpectatorView | null;
 
   // Round end
   roundResult: RoundResult | null;
@@ -56,6 +59,7 @@ export const useStore = create<GameStore>((set, get) => ({
   canStart: false,
   view: null,
   lastEvents: [],
+  spectatorView: null,
   roundResult: null,
   matchScores: {},
   connected: false,
@@ -106,6 +110,10 @@ export const useStore = create<GameStore>((set, get) => ({
         break;
       }
 
+      case 'spectate':
+        set({ spectatorView: msg.view, lastEvents: msg.events, screen: 'spectate' });
+        break;
+
       case 'matchEnd':
         get().resetSession();
         break;
@@ -127,6 +135,7 @@ export const useStore = create<GameStore>((set, get) => ({
       canStart: false,
       view: null,
       lastEvents: [],
+      spectatorView: null,
       roundResult: null,
       matchScores: {},
       connected: false,

@@ -301,6 +301,64 @@ describe('WebSocket: full game', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Spectators
+// ---------------------------------------------------------------------------
+
+describe('WebSocket: spectators', () => {
+  let app: Awaited<ReturnType<typeof buildApp>>['app'];
+  let port: number;
+
+  beforeEach(async () => {
+    ({ app, port } = await buildApp());
+  });
+  afterEach(async () => {
+    await app.close();
+  });
+
+  it('spectator receives a hand-hiding spectate view; unknown game is rejected', async () => {
+    // Unknown game → error + close.
+    const bad = new WebSocket(`ws://127.0.0.1:${port}/ws/ZZZZ?spectate=1`);
+    await waitOpen(bad);
+    const errMsg = await wsNextMessage(bad);
+    expect(errMsg.t).toBe('error');
+    if (errMsg.t === 'error') expect(errMsg.code).toBe('no_game');
+    bad.close();
+
+    // Start a real game.
+    const create = await app.inject({ method: 'POST', url: '/api/lobby' });
+    const { code, hostToken } = create.json<{ code: string; hostToken: string }>();
+    const sockets: WebSocket[] = [];
+    for (let i = 0; i < 4; i++) {
+      const ws = wsConnect(port, code, i === 0 ? hostToken : undefined);
+      await waitOpen(ws);
+      sockets.push(ws);
+      wsSend(ws, { t: 'join', name: `P${i}` });
+      await wsNextMessage(ws);
+    }
+    await new Promise(r => setTimeout(r, 30));
+    for (const ws of sockets) ws.removeAllListeners('message');
+    wsSend(sockets[0]!, { t: 'startGame' });
+    await new Promise(r => setTimeout(r, 50));
+
+    // Spectate the live game.
+    const spec = new WebSocket(`ws://127.0.0.1:${port}/ws/${code}?spectate=1`);
+    await waitOpen(spec);
+    const msg = await wsNextMessage(spec);
+    expect(msg.t).toBe('spectate');
+    if (msg.t === 'spectate') {
+      expect(msg.view.players).toHaveLength(4);
+      for (const p of msg.view.players) {
+        expect('hand' in p).toBe(false);
+        expect(typeof p.handCount).toBe('number');
+      }
+    }
+
+    spec.close();
+    for (const ws of sockets) ws.close();
+  }, 20_000);
+});
+
+// ---------------------------------------------------------------------------
 // Reconnection >60s reclaim (§6.5)
 // ---------------------------------------------------------------------------
 

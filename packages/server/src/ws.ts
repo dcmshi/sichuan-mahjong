@@ -38,12 +38,25 @@ function broadcastLobbyTo(code: string, hostToken: string): void {
 }
 
 export async function registerWsRoutes(app: FastifyInstance): Promise<void> {
-  app.get<{ Params: { code: string }; Querystring: { token?: string } }>(
+  app.get<{ Params: { code: string }; Querystring: { token?: string; spectate?: string } }>(
     '/ws/:code',
     { websocket: true },
     (socket, req) => {
       const code = req.params.code.toUpperCase();
       const token = req.query.token ?? '';
+
+      // Read-only spectator: no token, no seat. Just subscribes to spectate views.
+      if (req.query.spectate === '1' || req.query.spectate === 'true') {
+        const room = getRoom(code);
+        if (!room) {
+          send(socket, { t: 'error', code: 'no_game', message: 'No game to spectate.' });
+          socket.close();
+          return;
+        }
+        room.addSpectator(socket);
+        socket.on('close', () => room.removeSpectator(socket));
+        return;
+      }
 
       let seat: Seat | null = null;
       let isHost = false;

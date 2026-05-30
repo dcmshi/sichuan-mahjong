@@ -40,6 +40,17 @@ export type PlayerView = {
   config: GameConfig;
 };
 
+/** Read-only, hand-hiding view for spectators. Exposes no concealed hands. */
+export type SpectatorView = {
+  players: [PublicPlayer, PublicPlayer, PublicPlayer, PublicPlayer]; // seat-indexed
+  wallRemaining: number;
+  phase: Phase;
+  turn: Seat;
+  dealer: Seat;
+  lastDiscard: { tile: TileId; from: Seat } | null;
+  config: GameConfig;
+};
+
 // ---------------------------------------------------------------------------
 // Legal actions computation
 // ---------------------------------------------------------------------------
@@ -219,6 +230,22 @@ export function projectView(state: GameState, seat: Seat): PlayerView {
       : null,
     yourLegalActions: computeLegalActions(state, seat),
     claimDeadline: state.pendingClaims?.deadline ?? null,
+    config: state.config,
+  };
+}
+
+export function projectSpectatorView(state: GameState): SpectatorView {
+  return {
+    players: state.players.map(toPublicPlayer) as [
+      PublicPlayer, PublicPlayer, PublicPlayer, PublicPlayer,
+    ],
+    wallRemaining: state.kongDrawIndex - state.drawIndex + 1,
+    phase: state.phase,
+    turn: state.turn,
+    dealer: state.dealer,
+    lastDiscard: state.lastDiscard
+      ? { tile: state.lastDiscard.tile, from: state.lastDiscard.from }
+      : null,
     config: state.config,
   };
 }

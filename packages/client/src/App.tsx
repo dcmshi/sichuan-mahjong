@@ -6,17 +6,21 @@ import { Lobby } from './screens/Lobby.js';
 import { Game } from './screens/Game.js';
 import { RoundEnd } from './screens/RoundEnd.js';
 import { About } from './screens/About.js';
+import { SpectateForm } from './screens/SpectateForm.js';
+import { Spectate } from './screens/Spectate.js';
 
 export function App() {
   const screen = useStore(s => s.screen);
 
   switch (screen) {
-    case 'landing':   return <Landing />;
-    case 'hostSetup': return <HostSetup />;
-    case 'joinForm':  return <JoinForm />;
-    case 'lobby':     return <Lobby />;
-    case 'game':      return <Game />;
-    case 'roundEnd':  return <RoundEnd />;
-    case 'about':     return <About />;
+    case 'landing':      return <Landing />;
+    case 'hostSetup':    return <HostSetup />;
+    case 'joinForm':     return <JoinForm />;
+    case 'lobby':        return <Lobby />;
+    case 'game':         return <Game />;
+    case 'roundEnd':     return <RoundEnd />;
+    case 'about':        return <About />;
+    case 'spectateForm': return <SpectateForm />;
+    case 'spectate':     return <Spectate />;
   }
 }

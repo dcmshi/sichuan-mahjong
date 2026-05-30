@@ -1,6 +1,6 @@
 import type { Seat, HuRecord } from './state.js';
 import type { GameAction, GameEvent } from './actions.js';
-import type { PlayerView } from './views.js';
+import type { PlayerView, SpectatorView } from './views.js';
 
 export type LobbyPlayer = {
   seat: Seat;
@@ -28,6 +28,7 @@ export type ServerMsg =
   | { t: 'joined'; seat: Seat; token: string }
   | { t: 'lobby'; players: LobbyPlayer[]; canStart: boolean; isHost: boolean }
   | { t: 'view'; view: PlayerView; events: GameEvent[] }
+  | { t: 'spectate'; view: SpectatorView; events: GameEvent[] }
   | { t: 'roundEnd'; results: RoundResult }
   | { t: 'matchEnd' }
   | { t: 'error'; code: string; message: string };

@@ -81,6 +81,12 @@ export function Landing() {
           {practiceLoading ? 'Starting…' : 'Practice (vs Bots)'}
         </button>
         {practiceError && <p className="text-red-400 text-sm text-center">{practiceError}</p>}
+        <button
+          className="w-full py-3 text-white/70 hover:text-white text-sm"
+          onClick={() => goTo('spectateForm')}
+        >
+          👀 Watch a Game
+        </button>
       </div>
 
       <p className="text-green-400 text-xs text-center max-w-xs">

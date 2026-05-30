@@ -160,6 +160,6 @@ Current status: **All phases complete** — engine, server, client, bots, persis
 - [x] Flower Pig (花猪) house rule — opt-in `enableFlowerPig`; non-Hu player ending with all 3 suits pays each opponent `2^fanCap`
 - [x] Multi-round / "End Match" — server starts next round (dealer = `nextDealer`), host controls
 - [x] Reconnection > 60s reclaim — reconnected human reclaims seat at next round
-- [ ] Spectators — view-only token + hand-hiding projection + read-only board
+- [x] Spectators — view-only `?spectate=1` connection + hand-hiding projection + read-only board
 - [ ] i18n — en / 简体 / 繁體 string catalog + toggle
 - [ ] _Deferred (justified):_ host-shutdown live-state resume; Tailscale node-sharing automation

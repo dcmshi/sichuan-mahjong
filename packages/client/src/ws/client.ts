@@ -70,6 +70,11 @@ export function makeWsUrl(code: string, token: string): string {
   return `${proto}//${window.location.host}/ws/${code}?token=${encodeURIComponent(token)}`;
 }
 
+export function makeSpectateUrl(code: string): string {
+  const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  return `${proto}//${window.location.host}/ws/${code}?spectate=1`;
+}
+
 // Module-level singleton so any component can send actions without prop drilling
 let _client: WsClient | null = null;
 

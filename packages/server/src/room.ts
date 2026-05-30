@@ -5,6 +5,7 @@ import {
   createGame,
   startNextRound,
   projectView,
+  projectSpectatorView,
   DEFAULT_CONFIG,
 } from '@sichuan-mahjong/engine';
 import type {
@@ -37,6 +38,7 @@ export class GameRoom {
   /** Seats that began the match as humans — eligible to reclaim from a bot takeover. */
   private isHumanSeat: boolean[];
   private connections: Map<Seat, WebSocket> = new Map();
+  private spectators: Set<WebSocket> = new Set();
   private disconnectTimers: Map<Seat, ReturnType<typeof setTimeout>> = new Map();
   private claimWindowTimer: ReturnType<typeof setTimeout> | null = null;
   private started = false;
@@ -106,6 +108,18 @@ export class GameRoom {
 
     // For reconnects after game has started, send the current view immediately
     if (this.started) this.sendView(seat, []);
+  }
+
+  /** Attach a read-only spectator. They receive hand-hiding spectate views. */
+  addSpectator(ws: WebSocket): void {
+    this.spectators.add(ws);
+    if (this.started) {
+      this.send(ws, { t: 'spectate', view: projectSpectatorView(this.state), events: [] });
+    }
+  }
+
+  removeSpectator(ws: WebSocket): void {
+    this.spectators.delete(ws);
   }
 
   disconnect(seat: Seat): void {
@@ -265,6 +279,12 @@ export class GameRoom {
   private broadcastViews(events: GameEvent[]): void {
     for (const [seat, ws] of this.connections) {
       this.sendViewTo(seat, ws, events);
+    }
+    if (this.spectators.size > 0) {
+      const view = projectSpectatorView(this.state);
+      for (const ws of this.spectators) {
+        this.send(ws, { t: 'spectate', view, events });
+      }
     }
   }
 
