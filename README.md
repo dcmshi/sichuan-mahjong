@@ -3,17 +3,30 @@
 4-player Sichuan "Bloody Rules" (血战到底) mahjong, playable in any modern browser. The host runs a local server on their own machine and friends join over LAN or Tailscale — no accounts, no cloud.
 
 <p align="center">
-  <img src="docs/screenshot.png" width="320" alt="Game screenshot — claim window on mobile">
+  <img src="docs/screenshot.png" width="300" alt="In-game board on mobile">
+</p>
+
+<p align="center">
+  <img src="docs/landing.png" width="190" alt="Landing screen">
+  &nbsp;
+  <img src="docs/round-end.png" width="190" alt="Round-end scores">
+  &nbsp;
+  <img src="docs/spectate.png" width="190" alt="Spectator view">
 </p>
 
 ## Features
 
 - Full Bloody Rules engine: huan san zhang, void declaration (定缺), bloody-to-end sit-out, all 10 fan combinations, payment matrix, kong refunds
-- Heuristic bots — practice solo or fill empty seats
+- Optional Flower Pig (花猪) house rule
+- Heuristic bots (easy + medium) — practice solo or fill empty seats
+- Multi-round matches with running totals; host starts each round or ends the match
+- Spectator mode — watch any game read-only with a code (no hand exposed)
+- Trilingual UI — English / 简体中文 / 繁體中文
 - Mobile-first PWA (installs to home screen over HTTPS/Tailscale)
 - LAN play out of the box — no setup beyond running the server
-- Cross-network play via [Tailscale](https://tailscale.com) — share your machine with friends in minutes
-- Reconnect within 60 s of disconnect; bot takes over after that
+- Cross-network play via [Tailscale](https://tailscale.com), with `--share` to auto-create a share invite
+- Reconnect within 60 s of disconnect; bot takes over after that, and you reclaim your seat next round
+- Crash-safe: in-progress games are snapshotted and resume after a server restart
 
 ---
 
