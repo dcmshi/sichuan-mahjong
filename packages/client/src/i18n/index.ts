@@ -1,5 +1,6 @@
 // Lightweight, dependency-free i18n for the client UI.
 // Tile faces are glyph-based and stay language-neutral; this covers UI chrome.
+import { HELP_STRINGS } from './help.js';
 
 export type Lang = 'en' | 'zh-Hans' | 'zh-Hant';
 
@@ -354,7 +355,11 @@ const zhHant: Dict = {
   'spec.spectating': '觀戰中 · {code}',
 };
 
-const catalog: Record<Lang, Dict> = { en, 'zh-Hans': zhHans, 'zh-Hant': zhHant };
+const catalog: Record<Lang, Dict> = {
+  en: { ...en, ...HELP_STRINGS.en },
+  'zh-Hans': { ...zhHans, ...HELP_STRINGS['zh-Hans'] },
+  'zh-Hant': { ...zhHant, ...HELP_STRINGS['zh-Hant'] },
+};
 
 export function translate(lang: Lang, key: string, vars?: Vars): string {
   let s = catalog[lang]?.[key] ?? en[key] ?? key;
