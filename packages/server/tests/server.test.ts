@@ -218,6 +218,41 @@ describe('WebSocket: lobby flow', () => {
 
     for (const ws of sockets) ws.close();
   }, 10_000);
+
+  it('host keeps its seat and can add bots after a lobby WS reconnect', async () => {
+    const create = await app.inject({ method: 'POST', url: '/api/lobby' });
+    const { code, hostToken } = create.json<{ code: string; hostToken: string }>();
+
+    // Initial host connection + join.
+    const ws1 = wsConnect(port, code, hostToken);
+    await waitOpen(ws1);
+    wsSend(ws1, { t: 'join', name: 'Host' });
+    const joined1 = await wsNextMessage(ws1);
+    expect(joined1.t).toBe('joined');
+
+    // Simulate a transient drop.
+    ws1.close();
+    await new Promise(r => setTimeout(r, 60));
+
+    // Reconnect with the same host token → should re-bind to seat 0 seamlessly.
+    const ws2 = wsConnect(port, code, hostToken);
+    const rejoinP = wsNextMessage(ws2);
+    await waitOpen(ws2);
+    const rejoined = await rejoinP;
+    expect(rejoined.t).toBe('joined');
+    if (rejoined.t === 'joined') expect(rejoined.seat).toBe(0);
+
+    // Adding a bot on the reconnected socket must work (the bug: it was dropped).
+    wsSend(ws2, { t: 'addBot', difficulty: 'easy' });
+    await new Promise(r => setTimeout(r, 80));
+
+    const info = await app.inject({ method: 'GET', url: `/api/lobby/${code}` });
+    const players = info.json<{ players: ({ isBot: boolean } | null)[] }>().players;
+    expect(players[0]).not.toBeNull();              // host seat preserved across reconnect
+    expect(players.some(p => p?.isBot === true)).toBe(true); // addBot took effect
+
+    ws2.close();
+  }, 10_000);
 });
 
 describe('WebSocket: full game', () => {

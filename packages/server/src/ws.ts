@@ -37,6 +37,33 @@ function broadcastLobbyTo(code: string, hostToken: string): void {
   }
 }
 
+/**
+ * Wire a socket that occupies lobby `seat` to the lobby command handler.
+ * Used both on first join and on reconnect so a brief WS drop never strands
+ * a player (their addBot/startGame/etc. keep working after reconnect).
+ */
+function bindLobbySocket(socket: WebSocket, code: string, seat: Seat, isHost: boolean, hostToken: string): void {
+  socket.removeAllListeners('message');
+  socket.on('message', (raw: Buffer) => {
+    let msg: ClientMsg;
+    try { msg = JSON.parse(raw.toString()) as ClientMsg; } catch { return; }
+    handleLobbyMessage(socket, code, seat, isHost, msg, hostToken);
+  });
+  socket.on('close', () => {
+    const conns = getLobbyConns(code);
+    // Skip if a reconnect already replaced this socket for the seat.
+    if (conns.get(seat) !== socket) return;
+    conns.delete(seat);
+    const l = getLobby(code);
+    if (l && !l.started) {
+      // Keep the slot (so the player can reconnect); just mark it disconnected.
+      const slot = l.slots[seat];
+      if (slot) slot.connected = false;
+      broadcastLobbyTo(code, l.hostToken);
+    }
+  });
+}
+
 export async function registerWsRoutes(app: FastifyInstance): Promise<void> {
   app.get<{ Params: { code: string }; Querystring: { token?: string; spectate?: string } }>(
     '/ws/:code',
@@ -78,7 +105,25 @@ export async function registerWsRoutes(app: FastifyInstance): Promise<void> {
             socket.on('close', () => room.disconnect(seat!));
             return;
           }
-          // Lobby phase with a host token: set privilege flag but don't assign seat yet
+          // No room yet → lobby phase. If this token already owns a lobby slot,
+          // this is a reconnect: re-bind the seat so the player resumes seamlessly.
+          const lobby = getLobby(code);
+          if (lobby && !lobby.started) {
+            const slotIdx = lobby.slots.findIndex(s => s?.token === token);
+            if (slotIdx !== -1) {
+              seat = slotIdx as Seat;
+              isHost = data.role === 'host';
+              const slot = lobby.slots[slotIdx]!;
+              slot.connected = true;
+              getLobbyConns(code).set(seat, socket);
+              send(socket, { t: 'joined', seat, token });
+              bindLobbySocket(socket, code, seat, isHost, lobby.hostToken);
+              broadcastLobbyTo(code, lobby.hostToken);
+              return;
+            }
+          }
+          // Host token but no slot claimed yet (first connect): flag privilege,
+          // seat is assigned when the 'join' message arrives.
           if (data.role === 'host') isHost = true;
         }
       }
@@ -127,20 +172,8 @@ export async function registerWsRoutes(app: FastifyInstance): Promise<void> {
           send(socket, { t: 'joined', seat, token: playerToken });
           broadcastLobbyTo(code, lobby.hostToken);
 
-          // Re-register message handler for lobby commands
-          socket.removeAllListeners('message');
-          socket.on('message', (raw2: Buffer) => {
-            let msg2: ClientMsg;
-            try { msg2 = JSON.parse(raw2.toString()) as ClientMsg; }
-            catch { return; }
-            handleLobbyMessage(socket, code, seat!, isHost, msg2, lobby.hostToken);
-          });
-          socket.on('close', () => {
-            getLobbyConns(code).delete(seat!);
-            const l = getLobby(code);
-            if (l && seat !== null) l.slots[seat] = null;
-            if (l) broadcastLobbyTo(code, l.hostToken);
-          });
+          // Wire lobby commands + a reconnect-friendly close handler.
+          bindLobbySocket(socket, code, seat, isHost, lobby.hostToken);
         }
       });
     },
