@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { useStore } from '../store/index.js';
 import { WsClient, makeWsUrl, setWsClient, sendAction } from '../ws/client.js';
-
-const SEAT_WINDS = ['East', 'South', 'West', 'North'];
+import { useT } from '../i18n/useT.js';
 
 export function HostSetup() {
   const [name, setName] = useState('');
@@ -11,9 +10,10 @@ export function HostSetup() {
   const [inLobby, setInLobby] = useState(false);
 
   const store = useStore();
+  const t = useT();
 
   async function createAndJoin() {
-    if (!name.trim()) { setError('Enter your name'); return; }
+    if (!name.trim()) { setError('join.errName'); return; }
     setLoading(true);
     setError('');
     try {
@@ -34,7 +34,7 @@ export function HostSetup() {
       setWsClient(ws);
       ws.send({ t: 'join', name: name.trim() });
     } catch {
-      setError('Could not create lobby — is the server running?');
+      setError('host.errCreate');
     } finally {
       setLoading(false);
     }
@@ -44,30 +44,30 @@ export function HostSetup() {
     return (
       <div className="min-h-screen bg-green-900 flex flex-col items-center justify-center gap-6 p-6 text-white">
         <div className="text-4xl">🀄</div>
-        <h2 className="text-2xl font-bold">Host a Game</h2>
+        <h2 className="text-2xl font-bold">{t('host.title')}</h2>
         <div className="flex flex-col gap-3 w-full max-w-xs">
           <input
             className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/50 text-lg focus:outline-none focus:border-amber-400"
-            placeholder="Your name"
+            placeholder={t('join.name')}
             value={name}
             onChange={e => setName(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && void createAndJoin()}
             maxLength={20}
             autoFocus
           />
-          {error && <p className="text-red-400 text-sm">{error}</p>}
+          {error && <p className="text-red-400 text-sm">{t(error)}</p>}
           <button
             className="w-full py-3 bg-amber-500 hover:bg-amber-400 rounded-xl font-bold text-lg disabled:opacity-50"
             onClick={() => void createAndJoin()}
             disabled={loading}
           >
-            {loading ? 'Creating…' : 'Create Lobby'}
+            {loading ? t('host.creating') : t('host.create')}
           </button>
           <button
             className="py-2 text-white/60 hover:text-white"
             onClick={() => store.goTo('landing')}
           >
-            ← Back
+            {t('nav.back')}
           </button>
         </div>
       </div>
@@ -84,44 +84,44 @@ export function HostSetup() {
       </div>
 
       <div className="bg-black/30 rounded-xl p-3">
-        <p className="text-green-300 text-xs mb-1">Share URL:</p>
+        <p className="text-green-300 text-xs mb-1">{t('host.shareUrl')}</p>
         <p className="font-mono text-sm break-all text-amber-300">{shareUrl}</p>
         <button
           className="mt-1 text-xs text-green-400 underline"
           onClick={() => void navigator.clipboard.writeText(shareUrl)}
         >
-          Copy
+          {t('host.copy')}
         </button>
       </div>
 
       <div className="flex flex-col gap-2">
-        {SEAT_WINDS.map((wind, i) => {
+        {[0, 1, 2, 3].map((i) => {
           const p = store.lobbyPlayers[i];
           const isMe = i === store.seat;
           return (
             <div key={i} className="flex items-center gap-2 bg-black/20 rounded-xl px-3 py-2.5">
-              <span className="text-green-400 text-sm w-14">{wind}</span>
+              <span className="text-green-400 text-sm w-14">{t(`wind.${i}`)}</span>
               {p?.name ? (
                 <>
-                  <span className="font-semibold flex-1">{p.name}{isMe && <span className="ml-1 text-xs text-amber-400">(you)</span>}</span>
+                  <span className="font-semibold flex-1">{p.name}{isMe && <span className="ml-1 text-xs text-amber-400">{t('common.you')}</span>}</span>
                   {p.isBot && (
                     <button
                       className="text-xs bg-red-700 hover:bg-red-600 px-2 py-1 rounded"
                       onClick={() => sendAction({ t: 'kickBot', seat: i as 0|1|2|3 })}
                     >
-                      Kick
+                      {t('host.kick')}
                     </button>
                   )}
                   {!p.isBot && p.connected && <span className="text-green-400 text-xs">●</span>}
                 </>
               ) : (
                 <>
-                  <span className="text-white/40 italic text-sm flex-1">empty</span>
+                  <span className="text-white/40 italic text-sm flex-1">{t('host.empty')}</span>
                   <button
                     className="text-xs bg-blue-700 hover:bg-blue-600 px-2 py-1 rounded"
                     onClick={() => sendAction({ t: 'addBot', difficulty: 'easy' })}
                   >
-                    + Bot
+                    {t('host.addBot')}
                   </button>
                 </>
               )}
@@ -135,11 +135,11 @@ export function HostSetup() {
         onClick={() => sendAction({ t: 'startGame' })}
         disabled={!store.canStart}
       >
-        {store.canStart ? 'Start Game' : 'Waiting for players…'}
+        {store.canStart ? t('host.start') : t('host.waitingPlayers')}
       </button>
 
       {store.reconnecting && (
-        <p className="text-center text-amber-400 text-sm animate-pulse">Reconnecting…</p>
+        <p className="text-center text-amber-400 text-sm animate-pulse">{t('common.reconnecting')}</p>
       )}
     </div>
   );

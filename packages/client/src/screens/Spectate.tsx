@@ -3,10 +3,10 @@ import { useStore } from '../store/index.js';
 import type { SpectatorView } from '@sichuan-mahjong/engine';
 import { Tile, TileBack } from '../components/Tile.js';
 import { MeldDisplay } from '../components/MeldDisplay.js';
-
-const SEAT_WINDS = ['East', 'South', 'West', 'North'];
+import { useT } from '../i18n/useT.js';
 
 function SeatRow({ view, seat }: { view: SpectatorView; seat: number }) {
+  const t = useT();
   const p = view.players[seat]!;
   const isTurn = view.turn === seat;
   const isDealer = view.dealer === seat;
@@ -18,13 +18,13 @@ function SeatRow({ view, seat }: { view: SpectatorView; seat: number }) {
       isTurn ? 'bg-amber-500/15 ring-1 ring-amber-400/50' : 'bg-black/15',
     ].join(' ')}>
       <div className="flex items-center gap-2">
-        <span className="text-[10px] text-green-300 w-10">{SEAT_WINDS[seat]}</span>
+        <span className="text-[10px] text-green-300 w-10">{t(`wind.${seat}`)}</span>
         <span className={[
           'text-xs font-semibold px-2 py-0.5 rounded-full',
           isTurn ? 'bg-amber-400 text-black' : 'bg-black/25 text-green-200',
         ].join(' ')}>{p.name}</span>
         {isDealer && <span className="text-[10px] bg-red-700 text-white px-1.5 py-0.5 rounded">庄</span>}
-        {p.status === 'hu' && <span className="text-[10px] bg-red-600 text-white px-1.5 py-0.5 rounded">Hu 🏆</span>}
+        {p.status === 'hu' && <span className="text-[10px] bg-red-600 text-white px-1.5 py-0.5 rounded">{t('end.hu')} 🏆</span>}
         <span className={`ml-auto text-sm font-bold ${p.scoreDelta >= 0 ? 'text-green-400' : 'text-red-400'}`}>
           {p.scoreDelta > 0 ? '+' : ''}{p.scoreDelta}
         </span>
@@ -48,12 +48,13 @@ function SeatRow({ view, seat }: { view: SpectatorView; seat: number }) {
 
 export function Spectate() {
   const store = useStore();
+  const t = useT();
   const view = store.spectatorView;
 
   if (!view) {
     return (
       <div className="min-h-screen board-felt flex items-center justify-center text-white">
-        <p className="animate-pulse">Connecting to game…</p>
+        <p className="animate-pulse">{t('spec.connectingGame')}</p>
       </div>
     );
   }
@@ -63,22 +64,22 @@ export function Spectate() {
   return (
     <div className="min-h-screen board-felt flex flex-col text-white">
       <div className="flex items-center justify-between px-3 py-1.5 bg-black/30 text-xs">
-        <span>Wall: {view.wallRemaining}</span>
+        <span>{t('play.wall', { n: view.wallRemaining })}</span>
         <span className="text-amber-300 font-semibold">
-          {view.phase === 'roundEnd' ? 'Round over' : `${turnName}'s turn`}
+          {view.phase === 'roundEnd' ? t('spec.roundOver') : t('play.othersTurn', { name: turnName })}
         </span>
         <button className="text-white/60 hover:text-white" onClick={() => store.resetSession()}>
-          Leave
+          {t('nav.leave')}
         </button>
       </div>
 
       <div className="px-2 py-1 text-center text-[10px] text-green-300 uppercase tracking-wide">
-        👀 Spectating · {store.code}
+        👀 {t('spec.spectating', { code: store.code })}
       </div>
 
       {view.lastDiscard && (
         <div className="flex flex-col items-center gap-1 py-2">
-          <span className="text-[10px] text-green-300">Last discard</span>
+          <span className="text-[10px] text-green-300">{t('play.lastDiscard')}</span>
           <motion.div key={view.lastDiscard.tile} initial={{ scale: 1.3, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>
             <Tile id={view.lastDiscard.tile} lastDiscard size="md" />
           </motion.div>

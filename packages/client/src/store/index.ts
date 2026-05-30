@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { Seat, PlayerView, SpectatorView, GameEvent, LobbyPlayer, RoundResult, ServerMsg } from '@sichuan-mahjong/engine';
+import { type Lang, loadLang, persistLang } from '../i18n/index.js';
 
 export type Screen = 'landing' | 'hostSetup' | 'joinForm' | 'lobby' | 'game' | 'roundEnd' | 'about' | 'spectateForm' | 'spectate';
 
@@ -37,6 +38,8 @@ export interface GameStore {
   // Settings
   soundEnabled: boolean;
   toggleSound: () => void;
+  lang: Lang;
+  setLang: (l: Lang) => void;
 
   // Actions
   goTo: (s: Screen) => void;
@@ -65,6 +68,8 @@ export const useStore = create<GameStore>((set, get) => ({
   connected: false,
   reconnecting: false,
   soundEnabled: true,
+  lang: loadLang(),
+  setLang: (lang) => { persistLang(lang); set({ lang }); },
 
   goTo: (screen) => set({ screen }),
   setPlayerName: (playerName) => set({ playerName }),

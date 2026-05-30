@@ -161,5 +161,5 @@ Current status: **All phases complete** — engine, server, client, bots, persis
 - [x] Multi-round / "End Match" — server starts next round (dealer = `nextDealer`), host controls
 - [x] Reconnection > 60s reclaim — reconnected human reclaims seat at next round
 - [x] Spectators — view-only `?spectate=1` connection + hand-hiding projection + read-only board
-- [ ] i18n — en / 简体 / 繁體 string catalog + toggle
+- [x] i18n — en / 简体 / 繁體 string catalog + toggle (persisted to localStorage)
 - [ ] _Deferred (justified):_ host-shutdown live-state resume; Tailscale node-sharing automation

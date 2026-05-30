@@ -65,5 +65,4 @@ All engine/server/client/bot/scoring work is complete. The items below are
 deliberate v1 scope cuts, not unfinished work — see [ARCHITECTURE.md §12](./ARCHITECTURE.md#12-open-questions--explicit-deferrals).
 
 - Host shutdown midgame (server dies with host)
-- i18n (English only)
 - Tailscale node-sharing automation (manual via admin console)

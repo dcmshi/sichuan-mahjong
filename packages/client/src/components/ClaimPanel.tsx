@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { GameAction, Seat } from '@sichuan-mahjong/engine';
 import { sendAction } from '../ws/client.js';
+import { useT } from '../i18n/useT.js';
 
 type Props = {
   seat: Seat;
@@ -10,6 +11,7 @@ type Props = {
 
 export function ClaimPanel({ seat, legalActions, claimDeadline }: Props) {
   const [pct, setPct] = useState(100);
+  const t = useT();
 
   useEffect(() => {
     const total = claimDeadline - Date.now();
@@ -47,7 +49,7 @@ export function ClaimPanel({ seat, legalActions, claimDeadline }: Props) {
             className="flex-1 py-3 bg-red-600 hover:bg-red-500 active:bg-red-700 rounded-xl font-bold text-lg"
             onClick={() => act({ t: 'claim', seat, claim: { kind: 'hu' } })}
           >
-            Hu!
+            {t('claim.hu')}
           </button>
         )}
         {canKong && (
@@ -55,7 +57,7 @@ export function ClaimPanel({ seat, legalActions, claimDeadline }: Props) {
             className="flex-1 py-3 bg-purple-600 hover:bg-purple-500 active:bg-purple-700 rounded-xl font-bold text-lg"
             onClick={() => act({ t: 'claim', seat, claim: { kind: 'kong' } })}
           >
-            Kong
+            {t('claim.kong')}
           </button>
         )}
         {canPung && (
@@ -63,7 +65,7 @@ export function ClaimPanel({ seat, legalActions, claimDeadline }: Props) {
             className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 rounded-xl font-bold text-lg"
             onClick={() => act({ t: 'claim', seat, claim: { kind: 'pung' } })}
           >
-            Pung
+            {t('claim.pung')}
           </button>
         )}
         {canPass && (
@@ -71,7 +73,7 @@ export function ClaimPanel({ seat, legalActions, claimDeadline }: Props) {
             className="flex-1 py-3 bg-gray-600 hover:bg-gray-500 active:bg-gray-700 rounded-xl font-bold text-lg"
             onClick={() => act({ t: 'pass', seat })}
           >
-            Pass
+            {t('claim.pass')}
           </button>
         )}
       </div>

@@ -1,11 +1,14 @@
 import { useState } from 'react';
 import { useStore } from '../store/index.js';
 import { WsClient, makeWsUrl, setWsClient, sendAction } from '../ws/client.js';
+import { useT } from '../i18n/useT.js';
+import { LangSwitch } from '../components/LangSwitch.js';
 
 export function Landing() {
   const [practiceLoading, setPracticeLoading] = useState(false);
   const [practiceError, setPracticeError] = useState('');
   const store = useStore();
+  const t = useT();
   const { goTo, setCode, setPlayerName } = store;
 
   // Check URL for pre-filled code (from /j/:code redirect)
@@ -54,10 +57,11 @@ export function Landing() {
 
   return (
     <div className="min-h-screen bg-green-900 flex flex-col items-center justify-center gap-8 p-6 text-white">
+      <div className="absolute top-4 right-4"><LangSwitch /></div>
       <div className="text-center">
         <div className="text-6xl mb-2">🀄</div>
-        <h1 className="text-3xl font-bold">Sichuan Mahjong</h1>
-        <p className="text-green-300 mt-1 text-sm">Bloody Rules — 血战到底</p>
+        <h1 className="text-3xl font-bold">{t('app.title')}</h1>
+        <p className="text-green-300 mt-1 text-sm">{t('app.subtitle')}</p>
       </div>
 
       <div className="flex flex-col gap-4 w-full max-w-xs">
@@ -65,39 +69,39 @@ export function Landing() {
           className="w-full py-4 bg-amber-500 hover:bg-amber-400 active:bg-amber-600 rounded-2xl font-bold text-xl text-white shadow-lg"
           onClick={() => goTo('hostSetup')}
         >
-          Host a Game
+          {t('landing.host')}
         </button>
         <button
           className="w-full py-4 bg-white/20 hover:bg-white/30 active:bg-white/10 rounded-2xl font-bold text-xl text-white shadow-lg"
           onClick={handleJoin}
         >
-          {urlCode ? `Join ${urlCode}` : 'Join a Game'}
+          {urlCode ? t('landing.joinCode', { code: urlCode }) : t('landing.join')}
         </button>
         <button
           className="w-full py-4 bg-emerald-700 hover:bg-emerald-600 active:bg-emerald-800 rounded-2xl font-bold text-xl text-white shadow-lg disabled:opacity-50"
           onClick={() => void startPractice()}
           disabled={practiceLoading}
         >
-          {practiceLoading ? 'Starting…' : 'Practice (vs Bots)'}
+          {practiceLoading ? t('landing.starting') : t('landing.practice')}
         </button>
-        {practiceError && <p className="text-red-400 text-sm text-center">{practiceError}</p>}
+        {practiceError && <p className="text-red-400 text-sm text-center">{t('landing.practiceError')}</p>}
         <button
           className="w-full py-3 text-white/70 hover:text-white text-sm"
           onClick={() => goTo('spectateForm')}
         >
-          👀 Watch a Game
+          {t('landing.watch')}
         </button>
       </div>
 
       <p className="text-green-400 text-xs text-center max-w-xs">
-        Host runs the server on their machine. Friends connect over LAN or Tailscale.
+        {t('landing.hostHint')}
       </p>
 
       <button
         className="text-green-500 hover:text-green-300 text-xs underline"
         onClick={() => goTo('about')}
       >
-        About &amp; Credits
+        {t('landing.about')}
       </button>
     </div>
   );
