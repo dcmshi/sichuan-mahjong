@@ -774,7 +774,7 @@ GitHub Actions: build engine → lint → typecheck → test (vitest) → build 
 
 Tag in code as `// TODO(rule):` so they're greppable.
 
-1. **Reconnection > 60s** — bot takeover is fine; revisit if it feels bad in playtest.
+1. **Reconnection > 60s** — ✅ Done: bot takeover holds for the rest of the round; a reconnected human reclaims their seat at the next round (`GameRoom.nextRound` recomputes `isBot` from `isHumanSeat` + connection state). See §6.5.
 2. **Host shutdown midgame** — server dies when host quits. Other players see disconnect. Acceptable for v1.
 3. **Match length** — ✅ Done: host starts each next round (`nextRound`; dealer rotates to `nextDealer` via `startNextRound`) or ends the match (`endMatch` → `matchEnd`). Running totals accumulate client-side across rounds.
 4. **i18n** — English only in v1. Tile names use English + pinyin tooltips.

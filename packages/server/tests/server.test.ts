@@ -301,6 +301,52 @@ describe('WebSocket: full game', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Reconnection >60s reclaim (§6.5)
+// ---------------------------------------------------------------------------
+
+describe('Reconnection reclaim', () => {
+  const fakeWs = () =>
+    ({ readyState: 1, OPEN: 1, send() {} }) as unknown as import('@fastify/websocket').WebSocket;
+
+  it('reconnected human reclaims their seat at the next round; still-offline human stays a bot', async () => {
+    const { GameRoom } = await import('../src/room.js');
+    vi.useFakeTimers();
+    try {
+      const room = new GameRoom('RCLM', [
+        { name: 'P0', isBot: false, connected: false }, // human, will stay offline
+        { name: 'P1', isBot: false, connected: false }, // human, drops then reconnects
+        { name: 'P2', isBot: true, connected: false },
+        { name: 'P3', isBot: true, connected: false },
+      ]);
+
+      room.connect(1, fakeWs());
+      room.start();
+      room.disconnect(1);              // seat 1 drops
+      vi.advanceTimersByTime(61_000);  // >60s → bot takeover
+
+      // All seats are now bot/offline-driven — let the round play out.
+      let guard = 0;
+      while (room.getState().phase !== 'roundEnd' && guard++ < 100_000) {
+        vi.advanceTimersByTime(200);
+      }
+      expect(room.getState().phase).toBe('roundEnd');
+
+      // Seat 1's human reconnects before the next round; seat 0 stays offline.
+      room.connect(1, fakeWs());
+      expect(room.nextRound()).toBe(true);
+
+      const s = room.getState();
+      expect(s.players[1].isBot).toBe(false); // reclaimed
+      expect(s.players[0].isBot).toBe(true);  // offline human → bot
+      expect(s.players[2].isBot).toBe(true);
+      expect(s.players[3].isBot).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Lobby code format
 // ---------------------------------------------------------------------------
 

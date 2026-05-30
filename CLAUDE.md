@@ -64,7 +64,6 @@ e2e/game.spec.ts   Playwright full-round test
 All engine/server/client/bot/scoring work is complete. The items below are
 deliberate v1 scope cuts, not unfinished work — see [ARCHITECTURE.md §12](./ARCHITECTURE.md#12-open-questions--explicit-deferrals).
 
-- Reconnection > 60s (bot takeover stands in)
 - Host shutdown midgame (server dies with host)
 - i18n (English only)
 - Spectators (architecture allows; not built)

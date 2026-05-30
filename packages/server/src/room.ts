@@ -34,6 +34,8 @@ export class GameRoom {
 
   private state: GameState;
   private slots: RoomSlot[];
+  /** Seats that began the match as humans — eligible to reclaim from a bot takeover. */
+  private isHumanSeat: boolean[];
   private connections: Map<Seat, WebSocket> = new Map();
   private disconnectTimers: Map<Seat, ReturnType<typeof setTimeout>> = new Map();
   private claimWindowTimer: ReturnType<typeof setTimeout> | null = null;
@@ -42,6 +44,7 @@ export class GameRoom {
   constructor(code: string, slots: RoomSlot[], config: Partial<GameConfig> = {}) {
     this.code = code;
     this.slots = slots;
+    this.isHumanSeat = slots.map(s => !s.isBot);
     const players: [PlayerInit, PlayerInit, PlayerInit, PlayerInit] = slots.map(s => ({
       name: s.name,
       isBot: s.isBot,
@@ -65,6 +68,18 @@ export class GameRoom {
       this.claimWindowTimer = null;
     }
     this.state = startNextRound(this.state, randomUUID());
+
+    // Reconnection reclaim (§6.5): a human who reconnected after a >60s bot
+    // takeover reclaims their seat for the new round; still-offline humans stay
+    // bot-controlled; original bots stay bots.
+    for (let i = 0; i < 4; i++) {
+      const seat = i as Seat;
+      const slot = this.slots[seat];
+      if (!slot) continue;
+      slot.isBot = this.isHumanSeat[seat] ? !slot.connected : true;
+      this.state.players[seat]!.isBot = slot.isBot;
+    }
+
     this.afterStateChange([]);
     return true;
   }
