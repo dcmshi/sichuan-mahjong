@@ -120,7 +120,12 @@ export class GameRoom {
     this.connections.set(seat, ws);
 
     // For reconnects after game has started, send the current view immediately
-    if (this.started) this.sendView(seat, []);
+    // and resume play: this issues any pending draw and drives bot turns, but
+    // won't bot-play this seat now that its human is back.
+    if (this.started) {
+      this.sendView(seat, []);
+      this.scheduleNext();
+    }
   }
 
   /** Attach a read-only spectator. They receive hand-hiding spectate views. */
@@ -151,9 +156,16 @@ export class GameRoom {
       this.disconnectTimers.delete(seat);
       const s = this.slots[seat];
       if (s) s.isBot = true;
-      this.botActIfNeeded(seat);
+      // Resume the game on takeover: issues any pending draw then drives the bot.
+      this.scheduleNext();
     }, RECONNECT_TIMEOUT_MS);
     this.disconnectTimers.set(seat, timer);
+  }
+
+  /** True if `seat` is a human who hasn't (re)connected yet — game should wait, not bot-play. */
+  private isAwaitingHuman(seat: Seat): boolean {
+    const slot = this.slots[seat];
+    return !!slot && this.isHumanSeat[seat] === true && !slot.isBot && !this.connections.has(seat);
   }
 
   // -------------------------------------------------------------------------
@@ -224,13 +236,17 @@ export class GameRoom {
    */
   resumeAfterRestore(): void {
     this.started = true;
+    // Every seat is disconnected right after a restart. Give human seats the
+    // normal 60s reconnect grace before a bot takes over.
     for (let s = 0; s < 4; s++) {
       const seat = s as Seat;
-      const slot = this.slots[seat];
-      if (!slot || !this.isHumanSeat[seat] || slot.connected) continue;
-      this.armDisconnectTimer(seat);
+      if (this.isHumanSeat[seat] && !this.connections.has(seat)) this.armDisconnectTimer(seat);
     }
-    this.scheduleNext();
+    // Drive bots forward — but if it's an unconnected human's turn (and no claim
+    // window to resolve), leave the state frozen so their reconnect/grace decides.
+    if (this.state.pendingClaims !== null || !this.isAwaitingHuman(this.state.turn)) {
+      this.scheduleNext();
+    }
   }
 
   private schedulePersist(): void {
