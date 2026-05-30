@@ -33,13 +33,15 @@ export function Tile({ id, selected = false, lastDiscard = false, onClick, size 
     <>
       <motion.div
         className={[
-          'tile bg-white border-gray-300 select-none overflow-hidden',
+          'tile select-none overflow-hidden',
           SIZE_CLASSES[size],
+          selected ? 'is-selected' : '',
           lastDiscard ? 'tile-last-discard' : '',
           onClick ? 'cursor-pointer' : 'cursor-default',
         ].filter(Boolean).join(' ')}
-        animate={{ y: selected ? -8 : 0, boxShadow: selected ? '0 8px 16px rgba(0,0,0,0.4)' : '0 1px 2px rgba(0,0,0,0.2)' }}
-        transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+        animate={{ y: selected ? -10 : 0 }}
+        {...(onClick ? { whileHover: { y: selected ? -10 : -3 }, whileTap: { scale: 0.93 } } : {})}
+        transition={{ type: 'spring', stiffness: 500, damping: 22 }}
         title={`${suit}-${rank}`}
         onPointerDown={longPress.onPointerDown}
         onPointerLeave={() => { longPress.onPointerLeave(); setPreview(false); }}
@@ -64,7 +66,7 @@ export function Tile({ id, selected = false, lastDiscard = false, onClick, size 
               initial={{ scale: 0.5 }}
               animate={{ scale: 1 }}
               exit={{ scale: 0.5 }}
-              className={`tile bg-white overflow-hidden ${SIZE_CLASSES.xl}`}
+              className={`tile overflow-hidden ${SIZE_CLASSES.xl}`}
             >
               <img src={src} alt={`${suit}-${rank}`} className="w-full h-full object-contain" draggable={false} />
             </motion.div>
@@ -76,9 +78,5 @@ export function Tile({ id, selected = false, lastDiscard = false, onClick, size 
 }
 
 export function TileBack({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
-  return (
-    <div className={`tile tile-back overflow-hidden ${SIZE_CLASSES[size]}`}>
-      <img src="/tiles/back.svg" alt="tile back" className="w-full h-full object-contain" draggable={false} />
-    </div>
-  );
+  return <div className={`tile tile-back overflow-hidden ${SIZE_CLASSES[size]}`} />;
 }

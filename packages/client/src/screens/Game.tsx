@@ -39,7 +39,7 @@ function HuanPhase({ view }: { view: PlayerView }) {
 
   if (submitted) {
     return (
-      <div className="min-h-screen bg-green-900 flex flex-col items-center justify-center gap-4 text-white p-6">
+      <div className="min-h-screen board-felt flex flex-col items-center justify-center gap-4 text-white p-6">
         <p className="text-xl animate-pulse">Waiting for other players…</p>
       </div>
     );
@@ -48,7 +48,7 @@ function HuanPhase({ view }: { view: PlayerView }) {
   const selectedSuit = selected.length > 0 ? tileFromType(tileTypeOf(selected[0]!)).suit : null;
 
   return (
-    <div className="min-h-screen bg-green-900 flex flex-col p-4 text-white gap-4">
+    <div className="min-h-screen board-felt flex flex-col p-4 text-white gap-4">
       <h2 className="text-xl font-bold mt-2">Huan San Zhang — Select 3 tiles to swap</h2>
       <p className="text-green-300 text-sm">Tap 3 tiles of the same suit. They will be passed to the next player.</p>
       <div className="flex flex-wrap gap-1.5">
@@ -101,7 +101,7 @@ function VoidDeclarePhase({ view }: { view: PlayerView }) {
 
   if (submitted) {
     return (
-      <div className="min-h-screen bg-green-900 flex flex-col items-center justify-center gap-4 text-white p-6">
+      <div className="min-h-screen board-felt flex flex-col items-center justify-center gap-4 text-white p-6">
         <p className="text-xl animate-pulse">Waiting for other players…</p>
       </div>
     );
@@ -115,7 +115,7 @@ function VoidDeclarePhase({ view }: { view: PlayerView }) {
   };
 
   return (
-    <div className="min-h-screen bg-green-900 flex flex-col p-4 text-white gap-4">
+    <div className="min-h-screen board-felt flex flex-col p-4 text-white gap-4">
       <h2 className="text-xl font-bold mt-2">Void Declaration — 定缺</h2>
       <p className="text-green-300 text-sm">Choose a suit to void. You must discard all tiles of that suit.</p>
       <div className="flex gap-3">
@@ -167,18 +167,23 @@ function OpponentTop({ view, relSeat }: { view: PlayerView; relSeat: 0 | 1 | 2 }
   const lastDiscardTile = view.lastDiscard?.from === opp.seat ? view.lastDiscard.tile : null;
   return (
     <div className="flex flex-col items-center gap-1">
-      <div className="text-xs text-green-300 font-semibold">{opp.name} {opp.status === 'hu' ? '🏆' : ''}</div>
+      <div className={[
+        'text-xs font-semibold px-2 py-0.5 rounded-full',
+        view.turn === opp.seat ? 'bg-amber-400 text-black shadow-[0_0_10px_rgba(251,191,36,0.7)]' : 'bg-black/25 text-green-200',
+      ].join(' ')}>{opp.name}{opp.status === 'hu' ? ' 🏆' : ''}</div>
       <div className="flex gap-0.5">
         {Array.from({ length: opp.handCount }, (_, i) => <TileBack key={i} size="sm" />)}
       </div>
       {opp.melds.length > 0 && (
         <div className="flex gap-1">{opp.melds.map((m, i) => <MeldDisplay key={i} meld={m} />)}</div>
       )}
-      <div className="flex flex-wrap gap-0.5 max-w-full">
-        {opp.discards.slice(-8).map((id, i) => (
-          <Tile key={i} id={id} size="sm" lastDiscard={id === lastDiscardTile} />
-        ))}
-      </div>
+      {opp.discards.length > 0 && (
+        <div className="flex flex-wrap gap-0.5 max-w-full discard-tray">
+          {opp.discards.slice(-8).map((id, i) => (
+            <Tile key={i} id={id} size="sm" lastDiscard={id === lastDiscardTile} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -188,15 +193,20 @@ function OpponentSide({ view, relSeat, side }: { view: PlayerView; relSeat: 0 | 
   const lastDiscardTile = view.lastDiscard?.from === opp.seat ? view.lastDiscard.tile : null;
   return (
     <div className={`flex flex-col items-center gap-1 ${side === 'right' ? 'items-end' : 'items-start'}`}>
-      <div className="text-xs text-green-300 font-semibold">{opp.name} {opp.status === 'hu' ? '🏆' : ''}</div>
+      <div className={[
+        'text-xs font-semibold px-2 py-0.5 rounded-full',
+        view.turn === opp.seat ? 'bg-amber-400 text-black shadow-[0_0_10px_rgba(251,191,36,0.7)]' : 'bg-black/25 text-green-200',
+      ].join(' ')}>{opp.name}{opp.status === 'hu' ? ' 🏆' : ''}</div>
       <div className="flex flex-col gap-0.5">
         {Array.from({ length: opp.handCount }, (_, i) => <TileBack key={i} size="sm" />)}
       </div>
-      <div className="flex flex-wrap gap-0.5">
-        {opp.discards.slice(-6).map((id, i) => (
-          <Tile key={i} id={id} size="sm" lastDiscard={id === lastDiscardTile} />
-        ))}
-      </div>
+      {opp.discards.length > 0 && (
+        <div className="flex flex-wrap gap-0.5 discard-tray">
+          {opp.discards.slice(-6).map((id, i) => (
+            <Tile key={i} id={id} size="sm" lastDiscard={id === lastDiscardTile} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -303,7 +313,7 @@ function PlayPhase({ view }: { view: PlayerView }) {
   );
 
   return (
-    <div className="min-h-screen bg-green-900 flex flex-col text-white overflow-hidden">
+    <div className="min-h-screen board-felt flex flex-col text-white overflow-hidden">
       {/* Reconnecting toast */}
       <AnimatePresence>
         {reconnecting && (
@@ -360,7 +370,7 @@ function PlayPhase({ view }: { view: PlayerView }) {
         <div className="w-20 flex-shrink-0">
           <OpponentSide view={view} relSeat={2} side="left" />
         </div>
-        <div className="flex-1 flex flex-col items-center justify-center gap-1 bg-green-800/40 rounded-xl p-2">
+        <div className="flex-1 flex flex-col items-center justify-center gap-1 play-well p-2">
           {lastDiscardTile !== null && (
             <div className="flex flex-col items-center gap-1">
               <span className="text-xs text-green-300">Last discard</span>
@@ -468,7 +478,7 @@ function PlayPhase({ view }: { view: PlayerView }) {
 export function Game() {
   const view = useStore(s => s.view);
   if (!view) return (
-    <div className="min-h-screen bg-green-900 flex items-center justify-center text-white">
+    <div className="min-h-screen board-felt flex items-center justify-center text-white">
       <p className="animate-pulse">Loading game…</p>
     </div>
   );
