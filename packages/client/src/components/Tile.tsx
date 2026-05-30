@@ -49,7 +49,7 @@ export function Tile({ id, selected = false, lastDiscard = false, onClick, size 
         onPointerUp={() => { longPress.onPointerUp(); setPreview(false); }}
         onClick={onClick ? () => { if (!longPress.pointerHandledRef.current) onClick(id); } : undefined}
       >
-        <img src={src} alt={`${suit}-${rank}`} className="w-full h-full object-contain" draggable={false} />
+        <img src={src} alt={`${suit}-${rank}`} className="tile-face" draggable={false} />
       </motion.div>
 
       {/* Long-press 2× preview */}
@@ -68,7 +68,7 @@ export function Tile({ id, selected = false, lastDiscard = false, onClick, size 
               exit={{ scale: 0.5 }}
               className={`tile overflow-hidden ${SIZE_CLASSES.xl}`}
             >
-              <img src={src} alt={`${suit}-${rank}`} className="w-full h-full object-contain" draggable={false} />
+              <img src={src} alt={`${suit}-${rank}`} className="tile-face" draggable={false} />
             </motion.div>
           </motion.div>
         )}
