@@ -316,10 +316,12 @@ describe('WebSocket: spectators', () => {
   });
 
   it('spectator receives a hand-hiding spectate view; unknown game is rejected', async () => {
-    // Unknown game → error + close.
+    // Unknown game → error + close. The server pushes the message on connect
+    // (before the client sends anything), so attach the listener before open.
     const bad = new WebSocket(`ws://127.0.0.1:${port}/ws/ZZZZ?spectate=1`);
+    const errP = wsNextMessage(bad);
     await waitOpen(bad);
-    const errMsg = await wsNextMessage(bad);
+    const errMsg = await errP;
     expect(errMsg.t).toBe('error');
     if (errMsg.t === 'error') expect(errMsg.code).toBe('no_game');
     bad.close();
@@ -340,10 +342,11 @@ describe('WebSocket: spectators', () => {
     wsSend(sockets[0]!, { t: 'startGame' });
     await new Promise(r => setTimeout(r, 50));
 
-    // Spectate the live game.
+    // Spectate the live game. The first spectate view is pushed on connect.
     const spec = new WebSocket(`ws://127.0.0.1:${port}/ws/${code}?spectate=1`);
+    const specP = wsNextMessage(spec);
     await waitOpen(spec);
-    const msg = await wsNextMessage(spec);
+    const msg = await specP;
     expect(msg.t).toBe('spectate');
     if (msg.t === 'spectate') {
       expect(msg.view.players).toHaveLength(4);
