@@ -296,6 +296,9 @@ function PlayPhase({ view }: { view: PlayerView }) {
   // Distinguish a tap (select/discard) from a drag (reorder) by pointer travel,
   // since Framer's Reorder.Item preventDefaults pointerdown and eats onClick/onTap.
   const tapStart = useRef<{ x: number; y: number } | null>(null);
+  // Reconcile only when the hand's actual contents change (not on every server
+  // view push — `hand` is a fresh array each time, but its tiles usually aren't).
+  const handKey = hand.join(',');
   useEffect(() => {
     setHandOrder(prev => {
       const inHand = new Set(hand);
@@ -304,8 +307,8 @@ function PlayPhase({ view }: { view: PlayerView }) {
       const added = hand.filter(id => !keptSet.has(id));
       return [...kept, ...added];
     });
-    // hand is a fresh array each server view; reconcile whenever it changes.
-  }, [hand]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [handKey]);
 
   const isMyTurn = view.turn === seat && view.phase === 'play' && view.claimDeadline === null;
   const canDiscard = isMyTurn && view.yourLegalActions.some(a => a.t === 'discard');
@@ -374,10 +377,10 @@ function PlayPhase({ view }: { view: PlayerView }) {
         </span>
         <div className="flex gap-2 items-center">
           <LangSwitch />
-          <button className="text-white/50 hover:text-white" onClick={toggleSound} title="Toggle sound">
+          <button className="text-white/50 hover:text-white" onClick={toggleSound} title="Toggle sound" aria-label="Toggle sound">
             {soundEnabled ? '🔊' : '🔇'}
           </button>
-          <button className="text-white/50 hover:text-white" onClick={() => setShowHowToPlay(true)} title="How to play">
+          <button className="text-white/50 hover:text-white" onClick={() => setShowHowToPlay(true)} title="How to play" aria-label="How to play">
             ?
           </button>
         </div>

@@ -1,15 +1,16 @@
 import { useState } from 'react';
 import { useStore } from '../store/index.js';
-import { WsClient, makeWsUrl, setWsClient, sendAction } from '../ws/client.js';
+import { makeWsUrl, connectGame, sendAction } from '../ws/client.js';
 import { useT } from '../i18n/useT.js';
 import { LangSwitch } from '../components/LangSwitch.js';
 
 export function Landing() {
   const [practiceLoading, setPracticeLoading] = useState(false);
   const [practiceError, setPracticeError] = useState('');
-  const store = useStore();
   const t = useT();
-  const { goTo, setCode, setPlayerName } = store;
+  const goTo = useStore(s => s.goTo);
+  const setCode = useStore(s => s.setCode);
+  const setPlayerName = useStore(s => s.setPlayerName);
 
   // Check URL for pre-filled code (from /j/:code redirect)
   const urlCode = new URLSearchParams(window.location.search).get('code') ?? '';
@@ -30,23 +31,17 @@ export function Landing() {
       setCode(code);
       setPlayerName(name);
 
-      const ws = new WsClient(makeWsUrl(code, hostToken), {
-        onMessage: (msg) => {
-          store.handleServerMsg(msg);
-          if (msg.t === 'joined') {
-            // Add 3 bots then start
-            sendAction({ t: 'addBot', difficulty: 'easy' });
-            sendAction({ t: 'addBot', difficulty: 'easy' });
-            sendAction({ t: 'addBot', difficulty: 'easy' });
-          }
-          if (msg.t === 'lobby' && msg.canStart) {
-            sendAction({ t: 'startGame' });
-          }
-        },
-        onConnect: () => store.setConnected(true),
-        onDisconnect: () => store.setReconnecting(true),
+      const ws = connectGame(makeWsUrl(code, hostToken), (msg) => {
+        if (msg.t === 'joined') {
+          // Add 3 easy bots then start
+          sendAction({ t: 'addBot', difficulty: 'easy' });
+          sendAction({ t: 'addBot', difficulty: 'easy' });
+          sendAction({ t: 'addBot', difficulty: 'easy' });
+        }
+        if (msg.t === 'lobby' && msg.canStart) {
+          sendAction({ t: 'startGame' });
+        }
       });
-      setWsClient(ws);
       ws.send({ t: 'join', name });
     } catch {
       setPracticeError('Could not start practice — is the server running?');

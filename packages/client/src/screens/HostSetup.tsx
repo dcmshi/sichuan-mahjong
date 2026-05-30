@@ -1,16 +1,23 @@
 import { useState } from 'react';
 import { useStore } from '../store/index.js';
-import { WsClient, makeWsUrl, setWsClient, sendAction } from '../ws/client.js';
+import { makeWsUrl, connectGame, sendAction } from '../ws/client.js';
 import { useT } from '../i18n/useT.js';
+import type { Seat } from '@sichuan-mahjong/engine';
 
 export function HostSetup() {
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [inLobby, setInLobby] = useState(false);
+  const [botLevel, setBotLevel] = useState<'easy' | 'medium'>('easy');
 
-  const store = useStore();
   const t = useT();
+  const code = useStore(s => s.code);
+  const seat = useStore(s => s.seat);
+  const lobbyPlayers = useStore(s => s.lobbyPlayers);
+  const canStart = useStore(s => s.canStart);
+  const reconnecting = useStore(s => s.reconnecting);
+  const goTo = useStore(s => s.goTo);
 
   async function createAndJoin() {
     if (!name.trim()) { setError('join.errName'); return; }
@@ -19,19 +26,14 @@ export function HostSetup() {
     try {
       const res = await fetch('/api/lobby', { method: 'POST' });
       if (!res.ok) throw new Error('server error');
-      const { code, hostToken } = await res.json() as { code: string; hostToken: string };
-      store.setCode(code);
+      const { code: newCode, hostToken } = await res.json() as { code: string; hostToken: string };
+      const store = useStore.getState();
+      store.setCode(newCode);
       store.setPlayerName(name.trim());
 
-      const ws = new WsClient(makeWsUrl(code, hostToken), {
-        onMessage: (msg) => {
-          store.handleServerMsg(msg);
-          if (msg.t === 'joined') setInLobby(true);
-        },
-        onConnect: () => store.setConnected(true),
-        onDisconnect: () => store.setReconnecting(true),
+      const ws = connectGame(makeWsUrl(newCode, hostToken), (msg) => {
+        if (msg.t === 'joined') setInLobby(true);
       });
-      setWsClient(ws);
       ws.send({ t: 'join', name: name.trim() });
     } catch {
       setError('host.errCreate');
@@ -65,7 +67,7 @@ export function HostSetup() {
           </button>
           <button
             className="py-2 text-white/60 hover:text-white"
-            onClick={() => store.goTo('landing')}
+            onClick={() => goTo('landing')}
           >
             {t('nav.back')}
           </button>
@@ -74,12 +76,12 @@ export function HostSetup() {
     );
   }
 
-  const shareUrl = `${window.location.origin}/j/${store.code}`;
+  const shareUrl = `${window.location.origin}/j/${code}`;
 
   return (
     <div className="min-h-screen bg-green-900 flex flex-col p-4 text-white gap-4">
       <div className="flex items-center gap-3 mt-2">
-        <span className="text-2xl font-mono font-bold text-amber-400 tracking-widest">{store.code}</span>
+        <span className="text-2xl font-mono font-bold text-amber-400 tracking-widest">{code}</span>
         <span className="text-green-300 text-sm">← share code</span>
       </div>
 
@@ -94,10 +96,29 @@ export function HostSetup() {
         </button>
       </div>
 
+      {/* Difficulty for newly added bots */}
+      <div className="flex items-center gap-2 text-sm">
+        <span className="text-green-300">{t('host.botLevel')}:</span>
+        <div className="inline-flex rounded-lg overflow-hidden border border-white/20">
+          {(['easy', 'medium'] as const).map(level => (
+            <button
+              key={level}
+              onClick={() => setBotLevel(level)}
+              className={[
+                'px-3 py-1 font-semibold transition-colors',
+                botLevel === level ? 'bg-amber-400 text-black' : 'bg-black/20 text-white/70 hover:text-white',
+              ].join(' ')}
+            >
+              {t(level === 'easy' ? 'host.easy' : 'host.hard')}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="flex flex-col gap-2">
         {[0, 1, 2, 3].map((i) => {
-          const p = store.lobbyPlayers[i];
-          const isMe = i === store.seat;
+          const p = lobbyPlayers[i];
+          const isMe = i === seat;
           return (
             <div key={i} className="flex items-center gap-2 bg-black/20 rounded-xl px-3 py-2.5">
               <span className="text-green-400 text-sm w-14">{t(`wind.${i}`)}</span>
@@ -107,7 +128,7 @@ export function HostSetup() {
                   {p.isBot && (
                     <button
                       className="text-xs bg-red-700 hover:bg-red-600 px-2 py-1 rounded"
-                      onClick={() => sendAction({ t: 'kickBot', seat: i as 0|1|2|3 })}
+                      onClick={() => sendAction({ t: 'kickBot', seat: i as Seat })}
                     >
                       {t('host.kick')}
                     </button>
@@ -119,7 +140,7 @@ export function HostSetup() {
                   <span className="text-white/40 italic text-sm flex-1">{t('host.empty')}</span>
                   <button
                     className="text-xs bg-blue-700 hover:bg-blue-600 px-2 py-1 rounded"
-                    onClick={() => sendAction({ t: 'addBot', difficulty: 'easy' })}
+                    onClick={() => sendAction({ t: 'addBot', difficulty: botLevel })}
                   >
                     {t('host.addBot')}
                   </button>
@@ -133,12 +154,12 @@ export function HostSetup() {
       <button
         className="w-full py-4 bg-amber-500 hover:bg-amber-400 active:bg-amber-600 rounded-xl font-bold text-lg mt-auto disabled:opacity-40"
         onClick={() => sendAction({ t: 'startGame' })}
-        disabled={!store.canStart}
+        disabled={!canStart}
       >
-        {store.canStart ? t('host.start') : t('host.waitingPlayers')}
+        {canStart ? t('host.start') : t('host.waitingPlayers')}
       </button>
 
-      {store.reconnecting && (
+      {reconnecting && (
         <p className="text-center text-amber-400 text-sm animate-pulse">{t('common.reconnecting')}</p>
       )}
     </div>

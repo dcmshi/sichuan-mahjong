@@ -47,9 +47,10 @@ function SeatRow({ view, seat }: { view: SpectatorView; seat: number }) {
 }
 
 export function Spectate() {
-  const store = useStore();
   const t = useT();
-  const view = store.spectatorView;
+  const view = useStore(s => s.spectatorView);
+  const code = useStore(s => s.code);
+  const resetSession = useStore(s => s.resetSession);
 
   if (!view) {
     return (
@@ -68,13 +69,13 @@ export function Spectate() {
         <span className="text-amber-300 font-semibold">
           {view.phase === 'roundEnd' ? t('spec.roundOver') : t('play.othersTurn', { name: turnName })}
         </span>
-        <button className="text-white/60 hover:text-white" onClick={() => store.resetSession()}>
+        <button className="text-white/60 hover:text-white" onClick={() => resetSession()}>
           {t('nav.leave')}
         </button>
       </div>
 
       <div className="px-2 py-1 text-center text-[10px] text-green-300 uppercase tracking-wide">
-        👀 {t('spec.spectating', { code: store.code })}
+        👀 {t('spec.spectating', { code })}
       </div>
 
       {view.lastDiscard && (

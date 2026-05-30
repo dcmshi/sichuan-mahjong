@@ -1,13 +1,15 @@
 import { useState } from 'react';
 import { useStore } from '../store/index.js';
-import { WsClient, makeWsUrl, setWsClient } from '../ws/client.js';
+import { makeWsUrl, connectGame } from '../ws/client.js';
 import { useT } from '../i18n/useT.js';
 
 export function JoinForm() {
-  const store = useStore();
   const t = useT();
-  const [code, setCode] = useState(store.code);
-  const [name, setName] = useState(store.playerName);
+  const goTo = useStore(s => s.goTo);
+  const setStoreCode = useStore(s => s.setCode);
+  const setStoreName = useStore(s => s.setPlayerName);
+  const [code, setCode] = useState(useStore.getState().code);
+  const [name, setName] = useState(useStore.getState().playerName);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -23,31 +25,18 @@ export function JoinForm() {
       const res = await fetch(`/api/lobby/${trimCode}`);
       if (!res.ok) { setError('join.errNotFound'); return; }
 
-      store.setCode(trimCode);
-      store.setPlayerName(trimName);
+      setStoreCode(trimCode);
+      setStoreName(trimName);
 
-      const ws = new WsClient(makeWsUrl(trimCode, ''), {
-        onMessage: (msg) => {
-          store.handleServerMsg(msg);
-          if (msg.t === 'joined') {
-            // Reconnect with the issued token to persist seat
-            ws.close();
-            const ws2 = new WsClient(makeWsUrl(trimCode, msg.token), {
-              onMessage: store.handleServerMsg,
-              onConnect: () => store.setConnected(true),
-              onDisconnect: () => store.setReconnecting(true),
-            });
-            setWsClient(ws2);
-            store.goTo('lobby');
-          }
-        },
-        onConnect: () => {
-          store.setConnected(true);
-          ws.send({ t: 'join', name: trimName });
-        },
-        onDisconnect: () => store.setReconnecting(true),
+      // Connect tokenless; once the server issues a seat token, point future
+      // reconnects at the token URL (no second socket / connect-close churn).
+      const ws = connectGame(makeWsUrl(trimCode, ''), (msg) => {
+        if (msg.t === 'joined') {
+          ws.setReconnectUrl(makeWsUrl(trimCode, msg.token));
+          goTo('lobby');
+        }
       });
-      setWsClient(ws);
+      ws.send({ t: 'join', name: trimName });
     } catch {
       setError('join.errConn');
     } finally {
@@ -87,7 +76,7 @@ export function JoinForm() {
         </button>
         <button
           className="py-2 text-white/60 hover:text-white"
-          onClick={() => store.goTo('landing')}
+          onClick={() => goTo('landing')}
         >
           {t('nav.back')}
         </button>

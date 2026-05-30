@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { useStore } from '../store/index.js';
-import { WsClient, makeSpectateUrl, setWsClient } from '../ws/client.js';
+import { makeSpectateUrl, connectGame, setWsClient } from '../ws/client.js';
 import { useT } from '../i18n/useT.js';
 
 export function SpectateForm() {
-  const store = useStore();
   const t = useT();
-  const [code, setCode] = useState(store.code);
+  const storedCode = useStore(s => s.code);
+  const setStoreCode = useStore(s => s.setCode);
+  const goTo = useStore(s => s.goTo);
+  const [code, setCode] = useState(storedCode);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -15,24 +17,18 @@ export function SpectateForm() {
     if (trimCode.length !== 4) { setError('join.errCode'); return; }
     setError('');
     setLoading(true);
-    store.setCode(trimCode);
+    setStoreCode(trimCode);
 
-    const ws = new WsClient(makeSpectateUrl(trimCode), {
-      onMessage: (msg) => {
-        if (msg.t === 'error' && msg.code === 'no_game') {
-          setError('spec.errNoGame');
-          setLoading(false);
-          ws.close();
-          setWsClient(null);
-          return;
-        }
-        // 'spectate' messages flip the screen to the read-only board.
-        store.handleServerMsg(msg);
-      },
-      onConnect: () => store.setConnected(true),
-      onDisconnect: () => store.setReconnecting(true),
+    // connectGame routes 'spectate' views through the store; we only add the
+    // no-game error handling here. ('spectate' flips the screen to the board.)
+    const ws = connectGame(makeSpectateUrl(trimCode), (msg) => {
+      if (msg.t === 'error' && msg.code === 'no_game') {
+        setError('spec.errNoGame');
+        setLoading(false);
+        ws.close();
+        setWsClient(null);
+      }
     });
-    setWsClient(ws);
   }
 
   return (
@@ -58,7 +54,7 @@ export function SpectateForm() {
         >
           {loading ? t('spec.connecting') : t('spec.watch')}
         </button>
-        <button className="py-2 text-white/60 hover:text-white" onClick={() => store.goTo('landing')}>
+        <button className="py-2 text-white/60 hover:text-white" onClick={() => goTo('landing')}>
           {t('nav.back')}
         </button>
       </div>

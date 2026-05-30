@@ -19,16 +19,13 @@ export function About() {
 
       <section>
         <h3 className="text-amber-400 font-semibold mb-2">Tile Graphics</h3>
-        <p className="text-green-200 text-sm leading-relaxed mb-2">
-          Tile glyphs use Unicode characters (U+1F000–U+1F021). No external SVG assets are
-          bundled in this release.
-        </p>
         <p className="text-green-200 text-sm leading-relaxed">
-          If SVG tile assets are added in a future release, they will be sourced from Wikimedia
-          Commons under the{' '}
+          Tile faces are SVG assets sourced from Wikimedia Commons under the{' '}
           <span className="text-amber-300 font-mono text-xs">CC-BY-SA 4.0</span> license. Per-file
-          attribution will be listed in{' '}
-          <span className="font-mono text-xs text-amber-300">public/tiles/credits.json</span>.
+          attribution is listed in{' '}
+          <span className="font-mono text-xs text-amber-300">public/tiles/credits.json</span>. The
+          tile back is an original work. The CC-BY-SA license applies only to the bundled SVGs; the
+          surrounding code remains MIT.
         </p>
       </section>
 

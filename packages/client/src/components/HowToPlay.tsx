@@ -85,7 +85,7 @@ export function HowToPlay({ onClose }: { onClose: () => void }) {
         >
           <div className="sticky top-0 bg-green-950 flex items-center justify-between px-4 py-3 border-b border-white/10">
             <h2 className="text-white font-bold text-lg">How to Play</h2>
-            <button className="text-white/60 hover:text-white text-xl px-2" onClick={onClose}>✕</button>
+            <button className="text-white/60 hover:text-white text-xl px-2" onClick={onClose} aria-label="Close">✕</button>
           </div>
 
           <div className="px-4 py-4 flex flex-col gap-5">

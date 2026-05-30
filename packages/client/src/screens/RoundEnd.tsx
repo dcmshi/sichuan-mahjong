@@ -4,9 +4,12 @@ import { sendAction } from '../ws/client.js';
 import { useT } from '../i18n/useT.js';
 
 export function RoundEnd() {
-  const store = useStore();
   const t = useT();
-  const result = store.roundResult;
+  const result = useStore(s => s.roundResult);
+  const seat = useStore(s => s.seat);
+  const matchScores = useStore(s => s.matchScores);
+  const isHost = useStore(s => s.isHost);
+  const resetSession = useStore(s => s.resetSession);
 
   if (!result) return null;
 
@@ -42,7 +45,7 @@ export function RoundEnd() {
             <span className="text-xs text-green-300 w-12">{t(`wind.${p.seat}`)}</span>
             <span className="font-semibold flex-1">
               {p.name}
-              {p.seat === store.seat && <span className="ml-1 text-xs text-amber-400">{t('common.you')}</span>}
+              {p.seat === seat && <span className="ml-1 text-xs text-amber-400">{t('common.you')}</span>}
             </span>
             {p.hu && (
               <span className="text-xs bg-red-700 px-1.5 py-0.5 rounded">{t('end.hu')}</span>
@@ -55,14 +58,14 @@ export function RoundEnd() {
       </div>
 
       {/* Match totals (if multiple rounds played) */}
-      {Object.keys(store.matchScores).length > 0 && (
+      {Object.keys(matchScores).length > 0 && (
         <div className="w-full max-w-sm flex flex-col gap-2">
           <p className="text-green-300 text-xs font-semibold uppercase tracking-wide">{t('end.matchTotal')}</p>
           {result.players
             .slice()
-            .sort((a, b) => (store.matchScores[b.seat] ?? 0) - (store.matchScores[a.seat] ?? 0))
+            .sort((a, b) => (matchScores[b.seat] ?? 0) - (matchScores[a.seat] ?? 0))
             .map(p => {
-              const total = store.matchScores[p.seat] ?? 0;
+              const total = matchScores[p.seat] ?? 0;
               return (
                 <div key={p.seat} className="flex items-center gap-3 bg-black/15 rounded-xl px-4 py-2">
                   <span className="text-xs text-green-300 w-12">{t(`wind.${p.seat}`)}</span>
@@ -77,7 +80,7 @@ export function RoundEnd() {
       )}
 
       <div className="flex flex-col gap-3 w-full max-w-sm mt-auto">
-        {store.isHost ? (
+        {isHost ? (
           <>
             <button
               className="w-full py-4 bg-green-600 hover:bg-green-500 rounded-xl font-bold text-lg"
@@ -97,7 +100,7 @@ export function RoundEnd() {
             <p className="text-center text-green-300 text-sm">{t('end.waitingHost')}</p>
             <button
               className="w-full py-3 bg-amber-500 hover:bg-amber-400 rounded-xl font-bold"
-              onClick={() => store.resetSession()}
+              onClick={() => resetSession()}
             >
               {t('nav.leave')}
             </button>

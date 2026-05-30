@@ -3,3 +3,6 @@ dist/
 .DS_Store
 *.db
 *.db-journal
+
+# Playwright artifacts
+test-results/

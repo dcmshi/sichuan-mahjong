@@ -11,7 +11,9 @@ if (!el) throw new Error('No #root element');
 createRoot(el).render(<App />);
 
 // E2E test helpers — exposed on window so Playwright tests can bypass UI interactions
-// (required because Framer Motion 12 consumes pointer events before React can process them)
+// (required because Framer Motion 12 consumes pointer events before React can process them).
+// Only attached in dev or e2e builds (VITE_E2E=1) so they never ship in releases.
+if (import.meta.env.DEV || import.meta.env.VITE_E2E) {
 (window as unknown as Record<string, unknown>).__e2e = {
   huanSubmit(): boolean {
     const view = useStore.getState().view;
@@ -79,3 +81,4 @@ createRoot(el).render(<App />);
     return useStore.getState().screen;
   },
 };
+}

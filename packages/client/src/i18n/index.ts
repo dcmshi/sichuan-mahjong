@@ -53,6 +53,9 @@ const en: Dict = {
   'host.empty': 'empty',
   'host.start': 'Start Game',
   'host.waitingPlayers': 'Waiting for players…',
+  'host.botLevel': 'Bot level',
+  'host.easy': 'Easy',
+  'host.hard': 'Hard',
 
   'lobby.title': 'Lobby',
   'lobby.waiting': 'waiting…',
@@ -164,6 +167,9 @@ const zhHans: Dict = {
   'host.empty': '空位',
   'host.start': '开始游戏',
   'host.waitingPlayers': '等待玩家…',
+  'host.botLevel': '电脑难度',
+  'host.easy': '简单',
+  'host.hard': '高级',
 
   'lobby.title': '房间',
   'lobby.waiting': '等待中…',
@@ -275,6 +281,9 @@ const zhHant: Dict = {
   'host.empty': '空位',
   'host.start': '開始遊戲',
   'host.waitingPlayers': '等待玩家…',
+  'host.botLevel': '電腦難度',
+  'host.easy': '簡單',
+  'host.hard': '高級',
 
   'lobby.title': '房間',
   'lobby.waiting': '等待中…',

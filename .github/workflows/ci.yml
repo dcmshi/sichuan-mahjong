@@ -40,7 +40,11 @@ jobs:
         run: pnpm --filter sichuan-mahjong build
 
       - name: Build client
+        # VITE_E2E includes the window.__e2e Playwright helpers (this build is
+        # for testing only; release builds omit them).
         run: pnpm --filter @sichuan-mahjong/client build
+        env:
+          VITE_E2E: '1'
 
       - name: npm package smoke test
         run: node packages/server/dist/main.js --help

@@ -1,4 +1,5 @@
 import type { ClientMsg, ServerMsg } from '@sichuan-mahjong/engine';
+import { useStore } from '../store/index.js';
 
 const BACKOFF_MS = [500, 1000, 2000, 4000, 10_000];
 
@@ -16,10 +17,16 @@ export class WsClient {
   private queue: string[] = [];
 
   constructor(
-    private readonly url: string,
+    private url: string,
     private readonly cbs: Callbacks,
   ) {
     this.connect();
+  }
+
+  /** Update the URL used for future reconnects (e.g. once a seat token is issued)
+   *  without dropping the live socket. Avoids a connect→close→reconnect cycle. */
+  setReconnectUrl(url: string): void {
+    this.url = url;
   }
 
   send(msg: ClientMsg): void {
@@ -83,4 +90,27 @@ export function getWsClient(): WsClient | null { return _client; }
 
 export function sendAction(msg: ClientMsg): void {
   _client?.send(msg);
+}
+
+/**
+ * Open a game/lobby connection wired to the standard store callbacks
+ * (handleServerMsg / setConnected / setReconnecting) and register it as the
+ * active client. `onMessage` receives each message plus the client, for
+ * screen-specific handling. Replaces the duplicated WsClient setup in screens.
+ */
+export function connectGame(
+  url: string,
+  onMessage?: (msg: ServerMsg, client: WsClient) => void,
+): WsClient {
+  const store = useStore.getState();
+  const client: WsClient = new WsClient(url, {
+    onMessage: (msg) => {
+      store.handleServerMsg(msg);
+      onMessage?.(msg, client);
+    },
+    onConnect: () => store.setConnected(true),
+    onDisconnect: () => store.setReconnecting(true),
+  });
+  setWsClient(client);
+  return client;
 }
