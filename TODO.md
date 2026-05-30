@@ -1,6 +1,6 @@
 # TODO
 
-Current status: **Phase 4 complete** — full scoring, payments, and round-end settlement done. Everything below is outstanding.
+Current status: **All phases complete** — engine, server, client, bots, persistence, networking, and polish are all done. Remaining work is the intentional v1 deferrals tracked in [ARCHITECTURE.md §12](./ARCHITECTURE.md#12-open-questions--explicit-deferrals).
 
 ---
 

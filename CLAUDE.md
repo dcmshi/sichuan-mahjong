@@ -59,8 +59,15 @@ e2e/game.spec.ts   Playwright full-round test
 
 ---
 
-## Outstanding deferred items (greppable as `TODO(rule)`)
+## Intentional v1 deferrals
 
-- Set-with-void-suit meld penalty (48 pts) — not yet enforced
-- False-Hu detection and penalty — not yet implemented
-- Replay-test corpus (canned games per fan combo)
+All engine/server/client/bot/scoring work is complete. The items below are
+deliberate v1 scope cuts, not unfinished work — see [ARCHITECTURE.md §12](./ARCHITECTURE.md#12-open-questions--explicit-deferrals).
+
+- Reconnection > 60s (bot takeover stands in)
+- Host shutdown midgame (server dies with host)
+- Match length / "End match" structure (only running totals today)
+- i18n (English only)
+- Spectators (architecture allows; not built)
+- Flower Pig house rule (~15 lines in `scoring.ts` if added; see §5.9)
+- Tailscale node-sharing automation (manual via admin console)

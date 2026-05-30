@@ -781,9 +781,9 @@ Tag in code as `// TODO(rule):` so they're greppable.
 5. **Spectators** — out of v1. Architecture allows: a "view-only" token subscribing to a generic public view (no player hand exposed).
 6. **Flower Pig house rule** — deferred; see §5.9. ~15 lines in `scoring.ts` if added later.
 7. **Tailscale node-sharing automation** — manual via admin console in v1. Tailscale's API can automate this; v2.
-8. **Set-with-void-suit meld penalty** — `TODO(rule)`: 48-point deduction not yet enforced.
-9. **False-Hu detection** — `TODO(rule)`: penalty not yet implemented.
-10. **Replay-test corpus** — canned games per fan combination not yet built.
+8. **Set-with-void-suit meld penalty** — ✅ Done: 48-point deduction enforced on pung/kong/concealed-kong of voided suit (`voidMeldPenalty` event).
+9. **False-Hu detection** — ✅ Done: 8 pts/opponent redistributive penalty + kong refund on invalid draw-Hu or claim-window Hu.
+10. **Replay-test corpus** — ✅ Done: canned games per fan combination + penalty paths.
 
 ---
 
