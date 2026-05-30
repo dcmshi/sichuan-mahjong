@@ -232,7 +232,26 @@ function handleGameMessage(
   seat: Seat,
   msg: ClientMsg,
 ): void {
-  if (msg.t === 'action') {
-    room.handleAction(seat, msg.action);
+  switch (msg.t) {
+    case 'action':
+      room.handleAction(seat, msg.action);
+      return;
+    case 'nextRound':
+      // Host is always seat 0 (see startGame).
+      if (seat !== 0) {
+        send(_ws, { t: 'error', code: 'not_host', message: 'Only the host can start the next round.' });
+        return;
+      }
+      room.nextRound();
+      return;
+    case 'endMatch':
+      if (seat !== 0) {
+        send(_ws, { t: 'error', code: 'not_host', message: 'Only the host can end the match.' });
+        return;
+      }
+      room.endMatch();
+      return;
+    default:
+      return;
   }
 }

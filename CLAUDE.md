@@ -66,7 +66,6 @@ deliberate v1 scope cuts, not unfinished work — see [ARCHITECTURE.md §12](./A
 
 - Reconnection > 60s (bot takeover stands in)
 - Host shutdown midgame (server dies with host)
-- Match length / "End match" structure (only running totals today)
 - i18n (English only)
 - Spectators (architecture allows; not built)
 - Tailscale node-sharing automation (manual via admin console)

@@ -77,20 +77,32 @@ export function RoundEnd() {
       )}
 
       <div className="flex flex-col gap-3 w-full max-w-sm mt-auto">
-        {store.isHost && (
-          <button
-            className="w-full py-4 bg-green-600 hover:bg-green-500 rounded-xl font-bold text-lg"
-            onClick={() => sendAction({ t: 'startGame' })}
-          >
-            Next Round
-          </button>
+        {store.isHost ? (
+          <>
+            <button
+              className="w-full py-4 bg-green-600 hover:bg-green-500 rounded-xl font-bold text-lg"
+              onClick={() => sendAction({ t: 'nextRound' })}
+            >
+              Next Round
+            </button>
+            <button
+              className="w-full py-3 bg-amber-500 hover:bg-amber-400 rounded-xl font-bold"
+              onClick={() => sendAction({ t: 'endMatch' })}
+            >
+              End Match
+            </button>
+          </>
+        ) : (
+          <>
+            <p className="text-center text-green-300 text-sm">Waiting for the host to start the next round…</p>
+            <button
+              className="w-full py-3 bg-amber-500 hover:bg-amber-400 rounded-xl font-bold"
+              onClick={() => store.resetSession()}
+            >
+              Leave
+            </button>
+          </>
         )}
-        <button
-          className="w-full py-4 bg-amber-500 hover:bg-amber-400 rounded-xl font-bold text-lg"
-          onClick={() => store.resetSession()}
-        >
-          Back to Lobby
-        </button>
       </div>
     </div>
   );

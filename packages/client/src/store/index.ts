@@ -106,6 +106,10 @@ export const useStore = create<GameStore>((set, get) => ({
         break;
       }
 
+      case 'matchEnd':
+        get().resetSession();
+        break;
+
       case 'error':
         console.warn('[server error]', msg.code, msg.message);
         break;

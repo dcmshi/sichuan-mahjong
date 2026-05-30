@@ -258,6 +258,46 @@ describe('WebSocket: full game', () => {
 
     for (const ws of sockets) ws.close();
   }, 90_000);
+
+  it('host can start the next round, rotating the dealer', async () => {
+    const { getRoom } = await import('../src/room.js');
+    const create = await app.inject({ method: 'POST', url: '/api/lobby' });
+    const { code, hostToken } = create.json<{ code: string; hostToken: string }>();
+
+    const sockets: WebSocket[] = [];
+    for (let i = 0; i < 4; i++) {
+      const ws = wsConnect(port, code, i === 0 ? hostToken : undefined);
+      await waitOpen(ws);
+      sockets.push(ws);
+      wsSend(ws, { t: 'join', name: `P${i}` });
+      await wsNextMessage(ws);
+    }
+    await new Promise(r => setTimeout(r, 50));
+    for (const ws of sockets) ws.removeAllListeners('message');
+
+    const roundEndPromises = sockets.map((ws, i) => autoPlay(ws, i as Seat));
+    wsSend(sockets[0]!, { t: 'startGame' });
+    await Promise.all(roundEndPromises);
+
+    // Round is over; capture the computed next dealer, then start the next round.
+    for (const ws of sockets) ws.removeAllListeners('message');
+    const room = getRoom(code)!;
+    expect(room.getState().phase).toBe('roundEnd');
+    const nextDealer = room.getState().nextDealer;
+
+    expect(room.nextRound()).toBe(true);
+
+    const s = room.getState();
+    expect(s.phase).not.toBe('roundEnd');
+    expect(s.dealer).toBe(nextDealer);
+    expect(s.turn).toBe(nextDealer);
+    expect(s.players.every(p => p.scoreDelta === 0)).toBe(true);
+
+    // nextRound is a no-op once the round is live again.
+    expect(room.nextRound()).toBe(false);
+
+    for (const ws of sockets) ws.close();
+  }, 90_000);
 });
 
 // ---------------------------------------------------------------------------

@@ -20,6 +20,8 @@ export type ClientMsg =
   | { t: 'addBot'; difficulty: 'easy' | 'medium' }
   | { t: 'kickBot'; seat: Seat }
   | { t: 'startGame' }
+  | { t: 'nextRound' }
+  | { t: 'endMatch' }
   | { t: 'action'; action: GameAction };
 
 export type ServerMsg =
@@ -27,4 +29,5 @@ export type ServerMsg =
   | { t: 'lobby'; players: LobbyPlayer[]; canStart: boolean; isHost: boolean }
   | { t: 'view'; view: PlayerView; events: GameEvent[] }
   | { t: 'roundEnd'; results: RoundResult }
+  | { t: 'matchEnd' }
   | { t: 'error'; code: string; message: string };

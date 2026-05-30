@@ -776,7 +776,7 @@ Tag in code as `// TODO(rule):` so they're greppable.
 
 1. **Reconnection > 60s** — bot takeover is fine; revisit if it feels bad in playtest.
 2. **Host shutdown midgame** — server dies when host quits. Other players see disconnect. Acceptable for v1.
-3. **Match length** — none built in; show running totals across rounds; host clicks "End match".
+3. **Match length** — ✅ Done: host starts each next round (`nextRound`; dealer rotates to `nextDealer` via `startNextRound`) or ends the match (`endMatch` → `matchEnd`). Running totals accumulate client-side across rounds.
 4. **i18n** — English only in v1. Tile names use English + pinyin tooltips.
 5. **Spectators** — out of v1. Architecture allows: a "view-only" token subscribing to a generic public view (no player hand exposed).
 6. **Flower Pig house rule** — ✅ Done: opt-in `enableFlowerPig` config (default off); a non-Hu player ending with all 3 suits pays each opponent `2^fanCap`. See §5.9.

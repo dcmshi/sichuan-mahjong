@@ -144,6 +144,7 @@ export function createGame(
   seed: string,
   playerInits: [PlayerInit, PlayerInit, PlayerInit, PlayerInit],
   config: Partial<GameConfig> = {},
+  dealer: Seat = 0,
 ): GameState {
   const cfg: GameConfig = { ...DEFAULT_CONFIG, ...config };
   const wall = buildWall(seed);
@@ -152,13 +153,13 @@ export function createGame(
     makePlayer(i as Seat, p.name, p.isBot),
   ) as [PlayerState, PlayerState, PlayerState, PlayerState];
 
-  // Deal 13 tiles to each player; East (seat 0) gets a 14th
+  // Deal 13 tiles to each player; the dealer gets a 14th
   let idx = 0;
   for (let i = 0; i < 4; i++) {
     players[i]!.hand = sortTiles(wall.slice(idx, idx + 13));
     idx += 13;
   }
-  players[0]!.hand = sortTiles([...players[0]!.hand, wall[idx]!]);
+  players[dealer]!.hand = sortTiles([...players[dealer]!.hand, wall[idx]!]);
   idx += 1;
 
   const phase: Phase = cfg.enableHuanSanZhang ? 'huan' : 'voidDeclare';
@@ -171,8 +172,8 @@ export function createGame(
     drawIndex: idx,
     kongDrawIndex: 107,
     players,
-    dealer: 0,
-    turn: 0,
+    dealer,
+    turn: dealer,
     turnNumber: 0,
     firstTurnDone: [false, false, false, false],
     lastDiscard: null,
@@ -193,6 +194,18 @@ export function createGame(
     history: [],
     startedAt: Date.now(),
   };
+}
+
+/**
+ * Begin a fresh round in the same match: same players/config, new wall, and the
+ * dealer rotated to `prev.nextDealer` (computed at the previous round's end).
+ * Per-round score deltas reset to 0; cumulative match totals are tracked client-side.
+ */
+export function startNextRound(prev: GameState, seed: string): GameState {
+  const inits = prev.players.map(p => ({ name: p.name, isBot: p.isBot })) as [
+    PlayerInit, PlayerInit, PlayerInit, PlayerInit,
+  ];
+  return createGame(seed, inits, prev.config, prev.nextDealer);
 }
 
 export function huPlayerCount(state: GameState): number {

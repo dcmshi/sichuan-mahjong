@@ -3,6 +3,7 @@ import type { WebSocket } from '@fastify/websocket';
 import {
   applyAction,
   createGame,
+  startNextRound,
   projectView,
   DEFAULT_CONFIG,
 } from '@sichuan-mahjong/engine';
@@ -54,6 +55,24 @@ export class GameRoom {
   start(): void {
     this.started = true;
     this.afterStateChange([]);
+  }
+
+  /** Host-triggered: begin the next round of the match. Only valid at round end. */
+  nextRound(): boolean {
+    if (this.state.phase !== 'roundEnd') return false;
+    if (this.claimWindowTimer !== null) {
+      clearTimeout(this.claimWindowTimer);
+      this.claimWindowTimer = null;
+    }
+    this.state = startNextRound(this.state, randomUUID());
+    this.afterStateChange([]);
+    return true;
+  }
+
+  /** Host-triggered: end the match — notify clients and tear down the room. */
+  endMatch(): void {
+    for (const [, ws] of this.connections) this.send(ws, { t: 'matchEnd' });
+    deleteRoom(this.code);
   }
 
   // -------------------------------------------------------------------------
