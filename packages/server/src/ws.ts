@@ -1,13 +1,29 @@
 import type { FastifyInstance } from 'fastify';
 import type { WebSocket } from '@fastify/websocket';
 import type { Seat, ClientMsg, ServerMsg, LobbyPlayer } from '@sichuan-mahjong/engine';
-import { getLobby, findOpenSeat, canStart } from './lobby.js';
+import { getLobby, deleteLobby, findOpenSeat, canStart } from './lobby.js';
 import { issueToken, resolveToken } from './tokens.js';
-import { getRoom, createRoom } from './room.js';
+import { getRoom, createRoom, GameRoom } from './room.js';
 import type { RoomSlot } from './room.js';
 
 function send(ws: WebSocket, msg: ServerMsg): void {
   if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(msg));
+}
+
+/** Parse a raw WS frame into a ClientMsg, or null if malformed. */
+function parseClientMsg(raw: Buffer): ClientMsg | null {
+  try { return JSON.parse(raw.toString()) as ClientMsg; }
+  catch { return null; }
+}
+
+/** Bind a socket to in-game message routing for `seat` (used on join, start, and reconnect). */
+function bindGameSocket(socket: WebSocket, room: GameRoom, seat: Seat): void {
+  socket.removeAllListeners('message');
+  socket.on('message', (raw: Buffer) => {
+    const m = parseClientMsg(raw);
+    if (m) handleGameMessage(socket, room, seat, m);
+  });
+  socket.on('close', () => room.disconnect(seat));
 }
 
 // Active lobby WS connections: code → Map<seat, WebSocket>
@@ -28,6 +44,7 @@ function broadcastLobbyTo(code: string, hostToken: string): void {
     name: s?.name ?? '',
     isBot: s?.isBot ?? false,
     connected: s?.connected ?? false,
+    ...(s?.difficulty ? { difficulty: s.difficulty } : {}),
   }));
   const ready = canStart(lobby);
   for (const [s, ws] of conns) {
@@ -45,9 +62,8 @@ function broadcastLobbyTo(code: string, hostToken: string): void {
 function bindLobbySocket(socket: WebSocket, code: string, seat: Seat, isHost: boolean, hostToken: string): void {
   socket.removeAllListeners('message');
   socket.on('message', (raw: Buffer) => {
-    let msg: ClientMsg;
-    try { msg = JSON.parse(raw.toString()) as ClientMsg; } catch { return; }
-    handleLobbyMessage(socket, code, seat, isHost, msg, hostToken);
+    const msg = parseClientMsg(raw);
+    if (msg) handleLobbyMessage(socket, code, seat, isHost, msg, hostToken);
   });
   socket.on('close', () => {
     const conns = getLobbyConns(code);
@@ -97,12 +113,7 @@ export async function registerWsRoutes(app: FastifyInstance): Promise<void> {
             seat = data.seat;
             isHost = data.role === 'host';
             room.connect(seat, socket);
-            socket.on('message', (raw: Buffer) => {
-              let m: ClientMsg;
-              try { m = JSON.parse(raw.toString()) as ClientMsg; } catch { return; }
-              handleGameMessage(socket, room, seat!, m);
-            });
-            socket.on('close', () => room.disconnect(seat!));
+            bindGameSocket(socket, room, seat);
             return;
           }
           // No room yet → lobby phase. If this token already owns a lobby slot,
@@ -130,9 +141,8 @@ export async function registerWsRoutes(app: FastifyInstance): Promise<void> {
 
       // Lobby phase handler (seat assigned on 'join' message)
       socket.on('message', (raw: Buffer) => {
-        let msg: ClientMsg;
-        try { msg = JSON.parse(raw.toString()) as ClientMsg; }
-        catch { return; }
+        const msg = parseClientMsg(raw);
+        if (!msg) return;
 
         if (msg.t === 'join') {
           if (seat !== null) {
@@ -207,6 +217,7 @@ function handleLobbyMessage(
         name: s?.name ?? 'Bot',
         isBot: s?.isBot ?? true,
         connected: s?.connected ?? false,
+        difficulty: s?.difficulty ?? 'easy',
       }));
 
       const room = createRoom(code, slots);
@@ -216,17 +227,12 @@ function handleLobbyMessage(
       if (conns) {
         for (const [s, conn] of conns) {
           room.connect(s, conn);
-          conn.removeAllListeners('message');
-          const thisSeat = s;
-          conn.on('message', (raw: Buffer) => {
-            let m: ClientMsg;
-            try { m = JSON.parse(raw.toString()) as ClientMsg; } catch { return; }
-            handleGameMessage(conn, room, thisSeat, m);
-          });
-          conn.on('close', () => room.disconnect(thisSeat));
+          bindGameSocket(conn, room, s);
         }
         lobbyConnections.delete(code);
       }
+      // The lobby is consumed once the game starts; reconnects now go to the room.
+      deleteLobby(code);
 
       room.start();
       break;
@@ -238,8 +244,10 @@ function handleLobbyMessage(
       if (!lobby) return;
       const open = findOpenSeat(lobby);
       if (open === null) { send(_ws, { t: 'error', code: 'lobby_full', message: 'No open seats.' }); return; }
+      const difficulty = msg.t === 'addBot' ? msg.difficulty : 'easy';
       const botToken = issueToken(code, open, 'player');
-      lobby.slots[open] = { name: `Bot ${open + 1}`, isBot: true, token: botToken, connected: true };
+      const label = difficulty === 'medium' ? 'Bot (Hard)' : `Bot ${open + 1}`;
+      lobby.slots[open] = { name: label, isBot: true, token: botToken, connected: true, difficulty };
       broadcastLobbyTo(code, hostToken);
       break;
     }
@@ -248,7 +256,7 @@ function handleLobbyMessage(
       if (!isHost) { send(_ws, { t: 'error', code: 'not_host', message: 'Only the host can kick bots.' }); return; }
       const lobby = getLobby(code);
       if (!lobby) return;
-      const kickSeat = (msg as { t: 'kickBot'; seat: Seat }).seat;
+      const kickSeat = msg.seat;
       const slot = lobby.slots[kickSeat];
       if (!slot?.isBot) { send(_ws, { t: 'error', code: 'not_bot', message: 'That seat is not a bot.' }); return; }
       lobby.slots[kickSeat] = null;
@@ -274,7 +282,7 @@ function handleLobbyMessage(
 
 function handleGameMessage(
   _ws: WebSocket,
-  room: InstanceType<typeof import('./room.js').GameRoom>,
+  room: GameRoom,
   seat: Seat,
   msg: ClientMsg,
 ): void {

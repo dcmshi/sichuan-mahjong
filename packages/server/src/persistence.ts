@@ -61,23 +61,6 @@ export type GameRecord = {
   results: RoundResult;
 };
 
-export function saveGame(state: GameState, results: RoundResult): number {
-  const database = getDb();
-  const stmt = database.prepare(
-    'INSERT INTO games (code, seed, config_json, started_at, ended_at, action_log, results) VALUES (?, ?, ?, ?, ?, ?, ?)',
-  );
-  const info = stmt.run(
-    state.seed,           // using seed as code fallback; room passes real code
-    state.seed,
-    JSON.stringify(state.config),
-    state.startedAt,
-    Date.now(),
-    JSON.stringify(state.history),
-    JSON.stringify(results),
-  ) as { lastInsertRowid: number | bigint };
-  return Number(info.lastInsertRowid);
-}
-
 export function saveGameWithCode(
   code: string,
   state: GameState,

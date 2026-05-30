@@ -482,6 +482,25 @@ describe('Live-room resume', () => {
     expect(restored.getLobbyPlayers().every(p => !p.connected)).toBe(true);
   });
 
+  it('endMatch tears down the room and revokes its tokens', async () => {
+    const { createRoom, getRoom } = await import('../src/room.js');
+    const { issueToken, resolveToken } = await import('../src/tokens.js');
+    const tok = issueToken('ENDM', 0, 'host');
+    const room = createRoom('ENDM', [
+      { name: 'Host', isBot: false, connected: false },
+      { name: 'Bot 2', isBot: true, connected: false },
+      { name: 'Bot 3', isBot: true, connected: false },
+      { name: 'Bot 4', isBot: true, connected: false },
+    ]);
+    room.start();
+    expect(getRoom('ENDM')).toBeDefined();
+    expect(resolveToken(tok)).toBeDefined();
+
+    room.endMatch();
+    expect(getRoom('ENDM')).toBeUndefined();   // room removed from registry
+    expect(resolveToken(tok)).toBeUndefined(); // tokens revoked
+  });
+
   it('restoreRoomsFromDisk recreates rooms and re-registers tokens', async () => {
     const persistence = await import('../src/persistence.js');
     const { GameRoom, restoreRoomsFromDisk, getRoom } = await import('../src/room.js');

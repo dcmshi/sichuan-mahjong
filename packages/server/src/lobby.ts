@@ -16,6 +16,7 @@ export type LobbySlot = {
   isBot: boolean;
   token: string;
   connected: boolean;
+  difficulty?: 'easy' | 'medium';
 };
 
 export type Lobby = {

@@ -23,6 +23,13 @@ export function revokeToken(token: string): void {
   store.delete(token);
 }
 
+/** Drop every token belonging to a lobby/room code (called on teardown). */
+export function revokeTokensForCode(code: string): void {
+  for (const [token, data] of store) {
+    if (data.code === code) store.delete(token);
+  }
+}
+
 /** All issued tokens belonging to a lobby/room code (for snapshotting). */
 export function tokensForCode(code: string): Array<{ token: string } & TokenData> {
   const result: Array<{ token: string } & TokenData> = [];

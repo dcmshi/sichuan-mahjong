@@ -7,6 +7,7 @@ export type LobbyPlayer = {
   name: string;
   isBot: boolean;
   connected: boolean;
+  difficulty?: 'easy' | 'medium';
 };
 
 export type RoundResult = {

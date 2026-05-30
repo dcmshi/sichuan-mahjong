@@ -3,10 +3,8 @@ import { fileURLToPath } from 'node:url';
 import { existsSync } from 'node:fs';
 import type { FastifyInstance } from 'fastify';
 import fastifyStatic from '@fastify/static';
-import { createLobby, getLobby, canStart, findOpenSeat } from './lobby.js';
+import { createLobby, getLobby, canStart } from './lobby.js';
 import { issueToken, resolveToken } from './tokens.js';
-import { createRoom, getRoom } from './room.js';
-import type { RoomSlot } from './room.js';
 import { getGame } from './persistence.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -68,24 +66,4 @@ export async function registerHttpRoutes(app: FastifyInstance): Promise<void> {
     const code = req.params.code.toUpperCase();
     return reply.redirect(`/?code=${code}`);
   });
-}
-
-// Called by ws.ts after a lobby is full and host sends startGame
-export function startGame(code: string): boolean {
-  const lobby = getLobby(code);
-  if (!lobby || lobby.started || !canStart(lobby)) return false;
-  lobby.started = true;
-
-  const slots: RoomSlot[] = lobby.slots.map(s => ({
-    name: s?.name ?? 'Bot',
-    isBot: s?.isBot ?? true,
-    connected: s?.connected ?? false,
-  }));
-
-  createRoom(code, slots);
-  return true;
-}
-
-export function getOrCreateOpenLobby(_hostToken: string, code: string): ReturnType<typeof getLobby> {
-  return getLobby(code);
 }

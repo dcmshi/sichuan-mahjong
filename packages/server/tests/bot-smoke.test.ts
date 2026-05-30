@@ -5,7 +5,11 @@ import {
   DEFAULT_CONFIG,
 } from '@sichuan-mahjong/engine';
 import type { GameState, GameAction, Seat, PlayerInit } from '@sichuan-mahjong/engine';
-import { botHuanAction, botVoidAction, botTurnAction, botClaimAction } from '../src/bot.js';
+import {
+  botHuanAction, botVoidAction,
+  botTurnAction, botClaimAction,
+  botTurnActionMedium, botClaimActionMedium,
+} from '../src/bot.js';
 
 const NUM_GAMES = 100;
 const MAX_ITER = 15_000;
@@ -17,7 +21,9 @@ const PLAYERS: [PlayerInit, PlayerInit, PlayerInit, PlayerInit] = [
   { name: 'Bot3', isBot: true },
 ];
 
-function runGame(seed: string): GameState {
+function runGame(seed: string, difficulty: 'easy' | 'medium' = 'easy'): GameState {
+  const turnFn = difficulty === 'medium' ? botTurnActionMedium : botTurnAction;
+  const claimFn = difficulty === 'medium' ? botClaimActionMedium : botClaimAction;
   let state = createGame(seed, PLAYERS, { ...DEFAULT_CONFIG, claimWindowMs: 0 });
   let iter = 0;
 
@@ -48,7 +54,7 @@ function runGame(seed: string): GameState {
           const seat = s as Seat;
           if (seat === w.from) continue;
           if (!w.passed[seat] && w.claims[seat] === null) {
-            action = botClaimAction(state, seat);
+            action = claimFn(state, seat);
             allDecided = false;
             break;
           }
@@ -59,7 +65,7 @@ function runGame(seed: string): GameState {
       } else if (state.turnDrawNeeded) {
         action = { t: 'draw', seat: state.turn };
       } else {
-        action = botTurnAction(state, state.turn);
+        action = turnFn(state, state.turn);
       }
     }
 
@@ -94,5 +100,13 @@ describe('bot smoke test', () => {
 
     // At least some Hus across 100 games (highly likely)
     expect(totalHus).toBeGreaterThan(0);
+  }, 120_000);
+
+  it('runs medium-bot games without rule violations or balance errors', () => {
+    for (let g = 0; g < 30; g++) {
+      const state = runGame(`smoke-medium-${g}`, 'medium');
+      const totalDelta = state.players.reduce((sum, p) => sum + p.scoreDelta, 0);
+      expect(totalDelta + state.penaltyPot, `medium game ${g}: payment balance`).toBe(0);
+    }
   }, 120_000);
 });

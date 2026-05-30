@@ -18,9 +18,13 @@ import type {
   ServerMsg,
   RoundResult,
 } from '@sichuan-mahjong/engine';
-import { botHuanAction, botVoidAction, botTurnAction, botClaimAction } from './bot.js';
+import {
+  botHuanAction, botVoidAction,
+  botTurnAction, botClaimAction,
+  botTurnActionMedium, botClaimActionMedium,
+} from './bot.js';
 import { saveGameWithCode, saveLiveRoom, loadLiveRooms, deleteLiveRoom } from './persistence.js';
-import { tokensForCode, importToken } from './tokens.js';
+import { tokensForCode, importToken, revokeTokensForCode } from './tokens.js';
 
 const RECONNECT_TIMEOUT_MS = 60_000;
 const BOT_THINK_MS = 150;
@@ -30,6 +34,7 @@ export type RoomSlot = {
   name: string;
   isBot: boolean;
   connected: boolean;
+  difficulty?: 'easy' | 'medium';
 };
 
 /** Serializable snapshot of a live room, persisted so the game survives a restart. */
@@ -101,8 +106,18 @@ export class GameRoom {
   /** Host-triggered: end the match — notify clients and tear down the room. */
   endMatch(): void {
     for (const [, ws] of this.connections) this.send(ws, { t: 'matchEnd' });
-    if (this.persistTimer !== null) { clearTimeout(this.persistTimer); this.persistTimer = null; }
+    for (const ws of this.spectators) this.send(ws, { t: 'matchEnd' });
+    this.teardownTimers();
+    this.spectators.clear();
     deleteRoom(this.code);
+  }
+
+  /** Clear all pending timers so a torn-down room leaves nothing scheduled. */
+  private teardownTimers(): void {
+    if (this.persistTimer !== null) { clearTimeout(this.persistTimer); this.persistTimer = null; }
+    if (this.claimWindowTimer !== null) { clearTimeout(this.claimWindowTimer); this.claimWindowTimer = null; }
+    for (const timer of this.disconnectTimers.values()) clearTimeout(timer);
+    this.disconnectTimers.clear();
   }
 
   // -------------------------------------------------------------------------
@@ -353,8 +368,9 @@ export class GameRoom {
     const player = this.state.players[seat];
     if (!player || player.status === 'hu') return;
 
+    const medium = this.slots[seat]?.difficulty === 'medium';
     setTimeout(() => {
-      const action = botTurnAction(this.state, seat);
+      const action = medium ? botTurnActionMedium(this.state, seat) : botTurnAction(this.state, seat);
       if (action !== null) this.applyAndPropagate(action);
     }, BOT_THINK_MS);
   }
@@ -369,9 +385,10 @@ export class GameRoom {
       if (window.passed[seat] || window.claims[seat] !== null) continue;
       if (!this.isBotOrOffline(seat)) continue;
 
+      const medium = this.slots[seat]?.difficulty === 'medium';
       setTimeout(() => {
         if (this.state.pendingClaims === null || this.state.pendingClaims.passed[seat]) return;
-        const action = botClaimAction(this.state, seat);
+        const action = medium ? botClaimActionMedium(this.state, seat) : botClaimAction(this.state, seat);
         this.applyAndPropagate(action);
       }, BOT_THINK_MS);
     }
@@ -476,6 +493,7 @@ export function getRoom(code: string): GameRoom | undefined {
 
 export function deleteRoom(code: string): void {
   rooms.delete(code);
+  revokeTokensForCode(code);
   try { deleteLiveRoom(code); } catch { /* best-effort */ }
 }
 
