@@ -95,6 +95,7 @@ const en: Dict = {
   'play.tapDiscard': 'Tap again to discard',
   'play.youWon': 'You won this round!',
   'play.loading': 'Loading game…',
+  'play.sort': 'Sort',
 
   'kong.concealed': 'concealed',
   'kong.promoted': 'promoted',
@@ -205,6 +206,7 @@ const zhHans: Dict = {
   'play.tapDiscard': '再次点击打出',
   'play.youWon': '你赢了这局！',
   'play.loading': '加载中…',
+  'play.sort': '理牌',
 
   'kong.concealed': '暗杠',
   'kong.promoted': '补杠',
@@ -315,6 +317,7 @@ const zhHant: Dict = {
   'play.tapDiscard': '再次點擊打出',
   'play.youWon': '你贏了這局！',
   'play.loading': '載入中…',
+  'play.sort': '理牌',
 
   'kong.concealed': '暗槓',
   'kong.promoted': '補槓',

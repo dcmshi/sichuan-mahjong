@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useEffect, useRef, useState } from 'react';
+import { motion, AnimatePresence, Reorder } from 'framer-motion';
 import { tileTypeOf, tileFromType } from '@sichuan-mahjong/engine';
 import type { PlayerView, TileId, Suit } from '@sichuan-mahjong/engine';
 import { useStore } from '../store/index.js';
@@ -288,6 +288,25 @@ function PlayPhase({ view }: { view: PlayerView }) {
   const play = useSound();
   const t = useT();
 
+  // Local hand arrangement: lets the player drag tiles to organise their hand.
+  // Reconciled against the server hand on every update — keep the custom order
+  // for tiles still held, drop discarded/claimed ones, append newly drawn tiles.
+  const hand = view.you.hand;
+  const [handOrder, setHandOrder] = useState<TileId[]>(() => [...hand]);
+  // Distinguish a tap (select/discard) from a drag (reorder) by pointer travel,
+  // since Framer's Reorder.Item preventDefaults pointerdown and eats onClick/onTap.
+  const tapStart = useRef<{ x: number; y: number } | null>(null);
+  useEffect(() => {
+    setHandOrder(prev => {
+      const inHand = new Set(hand);
+      const kept = prev.filter(id => inHand.has(id));
+      const keptSet = new Set(kept);
+      const added = hand.filter(id => !keptSet.has(id));
+      return [...kept, ...added];
+    });
+    // hand is a fresh array each server view; reconcile whenever it changes.
+  }, [hand]);
+
   const isMyTurn = view.turn === seat && view.phase === 'play' && view.claimDeadline === null;
   const canDiscard = isMyTurn && view.yourLegalActions.some(a => a.t === 'discard');
   const canHu = view.yourLegalActions.some(a => a.t === 'declareHuOnDraw');
@@ -445,21 +464,44 @@ function PlayPhase({ view }: { view: PlayerView }) {
         </div>
       )}
 
-      {/* Your hand */}
+      {/* Your hand — drag tiles to rearrange; Sort resets to the standard order */}
       <div className="px-3 py-2">
-        <div className="flex flex-wrap gap-1.5">
-          {view.you.hand.map(id => (
-            <div
-              key={id}
-              className={legalDiscards.has(id) ? '' : 'opacity-60'}
-            >
-              <Tile id={id} selected={selectedTile === id} onClick={handleTileTap} />
-            </div>
-          ))}
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-xs text-amber-300 h-4">
+            {selectedTile !== null ? t('play.tapDiscard') : ''}
+          </span>
+          <button
+            className="text-xs px-2 py-0.5 rounded-md bg-black/25 text-white/70 hover:text-white"
+            onClick={() => setHandOrder([...hand])}
+            title={t('play.sort')}
+          >
+            ⇅ {t('play.sort')}
+          </button>
         </div>
-        {selectedTile !== null && (
-          <p className="text-xs text-amber-300 mt-1 text-center">{t('play.tapDiscard')}</p>
-        )}
+        <Reorder.Group
+          axis="x"
+          values={handOrder}
+          onReorder={setHandOrder}
+          className="flex gap-1.5 overflow-x-auto pb-1 list-none"
+        >
+          {handOrder.map(id => (
+            <Reorder.Item
+              key={id}
+              value={id}
+              className={`shrink-0 ${legalDiscards.has(id) ? '' : 'opacity-60'}`}
+              onPointerDown={(e) => { tapStart.current = { x: e.clientX, y: e.clientY }; }}
+              onPointerUp={(e) => {
+                const s = tapStart.current;
+                tapStart.current = null;
+                // Treat as a tap (not a drag-to-reorder) only if the pointer barely moved.
+                if (s && Math.hypot(e.clientX - s.x, e.clientY - s.y) < 10) handleTileTap(id);
+              }}
+              whileDrag={{ scale: 1.08, zIndex: 10 }}
+            >
+              <Tile id={id} selected={selectedTile === id} interactive={false} />
+            </Reorder.Item>
+          ))}
+        </Reorder.Group>
         {view.you.status === 'hu' && (
           <motion.p
             initial={{ scale: 0 }}

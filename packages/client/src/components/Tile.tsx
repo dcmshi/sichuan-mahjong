@@ -18,9 +18,15 @@ export type TileProps = {
   lastDiscard?: boolean;
   onClick?: (id: TileId) => void;
   size?: 'sm' | 'md' | 'lg';
+  /**
+   * When false, the tile attaches no pointer/long-press handlers and is purely
+   * visual — used inside a draggable hand (Reorder.Item) where the parent owns
+   * the tap + drag gestures, so they don't fight the tile's own handlers.
+   */
+  interactive?: boolean;
 };
 
-export function Tile({ id, selected = false, lastDiscard = false, onClick, size = 'md' }: TileProps) {
+export function Tile({ id, selected = false, lastDiscard = false, onClick, size = 'md', interactive = true }: TileProps) {
   const { suit, rank } = tileFromType(tileTypeOf(id));
   const src = `/tiles/${suit}-${rank}.svg`;
   const [preview, setPreview] = useState(false);
@@ -30,6 +36,16 @@ export function Tile({ id, selected = false, lastDiscard = false, onClick, size 
     onClick ? () => onClick(id) : undefined,
   );
 
+  const pointerProps = interactive
+    ? {
+        onPointerDown: longPress.onPointerDown,
+        onPointerLeave: () => { longPress.onPointerLeave(); setPreview(false); },
+        onPointerCancel: () => { longPress.onPointerCancel(); setPreview(false); },
+        onPointerUp: () => { longPress.onPointerUp(); setPreview(false); },
+        onClick: onClick ? () => { if (!longPress.pointerHandledRef.current) onClick(id); } : undefined,
+      }
+    : {};
+
   return (
     <>
       <motion.div
@@ -38,17 +54,13 @@ export function Tile({ id, selected = false, lastDiscard = false, onClick, size 
           SIZE_CLASSES[size],
           selected ? 'is-selected' : '',
           lastDiscard ? 'tile-last-discard' : '',
-          onClick ? 'cursor-pointer' : 'cursor-default',
+          interactive && onClick ? 'cursor-pointer' : 'cursor-default',
         ].filter(Boolean).join(' ')}
         animate={{ y: selected ? -10 : 0 }}
-        {...(onClick ? { whileHover: { y: selected ? -10 : -3 }, whileTap: { scale: 0.93 } } : {})}
+        {...(interactive && onClick ? { whileHover: { y: selected ? -10 : -3 }, whileTap: { scale: 0.93 } } : {})}
         transition={{ type: 'spring', stiffness: 500, damping: 22 }}
         title={`${suit}-${rank}`}
-        onPointerDown={longPress.onPointerDown}
-        onPointerLeave={() => { longPress.onPointerLeave(); setPreview(false); }}
-        onPointerCancel={() => { longPress.onPointerCancel(); setPreview(false); }}
-        onPointerUp={() => { longPress.onPointerUp(); setPreview(false); }}
-        onClick={onClick ? () => { if (!longPress.pointerHandledRef.current) onClick(id); } : undefined}
+        {...pointerProps}
       >
         <img src={src} alt={`${suit}-${rank}`} className="tile-face" draggable={false} />
       </motion.div>
