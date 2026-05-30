@@ -1,4 +1,4 @@
-/** E2E: host + 3 bots, play TWO full rounds (multi-round), then End Match. */
+/** E2E: Practice mode (vs 3 bots) — play TWO full rounds (multi-round), then End Match. */
 import { test, expect } from '@playwright/test';
 
 const BASE = 'http://localhost:8080';
@@ -39,31 +39,29 @@ async function playToRoundEnd(page: import('@playwright/test').Page, g: ReturnTy
 test('two-round match vs bots, then end match', async ({ page }) => {
   await page.setViewportSize({ width: 420, height: 820 });
   await page.goto(BASE);
-  await page.click('text=Host a Game');
-  await page.fill('input[placeholder="Your name"]', 'TestHost');
-  await page.click('text=Create Lobby');
-  await expect(page.locator('text=/^[A-HJ-NP-Z2-9]{4}$/')).toBeVisible({ timeout: 10_000 });
-  for (let i = 0; i < 3; i++) { await page.click('text=+ Bot'); await page.waitForTimeout(250); }
-  await expect(page.locator('text=Start Game')).toBeEnabled({ timeout: 10_000 });
-  await page.click('text=Start Game');
+
+  // Practice mode creates the lobby, adds 3 bots, and starts — all server-side
+  // in one flow (no manual addBot clicks / lobby reconnect race). The practice
+  // host is seat 0, so the host-only Next Round / End Match controls apply.
+  await page.click('text=Practice (vs Bots)');
+  await page.waitForFunction(() => (window as unknown as { __e2e: E2E }).__e2e.getScreen() === 'game', null, { timeout: 20_000 });
 
   const g = e2e(page);
 
-  // ── Round 1 ──
+  // ── Round 1 ── (wait on store screen, not DOM text — language-independent)
   await playToRoundEnd(page, g);
-  await expect(page.locator('text=Round End')).toBeVisible({ timeout: 10_000 });
+  await page.waitForFunction(() => (window as unknown as { __e2e: E2E }).__e2e.getScreen() === 'roundEnd', null, { timeout: 10_000 });
   await page.screenshot({ path: 'test-results/match-round1-end.png' });
 
   // ── Next Round → Round 2 ──
   await page.click('text=Next Round');
   await page.waitForTimeout(500);
   await playToRoundEnd(page, g);
-  await expect(page.locator('text=Round End')).toBeVisible({ timeout: 10_000 });
-  // Match total should be visible after 2 rounds.
+  await page.waitForFunction(() => (window as unknown as { __e2e: E2E }).__e2e.getScreen() === 'roundEnd', null, { timeout: 10_000 });
   await expect(page.locator('text=Match Total')).toBeVisible({ timeout: 5_000 });
   await page.screenshot({ path: 'test-results/match-round2-end.png' });
 
   // ── End Match → back to landing ──
   await page.click('text=End Match');
-  await expect(page.locator('text=Host a Game')).toBeVisible({ timeout: 10_000 });
+  await page.waitForFunction(() => (window as unknown as { __e2e: E2E }).__e2e.getScreen() === 'landing', null, { timeout: 10_000 });
 });
