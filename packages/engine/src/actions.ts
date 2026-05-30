@@ -84,6 +84,7 @@ export type GameEvent =
   | { e: 'buTingPayout'; from: Seat; to: Seat; amount: number }
   | { e: 'voidPenalty'; seat: Seat; amount: number }
   | { e: 'voidMeldPenalty'; seat: Seat; amount: number }
+  | { e: 'flowerPig'; from: Seat; to: Seat; amount: number }
   | { e: 'falseHu'; seat: Seat }
   | { e: 'falseHuPayment'; from: Seat; to: Seat; amount: number }
   | { e: 'roundEnd'; reason: 'wallExhausted' | 'threeHu' };
@@ -165,6 +166,22 @@ function nextActiveSeat(state: GameState, from: Seat): Seat {
 // ---------------------------------------------------------------------------
 // Payment helpers
 // ---------------------------------------------------------------------------
+
+/** Number of distinct suits a player holds across concealed hand + melds. */
+function playerSuitCount(p: GameState['players'][number]): number {
+  const suits = new Set<Suit>();
+  for (const t of p.hand) suits.add(suitOf(t));
+  for (const m of p.melds) {
+    if (m.kind === 'chow') {
+      suits.add(m.tiles[0].suit);
+      suits.add(m.tiles[1].suit);
+      suits.add(m.tiles[2].suit);
+    } else {
+      suits.add(m.tile.suit);
+    }
+  }
+  return suits.size;
+}
 
 /** Pay `amount` from `from` to `to`, mutating scoreDelta. */
 function pay(s: GameState, from: Seat, to: Seat, amount: number): void {
@@ -286,6 +303,23 @@ function settleRound(s: GameState): GameEvent[] {
       p.scoreDelta -= 48;
       s.penaltyPot += 48;
       events.push({ e: 'voidPenalty', seat: p.seat, amount: 48 });
+    }
+  }
+
+  // Flower Pig (花猪) house rule: a non-Hu player ending with all 3 suits across
+  // hand + melds pays each other player 2^fanCap (redistributive). Unreachable in
+  // strict mode under normal play (void suit is fully cleared and never melded).
+  if (s.config.enableFlowerPig) {
+    const amount = 2 ** s.config.fanCap;
+    for (const p of s.players) {
+      if (p.status === 'hu') continue;
+      if (playerSuitCount(p) < 3) continue;
+      for (let i = 0; i < 4; i++) {
+        const to = i as Seat;
+        if (to === p.seat) continue;
+        pay(s, p.seat, to, amount);
+        events.push({ e: 'flowerPig', from: p.seat, to, amount });
+      }
     }
   }
 

@@ -11,6 +11,7 @@ export type GameConfig = {
   enableRobbingKong: boolean;
   enableHeavenlyEarthly: boolean;
   voidDiscardRule: 'strict' | 'lenient';
+  enableFlowerPig: boolean;
   fanCap: number;
   claimWindowMs: number;
 };
@@ -21,6 +22,7 @@ export const DEFAULT_CONFIG: GameConfig = {
   enableRobbingKong: true,
   enableHeavenlyEarthly: true,
   voidDiscardRule: 'strict',
+  enableFlowerPig: false,
   fanCap: 3,
   claimWindowMs: 3000,
 };

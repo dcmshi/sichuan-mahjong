@@ -152,3 +152,14 @@ Current status: **All phases complete** — engine, server, client, bots, persis
 
 - [x] GitHub Actions: lint → typecheck → vitest → build → package smoke
 - [x] Add Playwright e2e step to CI — installs chromium then runs `pnpm e2e` after build steps
+
+---
+
+## Post-v1 features (former §12 deferrals)
+
+- [x] Flower Pig (花猪) house rule — opt-in `enableFlowerPig`; non-Hu player ending with all 3 suits pays each opponent `2^fanCap`
+- [ ] Multi-round / "End Match" — server starts next round (dealer = `nextDealer`), host controls
+- [ ] Reconnection > 60s reclaim — reconnected human reclaims seat at next round
+- [ ] Spectators — view-only token + hand-hiding projection + read-only board
+- [ ] i18n — en / 简体 / 繁體 string catalog + toggle
+- [ ] _Deferred (justified):_ host-shutdown live-state resume; Tailscale node-sharing automation

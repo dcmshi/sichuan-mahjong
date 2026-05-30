@@ -851,3 +851,113 @@ describe('Phase 4 — void-meld penalty', () => {
     expect(result.state.penaltyPot).toBe(0);
   });
 });
+
+// ─── Flower Pig house rule ────────────────────────────────────────────────────
+
+describe('Phase 4 — Flower Pig (花猪) house rule', () => {
+  // A 13-tile junk hand spanning all 3 suits, clearly non-tenpai.
+  const threeSuitJunk = (): TileId[] => [
+    tid(M(1),0), tid(M(2),0), tid(M(4),0), tid(M(7),0), tid(M(9),0),
+    tid(P(2),0), tid(P(4),0), tid(P(5),0), tid(P(8),0),
+    tid(S(1),0), tid(S(3),0), tid(S(6),0), tid(S(9),0),
+  ];
+
+  function settleViaHu(config: Partial<typeof DEFAULT_CONFIG>) {
+    // Seat 0 wins on draw at wall end → round ends, settlement runs for non-Hu.
+    // Seat 1 holds all 3 suits (flower pig); seats 2/3 empty.
+    const s = makeState({
+      hands: [winHand(), threeSuitJunk(), [], []],
+      voidedSuit: 'man',         // seat 0's winHand is all pin → valid win
+      wallEndReached: true,
+      config,
+    });
+    const r = applyAction(s, { t: 'declareHuOnDraw', seat: 0 });
+    if (!r.ok) throw new Error(`declareHuOnDraw failed: ${r.reason}`);
+    return r;
+  }
+
+  it('non-Hu player with all 3 suits pays each opponent 2^fanCap when enabled', () => {
+    const r = settleViaHu({ enableFlowerPig: true, voidDiscardRule: 'strict' });
+    expect(r.state.phase).toBe('roundEnd');
+
+    const amount = 2 ** DEFAULT_CONFIG.fanCap; // 8
+    const pigEvents = r.events.filter(e => e.e === 'flowerPig');
+    expect(pigEvents.length).toBe(3); // seat 1 pays seats 0, 2, 3
+    for (const e of pigEvents) {
+      expect((e as { from: Seat }).from).toBe(1);
+      expect((e as { amount: number }).amount).toBe(amount);
+    }
+    expect(pigEvents.map(e => (e as { to: Seat }).to).sort()).toEqual([0, 2, 3]);
+
+    // Payment-matrix balance still holds.
+    const total = r.state.players.reduce((sum, p) => sum + p.scoreDelta, 0) + r.state.penaltyPot;
+    expect(total).toBe(0);
+  });
+
+  it('does not fire when disabled (default)', () => {
+    const r = settleViaHu({ enableFlowerPig: false, voidDiscardRule: 'strict' });
+    expect(r.state.phase).toBe('roundEnd');
+    expect(r.events.some(e => e.e === 'flowerPig')).toBe(false);
+  });
+
+  // Minimal strict-mode game runner (greedy: clear void suit, else discard first).
+  function runStrictGame(seed: string): GameState {
+    let state = createGame(
+      seed,
+      [
+        { name: 'P0', isBot: true }, { name: 'P1', isBot: true },
+        { name: 'P2', isBot: true }, { name: 'P3', isBot: true },
+      ],
+      { enableHuanSanZhang: false, voidDiscardRule: 'strict', enableFlowerPig: true },
+    );
+    for (let i = 0; i < 4; i++) {
+      const seat = i as Seat;
+      const player = state.players[seat]!;
+      const counts: Record<string, number> = { man: 0, pin: 0, sou: 0 };
+      for (const t of player.hand) counts[suitOf(t)]!++;
+      const voidSuit = (['man', 'pin', 'sou'] as const).reduce((a, b) => (counts[a]! <= counts[b]! ? a : b));
+      const firstDiscard = player.hand.find(t => suitOf(t) === voidSuit) ?? null;
+      state = applyOk(state, { t: 'declareVoid', seat, suit: voidSuit, firstDiscard });
+    }
+    let safety = 15_000;
+    while (state.phase === 'play') {
+      if (--safety <= 0) throw new Error('safety limit reached');
+      if (state.pendingClaims !== null) { state = applyOk(state, { t: 'claimWindowExpire' }); continue; }
+      const seat = state.turn;
+      const isEastFirstTurn = seat === state.dealer && !state.firstTurnDone[seat];
+      if (!isEastFirstTurn && state.turnDrawNeeded) {
+        state = applyOk(state, { t: 'draw', seat });
+        if (state.phase !== 'play') break;
+      }
+      if (state.pendingClaims !== null) continue;
+      const cur = state.players[seat]!;
+      if (isWinningHand(cur.hand, cur.melds, cur.voidedSuit)) {
+        const hr = applyAction(state, { t: 'declareHuOnDraw', seat });
+        if (hr.ok) { state = hr.state; continue; }
+      }
+      const voidTiles = cur.hand.filter(t => suitOf(t) === cur.voidedSuit);
+      const tile = voidTiles.length > 0 ? voidTiles[0]! : cur.hand[0]!;
+      state = applyOk(state, { t: 'discard', seat, tile });
+    }
+    return state;
+  }
+
+  it('unreachable under normal strict-mode play', () => {
+    // With strict void clearing and no void-suit melds, no non-Hu player can end
+    // holding all 3 suits — so the rule never fires even when enabled.
+    for (const seed of ['flowerpig-1', 'flowerpig-2', 'flowerpig-3']) {
+      const final = runStrictGame(seed);
+      expect(final.phase).toBe('roundEnd');
+      for (const p of final.players) {
+        if (p.status === 'hu') continue;
+        const suits = new Set<string>();
+        for (const t of p.hand) suits.add(suitOf(t));
+        for (const m of p.melds) {
+          if (m.kind === 'chow') for (const mt of m.tiles) suits.add(mt.suit);
+          else suits.add(m.tile.suit);
+        }
+        expect(suits.size).toBeLessThan(3);
+      }
+    }
+  });
+});

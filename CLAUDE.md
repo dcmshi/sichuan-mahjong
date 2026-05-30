@@ -69,5 +69,4 @@ deliberate v1 scope cuts, not unfinished work — see [ARCHITECTURE.md §12](./A
 - Match length / "End match" structure (only running totals today)
 - i18n (English only)
 - Spectators (architecture allows; not built)
-- Flower Pig house rule (~15 lines in `scoring.ts` if added; see §5.9)
 - Tailscale node-sharing automation (manual via admin console)

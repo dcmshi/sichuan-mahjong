@@ -511,7 +511,7 @@ These two penalties stack independently; the same player can incur both.
 
 These are mutually independent paths; the engine applies each at its trigger point and the refunds accumulate into the final score deltas.
 
-**Flower Pig (花猪) house rule — DEFERRED, not in v1.** The PDF does not have a separate Flower Pig mechanic; the canonical "treated as no-wait + 48 penalty for void at wall end" covers the same player misbehavior. Casual online apps add a Flower Pig rule (cap-fan to each opponent for ending with all 3 suits). With strict mode default, Flower Pig is mathematically unreachable anyway. If demand emerges, a `enableFlowerPig: boolean` config can be added later — ~15 lines in `scoring.ts`.
+**Flower Pig (花猪) house rule — implemented, opt-in.** The PDF does not have a separate Flower Pig mechanic; the canonical "treated as no-wait + 48 penalty for void at wall end" covers the same player misbehavior. Casual online apps add a Flower Pig rule (cap-fan to each opponent for ending with all 3 suits). Enabled via `config.enableFlowerPig` (default `false`): at round end, each non-Hu player whose hand + melds span all 3 suits pays every other player `2^fanCap` (redistributive; `flowerPig` event in `settleRound`). With strict mode default it is mathematically unreachable in normal play (the void suit is fully cleared and never melded), so it only bites in lenient mode.
 
 ### 5.10 Dealer rotation between rounds (per PDF page 22)
 
@@ -779,7 +779,7 @@ Tag in code as `// TODO(rule):` so they're greppable.
 3. **Match length** — none built in; show running totals across rounds; host clicks "End match".
 4. **i18n** — English only in v1. Tile names use English + pinyin tooltips.
 5. **Spectators** — out of v1. Architecture allows: a "view-only" token subscribing to a generic public view (no player hand exposed).
-6. **Flower Pig house rule** — deferred; see §5.9. ~15 lines in `scoring.ts` if added later.
+6. **Flower Pig house rule** — ✅ Done: opt-in `enableFlowerPig` config (default off); a non-Hu player ending with all 3 suits pays each opponent `2^fanCap`. See §5.9.
 7. **Tailscale node-sharing automation** — manual via admin console in v1. Tailscale's API can automate this; v2.
 8. **Set-with-void-suit meld penalty** — ✅ Done: 48-point deduction enforced on pung/kong/concealed-kong of voided suit (`voidMeldPenalty` event).
 9. **False-Hu detection** — ✅ Done: 8 pts/opponent redistributive penalty + kong refund on invalid draw-Hu or claim-window Hu.
