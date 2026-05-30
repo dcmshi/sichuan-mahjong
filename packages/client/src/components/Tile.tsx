@@ -4,11 +4,12 @@ import { tileTypeOf, tileFromType } from '@sichuan-mahjong/engine';
 import type { TileId } from '@sichuan-mahjong/engine';
 import { useLongPress } from '../hooks/useLongPress.js';
 
+// Width only — height comes from the tile's aspect-ratio (see .tile in index.css).
 const SIZE_CLASSES = {
-  sm: 'w-8 h-11',
-  md: 'w-10 h-14',
-  lg: 'w-14 h-20',
-  xl: 'w-20 h-28',
+  sm: 'w-8',
+  md: 'w-10',
+  lg: 'w-14',
+  xl: 'w-20',
 };
 
 export type TileProps = {
@@ -78,5 +79,9 @@ export function Tile({ id, selected = false, lastDiscard = false, onClick, size 
 }
 
 export function TileBack({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
-  return <div className={`tile tile-back overflow-hidden ${SIZE_CLASSES[size]}`} />;
+  return (
+    <div className={`tile ${SIZE_CLASSES[size]}`}>
+      <img src="/tiles/back.svg" alt="" className="tile-face" draggable={false} />
+    </div>
+  );
 }
