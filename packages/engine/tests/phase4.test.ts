@@ -961,3 +961,108 @@ describe('Phase 4 — Flower Pig (花猪) house rule', () => {
     }
   });
 });
+
+// ─── Wall-end blanket kong refund ──────────────────────────────────────────────
+
+describe('Phase 4 — wall-end blanket kong refund', () => {
+  // 14-tile non-winning hand that also holds a void-suit (sou) tile, so the player
+  // is treated as non-ready at wall end.
+  const junkWithSou = (): TileId[] => [
+    tid(S(1), 0), tid(M(1), 0), tid(M(3), 0), tid(M(5), 0), tid(M(7), 0),
+    tid(M(9), 0), tid(P(1), 0), tid(P(3), 0), tid(P(5), 0), tid(P(7), 0),
+    tid(P(9), 0), tid(M(2), 0), tid(M(4), 0), tid(M(6), 0),
+  ];
+
+  it("refunds a non-Hu, non-ready declarer's kong payments at wall end", () => {
+    let s = makeState({ hands: [junkWithSou(), [], [], []], wallEndReached: true, turn: 0 });
+    // Seat 0 declared a kong earlier; seat 1 paid 2 for it.
+    s.kongPaymentLog.push({ declarer: 0, kongSeq: 0, paidBy: 1, amount: 2, refunded: false });
+    s.players[0]!.scoreDelta = 2;
+    s.players[1]!.scoreDelta = -2;
+
+    // Wall-end discard (a non-sou tile) with no claimants → round end.
+    s = applyOk(s, { t: 'discard', seat: 0, tile: tid(M(1), 0) });
+    if (s.phase !== 'roundEnd') s = applyOk(s, { t: 'claimWindowExpire' });
+    expect(s.phase).toBe('roundEnd');
+
+    // The logged payment is marked refunded and reversed (declarer → payer).
+    expect(s.kongPaymentLog[0]!.refunded).toBe(true);
+    expect(s.players[0]!.scoreDelta).toBe(0); // gave the 2 back
+    expect(s.players[1]!.scoreDelta).toBe(0); // got the 2 back
+    // Payment-matrix balance holds.
+    expect(s.players.reduce((sum, p) => sum + p.scoreDelta, 0) + s.penaltyPot).toBe(0);
+  });
+
+  it('does NOT refund the kong of a ready declarer at wall end', () => {
+    // Seat 0 is tenpai (ready) — its kong payment must stand.
+    const readyHand: TileId[] = [
+      tid(P(1),0), tid(P(1),1), tid(P(1),2),
+      tid(P(2),0), tid(P(2),1), tid(P(2),2),
+      tid(P(3),0), tid(P(3),1), tid(P(3),2),
+      tid(M(2),0), tid(M(3),0), tid(M(4),0),
+      tid(M(1),0), tid(M(1),1),  // 14 tiles; discard one → tanki/ready
+    ];
+    let s = makeState({ hands: [readyHand, [], [], []], wallEndReached: true, turn: 0, voidedSuit: 'sou' });
+    s.kongPaymentLog.push({ declarer: 0, kongSeq: 0, paidBy: 1, amount: 2, refunded: false });
+
+    s = applyOk(s, { t: 'discard', seat: 0, tile: tid(M(1), 1) });
+    if (s.phase !== 'roundEnd') s = applyOk(s, { t: 'claimWindowExpire' });
+    expect(s.phase).toBe('roundEnd');
+
+    if (s.players[0]!.isReady) {
+      expect(s.kongPaymentLog[0]!.refunded).toBe(false); // ready → no wall-end refund
+    }
+    expect(s.players.reduce((sum, p) => sum + p.scoreDelta, 0) + s.penaltyPot).toBe(0);
+  });
+});
+
+// ─── Dealer rotation: multi-Hu on a single discard ─────────────────────────────
+
+describe('Phase 4 — dealer rotation on multi-Hu discard', () => {
+  it('when two players Hu the same discard, the discarder becomes next dealer', () => {
+    const winTile = tid(M(1), 0);
+    const junk: TileId[] = [
+      tid(S(1), 0), tid(M(3), 0), tid(M(5), 0), tid(M(7), 0), tid(M(9), 0),
+      tid(P(1), 0), tid(P(3), 0), tid(P(5), 0), tid(P(7), 0), tid(P(9), 0),
+      tid(M(2), 0), tid(M(4), 0), tid(M(6), 0), tid(M(8), 0),
+    ];
+    let s = makeState({ hands: [junk, [], [], []], wallEndReached: true, turn: 0 });
+
+    // Seats 1 & 2 already Hu'd seat 3's discard of winTile (recorded earlier this round).
+    const huRec = (seat: Seat) => ({
+      seat, subtype: 'normal' as const, fans: [], handValue: 2,
+      winningTile: winTile, byDiscard: true, discarder: 3 as Seat,
+    });
+    s.players[1]!.status = 'hu'; s.players[1]!.hu = huRec(1);
+    s.players[2]!.status = 'hu'; s.players[2]!.hu = huRec(2);
+    s.huOrder = [1, 2];
+
+    // Wall-end discard from seat 0 ends the round → settlement computes the dealer.
+    s = applyOk(s, { t: 'discard', seat: 0, tile: tid(M(3), 0) });
+    if (s.phase !== 'roundEnd') s = applyOk(s, { t: 'claimWindowExpire' });
+    expect(s.phase).toBe('roundEnd');
+
+    // Discarder (seat 3) deals next — NOT huOrder[0] (seat 1).
+    expect(s.nextDealer).toBe(3);
+  });
+
+  it('single first-Hu → that player deals next', () => {
+    const junk: TileId[] = [
+      tid(S(1), 0), tid(M(3), 0), tid(M(5), 0), tid(M(7), 0), tid(M(9), 0),
+      tid(P(1), 0), tid(P(3), 0), tid(P(5), 0), tid(P(7), 0), tid(P(9), 0),
+      tid(M(2), 0), tid(M(4), 0), tid(M(6), 0), tid(M(8), 0),
+    ];
+    let s = makeState({ hands: [junk, [], [], []], wallEndReached: true, turn: 0 });
+    s.players[2]!.status = 'hu';
+    s.players[2]!.hu = {
+      seat: 2, subtype: 'normal', fans: [], handValue: 2,
+      winningTile: tid(M(1), 0), byDiscard: false, discarder: null,
+    };
+    s.huOrder = [2];
+
+    s = applyOk(s, { t: 'discard', seat: 0, tile: tid(M(3), 0) });
+    if (s.phase !== 'roundEnd') s = applyOk(s, { t: 'claimWindowExpire' });
+    expect(s.phase).toBe('roundEnd');
+    expect(s.nextDealer).toBe(2); // the lone first winner
+  });
+});

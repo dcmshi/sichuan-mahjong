@@ -888,3 +888,42 @@ describe('Phase 3 — property tests', () => {
     ));
   });
 });
+
+// ─── Robbing-window eligibility ────────────────────────────────────────────────
+// A robbing window only admits seats that can genuinely Hu the kong tile
+// (autoPassIneligible forces pung/kong off when afterKong). This is why a
+// false-Hu inside a robbing window is unreachable: a non-winning seat is
+// auto-passed and never gets to claim.
+describe('Phase 3 — robbing window eligibility', () => {
+  it('a non-winning opponent cannot rob a promoted kong; the kong completes', () => {
+    const pungMeld: Meld = {
+      kind: 'pung', tile: tileFromType(M(3)), concealed: false, claimedFrom: 3,
+    };
+    const hand0 = [
+      tid(M(3), 3),  // 4th man3, just drawn → promoted kong
+      tid(P(1), 0), tid(P(2), 0), tid(P(3), 0), tid(P(4), 0),
+      tid(P(5), 0), tid(P(6), 0), tid(P(7), 0), tid(P(8), 0),
+      tid(P(9), 0), tid(M(2), 0),
+    ];
+    // Seat 1 holds real tiles but is NOT waiting on man3 → cannot rob.
+    const hand1 = [
+      tid(P(1), 1), tid(P(3), 1), tid(P(5), 1), tid(P(7), 1), tid(P(9), 1),
+      tid(M(1), 1), tid(M(2), 1), tid(M(4), 1), tid(M(5), 2), tid(M(7), 1),
+      tid(M(8), 1), tid(P(2), 1), tid(P(4), 1),
+    ];
+
+    let s = makeState({
+      hands: [hand0, hand1, [], []],
+      melds: [[pungMeld], [], [], []],
+      lastDrawnTile: tid(M(3), 3),
+    });
+
+    s = applyOk(s, { t: 'declareKongOnTurn', seat: 0, tile: tileFromType(M(3)), subtype: 'promoted' });
+
+    // No eligible robber → window auto-closes, kong completes, replacement drawn.
+    expect(s.pendingClaims).toBeNull();
+    expect(s.players[0]!.melds[0]!.kind).toBe('kong');
+    expect(s.lastDrawWasKongReplacement).toBe(true);
+    expect(s.players[1]!.status).toBe('playing'); // seat 1 did not (and could not) rob
+  });
+});
