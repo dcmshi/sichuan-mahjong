@@ -54,8 +54,10 @@ test('two-round match vs bots, then end match', async ({ page }) => {
   await page.screenshot({ path: 'test-results/match-round1-end.png' });
 
   // ── Next Round → Round 2 ──
+  // Wait until round 2 has actually started (screen leaves roundEnd → game)
+  // before playing it, otherwise we'd see the stale round-1 roundEnd and skip.
   await page.click('text=Next Round');
-  await page.waitForTimeout(500);
+  await page.waitForFunction(() => (window as unknown as { __e2e: E2E }).__e2e.getScreen() === 'game', null, { timeout: 15_000 });
   await playToRoundEnd(page, g);
   await page.waitForFunction(() => (window as unknown as { __e2e: E2E }).__e2e.getScreen() === 'roundEnd', null, { timeout: 10_000 });
   await expect(page.locator('text=Match Total')).toBeVisible({ timeout: 5_000 });
