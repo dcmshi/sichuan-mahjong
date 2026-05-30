@@ -5,6 +5,7 @@ export type CliOptions = {
   httpsPort: number;
   mdns: boolean;
   tailscale: boolean;
+  share: boolean;
   dataDir: string | null;
   help: boolean;
 };
@@ -19,6 +20,8 @@ Options:
   --https-port <n>    HTTPS port for Tailscale (default: 8443)
   --no-mdns           Disable mDNS broadcast
   --no-tailscale      Disable Tailscale detection
+  --share             Auto-create a Tailscale share invite for this node
+                      (needs TAILSCALE_API_KEY; optional TAILSCALE_TAILNET)
   --data-dir <path>   Override SQLite data directory
   --help              Show this message
 `.trim();
@@ -32,6 +35,7 @@ export function parseCli(argv = process.argv.slice(2)): CliOptions {
         'https-port': { type: 'string',  default: '8443' },
         'no-mdns':    { type: 'boolean', default: false },
         'no-tailscale': { type: 'boolean', default: false },
+        share:        { type: 'boolean', default: false },
         'data-dir':   { type: 'string' },
         help:         { type: 'boolean', default: false },
       },
@@ -48,6 +52,7 @@ export function parseCli(argv = process.argv.slice(2)): CliOptions {
       httpsPort:  parseInt(values['https-port'] as string, 10) || 8443,
       mdns:       !(values['no-mdns'] as boolean),
       tailscale:  !(values['no-tailscale'] as boolean),
+      share:      values.share as boolean,
       dataDir:    (values['data-dir'] as string) ?? null,
       help:       false,
     };

@@ -163,4 +163,4 @@ Current status: **All phases complete** — engine, server, client, bots, persis
 - [x] Spectators — view-only `?spectate=1` connection + hand-hiding projection + read-only board
 - [x] i18n — en / 简体 / 繁體 string catalog + toggle (persisted to localStorage)
 - [x] Host-shutdown live-state resume — snapshot rooms+tokens to SQLite, rehydrate on boot
-- [ ] Tailscale node-sharing automation — auto-create a device share invite via the Tailscale API
+- [x] Tailscale node-sharing automation — `--share` auto-creates a device invite via the Tailscale API

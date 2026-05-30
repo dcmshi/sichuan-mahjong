@@ -773,7 +773,8 @@ GitHub Actions: build engine → lint → typecheck → test (vitest) → build 
 
 ## 12. Open questions / explicit deferrals
 
-Tag in code as `// TODO(rule):` so they're greppable.
+All originally-deferred items below have since been implemented (✅). Kept here
+as a record of the decisions and where each landed.
 
 1. **Reconnection > 60s** — ✅ Done: bot takeover holds for the rest of the round; a reconnected human reclaims their seat at the next round (`GameRoom.nextRound` recomputes `isBot` from `isHumanSeat` + connection state). See §6.5.
 2. **Host shutdown midgame** — ✅ Done: in-progress rooms are snapshotted to SQLite (`live_rooms` table) — debounced on every state change and flushed on graceful shutdown (SIGINT/SIGTERM). On boot, `restoreRoomsFromDisk()` rehydrates each room and re-registers its tokens, so players reconnect with their saved token and resume; unconnected human seats arm the normal 60s bot-takeover so play never stalls. Snapshots are deleted on `endMatch`. (A hard crash loses at most the last ~1s of actions.)
@@ -781,7 +782,7 @@ Tag in code as `// TODO(rule):` so they're greppable.
 4. **i18n** — ✅ Done: UI strings externalized to a dependency-free catalog (`client/src/i18n/`) in English, Simplified Chinese (zh-Hans), and Traditional Chinese (zh-Hant), with an EN/简/繁 toggle persisted to `localStorage`. Tile faces stay glyph-based (language-neutral).
 5. **Spectators** — ✅ Done: connect to `/ws/:code?spectate=1` (no token/seat) to receive hand-hiding `spectate` views (`projectSpectatorView`); client has a read-only "Watch a Game" board.
 6. **Flower Pig house rule** — ✅ Done: opt-in `enableFlowerPig` config (default off); a non-Hu player ending with all 3 suits pays each opponent `2^fanCap`. See §5.9.
-7. **Tailscale node-sharing automation** — manual via admin console in v1. Tailscale's API can automate this; v2.
+7. **Tailscale node-sharing automation** — ✅ Done: `--share` (with `TAILSCALE_API_KEY`, optional `TAILSCALE_TAILNET`) resolves the host device via the Tailscale v2 API and auto-creates a reusable device-invite, printing the share URL in the startup banner. Without credentials it falls back to manual admin-console instructions (`tailscaleShare.ts`).
 8. **Set-with-void-suit meld penalty** — ✅ Done: 48-point deduction enforced on pung/kong/concealed-kong of voided suit (`voidMeldPenalty` event).
 9. **False-Hu detection** — ✅ Done: 8 pts/opponent redistributive penalty + kong refund on invalid draw-Hu or claim-window Hu.
 10. **Replay-test corpus** — ✅ Done: canned games per fan combination + penalty paths.
