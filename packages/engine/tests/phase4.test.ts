@@ -10,7 +10,7 @@ import { tileFromType, tileToType, tileTypeOf, suitOf } from '../src/tiles.js';
 import type { Meld } from '../src/melds.js';
 import { isWinningHand, findAllWinningShapes } from '../src/hand.js';
 import { calcHandScore, calcTMV, COMPATIBILITY } from '../src/scoring.js';
-import type { FanType } from '../src/scoring.js';
+import type { FanType, HuSubtype } from '../src/scoring.js';
 
 // ─── Tile helpers ──────────────────────────────────────────────────────────────
 function tid(type: TileType, copy: 0 | 1 | 2 | 3 = 0): TileId {
@@ -1095,5 +1095,112 @@ describe('Phase 4 — applyAction error guard', () => {
     const s = makeState({ hands: [winHand(), [], [], []] });
     const r = applyAction(s, { t: 'declareHuOnDraw', seat: 0 });
     expect(r.ok).toBe(true);
+  });
+});
+
+// ─── Property test: JSON round-trip ──────────────────────────────────────────
+// §11.1: GameState must survive serialize → parse → equal. This underpins the
+// SQLite replay log and the host-shutdown resume snapshot, both of which persist
+// state as JSON. A stray Map/Set/undefined field would silently corrupt resume.
+
+describe('Phase 4 — property test: JSON round-trip', () => {
+  it('serialize → parse → deep-equals at every phase of a seeded game', () => {
+    fc.assert(fc.property(
+      fc.string({ minLength: 4, maxLength: 12 }),
+      (seed) => {
+        const roundTrips = (s: GameState) =>
+          expect(JSON.parse(JSON.stringify(s))).toEqual(s);
+
+        let state = createGame(
+          seed,
+          [
+            { name: 'A', isBot: true }, { name: 'B', isBot: true },
+            { name: 'C', isBot: true }, { name: 'D', isBot: true },
+          ],
+          { enableHuanSanZhang: false, voidDiscardRule: 'strict' },
+        );
+        roundTrips(state); // freshly dealt (voidDeclare phase)
+
+        for (let i = 0; i < 4; i++) {
+          const seat = i as Seat;
+          const p = state.players[seat]!;
+          const firstDiscard = p.hand.find(t => suitOf(t) === 'sou') ?? null;
+          const r = applyAction(state, { t: 'declareVoid', seat, suit: 'sou', firstDiscard });
+          if (!r.ok) return true;
+          state = r.state;
+          roundTrips(state);
+        }
+
+        let safety = 200;
+        while (state.phase === 'play' && safety-- > 0) {
+          if (state.pendingClaims !== null) {
+            const e = applyAction(state, { t: 'claimWindowExpire' });
+            if (!e.ok) return true;
+            state = e.state;
+            roundTrips(state);
+            continue;
+          }
+          const seat = state.turn;
+          const isEFT = seat === state.dealer && !state.firstTurnDone[seat];
+          if (!isEFT && state.turnDrawNeeded) {
+            const d = applyAction(state, { t: 'draw', seat });
+            if (!d.ok) return true;
+            state = d.state;
+            roundTrips(state);
+            if (state.phase !== 'play') break;
+          }
+          if (state.pendingClaims !== null) continue;
+          const cp = state.players[seat]!;
+          const vt = cp.hand.filter(t => suitOf(t) === cp.voidedSuit);
+          const tile = vt.length > 0 ? vt[0]! : cp.hand[0]!;
+          const disc = applyAction(state, { t: 'discard', seat, tile });
+          if (!disc.ok) return true;
+          state = disc.state;
+          roundTrips(state);
+        }
+        return true;
+      },
+    ), { numRuns: 30 });
+  });
+});
+
+// ─── Property test: compatibility table ──────────────────────────────────────
+// §11.1: calcHandScore must never emit two mutually-incompatible fans together,
+// for any winning hand and any Hu subtype. Verifies the COMPATIBILITY matrix and
+// withContextualFan() gating, not just the static table symmetry checked above.
+
+describe('Phase 4 — property test: compatibility table', () => {
+  const SUBTYPES: HuSubtype[] = [
+    'normal', 'winAfterKong', 'shootAfterKong', 'robbingTheKong', 'underTheSea',
+  ];
+
+  it('no scored hand ever contains two mutually-incompatible fans', () => {
+    fc.assert(fc.property(
+      // 4 distinct man/pin types for the pungs + 1 distinct type for the pair.
+      fc.uniqueArray(fc.integer({ min: 0, max: 17 }), { minLength: 5, maxLength: 5 }),
+      fc.integer({ min: 0, max: SUBTYPES.length - 1 }),
+      fc.boolean(),
+      (types, subIdx, winOnPair) => {
+        const [a, b, c, d, pairType] = types as [number, number, number, number, number];
+        const tiles: TileId[] = [];
+        for (const t of [a, b, c, d]) {
+          tiles.push(tid(t, 0), tid(t, 1), tid(t, 2)); // pung
+        }
+        tiles.push(tid(pairType, 0), tid(pairType, 1)); // pair
+        // Winning tile: either the pair tile (GoldenWait) or one of the pung tiles.
+        const winTile = winOnPair ? tid(pairType, 1) : tid(a, 2);
+        const subtype = SUBTYPES[subIdx]!;
+
+        const score = calcHandScore(tiles, [], 'sou', winTile, subtype, DEFAULT_CONFIG.fanCap, false);
+        const present = score.fans.map(f => f.fan);
+        for (const fan of present) {
+          for (const other of present) {
+            if (fan === other) continue;
+            if (COMPATIBILITY[fan].incompatible.includes(other)) return false;
+          }
+        }
+        return true;
+      },
+    ), { numRuns: 200 });
   });
 });

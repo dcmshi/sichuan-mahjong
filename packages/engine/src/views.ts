@@ -5,6 +5,7 @@ import { tileTypeOf, tileFromType, tileToType, suitOf } from './tiles.js';
 import type { GameAction } from './actions.js';
 import type { Phase } from './state.js';
 import { isWinningHand } from './hand.js';
+import { canHuConsideringFuriten } from './claims.js';
 
 // ---------------------------------------------------------------------------
 // Public view types
@@ -110,9 +111,8 @@ export function computeLegalActions(state: GameState, seat: Seat): GameAction[] 
     if (seat === w.from) return actions; // discarder can't claim
 
     const tile = w.tile;
-    const hasFuriten = player.furiten !== null;
 
-    if (!hasFuriten && isWinningHand([...player.hand, tile], player.melds, player.voidedSuit) !== null) {
+    if (canHuConsideringFuriten(state, seat, tile)) {
       actions.push({ t: 'claim', seat, claim: { kind: 'hu' } });
     }
 

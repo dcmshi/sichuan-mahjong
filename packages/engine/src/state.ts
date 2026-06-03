@@ -94,7 +94,7 @@ export type GameState = {
   turn: Seat;
   turnNumber: number;
   firstTurnDone: [boolean, boolean, boolean, boolean];
-  lastDiscard: { tile: TileId; from: Seat; claimable: boolean; afterKong: boolean } | null;
+  lastDiscard: { tile: TileId; from: Seat; afterKong: boolean } | null;
   lastDrawWasKongReplacement: boolean;
   lastDrawnTile: TileId | null;
   turnDrawNeeded: boolean;

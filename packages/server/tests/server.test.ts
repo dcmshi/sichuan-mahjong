@@ -443,6 +443,42 @@ describe('Reconnection reclaim', () => {
       vi.useRealTimers();
     }
   });
+
+  it('reconnect within 60s clears the takeover timer, pushes the current view, and keeps the seat human', async () => {
+    const { GameRoom } = await import('../src/room.js');
+    vi.useFakeTimers();
+    try {
+      // All-human room so no bot timers fire — isolates the reconnect-grace path.
+      const room = new GameRoom('GRACE', [
+        { name: 'P0', isBot: false, connected: false },
+        { name: 'P1', isBot: false, connected: false }, // drops then reconnects in time
+        { name: 'P2', isBot: false, connected: false },
+        { name: 'P3', isBot: false, connected: false },
+      ]);
+      for (const seat of [0, 1, 2, 3] as const) room.connect(seat, fakeWs());
+      room.start();
+      expect(room.getState().phase).not.toBe('roundEnd');
+
+      room.disconnect(1);
+      vi.advanceTimersByTime(30_000); // still inside the 60s grace window
+
+      // Reconnect with a fresh socket — the room should push the current view to it.
+      const ws = fakeWs();
+      const sendSpy = vi.fn();
+      (ws as unknown as { send: typeof sendSpy }).send = sendSpy;
+      room.connect(1, ws);
+      expect(sendSpy).toHaveBeenCalled(); // current state re-sent on reconnect
+
+      // Advance past the ORIGINAL 60s deadline: the armed timer was cleared on
+      // reconnect, so no bot takeover occurs and the seat stays human + connected.
+      vi.advanceTimersByTime(61_000);
+      const players = room.getLobbyPlayers();
+      expect(players[1]!.isBot).toBe(false);
+      expect(players[1]!.connected).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------

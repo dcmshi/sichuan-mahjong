@@ -146,7 +146,7 @@ export function calcHandScore(
 }
 
 /** Meld tile types for exhaustive-wait filtering in isTenpai. */
-function meldTileTypes(melds: Meld[]): TileType[] {
+export function meldTileTypes(melds: Meld[]): TileType[] {
   const types: TileType[] = [];
   for (const m of melds) {
     if (m.kind === 'chow') {

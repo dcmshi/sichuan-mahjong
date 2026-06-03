@@ -11,7 +11,7 @@ import {
   furitenSeatsAfterWindow,
   ccwDist,
 } from './claims.js';
-import { calcHandScore, calcTMV } from './scoring.js';
+import { calcHandScore, calcTMV, meldTileTypes } from './scoring.js';
 
 // ---------------------------------------------------------------------------
 // Action types
@@ -274,7 +274,7 @@ function settleRound(s: GameState): GameEvent[] {
     if (hasVoidTiles) {
       p.isReady = false;
     } else {
-      const waitTypes = isTenpai(p.hand, p.melds, p.voidedSuit);
+      const waitTypes = isTenpai(p.hand, p.melds, p.voidedSuit, meldTileTypes(p.melds));
       p.isReady = waitTypes.length > 0;
     }
   }
@@ -888,7 +888,6 @@ function applyDiscard(state: GameState, action: Extract<GameAction, { t: 'discar
   s.lastDiscard = {
     tile,
     from: seat,
-    claimable: true,
     afterKong: s.lastDrawWasKongReplacement,
   };
   s.history.push(action);

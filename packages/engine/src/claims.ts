@@ -2,6 +2,7 @@ import type { GameState, Seat } from './state.js';
 import type { TileId } from './tiles.js';
 import { tileTypeOf, suitOf } from './tiles.js';
 import { isWinningHand } from './hand.js';
+import { calcHandScore } from './scoring.js';
 
 /** Counter-clockwise distance from `from` to `to`. Result is 1..3 for adjacent seats, 0 for same. */
 export function ccwDist(from: Seat, to: Seat): number {
@@ -22,6 +23,29 @@ function canHuOnTile(state: GameState, seat: Seat, tile: TileId): boolean {
   const player = state.players[seat]!;
   if (player.voidedSuit !== null && suitOf(tile) === player.voidedSuit) return false;
   return isWinningHand([...player.hand, tile], player.melds, player.voidedSuit) !== null;
+}
+
+/**
+ * Can `seat` declare Hu on `tile`, honoring the skip-Hu (furiten) rule and its
+ * greater-value override (§5.5.5)? A furiten player is normally barred from
+ * claiming Hu off a discard until their next self-draw, EXCEPT when the new
+ * winning hand's value (fan) strictly exceeds the `minFanToOverride` recorded
+ * when they entered furiten.
+ */
+export function canHuConsideringFuriten(state: GameState, seat: Seat, tile: TileId): boolean {
+  const player = state.players[seat]!;
+  if (!canHuOnTile(state, seat, tile)) return false;
+  if (player.furiten === null) return true;
+  const score = calcHandScore(
+    [...player.hand, tile],
+    player.melds,
+    player.voidedSuit,
+    tile,
+    'normal',
+    state.config.fanCap,
+    state.config.enableHeavenlyEarthly,
+  );
+  return score.totalFan > player.furiten.minFanToOverride;
 }
 
 function canKongOnTile(state: GameState, seat: Seat, tile: TileId): boolean {
@@ -58,10 +82,8 @@ export function autoPassIneligible(state: GameState): boolean {
     if (w.passed[seat] || w.claims[seat] !== null) continue;
 
     const tile = w.tile;
-    const player = state.players[seat]!;
-    const hasFuriten = player.furiten !== null;
 
-    const canHu = !hasFuriten && canHuOnTile(state, seat, tile);
+    const canHu = canHuConsideringFuriten(state, seat, tile);
     const canKong = !w.afterKong && canKongOnTile(state, seat, tile);
     const canPung = !w.afterKong && canPungOnTile(state, seat, tile);
 
@@ -111,11 +133,9 @@ export function resolveWindow(state: GameState): ClaimResolution {
     if (state.players[seat]!.status === 'hu') continue;
 
     const tile = w.tile;
-    const player = state.players[seat]!;
 
     if (c.kind === 'hu') {
-      if (player.furiten !== null) continue;
-      if (!canHuOnTile(state, seat, tile)) continue;
+      if (!canHuConsideringFuriten(state, seat, tile)) continue;
       huWinners.push(seat);
     } else if (c.kind === 'kong') {
       if (w.afterKong) continue;

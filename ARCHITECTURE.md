@@ -190,12 +190,26 @@ export type GameState = {
   turn: Seat;
   turnNumber: number;               // increments on each turn-pass; used in furiten + first-turn checks
   firstTurnDone: [boolean, boolean, boolean, boolean];  // per seat; gates Heavenly/Earthly eligibility
-  lastDiscard: { tile: TileId; from: Seat; claimable: boolean; afterKong: boolean } | null;
+  lastDiscard: { tile: TileId; from: Seat; afterKong: boolean } | null;
   lastDrawWasKongReplacement: boolean;
+  lastDrawnTile: TileId | null;     // tile just drawn this turn (for win-after-kong / under-the-sea derivation)
+  turnDrawNeeded: boolean;          // true when the current seat still owes a draw before acting
+  wallEndReached: boolean;          // live wall exhausted; gates under-the-sea + no-new-kong rules
+  anyClaimsHappened: boolean;       // any claim resolved this round; disqualifies Earthly Hand
   pendingClaims: ClaimWindow | null;
+  pendingKongTile: {                // an in-flight promoted/postponed kong awaiting its robbing window
+    seat: Seat;
+    tile: TileId;
+    kongSubtype: 'promoted' | 'postponed';
+    paidAmounts: Array<{ from: Seat; amount: number }>;
+  } | null;
   pendingHuan: (TileId[] | null)[]; // length 4
   pendingVoid: (PendingVoid | null)[];  // length 4; { suit, firstDiscardTile | null }
   penaltyPot: number;               // accumulated non-redistributive penalty deductions (48-point void losses); see §11.1
+  kongPaymentLog: KongPaymentEntry[];  // per-kong payment records, for the three refund paths (§5.9)
+  nextKongSeq: number;              // monotonic id assigned to each kong payment entry
+  huOrder: Seat[];                  // seats in the order they declared Hu; drives dealer rotation (§5.10)
+  nextDealer: Seat;                 // computed at round end; consumed by startNextRound
   history: GameAction[];
   startedAt: number;
 };
@@ -356,7 +370,9 @@ Per PDF (page 22): *"if a player skips a discard that could be claimed for 'Hu',
 
 State: `PlayerState.furiten = { since: turnNumber, minFanToOverride: missedFan }`. Cleared on the player's next self-draw (set to `null`).
 
-This blocks Hu via discard claim when the new winning hand's fan would be ≤ `minFanToOverride`. Self-draw Hu is never blocked.
+This blocks Hu via discard claim when the new winning hand's `totalFan` would be ≤ `minFanToOverride`; the greater-value override fires only when `totalFan` strictly exceeds it. Enforced in `canHuConsideringFuriten` (`claims.ts`) and consumed by both `resolveWindow` and `computeLegalActions`. Self-draw Hu is never blocked.
+
+> Implementation note: `minFanToOverride` is currently recorded as a flat `1` at furiten entry (a conservative approximation of the skipped hand's fan), not the exact `missedFan`. Honoring the field is what implements the override; tightening the recorded value to the true missed fan is a future refinement.
 
 #### 5.5.6 Concealed / Promoted / Postponed kong (own turn after draw)
 
@@ -746,8 +762,8 @@ After step 4, every future game uses the same URL — no per-session re-sharing.
   - **Payment-matrix balance:** redistributive payments sum to zero, with non-redistributive penalty deltas tracked separately. The engine maintains `state.penaltyPot` (tracked separately from `scoreDelta`) for the 48-point void-suit penalties, which are pure deductions per PDF page 27 and 31. The property: `sum(scoreDelta) === -sum(penaltyPot)`. Redistributive flows (Hu payments, kong payments, false-Hu penalty, bu-ting payouts) net to zero in `scoreDelta`.
   - Hand detection: any constructively-built `4 sets + pair` hand is recognized as winning; randomly drawn 14-tile hands are usually not.
   - Tenpai detection: a tenpai hand has at least one tile-type completing it (subject to exhaustive-wait filter).
-  - Furiten state: a furiten player's `yourLegalActions` never contains a discard-Hu action below `minFanToOverride`.
-  - Compatibility table: `applyFans()` never produces a hand-result containing two mutually-incompatible fans per the matrix.
+  - Furiten state: a furiten player's `yourLegalActions` contains a discard-Hu action *iff* the candidate hand's `totalFan` strictly exceeds `minFanToOverride` (the greater-value override of §5.5.5).
+  - Compatibility table: for any winning hand and Hu subtype, `calcHandScore` never produces a result containing two mutually-incompatible fans per the matrix (`phase4.test.ts`).
 - **Replay tests:** canned action logs from real games → expected end states. Include at least one game per fan combination from §5.8.
 
 ### 11.2 Server

@@ -1,4 +1,4 @@
-import { computeLegalActions, tileTypeOf, tileFromType, ukeire } from '@sichuan-mahjong/engine';
+import { computeLegalActions, tileTypeOf, tileToType, tileFromType, ukeire } from '@sichuan-mahjong/engine';
 import type { GameState, GameAction, Seat, TileId } from '@sichuan-mahjong/engine';
 
 function suitIndex(suit: string): number {
@@ -181,30 +181,33 @@ function shouldPung(state: GameState, seat: Seat): boolean {
  * removing `tile`. Returns 0 if removing the tile leaves a hand where ukeire
  * cannot be computed (e.g., wrong size).
  */
-function ukeireAfterDiscard(
-  tile: TileId,
-  state: GameState,
-  seat: Seat,
-): number {
-  const player = state.players[seat];
-  if (!player) return 0;
-  const hand = player.hand.filter(t => t !== tile);
-
-  // Visible tiles = opponent discards + own discards + own melds (tile types already in play)
+/** Tile types visible to everyone (all discards + all exposed melds). */
+function visibleTileTypes(state: GameState): number[] {
   const visible: number[] = [];
   for (const p of state.players) {
     for (const id of p.discards) visible.push(tileTypeOf(id));
     for (const meld of p.melds) {
       if (meld.kind === 'pung' || meld.kind === 'kong') {
-        const tt = tileTypeOf(meld.tile as unknown as TileId);
+        const tt = tileToType(meld.tile);
         visible.push(tt, tt, tt);
         if (meld.kind === 'kong') visible.push(tt);
       } else if (meld.kind === 'chow') {
-        for (const t of meld.tiles) visible.push(tileTypeOf(t as unknown as TileId));
+        for (const t of meld.tiles) visible.push(tileToType(t));
       }
     }
   }
+  return visible;
+}
 
+function ukeireAfterDiscard(
+  tile: TileId,
+  state: GameState,
+  seat: Seat,
+  visible: number[],
+): number {
+  const player = state.players[seat];
+  if (!player) return 0;
+  const hand = player.hand.filter(t => t !== tile);
   const uke = ukeire(hand, player.melds, player.voidedSuit, visible);
   let total = 0;
   for (const count of uke.values()) total += count;
@@ -244,11 +247,13 @@ export function botTurnActionMedium(state: GameState, seat: Seat): GameAction | 
     if (voidCandidates.length > 0) candidates = voidCandidates;
   }
 
-  // Pick tile that maximises ukeire after discard
+  // Pick tile that maximises ukeire after discard. The visible-tile set is the
+  // same for every candidate, so compute it once instead of per-candidate.
+  const visible = visibleTileTypes(state);
   let bestTile = candidates[0];
   let bestUke = -1;
   for (const t of candidates) {
-    const uke = ukeireAfterDiscard(t, state, seat);
+    const uke = ukeireAfterDiscard(t, state, seat, visible);
     if (uke > bestUke) {
       bestUke = uke;
       bestTile = t;

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence, Reorder } from 'framer-motion';
 import { tileTypeOf, tileFromType } from '@sichuan-mahjong/engine';
 import type { PlayerView, TileId, Suit } from '@sichuan-mahjong/engine';
@@ -188,8 +188,8 @@ function OpponentTop({ view, relSeat }: { view: PlayerView; relSeat: 0 | 1 | 2 }
       )}
       {opp.discards.length > 0 && (
         <div className="flex flex-wrap gap-0.5 max-w-full discard-tray">
-          {opp.discards.slice(-8).map((id, i) => (
-            <Tile key={i} id={id} size="sm" lastDiscard={id === lastDiscardTile} />
+          {opp.discards.slice(-8).map((id) => (
+            <Tile key={id} id={id} size="sm" lastDiscard={id === lastDiscardTile} />
           ))}
         </div>
       )}
@@ -211,8 +211,8 @@ function OpponentSide({ view, relSeat, side }: { view: PlayerView; relSeat: 0 | 
       </div>
       {opp.discards.length > 0 && (
         <div className="flex flex-wrap gap-0.5 discard-tray">
-          {opp.discards.slice(-6).map((id, i) => (
-            <Tile key={i} id={id} size="sm" lastDiscard={id === lastDiscardTile} />
+          {opp.discards.slice(-6).map((id) => (
+            <Tile key={id} id={id} size="sm" lastDiscard={id === lastDiscardTile} />
           ))}
         </div>
       )}
@@ -344,8 +344,13 @@ function PlayPhase({ view }: { view: PlayerView }) {
     sendAction({ t: 'action', action: { t: 'declareHeavenly', seat } });
   }
 
-  const legalDiscards = new Set(
-    view.yourLegalActions.filter(a => a.t === 'discard').map(a => a.t === 'discard' ? a.tile : 0),
+  // Recompute only when the server sends a new set of legal actions, not on
+  // every render (this PlayPhase re-renders on each incoming view).
+  const legalDiscards = useMemo(
+    () => new Set(
+      view.yourLegalActions.filter(a => a.t === 'discard').map(a => a.t === 'discard' ? a.tile : 0),
+    ),
+    [view.yourLegalActions],
   );
 
   return (

@@ -9,6 +9,7 @@ import type { TileId, TileType } from '../src/tiles.js';
 import { tileFromType, tileToType, tileTypeOf, suitOf } from '../src/tiles.js';
 import type { Meld } from '../src/melds.js';
 import { isWinningHand } from '../src/hand.js';
+import { calcHandScore } from '../src/scoring.js';
 
 // ─── Tile helpers ─────────────────────────────────────────────────────────────
 
@@ -597,6 +598,39 @@ describe('Phase 3 — furiten', () => {
     const huActions = actions.filter(a => a.t === 'claim' && a.claim.kind === 'hu');
     expect(huActions).toHaveLength(0);
   });
+
+  // §5.5.5 override carve-out: a furiten player MAY claim Hu off a discard when
+  // the new winning hand's value strictly exceeds minFanToOverride.
+  it('furiten override: discard-Hu allowed when new hand exceeds minFanToOverride', () => {
+    // Seat 1 tenpai on pin9 (tanki) with 4 pungs → winning = AllPungs(1)+GoldenWait(1)=2 fan.
+    const tenpai: TileId[] = [
+      tid(M(1), 1), tid(M(1), 2), tid(M(1), 3),
+      tid(M(2), 1), tid(M(2), 2), tid(M(2), 3),
+      tid(M(3), 1), tid(M(3), 2), tid(M(3), 3),
+      tid(P(1), 1), tid(P(1), 2), tid(P(1), 3),
+      tid(P(9), 1), // lone pin9 → pair on claim
+    ];
+    const discardTile = tid(P(9), 0);
+    const s = makeState({ hands: [[], tenpai, [], []], turn: 0 });
+    s.players[1]!.furiten = { since: 5, minFanToOverride: 1 }; // skipped a 1-fan Hu
+    s.pendingClaims = {
+      tile: discardTile,
+      from: 0,
+      afterKong: false,
+      deadline: Date.now() + 3000,
+      passed: [true, false, false, false],
+      claims: [null, null, null, null],
+    };
+
+    // 2-fan hand > minFanToOverride(1) → Hu IS offered despite furiten.
+    const actions = computeLegalActions(s, 1);
+    expect(actions.some(a => a.t === 'claim' && a.claim.kind === 'hu')).toBe(true);
+
+    // Raise the threshold to 2: the same 2-fan hand no longer beats it → blocked.
+    s.players[1]!.furiten = { since: 5, minFanToOverride: 2 };
+    const blocked = computeLegalActions(s, 1);
+    expect(blocked.some(a => a.t === 'claim' && a.claim.kind === 'hu')).toBe(false);
+  });
 });
 
 // ─── Wall-end edge cases ───────────────────────────────────────────────────────
@@ -844,10 +878,15 @@ describe('Phase 3 — full game with claims', () => {
 // ─── Property tests ───────────────────────────────────────────────────────────
 
 describe('Phase 3 — property tests', () => {
-  it('furiten player legalActions never contains discard-Hu', () => {
+  // §5.5.5: a furiten player may claim a discard-Hu ONLY when the new winning
+  // hand's value strictly exceeds the recorded minFanToOverride; otherwise it is
+  // blocked. This is the spec-correct invariant (the override carve-out), which
+  // supersedes the older "never contains discard-Hu" formulation.
+  it('furiten player has discard-Hu IFF hand value exceeds minFanToOverride', () => {
     fc.assert(fc.property(
       fc.integer({ min: 0, max: 26 }).filter(t => Math.floor(t / 9) !== 2), // not sou
-      (waitType) => {
+      fc.integer({ min: 0, max: 3 }),                                       // minFanToOverride
+      (waitType, minFan) => {
         // Build a tenpai hand waiting on waitType
         const fiveDistinct = [waitType, (waitType + 10) % 27, (waitType + 11) % 27,
                                (waitType + 12) % 27, (waitType + 13) % 27];
@@ -861,17 +900,12 @@ describe('Phase 3 — property tests', () => {
         }
         hand.push((types[4]! * 4 + 0) as TileId);
         hand.push((types[4]! * 4 + 1) as TileId);
-        // hand is 14 tiles, winning on its own — doesn't help for this test
-        // We need a 13-tile tenpai hand waiting on `waitType`
-        // Remove one tile and see if tenpai on the removed type
+        // 13-tile tenpai hand waiting on the pair tile (tanki / golden wait).
         const tenpai = hand.slice(0, 13);
-        // Put a discard of waitType in the window
         const discardTile = (types[4]! * 4 + 0) as TileId; // the pair tile
 
         const s = makeState({ hands: [[], tenpai, [], []], turn: 0 });
-        // Set seat 1 in furiten
-        s.players[1]!.furiten = { since: 5, minFanToOverride: 1 };
-        // Open a claim window for discardTile from seat 0
+        s.players[1]!.furiten = { since: 5, minFanToOverride: minFan };
         s.pendingClaims = {
           tile: discardTile,
           from: 0,
@@ -883,7 +917,12 @@ describe('Phase 3 — property tests', () => {
 
         const actions = computeLegalActions(s, 1);
         const hasHuClaim = actions.some(a => a.t === 'claim' && a.claim.kind === 'hu');
-        return !hasHuClaim; // furiten player should NOT have Hu claim
+        const score = calcHandScore(
+          [...tenpai, discardTile], [], 'sou', discardTile, 'normal',
+          s.config.fanCap, s.config.enableHeavenlyEarthly,
+        );
+        // Hu offered exactly when the new hand value beats the override threshold.
+        return hasHuClaim === (score.totalFan > minFan);
       },
     ));
   });
