@@ -564,7 +564,24 @@ describe('Phase 3 — furiten', () => {
     s = applyOk(s, { t: 'pass', seat: 1 });
     // Window resolves (seat 1 passed on a Hu)
     expect(s.players[1]!.furiten).not.toBeNull();
-    expect(s.players[1]!.furiten!.minFanToOverride).toBe(1);
+    // huHand wins with 3 pungs + a chow + pair → no structural fan, so the
+    // skipped hand is worth 0; minFanToOverride records that real value.
+    expect(s.players[1]!.furiten!.minFanToOverride).toBe(0);
+  });
+
+  it('minFanToOverride records the skipped hand\'s real structural fan (2-fan)', () => {
+    // Seat 1 tenpai on pin9 (tanki) with 4 pungs → skipped Hu = AllPungs + GoldenWait = 2.
+    const seat1: TileId[] = [
+      tid(M(1), 1), tid(M(1), 2), tid(M(1), 3),
+      tid(M(2), 1), tid(M(2), 2), tid(M(2), 3),
+      tid(M(3), 1), tid(M(3), 2), tid(M(3), 3),
+      tid(P(1), 1), tid(P(1), 2), tid(P(1), 3),
+      tid(P(9), 1), // lone pin9 → pair on claim
+    ];
+    let s = makeState({ hands: [seat0Hand14(), seat1, [], []] });
+    s = applyOk(s, { t: 'discard', seat: 0, tile: tid(P(9), 0) });
+    s = applyOk(s, { t: 'pass', seat: 1 }); // skips a 2-fan Hu → furiten
+    expect(s.players[1]!.furiten!.minFanToOverride).toBe(2);
   });
 
   it('furiten cleared on self-draw', () => {

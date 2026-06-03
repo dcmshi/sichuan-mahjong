@@ -385,8 +385,18 @@ function openClaimWindow(
  * Apply furiten to seats that skipped a Hu opportunity, then close the window.
  */
 function applyFuritenAndCloseWindow(s: GameState): void {
+  const tile = s.pendingClaims!.tile;
   for (const seat of furitenSeatsAfterWindow(s)) {
-    s.players[seat]!.furiten = { since: s.turnNumber, minFanToOverride: 1 };
+    const player = s.players[seat]!;
+    // Record the value of the Hu actually skipped, so the §5.5.5 override only
+    // fires for a strictly greater hand. Scored with the `normal` subtype — the
+    // same basis the override check uses — so the comparison stays symmetric
+    // (situational fans are excluded on both sides).
+    const skipped = calcHandScore(
+      [...player.hand, tile], player.melds, player.voidedSuit,
+      tile, 'normal', s.config.fanCap, s.config.enableHeavenlyEarthly,
+    );
+    player.furiten = { since: s.turnNumber, minFanToOverride: skipped.totalFan };
   }
   s.pendingClaims = null;
 }
