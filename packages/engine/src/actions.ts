@@ -63,7 +63,6 @@ export type RuleViolation =
   | 'not_east_first_turn'
   | 'not_own_turn'
   | 'already_hu'
-  | 'furiten_blocks_hu'
   | 'internal_error';
 
 export type GameEvent =

@@ -5,7 +5,7 @@ import https from 'node:https';
 import http from 'node:http';
 import { registerHttpRoutes } from './http.js';
 import { registerWsRoutes } from './ws.js';
-import { getLanIp, startMdns, getTailscaleInfo, getTailscaleCert, getServerUrls } from './networking.js';
+import { getLanIp, startMdns, stopMdns, getTailscaleInfo, getTailscaleCert, getServerUrls } from './networking.js';
 import { parseCli, printBanner, printQr } from './cli.js';
 import { restoreRoomsFromDisk, flushAllRooms } from './room.js';
 import { createTailscaleShare } from './tailscaleShare.js';
@@ -99,6 +99,7 @@ async function main(): Promise<void> {
     shuttingDown = true;
     console.log(`\n${signal} received — saving in-progress games…`);
     try { flushAllRooms(); } catch (err) { console.error('[shutdown] flush failed:', err); }
+    try { stopMdns(); } catch { /* best-effort: process is exiting anyway */ }
     process.exit(0);
   };
   process.on('SIGINT', () => shutdown('SIGINT'));

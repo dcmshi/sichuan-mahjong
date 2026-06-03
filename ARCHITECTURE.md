@@ -372,7 +372,7 @@ State: `PlayerState.furiten = { since: turnNumber, minFanToOverride: missedFan }
 
 This blocks Hu via discard claim when the new winning hand's `totalFan` would be ≤ `minFanToOverride`; the greater-value override fires only when `totalFan` strictly exceeds it. Enforced in `canHuConsideringFuriten` (`claims.ts`) and consumed by both `resolveWindow` and `computeLegalActions`. Self-draw Hu is never blocked.
 
-> Implementation note: `minFanToOverride` is currently recorded as a flat `1` at furiten entry (a conservative approximation of the skipped hand's fan), not the exact `missedFan`. Honoring the field is what implements the override; tightening the recorded value to the true missed fan is a future refinement.
+> Implementation note: `minFanToOverride` is currently recorded as a flat `1` at furiten entry (a conservative approximation of the skipped hand's fan), not the exact `missedFan`. The override comparison also scores the candidate hand with the `normal` subtype, so a situational fan that the actual claim would add (e.g. Shoot-after-Kong) is not counted toward clearing the threshold. Both approximations err toward *blocking* a borderline Hu, never toward wrongly allowing one. Tightening either is a future refinement.
 
 #### 5.5.6 Concealed / Promoted / Postponed kong (own turn after draw)
 

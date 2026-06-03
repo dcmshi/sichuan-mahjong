@@ -37,8 +37,8 @@ function SeatRow({ view, seat }: { view: SpectatorView; seat: number }) {
 
       {p.discards.length > 0 && (
         <div className="flex flex-wrap gap-0.5 discard-tray">
-          {p.discards.map((id, i) => (
-            <Tile key={i} id={id} size="sm" lastDiscard={id === lastFromHere} />
+          {p.discards.map((id) => (
+            <Tile key={id} id={id} size="sm" lastDiscard={id === lastFromHere} />
           ))}
         </div>
       )}

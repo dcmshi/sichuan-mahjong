@@ -722,6 +722,72 @@ describe('Phase 3 — Heavenly Hand', () => {
   });
 });
 
+// ─── Earthly Hand ────────────────────────────────────────────────────────────
+// §5.5.2/§5.8: a non-dealer who wins on their very first self-draw (usedIndicator,
+// no claims yet) gets the Earthly Hand → auto cap-fan when enableHeavenlyEarthly.
+describe('Phase 3 — Earthly Hand', () => {
+  const earthlyHand = (): TileId[] => [
+    tid(M(1), 0), tid(M(1), 1), tid(M(1), 2),  // pung man1
+    tid(M(2), 0), tid(M(2), 1), tid(M(2), 2),  // pung man2
+    tid(M(3), 0), tid(M(3), 1), tid(M(3), 2),  // pung man3
+    tid(M(4), 0), tid(M(4), 1), tid(M(4), 2),  // pung man4
+    tid(P(1), 0), tid(P(1), 1),                 // pair pin1 (just drawn)
+  ];
+
+  it('non-dealer wins on first self-draw → earthly, auto cap-fan when enabled', () => {
+    const s = makeState({
+      hands: [[], earthlyHand(), [], []],
+      turn: 1,                              // seat 1 (non-dealer; dealer = 0)
+      firstTurnDone: [true, false, true, true],
+      lastDrawnTile: tid(P(1), 1),
+    });
+    s.players[1]!.usedIndicator = true;
+    s.config.enableHeavenlyEarthly = true;
+
+    const r = applyAction(s, { t: 'declareHuOnDraw', seat: 1 });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.state.players[1]!.hu!.subtype).toBe('earthly');
+      expect(r.state.players[1]!.hu!.handValue).toBe(Math.pow(2, 3)); // 2^fanCap
+    }
+  });
+
+  it('with enableHeavenlyEarthly = false the same hand is a normal first-turn win (structural fan)', () => {
+    const s = makeState({
+      hands: [[], earthlyHand(), [], []],
+      turn: 1,
+      firstTurnDone: [true, false, true, true],
+      lastDrawnTile: tid(P(1), 1),
+      config: { enableHeavenlyEarthly: false },
+    });
+    s.players[1]!.usedIndicator = true;
+
+    const r = applyAction(s, { t: 'declareHuOnDraw', seat: 1 });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.state.players[1]!.hu!.subtype).toBe('normal'); // no earthly bonus
+      // AllPungs(1) + GoldenWait(1) — win tile completes the pair in an all-pung hand.
+      expect(r.state.players[1]!.hu!.handValue).toBe(4);       // 2 fan = 4 pts (not auto-capped)
+    }
+  });
+
+  it('a claim earlier this round disqualifies earthly', () => {
+    const s = makeState({
+      hands: [[], earthlyHand(), [], []],
+      turn: 1,
+      firstTurnDone: [true, false, true, true],
+      lastDrawnTile: tid(P(1), 1),
+      anyClaimsHappened: true,            // a pung/kong already happened → not earthly
+    });
+    s.players[1]!.usedIndicator = true;
+    s.config.enableHeavenlyEarthly = true;
+
+    const r = applyAction(s, { t: 'declareHuOnDraw', seat: 1 });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.state.players[1]!.hu!.subtype).toBe('normal');
+  });
+});
+
 // ─── Self-draw Hu ─────────────────────────────────────────────────────────────
 
 describe('Phase 3 — self-draw Hu', () => {
