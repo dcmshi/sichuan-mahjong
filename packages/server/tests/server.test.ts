@@ -537,6 +537,29 @@ describe('Live-room resume', () => {
     expect(resolveToken(tok)).toBeUndefined(); // tokens revoked
   });
 
+  it('endMatch cancels pending bot timers so nothing fires after teardown', async () => {
+    const { GameRoom } = await import('../src/room.js');
+    vi.useFakeTimers();
+    try {
+      const room = new GameRoom('TMRS', [
+        { name: 'B0', isBot: true, connected: false },
+        { name: 'B1', isBot: true, connected: false },
+        { name: 'B2', isBot: true, connected: false },
+        { name: 'B3', isBot: true, connected: false },
+      ]);
+      room.start();                              // schedules bot "think" timers (huan phase)
+      const phaseBefore = room.getState().phase; // 'huan'
+      room.endMatch();                           // tears down → must cancel those timers
+
+      // If the timers weren't cancelled they'd fire here and drive the game
+      // forward (bots submit huan/void/...), advancing the phase.
+      vi.advanceTimersByTime(60_000);
+      expect(room.getState().phase).toBe(phaseBefore);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('restoreRoomsFromDisk recreates rooms and re-registers tokens', async () => {
     const persistence = await import('../src/persistence.js');
     const { GameRoom, restoreRoomsFromDisk, getRoom } = await import('../src/room.js');

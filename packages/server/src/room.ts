@@ -58,6 +58,9 @@ export class GameRoom {
   private disconnectTimers: Map<Seat, ReturnType<typeof setTimeout>> = new Map();
   private claimWindowTimer: ReturnType<typeof setTimeout> | null = null;
   private persistTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Pending bot/auto-action callbacks, tracked so teardown leaves nothing scheduled. */
+  private botTimers: Set<ReturnType<typeof setTimeout>> = new Set();
+  private botImmediates: Set<ReturnType<typeof setImmediate>> = new Set();
   private started = false;
 
   constructor(code: string, slots: RoomSlot[], config: Partial<GameConfig> = {}) {
@@ -118,6 +121,28 @@ export class GameRoom {
     if (this.claimWindowTimer !== null) { clearTimeout(this.claimWindowTimer); this.claimWindowTimer = null; }
     for (const timer of this.disconnectTimers.values()) clearTimeout(timer);
     this.disconnectTimers.clear();
+    for (const timer of this.botTimers) clearTimeout(timer);
+    this.botTimers.clear();
+    for (const im of this.botImmediates) clearImmediate(im);
+    this.botImmediates.clear();
+  }
+
+  /** Schedule a bot "think" callback, tracked so teardown can cancel it. */
+  private scheduleBot(fn: () => void): void {
+    const timer = setTimeout(() => {
+      this.botTimers.delete(timer);
+      fn();
+    }, BOT_THINK_MS);
+    this.botTimers.add(timer);
+  }
+
+  /** Schedule a server-issued action on the next tick, tracked for teardown. */
+  private scheduleBotImmediate(fn: () => void): void {
+    const im = setImmediate(() => {
+      this.botImmediates.delete(im);
+      fn();
+    });
+    this.botImmediates.add(im);
   }
 
   // -------------------------------------------------------------------------
@@ -304,7 +329,7 @@ export class GameRoom {
         const seat = s as Seat;
         if (!this.isBotOrOffline(seat)) continue;
         if (this.state.pendingHuan[seat] != null) continue;
-        setTimeout(() => this.botHuanSelect(seat), BOT_THINK_MS);
+        this.scheduleBot(() => this.botHuanSelect(seat));
       }
       return;
     }
@@ -315,7 +340,7 @@ export class GameRoom {
         const seat = s as Seat;
         if (!this.isBotOrOffline(seat)) continue;
         if (this.state.pendingVoid[seat] != null) continue;
-        setTimeout(() => this.botVoidDeclare(seat), BOT_THINK_MS);
+        this.scheduleBot(() => this.botVoidDeclare(seat));
       }
       return;
     }
@@ -337,7 +362,7 @@ export class GameRoom {
 
     if (this.state.turnDrawNeeded) {
       const seat = this.state.turn;
-      setImmediate(() => this.applyAndPropagate({ t: 'draw', seat }));
+      this.scheduleBotImmediate(() => this.applyAndPropagate({ t: 'draw', seat }));
       return;
     }
 
@@ -375,10 +400,10 @@ export class GameRoom {
     if (!player || player.status === 'hu') return;
 
     const medium = this.slots[seat]?.difficulty === 'medium';
-    setTimeout(() => {
+    this.scheduleBot(() => {
       const action = medium ? botTurnActionMedium(this.state, seat) : botTurnAction(this.state, seat);
       if (action !== null) this.applyAndPropagate(action);
-    }, BOT_THINK_MS);
+    });
   }
 
   private botClaimIfNeeded(): void {
@@ -392,11 +417,11 @@ export class GameRoom {
       if (!this.isBotOrOffline(seat)) continue;
 
       const medium = this.slots[seat]?.difficulty === 'medium';
-      setTimeout(() => {
+      this.scheduleBot(() => {
         if (this.state.pendingClaims === null || this.state.pendingClaims.passed[seat]) return;
         const action = medium ? botClaimActionMedium(this.state, seat) : botClaimAction(this.state, seat);
         this.applyAndPropagate(action);
-      }, BOT_THINK_MS);
+      });
     }
   }
 
