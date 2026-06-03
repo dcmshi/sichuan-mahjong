@@ -88,6 +88,12 @@ let _client: WsClient | null = null;
 export function setWsClient(c: WsClient | null): void { _client = c; }
 export function getWsClient(): WsClient | null { return _client; }
 
+/** Close and drop the active client, if any. Safe to call when none exists. */
+export function closeConnection(): void {
+  _client?.close();
+  _client = null;
+}
+
 export function sendAction(msg: ClientMsg): void {
   _client?.send(msg);
 }
@@ -102,6 +108,8 @@ export function connectGame(
   url: string,
   onMessage?: (msg: ServerMsg, client: WsClient) => void,
 ): WsClient {
+  // Tear down any prior connection so sockets don't accumulate across games.
+  closeConnection();
   const store = useStore.getState();
   const client: WsClient = new WsClient(url, {
     onMessage: (msg) => {

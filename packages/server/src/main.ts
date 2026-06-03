@@ -1,8 +1,6 @@
 #!/usr/bin/env node
 import Fastify from 'fastify';
 import fastifyWebsocket from '@fastify/websocket';
-import https from 'node:https';
-import http from 'node:http';
 import { registerHttpRoutes } from './http.js';
 import { registerWsRoutes } from './ws.js';
 import { getLanIp, startMdns, stopMdns, getTailscaleInfo, getTailscaleCert, getServerUrls } from './networking.js';

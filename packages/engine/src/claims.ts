@@ -48,7 +48,7 @@ export function canHuConsideringFuriten(state: GameState, seat: Seat, tile: Tile
   return score.totalFan > player.furiten.minFanToOverride;
 }
 
-function canKongOnTile(state: GameState, seat: Seat, tile: TileId): boolean {
+export function canKongOnTile(state: GameState, seat: Seat, tile: TileId): boolean {
   const player = state.players[seat]!;
   if (state.wallEndReached) return false;
   if (state.drawIndex > state.kongDrawIndex) return false;
@@ -57,7 +57,7 @@ function canKongOnTile(state: GameState, seat: Seat, tile: TileId): boolean {
   return count >= 3;
 }
 
-function canPungOnTile(state: GameState, seat: Seat, tile: TileId): boolean {
+export function canPungOnTile(state: GameState, seat: Seat, tile: TileId): boolean {
   const player = state.players[seat]!;
   if (player.voidedSuit !== null && suitOf(tile) === player.voidedSuit) return false;
   const count = player.hand.filter(t => tileTypeOf(t) === tileTypeOf(tile)).length;

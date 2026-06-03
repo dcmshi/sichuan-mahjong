@@ -5,7 +5,7 @@ import { tileTypeOf, tileFromType, tileToType, suitOf } from './tiles.js';
 import type { GameAction } from './actions.js';
 import type { Phase } from './state.js';
 import { isWinningHand } from './hand.js';
-import { canHuConsideringFuriten } from './claims.js';
+import { canHuConsideringFuriten, canKongOnTile, canPungOnTile } from './claims.js';
 
 // ---------------------------------------------------------------------------
 // Public view types
@@ -116,15 +116,13 @@ export function computeLegalActions(state: GameState, seat: Seat): GameAction[] 
       actions.push({ t: 'claim', seat, claim: { kind: 'hu' } });
     }
 
-    if (!w.afterKong && !state.wallEndReached && state.drawIndex <= state.kongDrawIndex) {
-      const tileType = tileTypeOf(tile);
-      if (
-        player.voidedSuit === null || suitOf(tile) !== player.voidedSuit
-      ) {
-        const count = player.hand.filter(t => tileTypeOf(t) === tileType).length;
-        if (count >= 3) actions.push({ t: 'claim', seat, claim: { kind: 'kong' } });
-        if (count >= 2) actions.push({ t: 'claim', seat, claim: { kind: 'pung' } });
-      }
+    // Reuse the claim-resolution predicates so the offered buttons can't drift
+    // from what the engine will actually honor. Kong is gated on wall-end +
+    // replacement availability inside canKongOnTile; pung is not (§5.5.9 allows
+    // the wall-end pung-chain), so it must still be offered at the wall's end.
+    if (!w.afterKong) {
+      if (canKongOnTile(state, seat, tile)) actions.push({ t: 'claim', seat, claim: { kind: 'kong' } });
+      if (canPungOnTile(state, seat, tile)) actions.push({ t: 'claim', seat, claim: { kind: 'pung' } });
     }
 
     actions.push({ t: 'pass', seat });

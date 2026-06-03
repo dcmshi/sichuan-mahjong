@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { Seat, PlayerView, SpectatorView, GameEvent, LobbyPlayer, RoundResult, ServerMsg } from '@sichuan-mahjong/engine';
 import { type Lang, loadLang, persistLang } from '../i18n/index.js';
+import { closeConnection } from '../ws/client.js';
 
 export type Screen = 'landing' | 'hostSetup' | 'joinForm' | 'lobby' | 'game' | 'roundEnd' | 'about' | 'spectateForm' | 'spectate';
 
@@ -129,7 +130,8 @@ export const useStore = create<GameStore>((set, get) => ({
     }
   },
 
-  resetSession: () =>
+  resetSession: () => {
+    closeConnection(); // drop the live socket so it doesn't linger/reconnect
     set({
       screen: 'landing',
       code: '',
@@ -145,5 +147,6 @@ export const useStore = create<GameStore>((set, get) => ({
       matchScores: {},
       connected: false,
       reconnecting: false,
-    }),
+    });
+  },
 }));

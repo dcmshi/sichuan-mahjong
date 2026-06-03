@@ -690,6 +690,38 @@ describe('Phase 3 — wall-end edge cases', () => {
     }
     expect(s.phase).toBe('roundEnd');
   });
+
+  // §5.5.9: at the wall's end, a discard may still be claimed for Pung (the
+  // pung-chain) but NOT Kong. computeLegalActions must match what applyClaim
+  // honors, so the pung button has to remain available at wall-end.
+  it('wall-end claim window offers pung but not kong', () => {
+    const seat1 = [
+      tid(M(5), 1), tid(M(5), 2), tid(M(5), 3), // 3× man5: pung- AND kong-shaped
+      tid(P(1), 0), tid(P(2), 0), tid(P(3), 0), tid(P(4), 0),
+      tid(P(6), 0), tid(P(7), 0), tid(P(8), 0), tid(P(9), 0),
+      tid(M(1), 0), tid(M(2), 0),
+    ];
+    const openWindow = (s: GameState) => {
+      s.pendingClaims = {
+        tile: tid(M(5), 0), from: 0, afterKong: false,
+        deadline: Date.now() + 3000,
+        passed: [true, false, false, false],
+        claims: [null, null, null, null],
+      };
+    };
+    const claimKinds = (s: GameState) =>
+      computeLegalActions(s, 1).flatMap(a => (a.t === 'claim' ? [a.claim.kind] : []));
+
+    const atWallEnd = makeState({ hands: [[], seat1, [], []], wallEndReached: true });
+    openWindow(atWallEnd);
+    expect(claimKinds(atWallEnd)).toContain('pung');
+    expect(claimKinds(atWallEnd)).not.toContain('kong');
+
+    // Control: mid-wall, both pung and kong are offered for the same shape.
+    const midWall = makeState({ hands: [[], seat1, [], []] });
+    openWindow(midWall);
+    expect(claimKinds(midWall)).toEqual(expect.arrayContaining(['pung', 'kong']));
+  });
 });
 
 // ─── declareHeavenly ─────────────────────────────────────────────────────────

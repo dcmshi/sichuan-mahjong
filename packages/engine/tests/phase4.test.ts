@@ -400,6 +400,23 @@ describe('Phase 4 — payment flows', () => {
     expect(s.players[3]!.scoreDelta).toBe(-2);
   });
 
+  it('concealed kong: a player who already Hu\'d does not pay (§5.8 each non-Hu)', () => {
+    const hand = [
+      tid(M(1),0), tid(M(1),1), tid(M(1),2), tid(M(1),3),
+      tid(P(1),0), tid(P(2),0), tid(P(3),0), tid(P(4),0),
+      tid(P(5),0), tid(P(6),0), tid(P(7),0), tid(P(8),0),
+      tid(P(9),0), tid(M(2),0),
+    ];
+    let s = makeState({ hands: [hand, [], [], []] });
+    s.players[3]!.status = 'hu'; // seat 3 already won — sits out kong payments
+    s = applyOk(s, { t: 'declareKongOnTurn', seat: 0, tile: tileFromType(M(1)), subtype: 'concealed' });
+
+    expect(s.players[0]!.scoreDelta).toBe(4);  // +2 from each of the two non-Hu players
+    expect(s.players[1]!.scoreDelta).toBe(-2);
+    expect(s.players[2]!.scoreDelta).toBe(-2);
+    expect(s.players[3]!.scoreDelta).toBe(0);  // Hu'd → exempt
+  });
+
   it('promoted kong: 1 from each non-Hu player, refunded if robbed', () => {
     const pungMeld: Meld = {
       kind: 'pung', tile: tileFromType(M(3)), concealed: false, claimedFrom: 3,
