@@ -28,7 +28,9 @@ export function MeldDisplay({ meld }: { meld: Meld }) {
   const ids = meldTileIds(meld);
   return (
     <div className="flex gap-0.5">
-      {ids.map((id) => <Tile key={id} id={id} size="sm" />)}
+      {ids.map(id => (
+        <Tile key={id} id={id} size="sm" />
+      ))}
     </div>
   );
 }

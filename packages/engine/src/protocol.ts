@@ -1,5 +1,5 @@
-import type { Seat, HuRecord } from './state.js';
 import type { GameAction, GameEvent } from './actions.js';
+import type { HuRecord, Seat } from './state.js';
 import type { PlayerView, SpectatorView } from './views.js';
 
 export type LobbyPlayer = {

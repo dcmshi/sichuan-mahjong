@@ -1,7 +1,7 @@
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { tileTypeOf, tileFromType } from '@sichuan-mahjong/engine';
+import { tileFromType, tileTypeOf } from '@sichuan-mahjong/engine';
 import type { TileId } from '@sichuan-mahjong/engine';
+import { AnimatePresence, motion } from 'framer-motion';
+import { useState } from 'react';
 import { useLongPress } from '../hooks/useLongPress.js';
 
 // Width only — height comes from the tile's aspect-ratio (see .tile in index.css).
@@ -28,23 +28,41 @@ export type TileProps = {
   fill?: boolean;
 };
 
-export function Tile({ id, selected = false, lastDiscard = false, onClick, size = 'md', interactive = true, fill = false }: TileProps) {
+export function Tile({
+  id,
+  selected = false,
+  lastDiscard = false,
+  onClick,
+  size = 'md',
+  interactive = true,
+  fill = false,
+}: TileProps) {
   const { suit, rank } = tileFromType(tileTypeOf(id));
   const src = `/tiles/${suit}-${rank}.svg`;
   const [preview, setPreview] = useState(false);
 
-  const longPress = useLongPress(
-    () => setPreview(true),
-    onClick ? () => onClick(id) : undefined,
-  );
+  const longPress = useLongPress(() => setPreview(true), onClick ? () => onClick(id) : undefined);
 
   const pointerProps = interactive
     ? {
         onPointerDown: longPress.onPointerDown,
-        onPointerLeave: () => { longPress.onPointerLeave(); setPreview(false); },
-        onPointerCancel: () => { longPress.onPointerCancel(); setPreview(false); },
-        onPointerUp: () => { longPress.onPointerUp(); setPreview(false); },
-        onClick: onClick ? () => { if (!longPress.pointerHandledRef.current) onClick(id); } : undefined,
+        onPointerLeave: () => {
+          longPress.onPointerLeave();
+          setPreview(false);
+        },
+        onPointerCancel: () => {
+          longPress.onPointerCancel();
+          setPreview(false);
+        },
+        onPointerUp: () => {
+          longPress.onPointerUp();
+          setPreview(false);
+        },
+        onClick: onClick
+          ? () => {
+              if (!longPress.pointerHandledRef.current) onClick(id);
+            }
+          : undefined,
       }
     : {};
 
@@ -57,9 +75,13 @@ export function Tile({ id, selected = false, lastDiscard = false, onClick, size 
           selected ? 'is-selected' : '',
           lastDiscard ? 'tile-last-discard' : '',
           interactive && onClick ? 'cursor-pointer' : 'cursor-default',
-        ].filter(Boolean).join(' ')}
+        ]
+          .filter(Boolean)
+          .join(' ')}
         animate={{ y: selected ? -10 : 0 }}
-        {...(interactive && onClick ? { whileHover: { y: selected ? -10 : -3 }, whileTap: { scale: 0.93 } } : {})}
+        {...(interactive && onClick
+          ? { whileHover: { y: selected ? -10 : -3 }, whileTap: { scale: 0.93 } }
+          : {})}
         transition={{ type: 'spring', stiffness: 500, damping: 22 }}
         title={`${suit}-${rank}`}
         {...pointerProps}

@@ -1,9 +1,26 @@
+import type {
+  GameEvent,
+  LobbyPlayer,
+  PlayerView,
+  RoundResult,
+  Seat,
+  ServerMsg,
+  SpectatorView,
+} from '@sichuan-mahjong/engine';
 import { create } from 'zustand';
-import type { Seat, PlayerView, SpectatorView, GameEvent, LobbyPlayer, RoundResult, ServerMsg } from '@sichuan-mahjong/engine';
 import { type Lang, loadLang, persistLang } from '../i18n/index.js';
 import { closeConnection } from '../ws/client.js';
 
-export type Screen = 'landing' | 'hostSetup' | 'joinForm' | 'lobby' | 'game' | 'roundEnd' | 'about' | 'spectateForm' | 'spectate';
+export type Screen =
+  | 'landing'
+  | 'hostSetup'
+  | 'joinForm'
+  | 'lobby'
+  | 'game'
+  | 'roundEnd'
+  | 'about'
+  | 'spectateForm'
+  | 'spectate';
 
 export interface GameStore {
   screen: Screen;
@@ -70,16 +87,19 @@ export const useStore = create<GameStore>((set, get) => ({
   reconnecting: false,
   soundEnabled: true,
   lang: loadLang(),
-  setLang: (lang) => { persistLang(lang); set({ lang }); },
+  setLang: lang => {
+    persistLang(lang);
+    set({ lang });
+  },
 
-  goTo: (screen) => set({ screen }),
-  setPlayerName: (playerName) => set({ playerName }),
-  setCode: (code) => set({ code }),
-  setConnected: (connected) => set({ connected, reconnecting: false }),
-  setReconnecting: (reconnecting) => set({ reconnecting }),
+  goTo: screen => set({ screen }),
+  setPlayerName: playerName => set({ playerName }),
+  setCode: code => set({ code }),
+  setConnected: connected => set({ connected, reconnecting: false }),
+  setReconnecting: reconnecting => set({ reconnecting }),
   toggleSound: () => set(s => ({ soundEnabled: !s.soundEnabled })),
 
-  handleServerMsg: (msg) => {
+  handleServerMsg: msg => {
     switch (msg.t) {
       case 'joined':
         set({

@@ -1,6 +1,6 @@
-import type { Suit, TileId, TileType } from './tiles.js';
-import { tileTypeOf, tileToType, suitOf } from './tiles.js';
 import type { Meld } from './melds.js';
+import type { Suit, TileId, TileType } from './tiles.js';
+import { suitOf, tileToType, tileTypeOf } from './tiles.js';
 
 // ---------------------------------------------------------------------------
 // Win shape
@@ -13,7 +13,10 @@ export type SetShape =
 
 export type WinShape =
   | { kind: 'standard'; sets: SetShape[]; pair: TileType }
-  | { kind: 'sevenPairs'; pairs: [TileType, TileType, TileType, TileType, TileType, TileType, TileType] };
+  | {
+      kind: 'sevenPairs';
+      pairs: [TileType, TileType, TileType, TileType, TileType, TileType, TileType];
+    };
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -22,7 +25,10 @@ export type WinShape =
 function meldToSetShape(m: Meld): SetShape {
   if (m.kind === 'pung') return { kind: 'pung', type: tileToType(m.tile) };
   if (m.kind === 'kong') return { kind: 'kong', type: tileToType(m.tile) };
-  return { kind: 'chow', types: [tileToType(m.tiles[0]), tileToType(m.tiles[1]), tileToType(m.tiles[2])] };
+  return {
+    kind: 'chow',
+    types: [tileToType(m.tiles[0]), tileToType(m.tiles[1]), tileToType(m.tiles[2])],
+  };
 }
 
 function countTypes(tiles: TileId[]): Map<TileType, number> {
@@ -132,7 +138,11 @@ function findSevenPairsShape(tiles: TileId[], voidedSuit: Suit | null): WinShape
 // Public API
 // ---------------------------------------------------------------------------
 
-export function isWinningHand(tiles: TileId[], melds: Meld[], voidedSuit: Suit | null): WinShape | null {
+export function isWinningHand(
+  tiles: TileId[],
+  melds: Meld[],
+  voidedSuit: Suit | null,
+): WinShape | null {
   if (melds.length === 0) {
     const sp = findSevenPairsShape(tiles, voidedSuit);
     if (sp) return sp;
@@ -145,7 +155,11 @@ export function isWinningHand(tiles: TileId[], melds: Meld[], voidedSuit: Suit |
   return shapes.length > 0 ? shapes[0]! : null;
 }
 
-export function findAllWinningShapes(tiles: TileId[], melds: Meld[], voidedSuit: Suit | null): WinShape[] {
+export function findAllWinningShapes(
+  tiles: TileId[],
+  melds: Meld[],
+  voidedSuit: Suit | null,
+): WinShape[] {
   const results: WinShape[] = [];
 
   if (melds.length === 0) {

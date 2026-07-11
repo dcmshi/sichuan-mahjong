@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
 import type { GameAction, Seat } from '@sichuan-mahjong/engine';
-import { sendAction } from '../ws/client.js';
+import { useEffect, useState } from 'react';
 import { useT } from '../i18n/useT.js';
+import { sendAction } from '../ws/client.js';
 
 type Props = {
   seat: Seat;
@@ -30,7 +30,9 @@ export function ClaimPanel({ seat, legalActions, claimDeadline }: Props) {
   const canPung = legalActions.some(a => a.t === 'claim' && a.claim.kind === 'pung');
   const canPass = legalActions.some(a => a.t === 'pass');
 
-  function act(action: GameAction) { sendAction({ t: 'action', action }); }
+  function act(action: GameAction) {
+    sendAction({ t: 'action', action });
+  }
 
   return (
     <div className="fixed bottom-0 left-0 right-0 bg-gray-900/95 backdrop-blur text-white p-3 border-t border-gray-700 z-20">
@@ -46,6 +48,7 @@ export function ClaimPanel({ seat, legalActions, claimDeadline }: Props) {
       <div className="flex gap-2 justify-center">
         {canHu && (
           <button
+            type="button"
             className="flex-1 py-3 bg-red-600 hover:bg-red-500 active:bg-red-700 rounded-xl font-bold text-lg"
             onClick={() => act({ t: 'claim', seat, claim: { kind: 'hu' } })}
           >
@@ -54,6 +57,7 @@ export function ClaimPanel({ seat, legalActions, claimDeadline }: Props) {
         )}
         {canKong && (
           <button
+            type="button"
             className="flex-1 py-3 bg-purple-600 hover:bg-purple-500 active:bg-purple-700 rounded-xl font-bold text-lg"
             onClick={() => act({ t: 'claim', seat, claim: { kind: 'kong' } })}
           >
@@ -62,6 +66,7 @@ export function ClaimPanel({ seat, legalActions, claimDeadline }: Props) {
         )}
         {canPung && (
           <button
+            type="button"
             className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 rounded-xl font-bold text-lg"
             onClick={() => act({ t: 'claim', seat, claim: { kind: 'pung' } })}
           >
@@ -70,6 +75,7 @@ export function ClaimPanel({ seat, legalActions, claimDeadline }: Props) {
         )}
         {canPass && (
           <button
+            type="button"
             className="flex-1 py-3 bg-gray-600 hover:bg-gray-500 active:bg-gray-700 rounded-xl font-bold text-lg"
             onClick={() => act({ t: 'pass', seat })}
           >

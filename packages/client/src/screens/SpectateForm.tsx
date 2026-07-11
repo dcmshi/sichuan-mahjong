@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { useStore } from '../store/index.js';
-import { makeSpectateUrl, connectGame, setWsClient } from '../ws/client.js';
 import { useT } from '../i18n/useT.js';
+import { useStore } from '../store/index.js';
+import { connectGame, makeSpectateUrl, setWsClient } from '../ws/client.js';
 
 export function SpectateForm() {
   const t = useT();
@@ -14,14 +14,17 @@ export function SpectateForm() {
 
   function watch() {
     const trimCode = code.trim().toUpperCase();
-    if (trimCode.length !== 4) { setError('join.errCode'); return; }
+    if (trimCode.length !== 4) {
+      setError('join.errCode');
+      return;
+    }
     setError('');
     setLoading(true);
     setStoreCode(trimCode);
 
     // connectGame routes 'spectate' views through the store; we only add the
     // no-game error handling here. ('spectate' flips the screen to the board.)
-    const ws = connectGame(makeSpectateUrl(trimCode), (msg) => {
+    const ws = connectGame(makeSpectateUrl(trimCode), msg => {
       if (msg.t === 'error' && msg.code === 'no_game') {
         setError('spec.errNoGame');
         setLoading(false);
@@ -44,17 +47,23 @@ export function SpectateForm() {
           onChange={e => setCode(e.target.value.toUpperCase().slice(0, 4))}
           onKeyDown={e => e.key === 'Enter' && watch()}
           maxLength={4}
+          // biome-ignore lint/a11y/noAutofocus: deliberate — focus the spectate code on a mobile-first form
           autoFocus
         />
         {error && <p className="text-red-400 text-sm text-center">{t(error)}</p>}
         <button
+          type="button"
           className="w-full py-3 bg-amber-500 hover:bg-amber-400 rounded-xl font-bold text-lg disabled:opacity-50"
           onClick={watch}
           disabled={loading}
         >
           {loading ? t('spec.connecting') : t('spec.watch')}
         </button>
-        <button className="py-2 text-white/60 hover:text-white" onClick={() => goTo('landing')}>
+        <button
+          type="button"
+          className="py-2 text-white/60 hover:text-white"
+          onClick={() => goTo('landing')}
+        >
           {t('nav.back')}
         </button>
       </div>

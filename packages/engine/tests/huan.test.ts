@@ -1,13 +1,15 @@
 import { describe, expect, it } from 'vitest';
+import { applyAction } from '../src/actions.js';
 import { createGame } from '../src/state.js';
 import type { GameState, PlayerInit, Seat } from '../src/state.js';
-import { applyAction } from '../src/actions.js';
 import { suitOf } from '../src/tiles.js';
 import type { TileId } from '../src/tiles.js';
 
 const INITS: [PlayerInit, PlayerInit, PlayerInit, PlayerInit] = [
-  { name: 'P0', isBot: false }, { name: 'P1', isBot: false },
-  { name: 'P2', isBot: false }, { name: 'P3', isBot: false },
+  { name: 'P0', isBot: false },
+  { name: 'P1', isBot: false },
+  { name: 'P2', isBot: false },
+  { name: 'P3', isBot: false },
 ];
 
 /** Pick 3 tiles of the same suit from a hand (the largest suit always has ≥3). */
@@ -49,7 +51,7 @@ function assertRotation(state: GameState, picks: TileId[][], offset: number) {
 describe('Huan San Zhang rotation', () => {
   it('cw: seat i passes its 3 tiles to seat (i+1)', () => {
     const { state, picks } = runHuan('huan-cw', 'cw');
-    expect(state.phase).toBe('voidDeclare');           // huan complete → next phase
+    expect(state.phase).toBe('voidDeclare'); // huan complete → next phase
     expect(state.pendingHuan).toEqual([null, null, null, null]);
     assertRotation(state, picks, 1);
   });
@@ -65,7 +67,7 @@ describe('Huan San Zhang rotation', () => {
     // Replicate the engine's seed hash → direction derivation.
     let h = 0;
     for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) | 0;
-    const expectedOffset = (h & 1) ? 1 /* cw */ : 3 /* ccw */;
+    const expectedOffset = h & 1 ? 1 /* cw */ : 3 /* ccw */;
 
     const { state, picks } = runHuan(seed, 'random');
     assertRotation(state, picks, expectedOffset);
@@ -79,7 +81,7 @@ describe('Huan San Zhang rotation', () => {
     const { state } = runHuan('huan-conserve', 'cw');
     const all = state.players.flatMap(p => p.hand).sort((a, b) => a - b);
     const unique = new Set(all);
-    expect(unique.size).toBe(all.length);              // no duplicates introduced
-    expect(all.length).toBe(53);                       // 13*4 + dealer's 14th
+    expect(unique.size).toBe(all.length); // no duplicates introduced
+    expect(all.length).toBe(53); // 13*4 + dealer's 14th
   });
 });

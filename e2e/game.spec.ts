@@ -5,7 +5,7 @@
  * Game-phase actions (huan, void, discard, pass) are sent directly via the
  * window.__e2e helpers so Playwright's click path doesn't fight Framer Motion.
  */
-import { test, expect } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 
 const BASE = 'http://localhost:8080';
 
@@ -21,9 +21,9 @@ function e2e(page: import('@playwright/test').Page) {
   return {
     huanSubmit: () => page.evaluate(() => (window as unknown as { __e2e: E2E }).__e2e.huanSubmit()),
     voidSubmit: () => page.evaluate(() => (window as unknown as { __e2e: E2E }).__e2e.voidSubmit()),
-    autoPlay:   () => page.evaluate(() => (window as unknown as { __e2e: E2E }).__e2e.autoPlay()),
-    getPhase:   () => page.evaluate(() => (window as unknown as { __e2e: E2E }).__e2e.getPhase()),
-    getScreen:  () => page.evaluate(() => (window as unknown as { __e2e: E2E }).__e2e.getScreen()),
+    autoPlay: () => page.evaluate(() => (window as unknown as { __e2e: E2E }).__e2e.autoPlay()),
+    getPhase: () => page.evaluate(() => (window as unknown as { __e2e: E2E }).__e2e.getPhase()),
+    getScreen: () => page.evaluate(() => (window as unknown as { __e2e: E2E }).__e2e.getScreen()),
   };
 }
 
@@ -97,6 +97,6 @@ test('replay API returns 404 for missing id', async ({ request }) => {
 test('healthz returns ok', async ({ request }) => {
   const res = await request.get(`${BASE}/healthz`);
   expect(res.status()).toBe(200);
-  const body = await res.json() as { ok: boolean };
+  const body = (await res.json()) as { ok: boolean };
   expect(body.ok).toBe(true);
 });

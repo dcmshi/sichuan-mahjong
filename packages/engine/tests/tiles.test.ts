@@ -86,9 +86,7 @@ describe('buildWall', () => {
 
   it('is a permutation of 0..107', () => {
     const wall = buildWall('permutation');
-    expect([...wall].sort((a, b) => a - b)).toEqual(
-      Array.from({ length: 108 }, (_, i) => i),
-    );
+    expect([...wall].sort((a, b) => a - b)).toEqual(Array.from({ length: 108 }, (_, i) => i));
   });
 
   it('contains no duplicates', () => {

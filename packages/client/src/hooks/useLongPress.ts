@@ -1,4 +1,4 @@
-import { useRef, useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 
 export function useLongPress(onLongPress: () => void, onPress?: () => void, delay = 500) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -27,7 +27,9 @@ export function useLongPress(onLongPress: () => void, onPress?: () => void, dela
       pointerHandledRef.current = true;
       onPress();
       // click event fires synchronously after pointerup; reset after it drains.
-      setTimeout(() => { pointerHandledRef.current = false; }, 100);
+      setTimeout(() => {
+        pointerHandledRef.current = false;
+      }, 100);
     }
   }, [cancel, onPress]);
 

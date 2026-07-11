@@ -1,12 +1,20 @@
 import type { WinShape } from './hand.js';
 import { findAllWinningShapes, isTenpai } from './hand.js';
 import type { Meld } from './melds.js';
-import type { TileId, TileType, Suit } from './tiles.js';
-import { tileTypeOf, tileToType } from './tiles.js';
+import type { Suit, TileId, TileType } from './tiles.js';
+import { tileToType, tileTypeOf } from './tiles.js';
 
 export type FanType =
-  | 'Kong' | 'Root' | 'AllPungs' | 'GoldenWait' | 'FullFlush' | 'SevenPairs'
-  | 'WinAfterKong' | 'ShootAfterKong' | 'RobbingTheKong' | 'UnderTheSea';
+  | 'Kong'
+  | 'Root'
+  | 'AllPungs'
+  | 'GoldenWait'
+  | 'FullFlush'
+  | 'SevenPairs'
+  | 'WinAfterKong'
+  | 'ShootAfterKong'
+  | 'RobbingTheKong'
+  | 'UnderTheSea';
 
 export type FanEntry = { fan: FanType; count: number };
 
@@ -17,31 +25,56 @@ export type HandScore = {
 };
 
 export type HuSubtype =
-  | 'heavenly' | 'earthly' | 'winAfterKong' | 'shootAfterKong'
-  | 'underTheSea' | 'robbingTheKong' | 'normal';
+  | 'heavenly'
+  | 'earthly'
+  | 'winAfterKong'
+  | 'shootAfterKong'
+  | 'underTheSea'
+  | 'robbingTheKong'
+  | 'normal';
 
 // PDF Table 9 — encoded verbatim.
 // fanValue: fan contribution per instance.  selfMax: max stacking instances.
-export const COMPATIBILITY: Record<FanType, { fanValue: number; selfMax: number; incompatible: FanType[] }> = {
-  Kong:           { fanValue: 1, selfMax: 4, incompatible: ['SevenPairs'] },
-  Root:           { fanValue: 1, selfMax: 3, incompatible: ['AllPungs', 'GoldenWait'] },
-  AllPungs:       { fanValue: 1, selfMax: 1, incompatible: ['Root', 'SevenPairs', 'RobbingTheKong'] },
-  GoldenWait:     { fanValue: 1, selfMax: 1, incompatible: ['Root', 'SevenPairs', 'RobbingTheKong'] },
-  FullFlush:      { fanValue: 2, selfMax: 1, incompatible: [] },
-  SevenPairs:     { fanValue: 2, selfMax: 1, incompatible: ['Kong', 'AllPungs', 'GoldenWait', 'WinAfterKong', 'RobbingTheKong'] },
-  WinAfterKong:   { fanValue: 1, selfMax: 1, incompatible: ['SevenPairs', 'ShootAfterKong', 'RobbingTheKong', 'UnderTheSea'] },
+export const COMPATIBILITY: Record<
+  FanType,
+  { fanValue: number; selfMax: number; incompatible: FanType[] }
+> = {
+  Kong: { fanValue: 1, selfMax: 4, incompatible: ['SevenPairs'] },
+  Root: { fanValue: 1, selfMax: 3, incompatible: ['AllPungs', 'GoldenWait'] },
+  AllPungs: { fanValue: 1, selfMax: 1, incompatible: ['Root', 'SevenPairs', 'RobbingTheKong'] },
+  GoldenWait: { fanValue: 1, selfMax: 1, incompatible: ['Root', 'SevenPairs', 'RobbingTheKong'] },
+  FullFlush: { fanValue: 2, selfMax: 1, incompatible: [] },
+  SevenPairs: {
+    fanValue: 2,
+    selfMax: 1,
+    incompatible: ['Kong', 'AllPungs', 'GoldenWait', 'WinAfterKong', 'RobbingTheKong'],
+  },
+  WinAfterKong: {
+    fanValue: 1,
+    selfMax: 1,
+    incompatible: ['SevenPairs', 'ShootAfterKong', 'RobbingTheKong', 'UnderTheSea'],
+  },
   ShootAfterKong: { fanValue: 1, selfMax: 1, incompatible: ['WinAfterKong'] },
-  RobbingTheKong: { fanValue: 1, selfMax: 1, incompatible: ['AllPungs', 'GoldenWait', 'SevenPairs', 'WinAfterKong', 'UnderTheSea'] },
-  UnderTheSea:    { fanValue: 1, selfMax: 1, incompatible: ['RobbingTheKong', 'WinAfterKong'] },
+  RobbingTheKong: {
+    fanValue: 1,
+    selfMax: 1,
+    incompatible: ['AllPungs', 'GoldenWait', 'SevenPairs', 'WinAfterKong', 'UnderTheSea'],
+  },
+  UnderTheSea: { fanValue: 1, selfMax: 1, incompatible: ['RobbingTheKong', 'WinAfterKong'] },
 };
 
 function huSubtypeToContextualFan(sub: HuSubtype): FanType | null {
   switch (sub) {
-    case 'winAfterKong':   return 'WinAfterKong';
-    case 'shootAfterKong': return 'ShootAfterKong';
-    case 'robbingTheKong': return 'RobbingTheKong';
-    case 'underTheSea':    return 'UnderTheSea';
-    default:               return null;
+    case 'winAfterKong':
+      return 'WinAfterKong';
+    case 'shootAfterKong':
+      return 'ShootAfterKong';
+    case 'robbingTheKong':
+      return 'RobbingTheKong';
+    case 'underTheSea':
+      return 'UnderTheSea';
+    default:
+      return null;
   }
 }
 
@@ -89,7 +122,10 @@ function calcStructuralFans(shape: WinShape, winningTileType: TileType): Map<Fan
   return fans;
 }
 
-function withContextualFan(structural: Map<FanType, number>, contextual: FanType | null): Map<FanType, number> {
+function withContextualFan(
+  structural: Map<FanType, number>,
+  contextual: FanType | null,
+): Map<FanType, number> {
   if (contextual === null) return structural;
   // Add contextual fan only if it doesn't conflict with any structural fan
   if (COMPATIBILITY[contextual].incompatible.some(f => structural.has(f))) return structural;
@@ -108,7 +144,7 @@ function fanMapToScore(fans: Map<FanType, number>, fanCap: number): HandScore {
     total += capped * spec.fanValue;
   }
   const totalFan = Math.min(total, fanCap);
-  return { fans: entries, totalFan, handValue: Math.pow(2, totalFan) };
+  return { fans: entries, totalFan, handValue: 2 ** totalFan };
 }
 
 /**
@@ -139,7 +175,7 @@ export function calcHandScore(
 
   // Heavenly / Earthly: auto-cap hand value while keeping structural fans for display
   if ((huSubtype === 'heavenly' || huSubtype === 'earthly') && enableHeavenlyEarthly) {
-    return { fans: best.fans, totalFan: fanCap, handValue: Math.pow(2, fanCap) };
+    return { fans: best.fans, totalFan: fanCap, handValue: 2 ** fanCap };
   }
 
   return best;

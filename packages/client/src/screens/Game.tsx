@@ -1,16 +1,16 @@
+import { tileFromType, tileTypeOf } from '@sichuan-mahjong/engine';
+import type { PlayerView, Suit, TileId } from '@sichuan-mahjong/engine';
+import { AnimatePresence, Reorder, motion } from 'framer-motion';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { motion, AnimatePresence, Reorder } from 'framer-motion';
-import { tileTypeOf, tileFromType } from '@sichuan-mahjong/engine';
-import type { PlayerView, TileId, Suit } from '@sichuan-mahjong/engine';
-import { useStore } from '../store/index.js';
-import { sendAction } from '../ws/client.js';
-import { Tile, TileBack } from '../components/Tile.js';
-import { MeldDisplay } from '../components/MeldDisplay.js';
 import { ClaimPanel } from '../components/ClaimPanel.js';
 import { HowToPlay } from '../components/HowToPlay.js';
 import { LangSwitch } from '../components/LangSwitch.js';
+import { MeldDisplay } from '../components/MeldDisplay.js';
+import { Tile, TileBack } from '../components/Tile.js';
 import { useSound } from '../hooks/useSound.js';
 import { useT } from '../i18n/useT.js';
+import { useStore } from '../store/index.js';
+import { sendAction } from '../ws/client.js';
 
 // ---------------------------------------------------------------------------
 // Huan phase
@@ -36,7 +36,10 @@ function HuanPhase({ view }: { view: PlayerView }) {
 
   function submit() {
     if (selected.length !== 3) return;
-    sendAction({ t: 'action', action: { t: 'huanSelect', seat, tiles: selected as [TileId, TileId, TileId] } });
+    sendAction({
+      t: 'action',
+      action: { t: 'huanSelect', seat, tiles: selected as [TileId, TileId, TileId] },
+    });
     setSubmitted(true);
   }
 
@@ -65,18 +68,26 @@ function HuanPhase({ view }: { view: PlayerView }) {
           const wrongSuit = !isSelected && selectedSuit !== null && suit !== selectedSuit;
           return (
             <div key={id} className={wrongSuit || disabled ? 'opacity-30' : ''}>
-              <Tile id={id} selected={isSelected} size="lg" onClick={() => !disabled && toggle(id)} />
+              <Tile
+                id={id}
+                selected={isSelected}
+                size="lg"
+                onClick={() => !disabled && toggle(id)}
+              />
             </div>
           );
         })}
       </div>
       <div className="mt-auto">
         <button
+          type="button"
           className="w-full py-4 bg-amber-500 hover:bg-amber-400 rounded-xl font-bold text-lg disabled:opacity-40"
           onClick={submit}
           disabled={selected.length !== 3}
         >
-          {selected.length === 3 ? t('huan.confirm') : t('huan.selectMore', { n: 3 - selected.length })}
+          {selected.length === 3
+            ? t('huan.confirm')
+            : t('huan.selectMore', { n: 3 - selected.length })}
         </button>
       </div>
     </div>
@@ -130,6 +141,7 @@ function VoidDeclarePhase({ view }: { view: PlayerView }) {
       <div className="flex gap-3">
         {(['man', 'pin', 'sou'] as Suit[]).map(suit => (
           <button
+            type="button"
             key={suit}
             className={[
               'flex-1 py-4 rounded-xl border-2 font-bold text-lg transition-all',
@@ -139,15 +151,21 @@ function VoidDeclarePhase({ view }: { view: PlayerView }) {
             onClick={() => setChosenSuit(suit)}
           >
             <div>{t(`suit.${suit}.full`)}</div>
-            <div className="text-sm font-normal opacity-80">{t('void.tilesCount', { n: counts[suit].length })}</div>
+            <div className="text-sm font-normal opacity-80">
+              {t('void.tilesCount', { n: counts[suit].length })}
+            </div>
           </button>
         ))}
       </div>
       {chosenSuit && (
         <div>
-          <p className="text-sm text-green-300 mb-2">{t('void.yourTiles', { suit: t(`suit.${chosenSuit}`) })}</p>
+          <p className="text-sm text-green-300 mb-2">
+            {t('void.yourTiles', { suit: t(`suit.${chosenSuit}`) })}
+          </p>
           <div className="flex flex-wrap gap-1">
-            {counts[chosenSuit].map(id => <Tile key={id} id={id} size="md" />)}
+            {counts[chosenSuit].map(id => (
+              <Tile key={id} id={id} size="md" />
+            ))}
             {counts[chosenSuit].length === 0 && (
               <span className="text-white/60 italic text-sm">{t('void.none')}</span>
             )}
@@ -156,6 +174,7 @@ function VoidDeclarePhase({ view }: { view: PlayerView }) {
       )}
       <div className="mt-auto">
         <button
+          type="button"
           className="w-full py-4 bg-amber-500 hover:bg-amber-400 rounded-xl font-bold text-lg disabled:opacity-40"
           onClick={submit}
           disabled={!chosenSuit}
@@ -176,19 +195,32 @@ function OpponentTop({ view, relSeat }: { view: PlayerView; relSeat: 0 | 1 | 2 }
   const lastDiscardTile = view.lastDiscard?.from === opp.seat ? view.lastDiscard.tile : null;
   return (
     <div className="flex flex-col items-center gap-1">
-      <div className={[
-        'text-xs font-semibold px-2 py-0.5 rounded-full',
-        view.turn === opp.seat ? 'bg-amber-400 text-black shadow-[0_0_10px_rgba(251,191,36,0.7)]' : 'bg-black/25 text-green-200',
-      ].join(' ')}>{opp.name}{opp.status === 'hu' ? ' 🏆' : ''}</div>
+      <div
+        className={[
+          'text-xs font-semibold px-2 py-0.5 rounded-full',
+          view.turn === opp.seat
+            ? 'bg-amber-400 text-black shadow-[0_0_10px_rgba(251,191,36,0.7)]'
+            : 'bg-black/25 text-green-200',
+        ].join(' ')}
+      >
+        {opp.name}
+        {opp.status === 'hu' ? ' 🏆' : ''}
+      </div>
       <div className="flex gap-0.5">
-        {Array.from({ length: opp.handCount }, (_, i) => <TileBack key={i} size="sm" />)}
+        {Array.from({ length: opp.handCount }, (_, i) => (
+          <TileBack key={i} size="sm" />
+        ))}
       </div>
       {opp.melds.length > 0 && (
-        <div className="flex gap-1">{opp.melds.map((m, i) => <MeldDisplay key={i} meld={m} />)}</div>
+        <div className="flex gap-1">
+          {opp.melds.map((m, i) => (
+            <MeldDisplay key={i} meld={m} />
+          ))}
+        </div>
       )}
       {opp.discards.length > 0 && (
         <div className="flex flex-wrap gap-0.5 max-w-full discard-tray">
-          {opp.discards.slice(-8).map((id) => (
+          {opp.discards.slice(-8).map(id => (
             <Tile key={id} id={id} size="sm" lastDiscard={id === lastDiscardTile} />
           ))}
         </div>
@@ -197,21 +229,36 @@ function OpponentTop({ view, relSeat }: { view: PlayerView; relSeat: 0 | 1 | 2 }
   );
 }
 
-function OpponentSide({ view, relSeat, side }: { view: PlayerView; relSeat: 0 | 1 | 2; side: 'left' | 'right' }) {
+function OpponentSide({
+  view,
+  relSeat,
+  side,
+}: { view: PlayerView; relSeat: 0 | 1 | 2; side: 'left' | 'right' }) {
   const opp = view.others[relSeat];
   const lastDiscardTile = view.lastDiscard?.from === opp.seat ? view.lastDiscard.tile : null;
   return (
-    <div className={`flex flex-col items-center gap-1 ${side === 'right' ? 'items-end' : 'items-start'}`}>
-      <div className={[
-        'text-xs font-semibold px-2 py-0.5 rounded-full',
-        view.turn === opp.seat ? 'bg-amber-400 text-black shadow-[0_0_10px_rgba(251,191,36,0.7)]' : 'bg-black/25 text-green-200',
-      ].join(' ')}>{opp.name}{opp.status === 'hu' ? ' 🏆' : ''}</div>
+    <div
+      className={`flex flex-col items-center gap-1 ${side === 'right' ? 'items-end' : 'items-start'}`}
+    >
+      <div
+        className={[
+          'text-xs font-semibold px-2 py-0.5 rounded-full',
+          view.turn === opp.seat
+            ? 'bg-amber-400 text-black shadow-[0_0_10px_rgba(251,191,36,0.7)]'
+            : 'bg-black/25 text-green-200',
+        ].join(' ')}
+      >
+        {opp.name}
+        {opp.status === 'hu' ? ' 🏆' : ''}
+      </div>
       <div className="flex flex-col gap-0.5">
-        {Array.from({ length: opp.handCount }, (_, i) => <TileBack key={i} size="sm" />)}
+        {Array.from({ length: opp.handCount }, (_, i) => (
+          <TileBack key={i} size="sm" />
+        ))}
       </div>
       {opp.discards.length > 0 && (
         <div className="flex flex-wrap gap-0.5 discard-tray">
-          {opp.discards.slice(-6).map((id) => (
+          {opp.discards.slice(-6).map(id => (
             <Tile key={id} id={id} size="sm" lastDiscard={id === lastDiscardTile} />
           ))}
         </div>
@@ -239,11 +286,18 @@ function KongButtons({ view, seat }: { view: PlayerView; seat: number }) {
         const { suit, rank } = a.tile;
         return (
           <button
+            type="button"
             key={i}
             className="px-3 py-1.5 bg-purple-700 hover:bg-purple-600 rounded-lg text-sm font-bold text-white"
-            onClick={() => { play('kong'); sendAction({ t: 'action', action: a }); }}
+            onClick={() => {
+              play('kong');
+              sendAction({ t: 'action', action: a });
+            }}
           >
-            {t('play.kong', { label: `${suit[0]?.toUpperCase()}${rank}`, subtype: t(`kong.${a.subtype}`) })}
+            {t('play.kong', {
+              label: `${suit[0]?.toUpperCase()}${rank}`,
+              subtype: t(`kong.${a.subtype}`),
+            })}
           </button>
         );
       })}
@@ -299,9 +353,10 @@ function PlayPhase({ view }: { view: PlayerView }) {
   // Distinguish a tap (select/discard) from a drag (reorder) by pointer travel,
   // since Framer's Reorder.Item preventDefaults pointerdown and eats onClick/onTap.
   const tapStart = useRef<{ x: number; y: number } | null>(null);
-  // Reconcile only when the hand's actual contents change (not on every server
-  // view push — `hand` is a fresh array each time, but its tiles usually aren't).
+  // Reconcile on hand *contents* (handKey), not the fresh-every-push `hand` array
+  // reference, so the player's manual drag order isn't reset on every server view.
   const handKey = hand.join(',');
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentionally keyed on handKey, not hand
   useEffect(() => {
     setHandOrder(prev => {
       const inHand = new Set(hand);
@@ -310,7 +365,6 @@ function PlayPhase({ view }: { view: PlayerView }) {
       const added = hand.filter(id => !keptSet.has(id));
       return [...kept, ...added];
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [handKey]);
 
   const isMyTurn = view.turn === seat && view.phase === 'play' && view.claimDeadline === null;
@@ -347,9 +401,12 @@ function PlayPhase({ view }: { view: PlayerView }) {
   // Recompute only when the server sends a new set of legal actions, not on
   // every render (this PlayPhase re-renders on each incoming view).
   const legalDiscards = useMemo(
-    () => new Set(
-      view.yourLegalActions.filter(a => a.t === 'discard').map(a => a.t === 'discard' ? a.tile : 0),
-    ),
+    () =>
+      new Set(
+        view.yourLegalActions
+          .filter(a => a.t === 'discard')
+          .map(a => (a.t === 'discard' ? a.tile : 0)),
+      ),
     [view.yourLegalActions],
   );
 
@@ -380,15 +437,33 @@ function PlayPhase({ view }: { view: PlayerView }) {
       {/* Top bar */}
       <div className="flex items-center justify-between px-3 py-1.5 bg-black/30 text-xs">
         <span>{t('play.wall', { n: view.wallRemaining })}</span>
-        <span className={`font-semibold ${view.turn === seat ? 'text-amber-400' : 'text-white/60'}`}>
-          {view.turn === seat ? t('play.yourTurn') : t('play.othersTurn', { name: view.others.find(o => o.seat === view.turn)?.name ?? '...' })}
+        <span
+          className={`font-semibold ${view.turn === seat ? 'text-amber-400' : 'text-white/60'}`}
+        >
+          {view.turn === seat
+            ? t('play.yourTurn')
+            : t('play.othersTurn', {
+                name: view.others.find(o => o.seat === view.turn)?.name ?? '...',
+              })}
         </span>
         <div className="flex gap-2 items-center">
           <LangSwitch />
-          <button className="text-white/50 hover:text-white" onClick={toggleSound} title="Toggle sound" aria-label="Toggle sound">
+          <button
+            type="button"
+            className="text-white/50 hover:text-white"
+            onClick={toggleSound}
+            title="Toggle sound"
+            aria-label="Toggle sound"
+          >
             {soundEnabled ? '🔊' : '🔇'}
           </button>
-          <button className="text-white/50 hover:text-white" onClick={() => setShowHowToPlay(true)} title="How to play" aria-label="How to play">
+          <button
+            type="button"
+            className="text-white/50 hover:text-white"
+            onClick={() => setShowHowToPlay(true)}
+            title="How to play"
+            aria-label="How to play"
+          >
             ?
           </button>
         </div>
@@ -396,9 +471,21 @@ function PlayPhase({ view }: { view: PlayerView }) {
 
       {/* Score deltas */}
       <div className="flex justify-around px-2 py-0.5 text-xs bg-black/20">
-        <span className="text-white/60">{view.you.name}: <span className={view.you.scoreDelta >= 0 ? 'text-green-400' : 'text-red-400'}>{view.you.scoreDelta > 0 ? '+' : ''}{view.you.scoreDelta}</span></span>
+        <span className="text-white/60">
+          {view.you.name}:{' '}
+          <span className={view.you.scoreDelta >= 0 ? 'text-green-400' : 'text-red-400'}>
+            {view.you.scoreDelta > 0 ? '+' : ''}
+            {view.you.scoreDelta}
+          </span>
+        </span>
         {view.others.map(o => (
-          <span key={o.seat} className="text-white/60">{o.name.slice(0, 4)}: <span className={o.scoreDelta >= 0 ? 'text-green-400' : 'text-red-400'}>{o.scoreDelta > 0 ? '+' : ''}{o.scoreDelta}</span></span>
+          <span key={o.seat} className="text-white/60">
+            {o.name.slice(0, 4)}:{' '}
+            <span className={o.scoreDelta >= 0 ? 'text-green-400' : 'text-red-400'}>
+              {o.scoreDelta > 0 ? '+' : ''}
+              {o.scoreDelta}
+            </span>
+          </span>
         ))}
       </div>
 
@@ -416,7 +503,11 @@ function PlayPhase({ view }: { view: PlayerView }) {
           {lastDiscardTile !== null && (
             <div className="flex flex-col items-center gap-1">
               <span className="text-xs text-green-300">{t('play.lastDiscard')}</span>
-              <motion.div key={lastDiscardTile} initial={{ scale: 1.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>
+              <motion.div
+                key={lastDiscardTile}
+                initial={{ scale: 1.4, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+              >
                 <Tile id={lastDiscardTile} lastDiscard size="lg" />
               </motion.div>
             </div>
@@ -433,7 +524,9 @@ function PlayPhase({ view }: { view: PlayerView }) {
       {/* Your melds */}
       {view.you.melds.length > 0 && (
         <div className="flex gap-1 px-3 py-1">
-          {view.you.melds.map((m, i) => <MeldDisplay key={i} meld={m} />)}
+          {view.you.melds.map((m, i) => (
+            <MeldDisplay key={i} meld={m} />
+          ))}
         </div>
       )}
 
@@ -449,6 +542,7 @@ function PlayPhase({ view }: { view: PlayerView }) {
         <div className="flex gap-2 px-3 py-1">
           {canHeavenly && (
             <motion.button
+              type="button"
               whileTap={{ scale: 0.95 }}
               className="flex-1 py-2.5 bg-yellow-500 hover:bg-yellow-400 rounded-xl font-bold text-black"
               onClick={declareHeavenly}
@@ -458,6 +552,7 @@ function PlayPhase({ view }: { view: PlayerView }) {
           )}
           {canHu && (
             <motion.button
+              type="button"
               whileTap={{ scale: 0.95 }}
               className="flex-1 py-2.5 bg-red-600 hover:bg-red-500 rounded-xl font-bold"
               onClick={declareHu}
@@ -482,6 +577,7 @@ function PlayPhase({ view }: { view: PlayerView }) {
             {selectedTile !== null ? t('play.tapDiscard') : ''}
           </span>
           <button
+            type="button"
             className="text-xs px-2 py-0.5 rounded-md bg-black/25 text-white/70 hover:text-white"
             onClick={() => setHandOrder([...hand])}
             title={t('play.sort')}
@@ -502,8 +598,10 @@ function PlayPhase({ view }: { view: PlayerView }) {
               // Shrink-to-fit: every tile flexes to share the row width (capped so
               // small hands don't balloon), so the whole hand fits with no scroll.
               className={`flex-1 min-w-0 max-w-[42px] ${legalDiscards.has(id) ? '' : 'opacity-60'}`}
-              onPointerDown={(e) => { tapStart.current = { x: e.clientX, y: e.clientY }; }}
-              onPointerUp={(e) => {
+              onPointerDown={e => {
+                tapStart.current = { x: e.clientX, y: e.clientY };
+              }}
+              onPointerUp={e => {
                 const s = tapStart.current;
                 tapStart.current = null;
                 // Treat as a tap (not a drag-to-reorder) only if the pointer barely moved.
@@ -545,11 +643,12 @@ function PlayPhase({ view }: { view: PlayerView }) {
 export function Game() {
   const view = useStore(s => s.view);
   const t = useT();
-  if (!view) return (
-    <div className="min-h-screen board-felt flex items-center justify-center text-white">
-      <p className="animate-pulse">{t('play.loading')}</p>
-    </div>
-  );
+  if (!view)
+    return (
+      <div className="min-h-screen board-felt flex items-center justify-center text-white">
+        <p className="animate-pulse">{t('play.loading')}</p>
+      </div>
+    );
   if (view.phase === 'huan') return <HuanPhase view={view} />;
   if (view.phase === 'voidDeclare') return <VoidDeclarePhase view={view} />;
   return <PlayPhase view={view} />;

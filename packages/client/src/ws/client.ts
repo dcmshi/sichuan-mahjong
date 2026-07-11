@@ -40,7 +40,10 @@ export class WsClient {
 
   close(): void {
     this.closed = true;
-    if (this.timer !== null) { clearTimeout(this.timer); this.timer = null; }
+    if (this.timer !== null) {
+      clearTimeout(this.timer);
+      this.timer = null;
+    }
     this.ws?.close();
     this.ws = null;
   }
@@ -58,8 +61,11 @@ export class WsClient {
     };
 
     ws.onmessage = (e: MessageEvent<string>) => {
-      try { this.cbs.onMessage(JSON.parse(e.data) as ServerMsg); }
-      catch { /* ignore malformed */ }
+      try {
+        this.cbs.onMessage(JSON.parse(e.data) as ServerMsg);
+      } catch {
+        /* ignore malformed */
+      }
     };
 
     ws.onclose = () => {
@@ -85,8 +91,12 @@ export function makeSpectateUrl(code: string): string {
 // Module-level singleton so any component can send actions without prop drilling
 let _client: WsClient | null = null;
 
-export function setWsClient(c: WsClient | null): void { _client = c; }
-export function getWsClient(): WsClient | null { return _client; }
+export function setWsClient(c: WsClient | null): void {
+  _client = c;
+}
+export function getWsClient(): WsClient | null {
+  return _client;
+}
 
 /** Close and drop the active client, if any. Safe to call when none exists. */
 export function closeConnection(): void {
@@ -112,7 +122,7 @@ export function connectGame(
   closeConnection();
   const store = useStore.getState();
   const client: WsClient = new WsClient(url, {
-    onMessage: (msg) => {
+    onMessage: msg => {
       store.handleServerMsg(msg);
       onMessage?.(msg, client);
     },

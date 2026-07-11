@@ -1,5 +1,5 @@
-import { useStore } from '../store/index.js';
 import { useT } from '../i18n/useT.js';
+import { useStore } from '../store/index.js';
 
 export function Lobby() {
   const t = useT();
@@ -17,7 +17,7 @@ export function Lobby() {
       </div>
 
       <div className="flex flex-col gap-2 w-full max-w-xs">
-        {[0, 1, 2, 3].map((i) => {
+        {[0, 1, 2, 3].map(i => {
           const p = lobbyPlayers[i];
           return (
             <div key={i} className="flex items-center gap-3 bg-black/20 rounded-xl px-3 py-2.5">
@@ -25,7 +25,9 @@ export function Lobby() {
               {p?.name ? (
                 <>
                   <span className="font-semibold">{p.name}</span>
-                  {p.seat === seat && <span className="ml-1 text-xs text-amber-400">{t('common.you')}</span>}
+                  {p.seat === seat && (
+                    <span className="ml-1 text-xs text-amber-400">{t('common.you')}</span>
+                  )}
                 </>
               ) : (
                 <span className="text-white/40 italic text-sm">{t('lobby.waiting')}</span>
@@ -36,9 +38,7 @@ export function Lobby() {
         })}
       </div>
 
-      <p className="text-green-300 text-sm animate-pulse">
-        {t('lobby.waitingHost')}
-      </p>
+      <p className="text-green-300 text-sm animate-pulse">{t('lobby.waitingHost')}</p>
 
       {reconnecting && (
         <p className="text-amber-400 text-sm animate-pulse">{t('common.reconnecting')}</p>

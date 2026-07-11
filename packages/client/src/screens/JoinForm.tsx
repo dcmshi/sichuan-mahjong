@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { useStore } from '../store/index.js';
-import { makeWsUrl, connectGame } from '../ws/client.js';
 import { useT } from '../i18n/useT.js';
+import { useStore } from '../store/index.js';
+import { connectGame, makeWsUrl } from '../ws/client.js';
 
 export function JoinForm() {
   const t = useT();
@@ -16,21 +16,30 @@ export function JoinForm() {
   async function handleJoin() {
     const trimCode = code.trim().toUpperCase();
     const trimName = name.trim();
-    if (trimCode.length !== 4) { setError('join.errCode'); return; }
-    if (!trimName) { setError('join.errName'); return; }
+    if (trimCode.length !== 4) {
+      setError('join.errCode');
+      return;
+    }
+    if (!trimName) {
+      setError('join.errName');
+      return;
+    }
 
     setLoading(true);
     setError('');
     try {
       const res = await fetch(`/api/lobby/${trimCode}`);
-      if (!res.ok) { setError('join.errNotFound'); return; }
+      if (!res.ok) {
+        setError('join.errNotFound');
+        return;
+      }
 
       setStoreCode(trimCode);
       setStoreName(trimName);
 
       // Connect tokenless; once the server issues a seat token, point future
       // reconnects at the token URL (no second socket / connect-close churn).
-      const ws = connectGame(makeWsUrl(trimCode, ''), (msg) => {
+      const ws = connectGame(makeWsUrl(trimCode, ''), msg => {
         if (msg.t === 'joined') {
           ws.setReconnectUrl(makeWsUrl(trimCode, msg.token));
           goTo('lobby');
@@ -56,6 +65,7 @@ export function JoinForm() {
           value={code}
           onChange={e => setCode(e.target.value.toUpperCase().slice(0, 4))}
           maxLength={4}
+          // biome-ignore lint/a11y/noAutofocus: deliberate — focus the join code on a mobile-first form
           autoFocus
         />
         <input
@@ -68,6 +78,7 @@ export function JoinForm() {
         />
         {error && <p className="text-red-400 text-sm text-center">{t(error)}</p>}
         <button
+          type="button"
           className="w-full py-3 bg-amber-500 hover:bg-amber-400 rounded-xl font-bold text-lg disabled:opacity-50"
           onClick={() => void handleJoin()}
           disabled={loading}
@@ -75,6 +86,7 @@ export function JoinForm() {
           {loading ? t('join.joining') : t('join.join')}
         </button>
         <button
+          type="button"
           className="py-2 text-white/60 hover:text-white"
           onClick={() => goTo('landing')}
         >

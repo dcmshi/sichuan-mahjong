@@ -1,1 +1,10 @@
-* text=auto
+# Normalize all text files to LF in the repo AND in the working tree, on every
+# platform. Without eol=lf, a Windows checkout (core.autocrlf=true) materializes
+# CRLF working copies, which Biome (LF-only) then flags as format errors — while
+# CI on Linux sees LF and passes. Pinning eol=lf keeps both consistent.
+* text=auto eol=lf
+
+# Binary files git already auto-detects; make it explicit so they're never touched.
+*.pdf binary
+*.png binary
+*.ico binary

@@ -6,8 +6,7 @@ function rotl(x: number, k: number): number {
 
 // splitmix32 used only to expand a single 32-bit seed into the 4-word state
 function splitmix32(h: number): number {
-  h = (h + 0x9e3779b9) | 0;
-  let z = h;
+  let z = (h + 0x9e3779b9) | 0;
   z = Math.imul(z ^ (z >>> 16), 0x85ebca6b) | 0;
   z = Math.imul(z ^ (z >>> 13), 0xc2b2ae35) | 0;
   return (z ^ (z >>> 16)) >>> 0;
@@ -51,7 +50,11 @@ export function createRng(seed: string): Rng {
 
   return {
     next,
-    nextInt(n: number) { return next() % n; },
-    nextFloat() { return next() / 0x100000000; },
+    nextInt(n: number) {
+      return next() % n;
+    },
+    nextFloat() {
+      return next() / 0x100000000;
+    },
   };
 }

@@ -1,11 +1,11 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock child_process before importing networking module
 vi.mock('node:child_process', () => ({
   spawnSync: vi.fn(),
 }));
 
-vi.mock('node:fs', async (importOriginal) => {
+vi.mock('node:fs', async importOriginal => {
   const actual = await importOriginal<typeof import('node:fs')>();
   return {
     ...actual,
@@ -15,11 +15,7 @@ vi.mock('node:fs', async (importOriginal) => {
 });
 
 import { spawnSync } from 'node:child_process';
-import {
-  getTailscaleIpFromInterfaces,
-  getTailscaleInfo,
-  getLanIp,
-} from '../src/networking.js';
+import { getLanIp, getTailscaleInfo, getTailscaleIpFromInterfaces } from '../src/networking.js';
 
 const mockSpawnSync = vi.mocked(spawnSync);
 
@@ -51,10 +47,15 @@ describe('Tailscale detection via CLI', () => {
     // First call: version check succeeds (binary found)
     mockSpawnSync.mockReturnValueOnce(makeSpawnResult('1.50.0', 0));
     // Second call: status --json
-    mockSpawnSync.mockReturnValueOnce(makeSpawnResult(JSON.stringify({
-      BackendState: 'Stopped',
-      Self: { TailscaleIPs: ['100.100.1.2'], DNSName: 'laptop.tail.ts.net.' },
-    }), 0));
+    mockSpawnSync.mockReturnValueOnce(
+      makeSpawnResult(
+        JSON.stringify({
+          BackendState: 'Stopped',
+          Self: { TailscaleIPs: ['100.100.1.2'], DNSName: 'laptop.tail.ts.net.' },
+        }),
+        0,
+      ),
+    );
 
     const result = getTailscaleInfo();
     expect(result).toBeNull();
@@ -62,10 +63,15 @@ describe('Tailscale detection via CLI', () => {
 
   it('returns ip and hostname when Tailscale is Running', () => {
     mockSpawnSync.mockReturnValueOnce(makeSpawnResult('1.50.0', 0));
-    mockSpawnSync.mockReturnValueOnce(makeSpawnResult(JSON.stringify({
-      BackendState: 'Running',
-      Self: { TailscaleIPs: ['100.100.1.2'], DNSName: 'laptop.tail-name.ts.net.' },
-    }), 0));
+    mockSpawnSync.mockReturnValueOnce(
+      makeSpawnResult(
+        JSON.stringify({
+          BackendState: 'Running',
+          Self: { TailscaleIPs: ['100.100.1.2'], DNSName: 'laptop.tail-name.ts.net.' },
+        }),
+        0,
+      ),
+    );
 
     const result = getTailscaleInfo();
     expect(result).not.toBeNull();
@@ -76,10 +82,15 @@ describe('Tailscale detection via CLI', () => {
 
   it('strips trailing dot from DNSName', () => {
     mockSpawnSync.mockReturnValueOnce(makeSpawnResult('1.50.0', 0));
-    mockSpawnSync.mockReturnValueOnce(makeSpawnResult(JSON.stringify({
-      BackendState: 'Running',
-      Self: { TailscaleIPs: ['100.64.5.10'], DNSName: 'myhost.example.ts.net.' },
-    }), 0));
+    mockSpawnSync.mockReturnValueOnce(
+      makeSpawnResult(
+        JSON.stringify({
+          BackendState: 'Running',
+          Self: { TailscaleIPs: ['100.64.5.10'], DNSName: 'myhost.example.ts.net.' },
+        }),
+        0,
+      ),
+    );
 
     const result = getTailscaleInfo();
     expect(result?.hostname).toBe('myhost.example.ts.net');

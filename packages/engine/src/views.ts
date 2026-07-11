@@ -1,11 +1,11 @@
-import type { GameState, Seat, HuRecord, PlayerState, GameConfig } from './state.js';
-import type { Meld } from './melds.js';
-import type { TileId, TileType, Suit } from './tiles.js';
-import { tileTypeOf, tileFromType, tileToType, suitOf } from './tiles.js';
 import type { GameAction } from './actions.js';
-import type { Phase } from './state.js';
-import { isWinningHand } from './hand.js';
 import { canHuConsideringFuriten, canKongOnTile, canPungOnTile } from './claims.js';
+import { isWinningHand } from './hand.js';
+import type { Meld } from './melds.js';
+import type { GameConfig, GameState, HuRecord, PlayerState, Seat } from './state.js';
+import type { Phase } from './state.js';
+import type { Suit, TileId, TileType } from './tiles.js';
+import { suitOf, tileFromType, tileToType, tileTypeOf } from './tiles.js';
 
 // ---------------------------------------------------------------------------
 // Public view types
@@ -121,8 +121,10 @@ export function computeLegalActions(state: GameState, seat: Seat): GameAction[] 
     // replacement availability inside canKongOnTile; pung is not (§5.5.9 allows
     // the wall-end pung-chain), so it must still be offered at the wall's end.
     if (!w.afterKong) {
-      if (canKongOnTile(state, seat, tile)) actions.push({ t: 'claim', seat, claim: { kind: 'kong' } });
-      if (canPungOnTile(state, seat, tile)) actions.push({ t: 'claim', seat, claim: { kind: 'pung' } });
+      if (canKongOnTile(state, seat, tile))
+        actions.push({ t: 'claim', seat, claim: { kind: 'kong' } });
+      if (canPungOnTile(state, seat, tile))
+        actions.push({ t: 'claim', seat, claim: { kind: 'pung' } });
     }
 
     actions.push({ t: 'pass', seat });
@@ -144,7 +146,12 @@ export function computeLegalActions(state: GameState, seat: Seat): GameAction[] 
     if (!state.wallEndReached) {
       for (const type of getConcealdedKongTypes(state, seat)) {
         if (state.drawIndex <= state.kongDrawIndex) {
-          actions.push({ t: 'declareKongOnTurn', seat, tile: tileFromType(type), subtype: 'concealed' });
+          actions.push({
+            t: 'declareKongOnTurn',
+            seat,
+            tile: tileFromType(type),
+            subtype: 'concealed',
+          });
         }
       }
     }
@@ -167,7 +174,12 @@ export function computeLegalActions(state: GameState, seat: Seat): GameAction[] 
   if (!state.wallEndReached) {
     for (const type of getConcealdedKongTypes(state, seat)) {
       if (state.drawIndex <= state.kongDrawIndex) {
-        actions.push({ t: 'declareKongOnTurn', seat, tile: tileFromType(type), subtype: 'concealed' });
+        actions.push({
+          t: 'declareKongOnTurn',
+          seat,
+          tile: tileFromType(type),
+          subtype: 'concealed',
+        });
       }
     }
     for (const kongAction of getPromotedPostponedKongActions(state, seat)) {
@@ -219,7 +231,11 @@ export function projectView(state: GameState, seat: Seat): PlayerView {
       voidedSuit: you.voidedSuit,
       furiten: you.furiten,
     },
-    others: otherSeats.map(s => toPublicPlayer(state.players[s]!)) as [PublicPlayer, PublicPlayer, PublicPlayer],
+    others: otherSeats.map(s => toPublicPlayer(state.players[s]!)) as [
+      PublicPlayer,
+      PublicPlayer,
+      PublicPlayer,
+    ],
     wallRemaining: state.kongDrawIndex - state.drawIndex + 1,
     phase: state.phase,
     turn: state.turn,
@@ -235,7 +251,10 @@ export function projectView(state: GameState, seat: Seat): PlayerView {
 export function projectSpectatorView(state: GameState): SpectatorView {
   return {
     players: state.players.map(toPublicPlayer) as [
-      PublicPlayer, PublicPlayer, PublicPlayer, PublicPlayer,
+      PublicPlayer,
+      PublicPlayer,
+      PublicPlayer,
+      PublicPlayer,
     ],
     wallRemaining: state.kongDrawIndex - state.drawIndex + 1,
     phase: state.phase,

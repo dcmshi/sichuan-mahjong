@@ -1,6 +1,6 @@
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
 import tailwind from '@tailwindcss/vite';
+import react from '@vitejs/plugin-react';
+import { defineConfig } from 'vite';
 
 // __E2E__ is compile-time replaced (so dead-code-eliminated in releases). It's on
 // for dev and for e2e builds (VITE_E2E=1) so Playwright's window.__e2e helpers exist.

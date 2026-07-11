@@ -4,7 +4,11 @@ import { useStore } from '../store/index.js';
 type SoundType = 'tile' | 'discard' | 'kong' | 'hu' | 'claim';
 
 function createCtx(): AudioContext | null {
-  try { return new AudioContext(); } catch { return null; }
+  try {
+    return new AudioContext();
+  } catch {
+    return null;
+  }
 }
 
 let sharedCtx: AudioContext | null = null;
@@ -102,11 +106,21 @@ export function useSound() {
     if (!ctx) return;
     void resumeCtx(ctx).then(() => {
       switch (type) {
-        case 'tile':    playTileClick(ctx); break;
-        case 'discard': playDiscard(ctx);   break;
-        case 'kong':    playKong(ctx);      break;
-        case 'hu':      playHu(ctx);        break;
-        case 'claim':   playClaim(ctx);     break;
+        case 'tile':
+          playTileClick(ctx);
+          break;
+        case 'discard':
+          playDiscard(ctx);
+          break;
+        case 'kong':
+          playKong(ctx);
+          break;
+        case 'hu':
+          playHu(ctx);
+          break;
+        case 'claim':
+          playClaim(ctx);
+          break;
       }
     });
   }, []);

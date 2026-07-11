@@ -13,7 +13,7 @@ export type TileId = number;
 const SUITS: readonly Suit[] = ['man', 'pin', 'sou'];
 
 export function tileFromType(t: TileType): Tile {
-  return { suit: SUITS[Math.floor(t / 9)] as Suit, rank: (t % 9 + 1) as Rank };
+  return { suit: SUITS[Math.floor(t / 9)] as Suit, rank: ((t % 9) + 1) as Rank };
 }
 
 export function tileToType(t: Tile): TileType {
@@ -29,7 +29,7 @@ export function suitOf(id: TileId): Suit {
 }
 
 export function rankOf(id: TileId): Rank {
-  return (tileTypeOf(id) % 9 + 1) as Rank;
+  return ((tileTypeOf(id) % 9) + 1) as Rank;
 }
 
 /** Returns a new sorted array; does not mutate the input. */

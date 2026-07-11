@@ -16,9 +16,7 @@ export default defineConfig({
     baseURL: 'http://localhost:8080',
     headless: true,
   },
-  projects: [
-    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
-  ],
+  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
     command: 'node packages/server/dist/main.js --no-mdns --no-tailscale',
     url: 'http://localhost:8080/healthz',

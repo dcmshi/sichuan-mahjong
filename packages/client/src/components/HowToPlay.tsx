@@ -1,7 +1,16 @@
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useT } from '../i18n/useT.js';
 
-const SECTION_KEYS = ['overview', 'setup', 'turn', 'claims', 'winning', 'scoring', 'kongs', 'furiten'] as const;
+const SECTION_KEYS = [
+  'overview',
+  'setup',
+  'turn',
+  'claims',
+  'winning',
+  'scoring',
+  'kongs',
+  'furiten',
+] as const;
 
 export function HowToPlay({ onClose }: { onClose: () => void }) {
   const t = useT();
@@ -24,14 +33,23 @@ export function HowToPlay({ onClose }: { onClose: () => void }) {
         >
           <div className="sticky top-0 bg-green-950 flex items-center justify-between px-4 py-3 border-b border-white/10">
             <h2 className="text-white font-bold text-lg">{t('htp.title')}</h2>
-            <button className="text-white/60 hover:text-white text-xl px-2" onClick={onClose} aria-label="Close">✕</button>
+            <button
+              type="button"
+              className="text-white/60 hover:text-white text-xl px-2"
+              onClick={onClose}
+              aria-label="Close"
+            >
+              ✕
+            </button>
           </div>
 
           <div className="px-4 py-4 flex flex-col gap-5">
             {SECTION_KEYS.map(k => (
               <div key={k}>
                 <h3 className="text-amber-400 font-semibold mb-1">{t(`htp.${k}.title`)}</h3>
-                <p className="text-green-100 text-sm leading-relaxed whitespace-pre-line">{t(`htp.${k}.body`)}</p>
+                <p className="text-green-100 text-sm leading-relaxed whitespace-pre-line">
+                  {t(`htp.${k}.body`)}
+                </p>
               </div>
             ))}
           </div>

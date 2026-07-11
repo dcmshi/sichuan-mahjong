@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createTailscaleShare } from '../src/tailscaleShare.js';
 
 const IP = '100.101.102.103';
@@ -18,14 +18,26 @@ describe('Tailscale share automation', () => {
   });
 
   it('resolves the device and creates an invite (happy path)', async () => {
-    const fetchImpl = vi.fn()
-      .mockResolvedValueOnce(jsonResponse({ devices: [
-        { id: 'dev-other', addresses: ['100.1.1.1'] },
-        { id: 'dev-here', addresses: [IP, 'fd7a::1'] },
-      ] }))
-      .mockResolvedValueOnce(jsonResponse([{ inviteUrl: 'https://login.tailscale.com/share/abc123' }]));
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(
+        jsonResponse({
+          devices: [
+            { id: 'dev-other', addresses: ['100.1.1.1'] },
+            { id: 'dev-here', addresses: [IP, 'fd7a::1'] },
+          ],
+        }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse([{ inviteUrl: 'https://login.tailscale.com/share/abc123' }]),
+      );
 
-    const r = await createTailscaleShare({ tailscaleIp: IP, apiKey: 'tskey-xxx', tailnet: 'example.com', fetchImpl });
+    const r = await createTailscaleShare({
+      tailscaleIp: IP,
+      apiKey: 'tskey-xxx',
+      tailnet: 'example.com',
+      fetchImpl,
+    });
     expect(r).toEqual({ ok: true, inviteUrl: 'https://login.tailscale.com/share/abc123' });
 
     // Correct endpoints, auth header, and POST body.
@@ -41,7 +53,8 @@ describe('Tailscale share automation', () => {
   });
 
   it('reads `url` as a fallback invite field', async () => {
-    const fetchImpl = vi.fn()
+    const fetchImpl = vi
+      .fn()
       .mockResolvedValueOnce(jsonResponse({ devices: [{ id: 'd', addresses: [IP] }] }))
       .mockResolvedValueOnce(jsonResponse([{ url: 'https://login.tailscale.com/share/zzz' }]));
     const r = await createTailscaleShare({ tailscaleIp: IP, apiKey: 'k', fetchImpl });
@@ -49,7 +62,8 @@ describe('Tailscale share automation', () => {
   });
 
   it('returns device_not_found when no device matches the host IP', async () => {
-    const fetchImpl = vi.fn()
+    const fetchImpl = vi
+      .fn()
       .mockResolvedValueOnce(jsonResponse({ devices: [{ id: 'x', addresses: ['100.9.9.9'] }] }));
     const r = await createTailscaleShare({ tailscaleIp: IP, apiKey: 'k', fetchImpl });
     expect(r).toEqual({ ok: false, reason: 'device_not_found' });
@@ -66,7 +80,8 @@ describe('Tailscale share automation', () => {
   });
 
   it('defaults the tailnet to "-" when not specified', async () => {
-    const fetchImpl = vi.fn()
+    const fetchImpl = vi
+      .fn()
       .mockResolvedValueOnce(jsonResponse({ devices: [{ id: 'd', addresses: [IP] }] }))
       .mockResolvedValueOnce(jsonResponse([{ inviteUrl: 'https://x' }]));
     await createTailscaleShare({ tailscaleIp: IP, apiKey: 'k', fetchImpl });

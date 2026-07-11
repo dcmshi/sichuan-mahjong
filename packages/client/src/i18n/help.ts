@@ -51,13 +51,16 @@ Promoted Kong: add drawn tile to existing pung. Each pays 1.
 
 After any kong, draw a replacement tile from the other end of the wall.`,
   'htp.furiten.title': 'Furiten',
-  'htp.furiten.body': `If you skip a discard you could have won on, you enter Furiten — you cannot win off discards until your next self-draw. You can still win by self-draw or on a higher-value hand.`,
+  'htp.furiten.body':
+    'If you skip a discard you could have won on, you enter Furiten — you cannot win off discards until your next self-draw. You can still win by self-draw or on a higher-value hand.',
 
   'about.title': 'About',
   'about.app.title': 'Sichuan Mahjong',
-  'about.app.body': 'A local-multiplayer implementation of Sichuan Mahjong (Bloody Rules / 血战到底). Host on your own machine; friends join over LAN or Tailscale. Code is MIT-licensed.',
+  'about.app.body':
+    'A local-multiplayer implementation of Sichuan Mahjong (Bloody Rules / 血战到底). Host on your own machine; friends join over LAN or Tailscale. Code is MIT-licensed.',
   'about.tiles.title': 'Tile Graphics',
-  'about.tiles.body': 'Tile faces are SVG assets sourced from Wikimedia Commons under the CC-BY-SA 4.0 license. Per-file attribution is listed in public/tiles/credits.json. The tile back is an original work. The CC-BY-SA license applies only to the bundled SVGs; the surrounding code remains MIT.',
+  'about.tiles.body':
+    'Tile faces are SVG assets sourced from Wikimedia Commons under the CC-BY-SA 4.0 license. Per-file attribution is listed in public/tiles/credits.json. The tile back is an original work. The CC-BY-SA license applies only to the bundled SVGs; the surrounding code remains MIT.',
   'about.rules.title': 'Rules Reference',
   'about.rules.body': "Canonical ruleset: Vitaly Novikov, Sichuan Mahjong? It's that simple!",
   'about.license.title': 'License',
@@ -111,13 +114,16 @@ const zhHans: Dict = {
 
 任何杠之后，从牌墙另一端补摸一张牌。`,
   'htp.furiten.title': '振听',
-  'htp.furiten.body': `如果你放弃了一张本可胡的牌，你将进入振听——在下次自摸之前不能点炮胡。你仍可通过自摸或更大牌型胡牌。`,
+  'htp.furiten.body':
+    '如果你放弃了一张本可胡的牌，你将进入振听——在下次自摸之前不能点炮胡。你仍可通过自摸或更大牌型胡牌。',
 
   'about.title': '关于',
   'about.app.title': '四川麻将',
-  'about.app.body': '四川麻将（血战到底）的本地多人实现。在自己的电脑上做房主，好友通过局域网或 Tailscale 加入。代码采用 MIT 许可。',
+  'about.app.body':
+    '四川麻将（血战到底）的本地多人实现。在自己的电脑上做房主，好友通过局域网或 Tailscale 加入。代码采用 MIT 许可。',
   'about.tiles.title': '牌面素材',
-  'about.tiles.body': '牌面为来自 Wikimedia Commons 的 SVG 素材，采用 CC-BY-SA 4.0 许可。逐文件署名见 public/tiles/credits.json。牌背为原创作品。CC-BY-SA 许可仅适用于打包的 SVG；其余代码仍为 MIT。',
+  'about.tiles.body':
+    '牌面为来自 Wikimedia Commons 的 SVG 素材，采用 CC-BY-SA 4.0 许可。逐文件署名见 public/tiles/credits.json。牌背为原创作品。CC-BY-SA 许可仅适用于打包的 SVG；其余代码仍为 MIT。',
   'about.rules.title': '规则参考',
   'about.rules.body': '权威规则：Vitaly Novikov，《四川麻将？就这么简单！》',
   'about.license.title': '许可',
@@ -171,13 +177,16 @@ const zhHant: Dict = {
 
 任何槓之後，從牌牆另一端補摸一張牌。`,
   'htp.furiten.title': '振聽',
-  'htp.furiten.body': `如果你放棄了一張本可胡的牌，你將進入振聽——在下次自摸之前不能點炮胡。你仍可透過自摸或更大牌型胡牌。`,
+  'htp.furiten.body':
+    '如果你放棄了一張本可胡的牌，你將進入振聽——在下次自摸之前不能點炮胡。你仍可透過自摸或更大牌型胡牌。',
 
   'about.title': '關於',
   'about.app.title': '四川麻將',
-  'about.app.body': '四川麻將（血戰到底）的本地多人實現。在自己的電腦上做房主，好友透過區域網路或 Tailscale 加入。程式碼採用 MIT 授權。',
+  'about.app.body':
+    '四川麻將（血戰到底）的本地多人實現。在自己的電腦上做房主，好友透過區域網路或 Tailscale 加入。程式碼採用 MIT 授權。',
   'about.tiles.title': '牌面素材',
-  'about.tiles.body': '牌面為來自 Wikimedia Commons 的 SVG 素材，採用 CC-BY-SA 4.0 授權。逐檔案署名見 public/tiles/credits.json。牌背為原創作品。CC-BY-SA 授權僅適用於打包的 SVG；其餘程式碼仍為 MIT。',
+  'about.tiles.body':
+    '牌面為來自 Wikimedia Commons 的 SVG 素材，採用 CC-BY-SA 4.0 授權。逐檔案署名見 public/tiles/credits.json。牌背為原創作品。CC-BY-SA 授權僅適用於打包的 SVG；其餘程式碼仍為 MIT。',
   'about.rules.title': '規則參考',
   'about.rules.body': '權威規則：Vitaly Novikov，《四川麻將？就這麼簡單！》',
   'about.license.title': '授權',

@@ -9,9 +9,9 @@
  * gracefully when the DB write fails, so this is acceptable for the binary.
  */
 
-import { $ } from 'bun';
 import { existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { $ } from 'bun';
 
 const OUT_DIR = join(import.meta.dir, '../../dist-bin');
 mkdirSync(OUT_DIR, { recursive: true });
@@ -24,10 +24,10 @@ if (!existsSync(ENTRY)) {
 }
 
 const TARGETS: Array<{ target: string; outFile: string }> = [
-  { target: 'bun-macos-arm64',  outFile: 'sichuan-mahjong-macos-arm64' },
-  { target: 'bun-macos-x64',   outFile: 'sichuan-mahjong-macos-x64'   },
-  { target: 'bun-linux-arm64', outFile: 'sichuan-mahjong-linux-arm64'  },
-  { target: 'bun-linux-x64',   outFile: 'sichuan-mahjong-linux-x64'   },
+  { target: 'bun-macos-arm64', outFile: 'sichuan-mahjong-macos-arm64' },
+  { target: 'bun-macos-x64', outFile: 'sichuan-mahjong-macos-x64' },
+  { target: 'bun-linux-arm64', outFile: 'sichuan-mahjong-linux-arm64' },
+  { target: 'bun-linux-x64', outFile: 'sichuan-mahjong-linux-x64' },
   { target: 'bun-windows-x64', outFile: 'sichuan-mahjong-windows-x64.exe' },
 ];
 
