@@ -29,7 +29,8 @@ const en: Dict = {
   'landing.starting': 'Starting…',
   'landing.practiceError': 'Could not start practice — is the server running?',
   'landing.watch': '👀 Watch a Game',
-  'landing.hostHint': 'Host runs the server on their machine. Friends connect over LAN or Tailscale.',
+  'landing.hostHint':
+    'Host runs the server on their machine. Friends connect over LAN or Tailscale.',
   'landing.about': 'About & Credits',
 
   'join.title': 'Join a Game',
@@ -355,7 +356,9 @@ const zhHant: Dict = {
   'spec.spectating': '觀戰中 · {code}',
 };
 
-const catalog: Record<Lang, Dict> = {
+// Exported so a test can assert key parity across languages (missing keys silently
+// fall back to English at runtime, so drift is otherwise invisible). (A18)
+export const catalog: Record<Lang, Dict> = {
   en: { ...en, ...HELP_STRINGS.en },
   'zh-Hans': { ...zhHans, ...HELP_STRINGS['zh-Hans'] },
   'zh-Hant': { ...zhHant, ...HELP_STRINGS['zh-Hant'] },
@@ -375,10 +378,16 @@ export function loadLang(): Lang {
   try {
     const v = localStorage.getItem(STORAGE_KEY);
     if (v === 'en' || v === 'zh-Hans' || v === 'zh-Hant') return v;
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   return 'en';
 }
 
 export function persistLang(lang: Lang): void {
-  try { localStorage.setItem(STORAGE_KEY, lang); } catch { /* ignore */ }
+  try {
+    localStorage.setItem(STORAGE_KEY, lang);
+  } catch {
+    /* ignore */
+  }
 }
