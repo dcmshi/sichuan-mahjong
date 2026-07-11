@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { createGame, DEFAULT_CONFIG } from '../src/state.js';
 import { applyAction } from '../src/actions.js';
+import { DEFAULT_CONFIG, createGame } from '../src/state.js';
 import type { GameState } from '../src/state.js';
 import type { Seat } from '../src/state.js';
 import { suitOf } from '../src/tiles.js';
@@ -33,7 +33,7 @@ function runToWallEnd(seed: string, voidDiscardRule: 'strict' | 'lenient'): Game
 
     // Pick suit with fewest tiles
     const voidSuit = (['man', 'pin', 'sou'] as const).reduce((a, b) =>
-      (counts[a]! <= counts[b]! ? a : b),
+      counts[a]! <= counts[b]! ? a : b,
     );
 
     // Find first tile of that suit (if any)
@@ -115,6 +115,21 @@ describe('Phase 1 — basic round (no claims, no Hu)', () => {
     expect(inHands + inDiscards + inWall).toBe(108);
   });
 
+  it('A3: unknown action type yields a typed internal_error, never undefined or a throw', () => {
+    const state = createGame('a3', [
+      { name: 'A', isBot: true },
+      { name: 'B', isBot: true },
+      { name: 'C', isBot: true },
+      { name: 'D', isBot: true },
+    ]);
+    // Cast through unknown: this is exactly the kind of malformed input that can
+    // arrive at the WS boundary and the type system can't rule out at runtime.
+    const res = applyAction(state, { t: 'bogus' } as unknown as Parameters<typeof applyAction>[1]);
+    expect(res).toBeDefined();
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.reason).toBe('internal_error');
+  });
+
   it('all players have a voided suit after void phase', () => {
     const final = runToWallEnd('voidsuits', 'strict');
     for (const p of final.players) {
@@ -133,7 +148,12 @@ describe('Phase 1 — basic round (no claims, no Hu)', () => {
   it('createGame with huanSanZhang=false starts in voidDeclare', () => {
     const state = createGame(
       'test',
-      [{ name: 'A', isBot: false }, { name: 'B', isBot: false }, { name: 'C', isBot: false }, { name: 'D', isBot: false }],
+      [
+        { name: 'A', isBot: false },
+        { name: 'B', isBot: false },
+        { name: 'C', isBot: false },
+        { name: 'D', isBot: false },
+      ],
       { enableHuanSanZhang: false },
     );
     expect(state.phase).toBe('voidDeclare');
@@ -142,7 +162,12 @@ describe('Phase 1 — basic round (no claims, no Hu)', () => {
   it('createGame with huanSanZhang=true starts in huan', () => {
     const state = createGame(
       'test',
-      [{ name: 'A', isBot: false }, { name: 'B', isBot: false }, { name: 'C', isBot: false }, { name: 'D', isBot: false }],
+      [
+        { name: 'A', isBot: false },
+        { name: 'B', isBot: false },
+        { name: 'C', isBot: false },
+        { name: 'D', isBot: false },
+      ],
       { enableHuanSanZhang: true },
     );
     expect(state.phase).toBe('huan');
@@ -151,7 +176,12 @@ describe('Phase 1 — basic round (no claims, no Hu)', () => {
   it('East starts with 14 tiles, others with 13', () => {
     const state = createGame(
       'deal',
-      [{ name: 'A', isBot: false }, { name: 'B', isBot: false }, { name: 'C', isBot: false }, { name: 'D', isBot: false }],
+      [
+        { name: 'A', isBot: false },
+        { name: 'B', isBot: false },
+        { name: 'C', isBot: false },
+        { name: 'D', isBot: false },
+      ],
       { enableHuanSanZhang: false },
     );
     expect(state.players[0]!.hand).toHaveLength(14);
@@ -163,13 +193,23 @@ describe('Phase 1 — basic round (no claims, no Hu)', () => {
   it('rejects declareVoid with a tile not in hand', () => {
     const state = createGame(
       'reject',
-      [{ name: 'A', isBot: false }, { name: 'B', isBot: false }, { name: 'C', isBot: false }, { name: 'D', isBot: false }],
+      [
+        { name: 'A', isBot: false },
+        { name: 'B', isBot: false },
+        { name: 'C', isBot: false },
+        { name: 'D', isBot: false },
+      ],
       { enableHuanSanZhang: false },
     );
     // TileId 0 may or may not be in seat 0's hand — find one that isn't
     const hand = new Set(state.players[0]!.hand);
     const notInHand = Array.from({ length: 108 }, (_, i) => i).find(i => !hand.has(i))!;
-    const r = applyAction(state, { t: 'declareVoid', seat: 0, suit: 'man', firstDiscard: notInHand });
+    const r = applyAction(state, {
+      t: 'declareVoid',
+      seat: 0,
+      suit: 'man',
+      firstDiscard: notInHand,
+    });
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.reason).toBe('tile_not_in_hand');
   });

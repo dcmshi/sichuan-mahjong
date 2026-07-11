@@ -1,5 +1,5 @@
 import type { Meld } from './melds.js';
-import type { TileId, Suit } from './tiles.js';
+import type { Suit, TileId } from './tiles.js';
 import { buildWall, sortTiles, suitOf } from './tiles.js';
 
 export type Seat = 0 | 1 | 2 | 3;
@@ -29,7 +29,14 @@ export const DEFAULT_CONFIG: GameConfig = {
 
 export type HuRecord = {
   seat: Seat;
-  subtype: 'heavenly' | 'earthly' | 'winAfterKong' | 'shootAfterKong' | 'underTheSea' | 'robbingTheKong' | 'normal';
+  subtype:
+    | 'heavenly'
+    | 'earthly'
+    | 'winAfterKong'
+    | 'shootAfterKong'
+    | 'underTheSea'
+    | 'robbingTheKong'
+    | 'normal';
   fans: string[];
   handValue: number;
   winningTile: TileId;
@@ -53,7 +60,7 @@ export type KongPaymentEntry = {
 export type ClaimWindow = {
   tile: TileId;
   from: Seat;
-  afterKong: boolean;   // true = robbing window; only Hu claims valid
+  afterKong: boolean; // true = robbing window; only Hu claims valid
   deadline: number;
   passed: [boolean, boolean, boolean, boolean];
   claims: [
@@ -98,6 +105,13 @@ export type GameState = {
   lastDrawWasKongReplacement: boolean;
   lastDrawnTile: TileId | null;
   turnDrawNeeded: boolean;
+  /**
+   * True when the current turn-holder's actionable tile came from the wall this
+   * turn (a draw or kong replacement, or the dealer's dealt 14th on turn 1).
+   * Gates `declareHuOnDraw` so a pung (which yields a claimed discard, not a
+   * drawn tile) can't be laundered into a self-draw win. (A7)
+   */
+  drewThisTurn: boolean;
   wallEndReached: boolean;
   anyClaimsHappened: boolean;
   pendingClaims: ClaimWindow | null;
@@ -149,9 +163,12 @@ export function createGame(
   const cfg: GameConfig = { ...DEFAULT_CONFIG, ...config };
   const wall = buildWall(seed);
 
-  const players = playerInits.map((p, i) =>
-    makePlayer(i as Seat, p.name, p.isBot),
-  ) as [PlayerState, PlayerState, PlayerState, PlayerState];
+  const players = playerInits.map((p, i) => makePlayer(i as Seat, p.name, p.isBot)) as [
+    PlayerState,
+    PlayerState,
+    PlayerState,
+    PlayerState,
+  ];
 
   // Deal 13 tiles to each player; the dealer gets a 14th
   let idx = 0;
@@ -179,7 +196,8 @@ export function createGame(
     lastDiscard: null,
     lastDrawWasKongReplacement: false,
     lastDrawnTile: null,
-    turnDrawNeeded: false,  // East starts with 14 tiles; no draw needed
+    turnDrawNeeded: false, // East starts with 14 tiles; no draw needed
+    drewThisTurn: true, // the dealer's dealt 14th tile stands in for turn-1's draw
     wallEndReached: false,
     anyClaimsHappened: false,
     pendingClaims: null,
@@ -203,7 +221,10 @@ export function createGame(
  */
 export function startNextRound(prev: GameState, seed: string): GameState {
   const inits = prev.players.map(p => ({ name: p.name, isBot: p.isBot })) as [
-    PlayerInit, PlayerInit, PlayerInit, PlayerInit,
+    PlayerInit,
+    PlayerInit,
+    PlayerInit,
+    PlayerInit,
   ];
   return createGame(seed, inits, prev.config, prev.nextDealer);
 }

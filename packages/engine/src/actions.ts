@@ -1,37 +1,46 @@
-import type { GameState, Seat, PendingVoid, HuRecord, ClaimWindow, KongPaymentEntry } from './state.js';
-import { huPlayerCount } from './state.js';
-import type { Suit, TileId, Tile } from './tiles.js';
-import { sortTiles, suitOf, tileTypeOf, tileFromType, tileToType } from './tiles.js';
-import { isWinningHand, isTenpai } from './hand.js';
 import {
-  autoPassIneligible,
   allSeatsActed,
-  forcePassAll,
-  resolveWindow,
-  furitenSeatsAfterWindow,
+  autoPassIneligible,
   ccwDist,
+  forcePassAll,
+  furitenSeatsAfterWindow,
+  resolveWindow,
 } from './claims.js';
+import { isTenpai, isWinningHand } from './hand.js';
 import { calcHandScore, calcTMV, meldTileTypes } from './scoring.js';
+import type {
+  ClaimWindow,
+  GameState,
+  HuRecord,
+  KongPaymentEntry,
+  PendingVoid,
+  Seat,
+} from './state.js';
+import { huPlayerCount } from './state.js';
+import type { Suit, Tile, TileId } from './tiles.js';
+import { sortTiles, suitOf, tileFromType, tileToType, tileTypeOf } from './tiles.js';
 
 // ---------------------------------------------------------------------------
 // Action types
 // ---------------------------------------------------------------------------
 
-export type ClaimDecision =
-  | { kind: 'pung' }
-  | { kind: 'kong' }
-  | { kind: 'hu' };
+export type ClaimDecision = { kind: 'pung' } | { kind: 'kong' } | { kind: 'hu' };
 
 export type GameAction =
-  | { t: 'huanSelect';        seat: Seat; tiles: [TileId, TileId, TileId] }
-  | { t: 'declareVoid';       seat: Seat; suit: Suit; firstDiscard: TileId | null }
-  | { t: 'draw';              seat: Seat }
-  | { t: 'discard';           seat: Seat; tile: TileId }
-  | { t: 'claim';             seat: Seat; claim: ClaimDecision }
-  | { t: 'pass';              seat: Seat }
-  | { t: 'declareKongOnTurn'; seat: Seat; tile: Tile; subtype: 'concealed' | 'promoted' | 'postponed' }
-  | { t: 'declareHuOnDraw';   seat: Seat }
-  | { t: 'declareHeavenly';   seat: Seat }
+  | { t: 'huanSelect'; seat: Seat; tiles: [TileId, TileId, TileId] }
+  | { t: 'declareVoid'; seat: Seat; suit: Suit; firstDiscard: TileId | null }
+  | { t: 'draw'; seat: Seat }
+  | { t: 'discard'; seat: Seat; tile: TileId }
+  | { t: 'claim'; seat: Seat; claim: ClaimDecision }
+  | { t: 'pass'; seat: Seat }
+  | {
+      t: 'declareKongOnTurn';
+      seat: Seat;
+      tile: Tile;
+      subtype: 'concealed' | 'promoted' | 'postponed';
+    }
+  | { t: 'declareHuOnDraw'; seat: Seat }
+  | { t: 'declareHeavenly'; seat: Seat }
   | { t: 'claimWindowExpire' };
 
 // ---------------------------------------------------------------------------
@@ -63,6 +72,7 @@ export type RuleViolation =
   | 'not_east_first_turn'
   | 'not_own_turn'
   | 'already_hu'
+  | 'must_draw_first'
   | 'internal_error';
 
 export type GameEvent =
@@ -79,8 +89,20 @@ export type GameEvent =
   | { e: 'kongReplacement'; seat: Seat; tile: TileId }
   | { e: 'hu'; seat: Seat; record: HuRecord }
   | { e: 'huPayment'; from: Seat; to: Seat; amount: number }
-  | { e: 'kongPayment'; from: Seat; to: Seat; amount: number; subtype: 'concealed' | 'exposed' | 'promoted' }
-  | { e: 'kongRefund'; from: Seat; to: Seat; amount: number; reason: 'robbed' | 'shootAfterKong' | 'wallEnd' | 'falseHu' }
+  | {
+      e: 'kongPayment';
+      from: Seat;
+      to: Seat;
+      amount: number;
+      subtype: 'concealed' | 'exposed' | 'promoted';
+    }
+  | {
+      e: 'kongRefund';
+      from: Seat;
+      to: Seat;
+      amount: number;
+      reason: 'robbed' | 'shootAfterKong' | 'wallEnd' | 'falseHu';
+    }
   | { e: 'buTingPayout'; from: Seat; to: Seat; amount: number }
   | { e: 'voidPenalty'; seat: Seat; amount: number }
   | { e: 'voidMeldPenalty'; seat: Seat; amount: number }
@@ -90,7 +112,7 @@ export type GameEvent =
   | { e: 'roundEnd'; reason: 'wallExhausted' | 'threeHu' };
 
 export type ActionResult =
-  | { ok: true;  state: GameState; events: GameEvent[] }
+  | { ok: true; state: GameState; events: GameEvent[] }
   | { ok: false; reason: RuleViolation; detail?: string };
 
 // ---------------------------------------------------------------------------
@@ -118,15 +140,21 @@ function clone(state: GameState): GameState {
     pendingHuan: [...state.pendingHuan],
     pendingVoid: [...state.pendingVoid],
     history: [...state.history],
-    pendingClaims: state.pendingClaims === null ? null : {
-      ...state.pendingClaims,
-      passed: [...state.pendingClaims.passed] as ClaimWindow['passed'],
-      claims: [...state.pendingClaims.claims] as ClaimWindow['claims'],
-    },
-    pendingKongTile: state.pendingKongTile === null ? null : {
-      ...state.pendingKongTile,
-      paidAmounts: [...state.pendingKongTile.paidAmounts],
-    },
+    pendingClaims:
+      state.pendingClaims === null
+        ? null
+        : {
+            ...state.pendingClaims,
+            passed: [...state.pendingClaims.passed] as ClaimWindow['passed'],
+            claims: [...state.pendingClaims.claims] as ClaimWindow['claims'],
+          },
+    pendingKongTile:
+      state.pendingKongTile === null
+        ? null
+        : {
+            ...state.pendingKongTile,
+            paidAmounts: [...state.pendingKongTile.paidAmounts],
+          },
     kongPaymentLog: state.kongPaymentLog.map(e => ({ ...e })),
     huOrder: [...state.huOrder],
   };
@@ -138,6 +166,16 @@ function removeFromHand(hand: TileId[], tile: TileId): TileId[] | null {
   const next = [...hand];
   next.splice(idx, 1);
   return next;
+}
+
+/**
+ * Move the just-claimed discard out of the discarder's pond — it now lives in the
+ * claimer's meld, so it must not also render in the discard row. (A15)
+ */
+function takeClaimedDiscard(s: GameState, from: Seat, tile: TileId): void {
+  const pond = s.players[from]!.discards;
+  const idx = pond.indexOf(tile);
+  if (idx !== -1) pond.splice(idx, 1);
 }
 
 /** Remove `count` copies of tile type from hand. Returns null if insufficient copies. */
@@ -227,7 +265,13 @@ function refundLogEntries(
     if (!predicate(entry)) continue;
     entry.refunded = true;
     pay(s, entry.declarer, entry.paidBy, entry.amount);
-    events.push({ e: 'kongRefund', from: entry.declarer, to: entry.paidBy, amount: entry.amount, reason });
+    events.push({
+      e: 'kongRefund',
+      from: entry.declarer,
+      to: entry.paidBy,
+      amount: entry.amount,
+      reason,
+    });
   }
   return events;
 }
@@ -346,7 +390,11 @@ function settleRound(s: GameState): GameEvent[] {
 // ---------------------------------------------------------------------------
 
 /** Transition to roundEnd phase, run settlement, push the roundEnd event. */
-function transitionToRoundEnd(s: GameState, reason: 'wallExhausted' | 'threeHu', events: GameEvent[]): void {
+function transitionToRoundEnd(
+  s: GameState,
+  reason: 'wallExhausted' | 'threeHu',
+  events: GameEvent[],
+): void {
   s.phase = 'roundEnd';
   events.push(...settleRound(s));
   events.push({ e: 'roundEnd', reason });
@@ -393,10 +441,22 @@ function applyFuritenAndCloseWindow(s: GameState): void {
     // same basis the override check uses — so the comparison stays symmetric
     // (situational fans are excluded on both sides).
     const skipped = calcHandScore(
-      [...player.hand, tile], player.melds, player.voidedSuit,
-      tile, 'normal', s.config.fanCap, s.config.enableHeavenlyEarthly,
+      [...player.hand, tile],
+      player.melds,
+      player.voidedSuit,
+      tile,
+      'normal',
+      s.config.fanCap,
+      s.config.enableHeavenlyEarthly,
     );
-    player.furiten = { since: s.turnNumber, minFanToOverride: skipped.totalFan };
+    // Threshold is the MAX value skipped since the last self-draw: a player who
+    // declines a bigger Hu must clear that bigger bar, not the first one they
+    // passed. Keep the original `since`. (A16)
+    if (player.furiten === null) {
+      player.furiten = { since: s.turnNumber, minFanToOverride: skipped.totalFan };
+    } else {
+      player.furiten.minFanToOverride = Math.max(player.furiten.minFanToOverride, skipped.totalFan);
+    }
   }
   s.pendingClaims = null;
 }
@@ -454,7 +514,10 @@ function resolveRobbingWindow(s: GameState): GameEvent[] {
     if (kongInfo.paidAmounts.length > 0) {
       logKongPayments(s, kongInfo.seat, kongInfo.paidAmounts);
     }
-    return [...events, ...completePromotedPostponedKong(s, kongInfo.seat, kongInfo.tile, kongInfo.kongSubtype)];
+    return [
+      ...events,
+      ...completePromotedPostponedKong(s, kongInfo.seat, kongInfo.tile, kongInfo.kongSubtype),
+    ];
   }
 
   // Robbed! Refund promoted kong payments (they were made before the window)
@@ -467,13 +530,16 @@ function resolveRobbingWindow(s: GameState): GameEvent[] {
   return [...events, ...applyHuResolution(s, resolution.winners, kongInfo.tile, kongInfo.seat)];
 }
 
-function applyHuResolution(s: GameState, winners: Seat[], robbingTile?: TileId, robbedFrom?: Seat): GameEvent[] {
+function applyHuResolution(
+  s: GameState,
+  winners: Seat[],
+  robbingTile?: TileId,
+  robbedFrom?: Seat,
+): GameEvent[] {
   const events: GameEvent[] = [];
   const fromRobbingKong = robbingTile !== undefined;
   const discarder = fromRobbingKong ? (robbedFrom ?? null) : (s.lastDiscard?.from ?? null);
-  const actualWinTile = fromRobbingKong
-    ? robbingTile!
-    : s.lastDiscard!.tile;
+  const actualWinTile = fromRobbingKong ? robbingTile! : s.lastDiscard!.tile;
 
   for (const winner of winners) {
     const player = s.players[winner]!;
@@ -490,9 +556,13 @@ function applyHuResolution(s: GameState, winners: Seat[], robbingTile?: TileId, 
     }
 
     const score = calcHandScore(
-      [...player.hand, actualWinTile], player.melds, player.voidedSuit,
-      actualWinTile, subtype,
-      s.config.fanCap, s.config.enableHeavenlyEarthly,
+      [...player.hand, actualWinTile],
+      player.melds,
+      player.voidedSuit,
+      actualWinTile,
+      subtype,
+      s.config.fanCap,
+      s.config.enableHeavenlyEarthly,
     );
 
     const record: HuRecord = {
@@ -521,7 +591,13 @@ function applyHuResolution(s: GameState, winners: Seat[], robbingTile?: TileId, 
         .filter(e => e.declarer === discarder && !e.refunded)
         .reduce((max, e) => Math.max(max, e.kongSeq), -1);
       if (maxSeq >= 0) {
-        events.push(...refundLogEntries(s, e => e.declarer === discarder && e.kongSeq === maxSeq, 'shootAfterKong'));
+        events.push(
+          ...refundLogEntries(
+            s,
+            e => e.declarer === discarder && e.kongSeq === maxSeq,
+            'shootAfterKong',
+          ),
+        );
       }
     }
   }
@@ -536,9 +612,8 @@ function applyHuResolution(s: GameState, winners: Seat[], robbingTile?: TileId, 
   }
 
   // Turn passes to CCW of second winner (if multi), else CCW of single winner
-  const nextSeat = winners.length > 1
-    ? nextActiveSeat(s, winners[1]!)
-    : nextActiveSeat(s, winners[0]!);
+  const nextSeat =
+    winners.length > 1 ? nextActiveSeat(s, winners[1]!) : nextActiveSeat(s, winners[0]!);
   s.turn = nextSeat;
   s.turnNumber += 1;
   s.turnDrawNeeded = true;
@@ -601,7 +676,7 @@ function applyKongClaim(s: GameState, winner: Seat): GameEvent[] {
 
   // Remove 3 copies from hand
   const newHand = removeTypeFromHand(player.hand, tileType, 3);
-  if (newHand === null) return [];  // shouldn't happen; validated at claim time
+  if (newHand === null) return []; // shouldn't happen; validated at claim time
   player.hand = newHand;
 
   // Form exposed kong meld
@@ -612,6 +687,7 @@ function applyKongClaim(s: GameState, winner: Seat): GameEvent[] {
     claimedFrom: from,
     turnDeclared: s.turnNumber,
   });
+  takeClaimedDiscard(s, from, tile);
 
   // Draw replacement
   const replacement = s.wall[s.kongDrawIndex]!;
@@ -624,6 +700,7 @@ function applyKongClaim(s: GameState, winner: Seat): GameEvent[] {
   s.turn = winner;
   s.turnNumber += 1;
   s.turnDrawNeeded = false;
+  s.drewThisTurn = true; // kong replacement is a wall draw → self-draw (winAfterKong) is legit
 
   // Exposed kong: discarder pays 2
   pay(s, from, winner, 2);
@@ -656,11 +733,16 @@ function applyPungClaim(s: GameState, winner: Seat): GameEvent[] {
     concealed: false,
     claimedFrom: from,
   });
+  takeClaimedDiscard(s, from, tile);
 
   s.anyClaimsHappened = true;
   s.turn = winner;
   s.turnNumber += 1;
   s.turnDrawNeeded = false;
+  // A pung is NOT a draw: the player must discard next and may not declare a
+  // self-draw Hu on the punged tile (which would bypass furiten and grab the
+  // self-draw bonus). Clearing this is the crux of the A7 fix.
+  s.drewThisTurn = false;
 
   const events: GameEvent[] = [{ e: 'claimed', seat: winner, kind: 'pung', tile }];
   applyVoidMeldPenalty(s, winner, suitOf(tile), events);
@@ -700,6 +782,7 @@ function completePromotedPostponedKong(
   s.lastDrawWasKongReplacement = true;
   s.lastDrawnTile = replacement;
   s.turnDrawNeeded = false;
+  s.drewThisTurn = true; // kong replacement is a wall draw
 
   return [{ e: 'kongReplacement', seat, tile: replacement }];
 }
@@ -708,7 +791,10 @@ function completePromotedPostponedKong(
 // Phase handlers
 // ---------------------------------------------------------------------------
 
-function applyHuanSelect(state: GameState, action: Extract<GameAction, { t: 'huanSelect' }>): ActionResult {
+function applyHuanSelect(
+  state: GameState,
+  action: Extract<GameAction, { t: 'huanSelect' }>,
+): ActionResult {
   if (state.phase !== 'huan') return fail('wrong_phase');
   const { seat, tiles } = action;
   if (state.pendingHuan[seat] !== null) return fail('already_submitted_huan');
@@ -747,10 +833,10 @@ function applyHuanRotation(state: GameState): GameEvent[] {
     for (let i = 0; i < state.seed.length; i++) {
       h = (h * 31 + state.seed.charCodeAt(i)) | 0;
     }
-    dir = (h & 1) ? 'cw' : 'ccw';
+    dir = h & 1 ? 'cw' : 'ccw';
   }
 
-  const selected = state.pendingHuan.map(tiles => tiles ?? [] as TileId[]);
+  const selected = state.pendingHuan.map(tiles => tiles ?? ([] as TileId[]));
   const offset = dir === 'cw' ? 1 : 3;
 
   for (let i = 0; i < 4; i++) {
@@ -770,7 +856,10 @@ function applyHuanRotation(state: GameState): GameEvent[] {
   return [];
 }
 
-function applyDeclareVoid(state: GameState, action: Extract<GameAction, { t: 'declareVoid' }>): ActionResult {
+function applyDeclareVoid(
+  state: GameState,
+  action: Extract<GameAction, { t: 'declareVoid' }>,
+): ActionResult {
   if (state.phase !== 'voidDeclare') return fail('wrong_phase');
   const { seat, suit, firstDiscard } = action;
   if (state.pendingVoid[seat] !== null) return fail('already_submitted_void');
@@ -853,6 +942,7 @@ function applyDraw(state: GameState, action: Extract<GameAction, { t: 'draw' }>)
   s.lastDrawWasKongReplacement = false;
   s.lastDrawnTile = tile;
   s.turnDrawNeeded = false;
+  s.drewThisTurn = true; // a wall draw enables a self-draw Hu declaration this turn
   s.history.push(action);
 
   if (isLastLiveTile) s.wallEndReached = true;
@@ -863,7 +953,10 @@ function applyDraw(state: GameState, action: Extract<GameAction, { t: 'draw' }>)
   return ok(s, [{ e: 'drew', seat, tile }]);
 }
 
-function applyDiscard(state: GameState, action: Extract<GameAction, { t: 'discard' }>): ActionResult {
+function applyDiscard(
+  state: GameState,
+  action: Extract<GameAction, { t: 'discard' }>,
+): ActionResult {
   if (state.phase !== 'play') return fail('wrong_phase');
   const { seat, tile } = action;
   if (seat !== state.turn) return fail('wrong_turn');
@@ -942,9 +1035,7 @@ function applyClaim(state: GameState, action: Extract<GameAction, { t: 'claim' }
   s.history.push(action);
 
   if (allSeatsActed(s)) {
-    const events = s.pendingClaims!.afterKong
-      ? resolveRobbingWindow(s)
-      : resolveAndApply(s);
+    const events = s.pendingClaims!.afterKong ? resolveRobbingWindow(s) : resolveAndApply(s);
     return ok(s, events);
   }
 
@@ -966,16 +1057,17 @@ function applyPass(state: GameState, action: Extract<GameAction, { t: 'pass' }>)
   s.history.push(action);
 
   if (allSeatsActed(s)) {
-    const events = s.pendingClaims!.afterKong
-      ? resolveRobbingWindow(s)
-      : resolveAndApply(s);
+    const events = s.pendingClaims!.afterKong ? resolveRobbingWindow(s) : resolveAndApply(s);
     return ok(s, events);
   }
 
   return ok(s, []);
 }
 
-function applyClaimWindowExpire(state: GameState, action: Extract<GameAction, { t: 'claimWindowExpire' }>): ActionResult {
+function applyClaimWindowExpire(
+  state: GameState,
+  action: Extract<GameAction, { t: 'claimWindowExpire' }>,
+): ActionResult {
   if (state.phase !== 'play') return fail('wrong_phase');
   if (state.pendingClaims === null) return fail('no_claim_window');
 
@@ -983,9 +1075,7 @@ function applyClaimWindowExpire(state: GameState, action: Extract<GameAction, { 
   forcePassAll(s);
   s.history.push(action);
 
-  const events = s.pendingClaims!.afterKong
-    ? resolveRobbingWindow(s)
-    : resolveAndApply(s);
+  const events = s.pendingClaims!.afterKong ? resolveRobbingWindow(s) : resolveAndApply(s);
   return ok(s, events);
 }
 
@@ -1033,15 +1123,26 @@ function applyDeclareKongOnTurn(
     s.lastDrawWasKongReplacement = true;
     s.lastDrawnTile = replacement;
     s.turnDrawNeeded = false;
+    s.drewThisTurn = true; // concealed-kong replacement is a wall draw
     s.history.push(action);
 
     // Concealed kong: pay 2 from each non-Hu player, no robbing window
     const payers = payFromAll(s, seat, 2);
-    logKongPayments(s, seat, payers.map(from => ({ from, amount: 2 })));
+    logKongPayments(
+      s,
+      seat,
+      payers.map(from => ({ from, amount: 2 })),
+    );
 
     const events: GameEvent[] = [
-      { e: 'kongDeclared', seat, subtype: 'concealed', tile: tileType * 4 as TileId },
-      ...payers.map(from => ({ e: 'kongPayment' as const, from, to: seat, amount: 2, subtype: 'concealed' as const })),
+      { e: 'kongDeclared', seat, subtype: 'concealed', tile: (tileType * 4) as TileId },
+      ...payers.map(from => ({
+        e: 'kongPayment' as const,
+        from,
+        to: seat,
+        amount: 2,
+        subtype: 'concealed' as const,
+      })),
       { e: 'kongReplacement', seat, tile: replacement },
     ];
     applyVoidMeldPenalty(s, seat, tile.suit, events);
@@ -1069,7 +1170,12 @@ function applyDeclareKongOnTurn(
   s.history.push(action);
 
   const events: GameEvent[] = [
-    { e: 'kongDeclared', seat, subtype: subtype as 'promoted' | 'postponed', tile: kongTileInstance },
+    {
+      e: 'kongDeclared',
+      seat,
+      subtype: subtype as 'promoted' | 'postponed',
+      tile: kongTileInstance,
+    },
   ];
 
   // Promoted kong: pay 1 from each non-Hu player BEFORE robbing window (refundable if robbed)
@@ -1083,7 +1189,12 @@ function applyDeclareKongOnTurn(
     }
   }
 
-  s.pendingKongTile = { seat, tile: kongTileInstance, kongSubtype: subtype as 'promoted' | 'postponed', paidAmounts };
+  s.pendingKongTile = {
+    seat,
+    tile: kongTileInstance,
+    kongSubtype: subtype as 'promoted' | 'postponed',
+    paidAmounts,
+  };
 
   if (state.config.enableRobbingKong) {
     const window = openClaimWindow(s, kongTileInstance, seat, true);
@@ -1091,10 +1202,24 @@ function applyDeclareKongOnTurn(
       events.push({ e: 'claimWindowOpened', tile: kongTileInstance, from: seat });
       return ok(s, events);
     }
-    events.push(...completePromotedPostponedKong(s, seat, kongTileInstance, subtype as 'promoted' | 'postponed'));
+    events.push(
+      ...completePromotedPostponedKong(
+        s,
+        seat,
+        kongTileInstance,
+        subtype as 'promoted' | 'postponed',
+      ),
+    );
     s.pendingKongTile = null;
   } else {
-    events.push(...completePromotedPostponedKong(s, seat, kongTileInstance, subtype as 'promoted' | 'postponed'));
+    events.push(
+      ...completePromotedPostponedKong(
+        s,
+        seat,
+        kongTileInstance,
+        subtype as 'promoted' | 'postponed',
+      ),
+    );
     s.pendingKongTile = null;
   }
 
@@ -1143,7 +1268,10 @@ function applySelfDrawHu(
   return ok(s, events);
 }
 
-function applyDeclareHuOnDraw(state: GameState, action: Extract<GameAction, { t: 'declareHuOnDraw' }>): ActionResult {
+function applyDeclareHuOnDraw(
+  state: GameState,
+  action: Extract<GameAction, { t: 'declareHuOnDraw' }>,
+): ActionResult {
   if (state.phase !== 'play') return fail('wrong_phase');
   if (state.pendingClaims !== null) return fail('wrong_phase');
   const { seat } = action;
@@ -1152,6 +1280,11 @@ function applyDeclareHuOnDraw(state: GameState, action: Extract<GameAction, { t:
   const player = state.players[seat]!;
   if (player.status !== 'playing') return fail('already_hu');
   if (state.turnDrawNeeded) return fail('wrong_turn');
+  // A self-draw declaration requires that this turn's tile actually came from the
+  // wall. After a pung the player holds a claimed discard, not a drawn tile —
+  // allowing a "self-draw" here would bypass furiten and hand out the self-draw
+  // bonus for what is really a discard win. (A7)
+  if (!state.drewThisTurn) return fail('must_draw_first');
 
   const shape = isWinningHand(player.hand, player.melds, player.voidedSuit);
   if (shape === null) {
@@ -1182,9 +1315,13 @@ function applyDeclareHuOnDraw(state: GameState, action: Extract<GameAction, { t:
   }
 
   const score = calcHandScore(
-    player.hand, player.melds, player.voidedSuit,
-    winningTile, subtype,
-    state.config.fanCap, state.config.enableHeavenlyEarthly,
+    player.hand,
+    player.melds,
+    player.voidedSuit,
+    winningTile,
+    subtype,
+    state.config.fanCap,
+    state.config.enableHeavenlyEarthly,
   );
 
   const record: HuRecord = {
@@ -1200,7 +1337,10 @@ function applyDeclareHuOnDraw(state: GameState, action: Extract<GameAction, { t:
   return applySelfDrawHu(state, action, seat, record);
 }
 
-function applyDeclareHeavenly(state: GameState, action: Extract<GameAction, { t: 'declareHeavenly' }>): ActionResult {
+function applyDeclareHeavenly(
+  state: GameState,
+  action: Extract<GameAction, { t: 'declareHeavenly' }>,
+): ActionResult {
   if (state.phase !== 'play') return fail('wrong_phase');
   if (state.pendingClaims !== null) return fail('wrong_phase');
   const { seat } = action;
@@ -1221,9 +1361,13 @@ function applyDeclareHeavenly(state: GameState, action: Extract<GameAction, { t:
   const winningTile = player.hand[player.hand.length - 1]!;
 
   const score = calcHandScore(
-    player.hand, player.melds, player.voidedSuit,
-    winningTile, 'heavenly',
-    state.config.fanCap, state.config.enableHeavenlyEarthly,
+    player.hand,
+    player.melds,
+    player.voidedSuit,
+    winningTile,
+    'heavenly',
+    state.config.fanCap,
+    state.config.enableHeavenlyEarthly,
   );
 
   const record: HuRecord = {
@@ -1245,16 +1389,37 @@ function applyDeclareHeavenly(state: GameState, action: Extract<GameAction, { t:
 
 function dispatchAction(state: GameState, action: GameAction): ActionResult {
   switch (action.t) {
-    case 'huanSelect':        return applyHuanSelect(state, action);
-    case 'declareVoid':       return applyDeclareVoid(state, action);
-    case 'draw':              return applyDraw(state, action);
-    case 'discard':           return applyDiscard(state, action);
-    case 'claim':             return applyClaim(state, action);
-    case 'pass':              return applyPass(state, action);
-    case 'claimWindowExpire': return applyClaimWindowExpire(state, action);
-    case 'declareKongOnTurn': return applyDeclareKongOnTurn(state, action);
-    case 'declareHuOnDraw':   return applyDeclareHuOnDraw(state, action);
-    case 'declareHeavenly':   return applyDeclareHeavenly(state, action);
+    case 'huanSelect':
+      return applyHuanSelect(state, action);
+    case 'declareVoid':
+      return applyDeclareVoid(state, action);
+    case 'draw':
+      return applyDraw(state, action);
+    case 'discard':
+      return applyDiscard(state, action);
+    case 'claim':
+      return applyClaim(state, action);
+    case 'pass':
+      return applyPass(state, action);
+    case 'claimWindowExpire':
+      return applyClaimWindowExpire(state, action);
+    case 'declareKongOnTurn':
+      return applyDeclareKongOnTurn(state, action);
+    case 'declareHuOnDraw':
+      return applyDeclareHuOnDraw(state, action);
+    case 'declareHeavenly':
+      return applyDeclareHeavenly(state, action);
+    default:
+      // Unknown/malformed action type. Without this, the switch falls through
+      // and `dispatchAction` returns `undefined` — the `try/catch` in
+      // `applyAction` only traps *throws*, so a caller doing `result.ok` would
+      // crash. Return a typed violation so the contract "always an ActionResult"
+      // holds even for input the type system can't rule out at the WS boundary.
+      return {
+        ok: false,
+        reason: 'internal_error',
+        detail: `unknown action type: ${String((action as { t?: unknown }).t)}`,
+      };
   }
 }
 
@@ -1269,6 +1434,10 @@ export function applyAction(state: GameState, action: GameAction): ActionResult 
   try {
     return dispatchAction(state, action);
   } catch (err) {
-    return { ok: false, reason: 'internal_error', detail: err instanceof Error ? err.message : String(err) };
+    return {
+      ok: false,
+      reason: 'internal_error',
+      detail: err instanceof Error ? err.message : String(err),
+    };
   }
 }

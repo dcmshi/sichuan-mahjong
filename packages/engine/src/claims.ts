@@ -1,8 +1,8 @@
-import type { GameState, Seat } from './state.js';
-import type { TileId } from './tiles.js';
-import { tileTypeOf, suitOf } from './tiles.js';
 import { isWinningHand } from './hand.js';
 import { calcHandScore } from './scoring.js';
+import type { GameState, Seat } from './state.js';
+import type { TileId } from './tiles.js';
+import { suitOf, tileTypeOf } from './tiles.js';
 
 /** Counter-clockwise distance from `from` to `to`. Result is 1..3 for adjacent seats, 0 for same. */
 export function ccwDist(from: Seat, to: Seat): number {
@@ -78,7 +78,10 @@ export function autoPassIneligible(state: GameState): boolean {
   for (let s = 0; s < 4; s++) {
     const seat = s as Seat;
     if (seat === w.from) continue;
-    if (state.players[seat]!.status === 'hu') { w.passed[seat] = true; continue; }
+    if (state.players[seat]!.status === 'hu') {
+      w.passed[seat] = true;
+      continue;
+    }
     if (w.passed[seat] || w.claims[seat] !== null) continue;
 
     const tile = w.tile;
@@ -163,8 +166,10 @@ export function resolveWindow(state: GameState): ClaimResolution {
 }
 
 /**
- * Return seats that should enter furiten after the window resolves:
- * those who could have claimed Hu but didn't (passed or window expired without claiming).
+ * Return seats that skipped a Hu opportunity in this window (passed, or the window
+ * expired without them claiming Hu). Includes seats that are ALREADY furiten — a
+ * second, larger skipped Hu must raise their override threshold (§5.5.5), so the
+ * caller re-evaluates them rather than keeping the first value. (A16)
  */
 export function furitenSeatsAfterWindow(state: GameState): Seat[] {
   const w = state.pendingClaims!;
@@ -173,7 +178,6 @@ export function furitenSeatsAfterWindow(state: GameState): Seat[] {
     const seat = s as Seat;
     if (seat === w.from) continue;
     if (state.players[seat]!.status === 'hu') continue;
-    if (state.players[seat]!.furiten !== null) continue;
     if (w.claims[seat]?.kind === 'hu') continue; // claimed Hu, not skipping
     if (canHuOnTile(state, seat, w.tile)) {
       result.push(seat);

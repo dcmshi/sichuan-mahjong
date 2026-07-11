@@ -11,18 +11,18 @@
  * all-void-discards carve-out.
  */
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_CONFIG } from '../src/state.js';
-import type { GameState, Seat } from '../src/state.js';
 import { applyAction } from '../src/actions.js';
 import type { GameEvent } from '../src/actions.js';
-import type { TileId } from '../src/tiles.js';
-import { tileFromType, suitOf } from '../src/tiles.js';
 import type { Meld } from '../src/melds.js';
+import { DEFAULT_CONFIG } from '../src/state.js';
+import type { GameState, Seat } from '../src/state.js';
+import type { TileId } from '../src/tiles.js';
+import { suitOf, tileFromType } from '../src/tiles.js';
 
 // ── Tile helpers ──────────────────────────────────────────────────────────────
-const M = (r: number): number => r - 1;           // man: types 0-8
-const P = (r: number): number => 9 + r - 1;       // pin: types 9-17
-const S = (r: number): number => 18 + r - 1;      // sou: types 18-26
+const M = (r: number): number => r - 1; // man: types 0-8
+const P = (r: number): number => 9 + r - 1; // pin: types 9-17
+const S = (r: number): number => 18 + r - 1; // sou: types 18-26
 function tid(type: number, copy: 0 | 1 | 2 | 3 = 0): TileId {
   return (type * 4 + copy) as TileId;
 }
@@ -34,6 +34,7 @@ function makeState(opts: {
   discards?: TileId[][];
   turn?: Seat;
   turnDrawNeeded?: boolean;
+  drewThisTurn?: boolean;
   lastDrawnTile?: TileId | null;
   lastDrawWasKongReplacement?: boolean;
   wallEndReached?: boolean;
@@ -77,6 +78,9 @@ function makeState(opts: {
     lastDrawWasKongReplacement: opts.lastDrawWasKongReplacement ?? false,
     lastDrawnTile: opts.lastDrawnTile ?? null,
     turnDrawNeeded: opts.turnDrawNeeded ?? false,
+    // Synthetic self-draw scenarios represent a player who just drew (or took a
+    // kong replacement); default accordingly unless a draw is still pending.
+    drewThisTurn: opts.drewThisTurn ?? !(opts.turnDrawNeeded ?? false),
     wallEndReached: opts.wallEndReached ?? false,
     anyClaimsHappened: true,
     pendingClaims: null,
@@ -110,8 +114,10 @@ function huRecord(events: GameEvent[]) {
 
 function paymentAmounts(events: GameEvent[], to: Seat) {
   return events
-    .filter((ev): ev is { e: 'huPayment'; from: Seat; to: Seat; amount: number } =>
-      ev.e === 'huPayment' && (ev as { to: Seat }).to === to)
+    .filter(
+      (ev): ev is { e: 'huPayment'; from: Seat; to: Seat; amount: number } =>
+        ev.e === 'huPayment' && (ev as { to: Seat }).to === to,
+    )
     .map(ev => ev.amount);
 }
 
@@ -122,11 +128,20 @@ describe('Replay corpus — structural fans via declareHuOnDraw', () => {
   it('AllPungs (1 fan, 2 pts): mixed-suit all-pung hand', () => {
     // 3 complete pungs + M4-pung completing on draw + M5-pair
     const hand: TileId[] = [
-      tid(M(1), 0), tid(M(1), 1), tid(M(1), 2),  // M1 pung
-      tid(P(2), 0), tid(P(2), 1), tid(P(2), 2),  // P2 pung
-      tid(P(3), 0), tid(P(3), 1), tid(P(3), 2),  // P3 pung
-      tid(M(4), 0), tid(M(4), 1), tid(M(4), 2),  // M4 pung (3rd = win tile)
-      tid(M(5), 0), tid(M(5), 1),                 // M5 pair
+      tid(M(1), 0),
+      tid(M(1), 1),
+      tid(M(1), 2), // M1 pung
+      tid(P(2), 0),
+      tid(P(2), 1),
+      tid(P(2), 2), // P2 pung
+      tid(P(3), 0),
+      tid(P(3), 1),
+      tid(P(3), 2), // P3 pung
+      tid(M(4), 0),
+      tid(M(4), 1),
+      tid(M(4), 2), // M4 pung (3rd = win tile)
+      tid(M(5), 0),
+      tid(M(5), 1), // M5 pair
     ];
     const winTile = tid(M(4), 2);
     const state = makeState({ hands: [hand, [], [], []], lastDrawnTile: winTile });
@@ -143,17 +158,26 @@ describe('Replay corpus — structural fans via declareHuOnDraw', () => {
     const amounts = paymentAmounts(events, 0);
     expect(amounts).toHaveLength(3);
     expect(amounts.every(a => a === 3)).toBe(true);
-    expect(s.players[0]!.scoreDelta).toBe(9);  // +3×3
+    expect(s.players[0]!.scoreDelta).toBe(9); // +3×3
   });
 
   // AllPungs + GoldenWait: winning tile completes the pair
   it('AllPungs + GoldenWait (2 fan, 4 pts): win on pair tile', () => {
     const hand: TileId[] = [
-      tid(M(1), 0), tid(M(1), 1), tid(M(1), 2),
-      tid(P(2), 0), tid(P(2), 1), tid(P(2), 2),
-      tid(P(3), 0), tid(P(3), 1), tid(P(3), 2),
-      tid(M(4), 0), tid(M(4), 1), tid(M(4), 2),
-      tid(M(5), 0), tid(M(5), 1),  // win on M5 pair
+      tid(M(1), 0),
+      tid(M(1), 1),
+      tid(M(1), 2),
+      tid(P(2), 0),
+      tid(P(2), 1),
+      tid(P(2), 2),
+      tid(P(3), 0),
+      tid(P(3), 1),
+      tid(P(3), 2),
+      tid(M(4), 0),
+      tid(M(4), 1),
+      tid(M(4), 2),
+      tid(M(5), 0),
+      tid(M(5), 1), // win on M5 pair
     ];
     const winTile = tid(M(5), 1); // pair tile
     const state = makeState({ hands: [hand, [], [], []], lastDrawnTile: winTile });
@@ -173,11 +197,20 @@ describe('Replay corpus — structural fans via declareHuOnDraw', () => {
   // AllPungs + FullFlush: all same suit → 3 fan (hits cap)
   it('AllPungs + FullFlush (3 fan cap, 8 pts): all-man all-pung hand', () => {
     const hand: TileId[] = [
-      tid(M(1), 0), tid(M(1), 1), tid(M(1), 2),
-      tid(M(2), 0), tid(M(2), 1), tid(M(2), 2),
-      tid(M(3), 0), tid(M(3), 1), tid(M(3), 2),
-      tid(M(4), 0), tid(M(4), 1), tid(M(4), 2),  // win tile completes pung
-      tid(M(5), 0), tid(M(5), 1),
+      tid(M(1), 0),
+      tid(M(1), 1),
+      tid(M(1), 2),
+      tid(M(2), 0),
+      tid(M(2), 1),
+      tid(M(2), 2),
+      tid(M(3), 0),
+      tid(M(3), 1),
+      tid(M(3), 2),
+      tid(M(4), 0),
+      tid(M(4), 1),
+      tid(M(4), 2), // win tile completes pung
+      tid(M(5), 0),
+      tid(M(5), 1),
     ];
     const winTile = tid(M(4), 2);
     const state = makeState({ hands: [hand, [], [], []], lastDrawnTile: winTile });
@@ -197,13 +230,20 @@ describe('Replay corpus — structural fans via declareHuOnDraw', () => {
   // SevenPairs: 7 distinct pairs, mixed suit → 2 fan
   it('SevenPairs (2 fan, 4 pts): 7 distinct pairs', () => {
     const hand: TileId[] = [
-      tid(M(1), 0), tid(M(1), 1),
-      tid(P(2), 0), tid(P(2), 1),
-      tid(P(3), 0), tid(P(3), 1),
-      tid(M(4), 0), tid(M(4), 1),
-      tid(M(5), 0), tid(M(5), 1),
-      tid(P(4), 0), tid(P(4), 1),
-      tid(M(6), 0), tid(M(6), 1),  // winning pair
+      tid(M(1), 0),
+      tid(M(1), 1),
+      tid(P(2), 0),
+      tid(P(2), 1),
+      tid(P(3), 0),
+      tid(P(3), 1),
+      tid(M(4), 0),
+      tid(M(4), 1),
+      tid(M(5), 0),
+      tid(M(5), 1),
+      tid(P(4), 0),
+      tid(P(4), 1),
+      tid(M(6), 0),
+      tid(M(6), 1), // winning pair
     ];
     const winTile = tid(M(6), 1);
     const state = makeState({ hands: [hand, [], [], []], lastDrawnTile: winTile });
@@ -223,13 +263,20 @@ describe('Replay corpus — structural fans via declareHuOnDraw', () => {
   // SevenPairs + FullFlush: all same suit → 4 fan, capped → 8 pts
   it('SevenPairs + FullFlush (4 fan → cap, 8 pts): all-man seven pairs', () => {
     const hand: TileId[] = [
-      tid(M(1), 0), tid(M(1), 1),
-      tid(M(2), 0), tid(M(2), 1),
-      tid(M(3), 0), tid(M(3), 1),
-      tid(M(4), 0), tid(M(4), 1),
-      tid(M(5), 0), tid(M(5), 1),
-      tid(M(6), 0), tid(M(6), 1),
-      tid(M(7), 0), tid(M(7), 1),
+      tid(M(1), 0),
+      tid(M(1), 1),
+      tid(M(2), 0),
+      tid(M(2), 1),
+      tid(M(3), 0),
+      tid(M(3), 1),
+      tid(M(4), 0),
+      tid(M(4), 1),
+      tid(M(5), 0),
+      tid(M(5), 1),
+      tid(M(6), 0),
+      tid(M(6), 1),
+      tid(M(7), 0),
+      tid(M(7), 1),
     ];
     const winTile = tid(M(7), 1);
     const state = makeState({ hands: [hand, [], [], []], lastDrawnTile: winTile });
@@ -245,12 +292,20 @@ describe('Replay corpus — structural fans via declareHuOnDraw', () => {
   // SevenPairs + Root: one tile appears 4× among the pairs → Root fires
   it('SevenPairs + Root (3 fan, 8 pts): quadruple pair', () => {
     const hand: TileId[] = [
-      tid(M(1), 0), tid(M(1), 1), tid(M(1), 2), tid(M(1), 3),  // M1×4 (Root)
-      tid(P(2), 0), tid(P(2), 1),
-      tid(P(3), 0), tid(P(3), 1),
-      tid(M(4), 0), tid(M(4), 1),
-      tid(M(5), 0), tid(M(5), 1),
-      tid(M(6), 0), tid(M(6), 1),
+      tid(M(1), 0),
+      tid(M(1), 1),
+      tid(M(1), 2),
+      tid(M(1), 3), // M1×4 (Root)
+      tid(P(2), 0),
+      tid(P(2), 1),
+      tid(P(3), 0),
+      tid(P(3), 1),
+      tid(M(4), 0),
+      tid(M(4), 1),
+      tid(M(5), 0),
+      tid(M(5), 1),
+      tid(M(6), 0),
+      tid(M(6), 1),
     ];
     const winTile = tid(M(6), 1);
     const state = makeState({ hands: [hand, [], [], []], lastDrawnTile: winTile });
@@ -266,15 +321,25 @@ describe('Replay corpus — structural fans via declareHuOnDraw', () => {
   // Kong fan: 1 exposed kong meld + 3 pungs + pair in hand
   it('Kong(1) + AllPungs (2 fan, 4 pts): one exposed kong', () => {
     const kongMeld: Meld = {
-      kind: 'kong', tile: tileFromType(M(1)), subtype: 'exposed',
-      claimedFrom: 1, turnDeclared: 5,
+      kind: 'kong',
+      tile: tileFromType(M(1)),
+      subtype: 'exposed',
+      claimedFrom: 1,
+      turnDeclared: 5,
     };
     // 11 tiles forming 3 pungs + 1 pair (mixed suit → no FullFlush)
     const hand: TileId[] = [
-      tid(P(2), 0), tid(P(2), 1), tid(P(2), 2),
-      tid(P(3), 0), tid(P(3), 1), tid(P(3), 2),
-      tid(P(4), 0), tid(P(4), 1), tid(P(4), 2),  // win tile completes pung
-      tid(M(5), 0), tid(M(5), 1),                 // pair (different suit → no FullFlush)
+      tid(P(2), 0),
+      tid(P(2), 1),
+      tid(P(2), 2),
+      tid(P(3), 0),
+      tid(P(3), 1),
+      tid(P(3), 2),
+      tid(P(4), 0),
+      tid(P(4), 1),
+      tid(P(4), 2), // win tile completes pung
+      tid(M(5), 0),
+      tid(M(5), 1), // pair (different suit → no FullFlush)
     ];
     const winTile = tid(P(4), 2);
     const state = makeState({
@@ -299,17 +364,26 @@ describe('Replay corpus — contextual fans', () => {
   // WinAfterKong: win on a kong replacement draw
   it('WinAfterKong + AllPungs (2 fan, 4 pts): win on replacement tile', () => {
     const hand: TileId[] = [
-      tid(M(1), 0), tid(M(1), 1), tid(M(1), 2),
-      tid(P(2), 0), tid(P(2), 1), tid(P(2), 2),
-      tid(P(3), 0), tid(P(3), 1), tid(P(3), 2),
-      tid(M(4), 0), tid(M(4), 1), tid(M(4), 2),
-      tid(M(5), 0), tid(M(5), 1),
+      tid(M(1), 0),
+      tid(M(1), 1),
+      tid(M(1), 2),
+      tid(P(2), 0),
+      tid(P(2), 1),
+      tid(P(2), 2),
+      tid(P(3), 0),
+      tid(P(3), 1),
+      tid(P(3), 2),
+      tid(M(4), 0),
+      tid(M(4), 1),
+      tid(M(4), 2),
+      tid(M(5), 0),
+      tid(M(5), 1),
     ];
     const winTile = tid(M(4), 2);
     const state = makeState({
       hands: [hand, [], [], []],
       lastDrawnTile: winTile,
-      lastDrawWasKongReplacement: true,  // ← the key flag
+      lastDrawWasKongReplacement: true, // ← the key flag
     });
 
     const { events } = huOk(state);
@@ -323,17 +397,26 @@ describe('Replay corpus — contextual fans', () => {
   // UnderTheSea: win on the very last tile (wallEndReached=true + self-draw)
   it('UnderTheSea + AllPungs (2 fan, 4 pts): win on last tile of wall', () => {
     const hand: TileId[] = [
-      tid(M(1), 0), tid(M(1), 1), tid(M(1), 2),
-      tid(P(2), 0), tid(P(2), 1), tid(P(2), 2),
-      tid(P(3), 0), tid(P(3), 1), tid(P(3), 2),
-      tid(M(4), 0), tid(M(4), 1), tid(M(4), 2),
-      tid(M(5), 0), tid(M(5), 1),
+      tid(M(1), 0),
+      tid(M(1), 1),
+      tid(M(1), 2),
+      tid(P(2), 0),
+      tid(P(2), 1),
+      tid(P(2), 2),
+      tid(P(3), 0),
+      tid(P(3), 1),
+      tid(P(3), 2),
+      tid(M(4), 0),
+      tid(M(4), 1),
+      tid(M(4), 2),
+      tid(M(5), 0),
+      tid(M(5), 1),
     ];
     const winTile = tid(M(4), 2);
     const state = makeState({
       hands: [hand, [], [], []],
       lastDrawnTile: winTile,
-      wallEndReached: true,  // ← the key flag
+      wallEndReached: true, // ← the key flag
     });
 
     const { events } = huOk(state);
@@ -350,18 +433,26 @@ describe('Replay corpus — contextual fans', () => {
     // P1 is tenpai on M9 with a pair wait → AllPungs + GoldenWait + ShootAfterKong = 3 fan.
     const discardTile = tid(M(9), 0);
     const p1Hand: TileId[] = [
-      tid(M(1), 0), tid(M(1), 1), tid(M(1), 2),
-      tid(P(2), 0), tid(P(2), 1), tid(P(2), 2),
-      tid(P(3), 0), tid(P(3), 1), tid(P(3), 2),
-      tid(M(4), 0), tid(M(4), 1), tid(M(4), 2),
-      tid(M(9), 1),  // pair wait on M9
+      tid(M(1), 0),
+      tid(M(1), 1),
+      tid(M(1), 2),
+      tid(P(2), 0),
+      tid(P(2), 1),
+      tid(P(2), 2),
+      tid(P(3), 0),
+      tid(P(3), 1),
+      tid(P(3), 2),
+      tid(M(4), 0),
+      tid(M(4), 1),
+      tid(M(4), 2),
+      tid(M(9), 1), // pair wait on M9
     ];
     const p0Hand: TileId[] = [discardTile, tid(M(2), 0), tid(M(3), 0)];
 
     let state = makeState({
       hands: [p0Hand, p1Hand, [], []],
       turn: 0,
-      lastDrawWasKongReplacement: true,  // P0's "draw" was a kong replacement
+      lastDrawWasKongReplacement: true, // P0's "draw" was a kong replacement
     });
 
     // P0 discards → lastDiscard.afterKong = true since lastDrawWasKongReplacement=true
@@ -393,23 +484,40 @@ describe('Replay corpus — contextual fans', () => {
   // so the hand must contain a chow for RobbingTheKong to apply.
   it('RobbingTheKong (1 fan, 2 pts): rob a promoted kong with chow hand', () => {
     const pungMeld: Meld = {
-      kind: 'pung', tile: tileFromType(M(3)), concealed: false, claimedFrom: 3,
+      kind: 'pung',
+      tile: tileFromType(M(3)),
+      concealed: false,
+      claimedFrom: 3,
     };
     const p0Hand: TileId[] = [
-      tid(M(3), 3),  // the 4th M3 — will be used to promote pung to kong
-      tid(P(1), 0), tid(P(2), 0), tid(P(3), 0),
-      tid(P(4), 0), tid(P(5), 0), tid(P(6), 0),
-      tid(P(7), 0), tid(P(8), 0), tid(P(9), 0),
+      tid(M(3), 3), // the 4th M3 — will be used to promote pung to kong
+      tid(P(1), 0),
+      tid(P(2), 0),
+      tid(P(3), 0),
+      tid(P(4), 0),
+      tid(P(5), 0),
+      tid(P(6), 0),
+      tid(P(7), 0),
+      tid(P(8), 0),
+      tid(P(9), 0),
       tid(M(2), 0),
     ];
     // P1 tenpai on M3 (chow wait: M1-M2-[M3]) — will rob
     // Has a chow so AllPungs does NOT apply, allowing RobbingTheKong to fire.
     const p1Hand: TileId[] = [
-      tid(M(1), 1), tid(M(2), 1),              // chow wait with M3
-      tid(P(1), 1), tid(P(1), 2), tid(P(1), 3),  // pung
-      tid(P(4), 1), tid(P(4), 2), tid(P(4), 3),  // pung
-      tid(M(5), 1), tid(M(5), 2), tid(M(5), 3),  // pung
-      tid(M(7), 1), tid(M(7), 2),              // pair
+      tid(M(1), 1),
+      tid(M(2), 1), // chow wait with M3
+      tid(P(1), 1),
+      tid(P(1), 2),
+      tid(P(1), 3), // pung
+      tid(P(4), 1),
+      tid(P(4), 2),
+      tid(P(4), 3), // pung
+      tid(M(5), 1),
+      tid(M(5), 2),
+      tid(M(5), 3), // pung
+      tid(M(7), 1),
+      tid(M(7), 2), // pair
     ];
 
     let state = makeState({
@@ -420,8 +528,10 @@ describe('Replay corpus — contextual fans', () => {
 
     // P0 promotes pung → kong — opens robbing window
     let r = applyAction(state, {
-      t: 'declareKongOnTurn', seat: 0,
-      tile: tileFromType(M(3)), subtype: 'promoted',
+      t: 'declareKongOnTurn',
+      seat: 0,
+      tile: tileFromType(M(3)),
+      subtype: 'promoted',
     });
     expect(r.ok).toBe(true);
     state = (r as { ok: true; state: GameState }).state;
@@ -447,12 +557,13 @@ describe('Replay corpus — penalty paths', () => {
     // P0 has sou tiles (voided suit) in hand at wall end + a non-sou discard history
     const souTile = tid(S(1), 0);
     const p0Hand: TileId[] = [
-      souTile,           // void tile still in hand at wall end
-      tid(M(2), 0), tid(M(3), 0),  // will discard one of these
+      souTile, // void tile still in hand at wall end
+      tid(M(2), 0),
+      tid(M(3), 0), // will discard one of these
     ];
     const discardTile = tid(M(2), 0);
 
-    let state = makeState({
+    const state = makeState({
       hands: [p0Hand, [], [], []],
       voidedSuit: 'sou',
       wallEndReached: true,
@@ -485,11 +596,9 @@ describe('Replay corpus — penalty paths', () => {
     // discard are all sou → player was faithfully clearing void tiles → carve-out.
     // S1 stays in hand after discarding S4, triggering the penalty condition, but
     // the carve-out (all discards were sou) should suppress it.
-    const p0Hand: TileId[] = [
-      tid(S(1), 0), tid(S(4), 0), tid(M(2), 0),
-    ];
+    const p0Hand: TileId[] = [tid(S(1), 0), tid(S(4), 0), tid(M(2), 0)];
 
-    let state = makeState({
+    const state = makeState({
       hands: [p0Hand, [], [], []],
       voidedSuit: 'sou',
       wallEndReached: true,
@@ -510,11 +619,9 @@ describe('Replay corpus — penalty paths', () => {
   // VoidPenalty strict mode: the same hand at wall end does NOT incur the penalty
   it('VoidPenalty: strict mode never fires void penalty', () => {
     const souTile = tid(S(1), 0);
-    const p0Hand: TileId[] = [
-      souTile, tid(M(2), 0), tid(M(3), 0),
-    ];
+    const p0Hand: TileId[] = [souTile, tid(M(2), 0), tid(M(3), 0)];
 
-    let state = makeState({
+    const state = makeState({
       hands: [p0Hand, [], [], []],
       voidedSuit: 'sou',
       wallEndReached: true,

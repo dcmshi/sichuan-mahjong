@@ -1,16 +1,16 @@
-import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
-import { createGame, DEFAULT_CONFIG } from '../src/state.js';
-import type { GameState, Seat } from '../src/state.js';
+import { describe, expect, it } from 'vitest';
 import { applyAction } from '../src/actions.js';
 import type { GameAction, GameEvent } from '../src/actions.js';
-import { computeLegalActions } from '../src/views.js';
-import type { TileId, TileType } from '../src/tiles.js';
-import { tileFromType, tileToType, tileTypeOf, suitOf } from '../src/tiles.js';
+import { findAllWinningShapes, isWinningHand } from '../src/hand.js';
 import type { Meld } from '../src/melds.js';
-import { isWinningHand, findAllWinningShapes } from '../src/hand.js';
-import { calcHandScore, calcTMV, COMPATIBILITY } from '../src/scoring.js';
+import { COMPATIBILITY, calcHandScore, calcTMV } from '../src/scoring.js';
 import type { FanType, HuSubtype } from '../src/scoring.js';
+import { DEFAULT_CONFIG, createGame } from '../src/state.js';
+import type { GameState, Seat } from '../src/state.js';
+import type { TileId, TileType } from '../src/tiles.js';
+import { suitOf, tileFromType, tileToType, tileTypeOf } from '../src/tiles.js';
+import { computeLegalActions } from '../src/views.js';
 
 // ─── Tile helpers ──────────────────────────────────────────────────────────────
 function tid(type: TileType, copy: 0 | 1 | 2 | 3 = 0): TileId {
@@ -47,7 +47,7 @@ function makeState(opts: {
     wall,
     drawIndex: opts.drawIndex ?? 53,
     kongDrawIndex: opts.kongDrawIndex ?? 107,
-    players: ([0, 1, 2, 3] as Seat[]).map((i) => ({
+    players: ([0, 1, 2, 3] as Seat[]).map(i => ({
       seat: i,
       name: `P${i}`,
       isBot: false,
@@ -72,6 +72,9 @@ function makeState(opts: {
     lastDrawWasKongReplacement: opts.lastDrawWasKongReplacement ?? false,
     lastDrawnTile: opts.lastDrawnTile ?? null,
     turnDrawNeeded: opts.turnDrawNeeded ?? false,
+    // If no draw is pending, treat the turn-holder as having just drawn (these
+    // synthetic states model a self-draw position). (A7)
+    drewThisTurn: !(opts.turnDrawNeeded ?? false),
     wallEndReached: opts.wallEndReached ?? false,
     anyClaimsHappened: opts.anyClaimsHappened ?? false,
     pendingClaims: null,
@@ -102,11 +105,20 @@ describe('Phase 4 — fan calculation', () => {
   it('AllPungs + FullFlush: all-pung one-suit hand', () => {
     // 4 pungs of man + pair of man → AllPungs(1) + FullFlush(2) = 3 fan = 8 pts
     const tiles: TileId[] = [
-      tid(M(1),0), tid(M(1),1),                              // pair man1
-      tid(M(2),0), tid(M(2),1), tid(M(2),2),                // pung man2
-      tid(M(3),0), tid(M(3),1), tid(M(3),2),                // pung man3
-      tid(M(4),0), tid(M(4),1), tid(M(4),2),                // pung man4
-      tid(M(5),0), tid(M(5),1), tid(M(5),2),                // pung man5
+      tid(M(1), 0),
+      tid(M(1), 1), // pair man1
+      tid(M(2), 0),
+      tid(M(2), 1),
+      tid(M(2), 2), // pung man2
+      tid(M(3), 0),
+      tid(M(3), 1),
+      tid(M(3), 2), // pung man3
+      tid(M(4), 0),
+      tid(M(4), 1),
+      tid(M(4), 2), // pung man4
+      tid(M(5), 0),
+      tid(M(5), 1),
+      tid(M(5), 2), // pung man5
     ];
     const winTile = tid(M(1), 0);
     const score = calcHandScore(tiles, [], 'sou', winTile, 'normal', FC, true);
@@ -128,8 +140,10 @@ describe('Phase 4 — fan calculation', () => {
     // hand has 4 tiles (one set + pair), winning tile completes pair
     // Actually with 3 melds: need 14 - 3*3 = 5 hand tiles. The 4th set (pung) = 3 tiles, pair = 2. Total = 5. ✓
     const tiles: TileId[] = [
-      tid(M(5),0), tid(M(5),1), tid(M(5),2),  // 4th pung in hand
-      tid(P(1),0),                              // pair tile (lone)
+      tid(M(5), 0),
+      tid(M(5), 1),
+      tid(M(5), 2), // 4th pung in hand
+      tid(P(1), 0), // pair tile (lone)
     ];
     const winTile = tid(P(1), 1); // the second pair tile (won)
     // This wins with AllPungs + GoldenWait
@@ -142,13 +156,20 @@ describe('Phase 4 — fan calculation', () => {
 
   it('SevenPairs: 7 distinct pairs', () => {
     const tiles: TileId[] = [
-      tid(M(1),0), tid(M(1),1),
-      tid(M(2),0), tid(M(2),1),
-      tid(M(3),0), tid(M(3),1),
-      tid(M(4),0), tid(M(4),1),
-      tid(P(1),0), tid(P(1),1),
-      tid(P(2),0), tid(P(2),1),
-      tid(P(3),0), tid(P(3),1),
+      tid(M(1), 0),
+      tid(M(1), 1),
+      tid(M(2), 0),
+      tid(M(2), 1),
+      tid(M(3), 0),
+      tid(M(3), 1),
+      tid(M(4), 0),
+      tid(M(4), 1),
+      tid(P(1), 0),
+      tid(P(1), 1),
+      tid(P(2), 0),
+      tid(P(2), 1),
+      tid(P(3), 0),
+      tid(P(3), 1),
     ];
     const winTile = tid(P(3), 1);
     const score = calcHandScore(tiles, [], 'sou', winTile, 'normal', FC, true);
@@ -159,12 +180,20 @@ describe('Phase 4 — fan calculation', () => {
   it('SevenPairs + Root: 4-of-a-kind within seven pairs', () => {
     // Six distinct pairs + one 4-of-a-kind (= 2 pairs + 1 Root)
     const tiles: TileId[] = [
-      tid(M(1),0), tid(M(1),1), tid(M(1),2), tid(M(1),3),  // 4-of-a-kind man1 → 2 pairs + Root
-      tid(M(2),0), tid(M(2),1),
-      tid(M(3),0), tid(M(3),1),
-      tid(M(4),0), tid(M(4),1),
-      tid(M(5),0), tid(M(5),1),
-      tid(M(6),0), tid(M(6),1),
+      tid(M(1), 0),
+      tid(M(1), 1),
+      tid(M(1), 2),
+      tid(M(1), 3), // 4-of-a-kind man1 → 2 pairs + Root
+      tid(M(2), 0),
+      tid(M(2), 1),
+      tid(M(3), 0),
+      tid(M(3), 1),
+      tid(M(4), 0),
+      tid(M(4), 1),
+      tid(M(5), 0),
+      tid(M(5), 1),
+      tid(M(6), 0),
+      tid(M(6), 1),
     ];
     const winTile = tid(M(1), 0);
     const score = calcHandScore(tiles, [], 'sou', winTile, 'normal', FC, true);
@@ -176,11 +205,20 @@ describe('Phase 4 — fan calculation', () => {
 
   it('WinAfterKong contextual fan', () => {
     const tiles: TileId[] = [
-      tid(M(1),0), tid(M(1),1),
-      tid(M(2),0), tid(M(2),1), tid(M(2),2),
-      tid(M(3),0), tid(M(3),1), tid(M(3),2),
-      tid(M(4),0), tid(M(4),1), tid(M(4),2),
-      tid(M(5),0), tid(M(5),1), tid(M(5),2),
+      tid(M(1), 0),
+      tid(M(1), 1),
+      tid(M(2), 0),
+      tid(M(2), 1),
+      tid(M(2), 2),
+      tid(M(3), 0),
+      tid(M(3), 1),
+      tid(M(3), 2),
+      tid(M(4), 0),
+      tid(M(4), 1),
+      tid(M(4), 2),
+      tid(M(5), 0),
+      tid(M(5), 1),
+      tid(M(5), 2),
     ];
     const winTile = tid(M(1), 0);
     const score = calcHandScore(tiles, [], 'sou', winTile, 'winAfterKong', FC, true);
@@ -190,10 +228,20 @@ describe('Phase 4 — fan calculation', () => {
   it('compatibility: SevenPairs + WinAfterKong cannot coexist', () => {
     // A hand that is SevenPairs — contextual WinAfterKong should be dropped
     const tiles: TileId[] = [
-      tid(M(1),0), tid(M(1),1), tid(M(2),0), tid(M(2),1),
-      tid(M(3),0), tid(M(3),1), tid(M(4),0), tid(M(4),1),
-      tid(P(1),0), tid(P(1),1), tid(P(2),0), tid(P(2),1),
-      tid(P(3),0), tid(P(3),1),
+      tid(M(1), 0),
+      tid(M(1), 1),
+      tid(M(2), 0),
+      tid(M(2), 1),
+      tid(M(3), 0),
+      tid(M(3), 1),
+      tid(M(4), 0),
+      tid(M(4), 1),
+      tid(P(1), 0),
+      tid(P(1), 1),
+      tid(P(2), 0),
+      tid(P(2), 1),
+      tid(P(3), 0),
+      tid(P(3), 1),
     ];
     const winTile = tid(P(3), 1);
     const score = calcHandScore(tiles, [], 'sou', winTile, 'winAfterKong', FC, true);
@@ -205,27 +253,45 @@ describe('Phase 4 — fan calculation', () => {
 
   it('Heavenly Hand: auto-caps to fanCap value', () => {
     const tiles: TileId[] = [
-      tid(M(1),0), tid(M(1),1),
-      tid(M(2),0), tid(M(2),1), tid(M(2),2),
-      tid(M(3),0), tid(M(3),1), tid(M(3),2),
-      tid(M(4),0), tid(M(4),1), tid(M(4),2),
-      tid(M(5),0), tid(M(5),1), tid(M(5),2),
+      tid(M(1), 0),
+      tid(M(1), 1),
+      tid(M(2), 0),
+      tid(M(2), 1),
+      tid(M(2), 2),
+      tid(M(3), 0),
+      tid(M(3), 1),
+      tid(M(3), 2),
+      tid(M(4), 0),
+      tid(M(4), 1),
+      tid(M(4), 2),
+      tid(M(5), 0),
+      tid(M(5), 1),
+      tid(M(5), 2),
     ];
-    const score = calcHandScore(tiles, [], 'sou', tid(M(1),0), 'heavenly', FC, true);
+    const score = calcHandScore(tiles, [], 'sou', tid(M(1), 0), 'heavenly', FC, true);
     expect(score.totalFan).toBe(FC);
-    expect(score.handValue).toBe(Math.pow(2, FC));
+    expect(score.handValue).toBe(2 ** FC);
   });
 
   it('Heavenly disabled: scores structurally', () => {
     // Same hand, but heavenly disabled → scores at structural fan (AllPungs+FullFlush=3fan capped)
     const tiles: TileId[] = [
-      tid(M(1),0), tid(M(1),1),
-      tid(M(2),0), tid(M(2),1), tid(M(2),2),
-      tid(M(3),0), tid(M(3),1), tid(M(3),2),
-      tid(M(4),0), tid(M(4),1), tid(M(4),2),
-      tid(M(5),0), tid(M(5),1), tid(M(5),2),
+      tid(M(1), 0),
+      tid(M(1), 1),
+      tid(M(2), 0),
+      tid(M(2), 1),
+      tid(M(2), 2),
+      tid(M(3), 0),
+      tid(M(3), 1),
+      tid(M(3), 2),
+      tid(M(4), 0),
+      tid(M(4), 1),
+      tid(M(4), 2),
+      tid(M(5), 0),
+      tid(M(5), 1),
+      tid(M(5), 2),
     ];
-    const score = calcHandScore(tiles, [], 'sou', tid(M(1),0), 'heavenly', FC, false);
+    const score = calcHandScore(tiles, [], 'sou', tid(M(1), 0), 'heavenly', FC, false);
     // Without heavenly auto-cap, scores at structural (AllPungs+FullFlush=3→8 anyway since it caps)
     expect(score.handValue).toBeGreaterThanOrEqual(1);
   });
@@ -237,7 +303,10 @@ describe('Phase 4 — fan calculation', () => {
   });
 
   it('COMPATIBILITY table: incompatible relation is symmetric', () => {
-    for (const [fan, entry] of Object.entries(COMPATIBILITY) as [FanType, typeof COMPATIBILITY[FanType]][]) {
+    for (const [fan, entry] of Object.entries(COMPATIBILITY) as [
+      FanType,
+      (typeof COMPATIBILITY)[FanType],
+    ][]) {
       for (const other of entry.incompatible) {
         expect(COMPATIBILITY[other].incompatible).toContain(fan);
       }
@@ -251,11 +320,19 @@ describe('Phase 4 — TMV', () => {
   it('tenpai hand has non-zero TMV', () => {
     // Tenpai: 3 pungs + chow + lone tile (tanki wait)
     const tiles: TileId[] = [
-      tid(P(1),0), tid(P(1),1), tid(P(1),2),
-      tid(P(2),0), tid(P(2),1), tid(P(2),2),
-      tid(P(3),0), tid(P(3),1), tid(P(3),2),
-      tid(M(2),0), tid(M(3),0), tid(M(4),0),
-      tid(M(1),0),   // lone tile: tanki wait for man1
+      tid(P(1), 0),
+      tid(P(1), 1),
+      tid(P(1), 2),
+      tid(P(2), 0),
+      tid(P(2), 1),
+      tid(P(2), 2),
+      tid(P(3), 0),
+      tid(P(3), 1),
+      tid(P(3), 2),
+      tid(M(2), 0),
+      tid(M(3), 0),
+      tid(M(4), 0),
+      tid(M(1), 0), // lone tile: tanki wait for man1
     ];
     const tmv = calcTMV(tiles, [], 'sou', DEFAULT_CONFIG.fanCap);
     expect(tmv).toBeGreaterThan(0);
@@ -264,10 +341,19 @@ describe('Phase 4 — TMV', () => {
   it('non-tenpai hand has TMV = 0', () => {
     // Random non-tenpai hand
     const tiles: TileId[] = [
-      tid(M(1),0), tid(M(3),0), tid(M(5),0), tid(M(7),0),
-      tid(P(2),0), tid(P(4),0), tid(P(6),0), tid(P(8),0),
-      tid(M(9),0), tid(P(9),0), tid(M(2),0), tid(P(1),0),
-      tid(M(6),0),
+      tid(M(1), 0),
+      tid(M(3), 0),
+      tid(M(5), 0),
+      tid(M(7), 0),
+      tid(P(2), 0),
+      tid(P(4), 0),
+      tid(P(6), 0),
+      tid(P(8), 0),
+      tid(M(9), 0),
+      tid(P(9), 0),
+      tid(M(2), 0),
+      tid(P(1), 0),
+      tid(M(6), 0),
     ];
     const tmv = calcTMV(tiles, [], 'sou', DEFAULT_CONFIG.fanCap);
     expect(tmv).toBe(0);
@@ -276,16 +362,28 @@ describe('Phase 4 — TMV', () => {
   it('TMV excludes Kong fan (Kong requires explicit declaration)', () => {
     // A hand with a kong meld that is tenpai: TMV should not include Kong fan
     const melds: Meld[] = [
-      { kind: 'kong', tile: tileFromType(M(1)), subtype: 'concealed', claimedFrom: null, turnDeclared: 1 },
+      {
+        kind: 'kong',
+        tile: tileFromType(M(1)),
+        subtype: 'concealed',
+        claimedFrom: null,
+        turnDeclared: 1,
+      },
     ];
     // With kong meld, need 14 - 3 = 11 hand tiles (kong counts as 3 structural)
     // 3 pungs + pair (tanki wait) = 3*3 + 1 = 10 tiles... need 11
     // Let's use: 3 pungs + chow + tanki
     const tiles: TileId[] = [
-      tid(P(1),0), tid(P(1),1), tid(P(1),2),
-      tid(P(2),0), tid(P(2),1), tid(P(2),2),
-      tid(P(3),0), tid(P(3),1), tid(P(3),2),
-      tid(M(5),0), // lone tile (tanki)
+      tid(P(1), 0),
+      tid(P(1), 1),
+      tid(P(1), 2),
+      tid(P(2), 0),
+      tid(P(2), 1),
+      tid(P(2), 2),
+      tid(P(3), 0),
+      tid(P(3), 1),
+      tid(P(3), 2),
+      tid(M(5), 0), // lone tile (tanki)
     ];
     // TMV should not include Kong fan
     const tmvWithKong = calcTMV(tiles, melds, 'sou', DEFAULT_CONFIG.fanCap);
@@ -303,11 +401,20 @@ describe('Phase 4 — TMV', () => {
 // All-pung pin-only hand: AllPungs(1fan) + FullFlush(2fan) = 3fan = 8pts
 function winHand(): TileId[] {
   return [
-    tid(P(1),0), tid(P(1),1),                          // pair pin1
-    tid(P(2),0), tid(P(2),1), tid(P(2),2),             // pung pin2
-    tid(P(3),0), tid(P(3),1), tid(P(3),2),             // pung pin3
-    tid(P(4),0), tid(P(4),1), tid(P(4),2),             // pung pin4
-    tid(P(5),0), tid(P(5),1), tid(P(5),2),             // pung pin5
+    tid(P(1), 0),
+    tid(P(1), 1), // pair pin1
+    tid(P(2), 0),
+    tid(P(2), 1),
+    tid(P(2), 2), // pung pin2
+    tid(P(3), 0),
+    tid(P(3), 1),
+    tid(P(3), 2), // pung pin3
+    tid(P(4), 0),
+    tid(P(4), 1),
+    tid(P(4), 2), // pung pin4
+    tid(P(5), 0),
+    tid(P(5), 1),
+    tid(P(5), 2), // pung pin5
   ];
 }
 
@@ -316,15 +423,25 @@ function winHand(): TileId[] {
 describe('Phase 4 — payment flows', () => {
   // 14-tile hand that needs to discard
   const discardHand = (): TileId[] => [
-    tid(M(1),0), tid(M(2),0), tid(M(3),0), tid(M(4),0),
-    tid(M(5),0), tid(M(6),0), tid(M(7),0), tid(M(8),0),
-    tid(M(9),0), tid(P(6),0), tid(P(7),0), tid(P(8),0),
-    tid(P(9),0), tid(M(1),1),
+    tid(M(1), 0),
+    tid(M(2), 0),
+    tid(M(3), 0),
+    tid(M(4), 0),
+    tid(M(5), 0),
+    tid(M(6), 0),
+    tid(M(7), 0),
+    tid(M(8), 0),
+    tid(M(9), 0),
+    tid(P(6), 0),
+    tid(P(7), 0),
+    tid(P(8), 0),
+    tid(P(9), 0),
+    tid(M(1), 1),
   ];
 
   it('self-draw Hu: each non-Hu pays handValue+1', () => {
     let s = makeState({ hands: [winHand(), [], [], []], voidedSuit: 'sou' });
-    const score = calcHandScore(winHand(), [], 'sou', tid(P(1),0), 'normal', 3, true);
+    const score = calcHandScore(winHand(), [], 'sou', tid(P(1), 0), 'normal', 3, true);
     const expected = score.handValue + 1;
 
     const r = applyAction(s, { t: 'declareHuOnDraw', seat: 0 });
@@ -346,14 +463,22 @@ describe('Phase 4 — payment flows', () => {
   it('discard Hu: only discarder pays', () => {
     // Seat 0 discards pin1, seat 1 has tenpai on pin1
     const tenpaiHand: TileId[] = [
-      tid(P(1),1),                                       // lone pin1 (tanki wait)
-      tid(P(2),0), tid(P(2),1), tid(P(2),2),
-      tid(P(3),0), tid(P(3),1), tid(P(3),2),
-      tid(P(4),0), tid(P(4),1), tid(P(4),2),
-      tid(P(5),0), tid(P(5),1), tid(P(5),2),
+      tid(P(1), 1), // lone pin1 (tanki wait)
+      tid(P(2), 0),
+      tid(P(2), 1),
+      tid(P(2), 2),
+      tid(P(3), 0),
+      tid(P(3), 1),
+      tid(P(3), 2),
+      tid(P(4), 0),
+      tid(P(4), 1),
+      tid(P(4), 2),
+      tid(P(5), 0),
+      tid(P(5), 1),
+      tid(P(5), 2),
     ];
     let s = makeState({ hands: [discardHand(), tenpaiHand, [], []], voidedSuit: 'sou' });
-    s = applyOk(s, { t: 'discard', seat: 0, tile: tid(M(1),0) });
+    s = applyOk(s, { t: 'discard', seat: 0, tile: tid(M(1), 0) });
     // Seat 1 can't Hu on man1. Let them pass. Then advance to seat 1's turn...
     // Actually let me pick a simpler discard — pin9. tenpaiHand waits for pin1, not pin9.
     // Let me restart with seat 0 discarding pin1.
@@ -362,14 +487,23 @@ describe('Phase 4 — payment flows', () => {
     // Discard pin1 from seat 0's hand — but discardHand doesn't have pin1.
     // Let me use a different setup: seat 0 has pin1 to discard.
     const hand0WithPin1: TileId[] = [
-      tid(P(1),0),  // will be discarded → seat 1 Hus
-      tid(M(2),0), tid(M(3),0), tid(M(4),0), tid(M(5),0),
-      tid(M(6),0), tid(M(7),0), tid(M(8),0), tid(M(9),0),
-      tid(P(6),0), tid(P(7),0), tid(P(8),0), tid(P(9),0),
-      tid(M(1),0),
+      tid(P(1), 0), // will be discarded → seat 1 Hus
+      tid(M(2), 0),
+      tid(M(3), 0),
+      tid(M(4), 0),
+      tid(M(5), 0),
+      tid(M(6), 0),
+      tid(M(7), 0),
+      tid(M(8), 0),
+      tid(M(9), 0),
+      tid(P(6), 0),
+      tid(P(7), 0),
+      tid(P(8), 0),
+      tid(P(9), 0),
+      tid(M(1), 0),
     ];
     s = makeState({ hands: [hand0WithPin1, tenpaiHand, [], []], voidedSuit: 'sou' });
-    s = applyOk(s, { t: 'discard', seat: 0, tile: tid(P(1),0) });
+    s = applyOk(s, { t: 'discard', seat: 0, tile: tid(P(1), 0) });
     expect(s.pendingClaims).not.toBeNull();
 
     s = applyOk(s, { t: 'claim', seat: 1, claim: { kind: 'hu' } });
@@ -386,59 +520,116 @@ describe('Phase 4 — payment flows', () => {
 
   it('concealed kong: 2 from each non-Hu player', () => {
     const hand = [
-      tid(M(1),0), tid(M(1),1), tid(M(1),2), tid(M(1),3),
-      tid(P(1),0), tid(P(2),0), tid(P(3),0), tid(P(4),0),
-      tid(P(5),0), tid(P(6),0), tid(P(7),0), tid(P(8),0),
-      tid(P(9),0), tid(M(2),0),
+      tid(M(1), 0),
+      tid(M(1), 1),
+      tid(M(1), 2),
+      tid(M(1), 3),
+      tid(P(1), 0),
+      tid(P(2), 0),
+      tid(P(3), 0),
+      tid(P(4), 0),
+      tid(P(5), 0),
+      tid(P(6), 0),
+      tid(P(7), 0),
+      tid(P(8), 0),
+      tid(P(9), 0),
+      tid(M(2), 0),
     ];
     let s = makeState({ hands: [hand, [], [], []] });
-    s = applyOk(s, { t: 'declareKongOnTurn', seat: 0, tile: tileFromType(M(1)), subtype: 'concealed' });
+    s = applyOk(s, {
+      t: 'declareKongOnTurn',
+      seat: 0,
+      tile: tileFromType(M(1)),
+      subtype: 'concealed',
+    });
 
-    expect(s.players[0]!.scoreDelta).toBe(6);  // +2 from each of 3 others
+    expect(s.players[0]!.scoreDelta).toBe(6); // +2 from each of 3 others
     expect(s.players[1]!.scoreDelta).toBe(-2);
     expect(s.players[2]!.scoreDelta).toBe(-2);
     expect(s.players[3]!.scoreDelta).toBe(-2);
   });
 
-  it('concealed kong: a player who already Hu\'d does not pay (§5.8 each non-Hu)', () => {
+  it("concealed kong: a player who already Hu'd does not pay (§5.8 each non-Hu)", () => {
     const hand = [
-      tid(M(1),0), tid(M(1),1), tid(M(1),2), tid(M(1),3),
-      tid(P(1),0), tid(P(2),0), tid(P(3),0), tid(P(4),0),
-      tid(P(5),0), tid(P(6),0), tid(P(7),0), tid(P(8),0),
-      tid(P(9),0), tid(M(2),0),
+      tid(M(1), 0),
+      tid(M(1), 1),
+      tid(M(1), 2),
+      tid(M(1), 3),
+      tid(P(1), 0),
+      tid(P(2), 0),
+      tid(P(3), 0),
+      tid(P(4), 0),
+      tid(P(5), 0),
+      tid(P(6), 0),
+      tid(P(7), 0),
+      tid(P(8), 0),
+      tid(P(9), 0),
+      tid(M(2), 0),
     ];
     let s = makeState({ hands: [hand, [], [], []] });
     s.players[3]!.status = 'hu'; // seat 3 already won — sits out kong payments
-    s = applyOk(s, { t: 'declareKongOnTurn', seat: 0, tile: tileFromType(M(1)), subtype: 'concealed' });
+    s = applyOk(s, {
+      t: 'declareKongOnTurn',
+      seat: 0,
+      tile: tileFromType(M(1)),
+      subtype: 'concealed',
+    });
 
-    expect(s.players[0]!.scoreDelta).toBe(4);  // +2 from each of the two non-Hu players
+    expect(s.players[0]!.scoreDelta).toBe(4); // +2 from each of the two non-Hu players
     expect(s.players[1]!.scoreDelta).toBe(-2);
     expect(s.players[2]!.scoreDelta).toBe(-2);
-    expect(s.players[3]!.scoreDelta).toBe(0);  // Hu'd → exempt
+    expect(s.players[3]!.scoreDelta).toBe(0); // Hu'd → exempt
   });
 
   it('promoted kong: 1 from each non-Hu player, refunded if robbed', () => {
     const pungMeld: Meld = {
-      kind: 'pung', tile: tileFromType(M(3)), concealed: false, claimedFrom: 3,
+      kind: 'pung',
+      tile: tileFromType(M(3)),
+      concealed: false,
+      claimedFrom: 3,
     };
     const hand0 = [
-      tid(M(3),3),
-      tid(P(1),0), tid(P(2),0), tid(P(3),0), tid(P(4),0),
-      tid(P(5),0), tid(P(6),0), tid(P(7),0), tid(P(8),0),
-      tid(P(9),0), tid(M(2),0),
+      tid(M(3), 3),
+      tid(P(1), 0),
+      tid(P(2), 0),
+      tid(P(3), 0),
+      tid(P(4), 0),
+      tid(P(5), 0),
+      tid(P(6), 0),
+      tid(P(7), 0),
+      tid(P(8), 0),
+      tid(P(9), 0),
+      tid(M(2), 0),
     ];
     // seat 1: tenpai on man3
     const hand1 = [
-      tid(P(1),1), tid(P(1),2), tid(P(1),3),
-      tid(P(2),1), tid(P(2),2), tid(P(2),3),
-      tid(P(3),1), tid(P(3),2), tid(P(3),3),
-      tid(M(4),1), tid(M(5),1), tid(M(6),1),
-      tid(M(3),2),  // lone man3; completes pair with the promoted tile → rob
+      tid(P(1), 1),
+      tid(P(1), 2),
+      tid(P(1), 3),
+      tid(P(2), 1),
+      tid(P(2), 2),
+      tid(P(2), 3),
+      tid(P(3), 1),
+      tid(P(3), 2),
+      tid(P(3), 3),
+      tid(M(4), 1),
+      tid(M(5), 1),
+      tid(M(6), 1),
+      tid(M(3), 2), // lone man3; completes pair with the promoted tile → rob
     ];
 
-    let s = makeState({ hands: [hand0, hand1, [], []], melds: [[pungMeld], [], [], []], lastDrawnTile: tid(M(3),3) });
+    let s = makeState({
+      hands: [hand0, hand1, [], []],
+      melds: [[pungMeld], [], [], []],
+      lastDrawnTile: tid(M(3), 3),
+    });
     // Before kong: all at 0
-    s = applyOk(s, { t: 'declareKongOnTurn', seat: 0, tile: tileFromType(M(3)), subtype: 'promoted' });
+    s = applyOk(s, {
+      t: 'declareKongOnTurn',
+      seat: 0,
+      tile: tileFromType(M(3)),
+      subtype: 'promoted',
+    });
     // Promoted kong payment made: seats 1,2,3 each paid 1 to seat 0
     expect(s.pendingClaims).not.toBeNull(); // robbing window is open
     expect(s.players[0]!.scoreDelta).toBe(3); // received 3
@@ -476,18 +667,35 @@ describe('Phase 4 — wall-end settlement', () => {
   it('non-ready player pays ready player their TMV at wall end', () => {
     // Ready hand: tenpai. Non-ready: random tiles.
     const readyHand: TileId[] = [
-      tid(P(1),0), tid(P(1),1), tid(P(1),2),
-      tid(P(2),0), tid(P(2),1), tid(P(2),2),
-      tid(P(3),0), tid(P(3),1), tid(P(3),2),
-      tid(M(2),0), tid(M(3),0), tid(M(4),0),
-      tid(M(1),0),  // lone man1; tanki wait
+      tid(P(1), 0),
+      tid(P(1), 1),
+      tid(P(1), 2),
+      tid(P(2), 0),
+      tid(P(2), 1),
+      tid(P(2), 2),
+      tid(P(3), 0),
+      tid(P(3), 1),
+      tid(P(3), 2),
+      tid(M(2), 0),
+      tid(M(3), 0),
+      tid(M(4), 0),
+      tid(M(1), 0), // lone man1; tanki wait
     ];
     // Non-ready: 13 tiles with no completable hand
     const nonReadyHand: TileId[] = [
-      tid(M(1),1), tid(M(3),1), tid(M(5),1), tid(M(7),1),
-      tid(P(5),1), tid(P(7),1), tid(P(9),1),
-      tid(M(9),1), tid(P(4),1), tid(M(2),1), tid(P(8),1),
-      tid(M(6),1), tid(M(8),1),
+      tid(M(1), 1),
+      tid(M(3), 1),
+      tid(M(5), 1),
+      tid(M(7), 1),
+      tid(P(5), 1),
+      tid(P(7), 1),
+      tid(P(9), 1),
+      tid(M(9), 1),
+      tid(P(4), 1),
+      tid(M(2), 1),
+      tid(P(8), 1),
+      tid(M(6), 1),
+      tid(M(8), 1),
     ];
 
     let s = makeState({
@@ -496,7 +704,7 @@ describe('Phase 4 — wall-end settlement', () => {
       turnDrawNeeded: false,
     });
     // Force round end via discard with no claimants
-    s = applyOk(s, { t: 'discard', seat: 0, tile: tid(P(1),0) });
+    s = applyOk(s, { t: 'discard', seat: 0, tile: tid(P(1), 0) });
     if (s.phase !== 'roundEnd') {
       s = applyOk(s, { t: 'claimWindowExpire' });
     }
@@ -555,7 +763,7 @@ describe('Phase 4 — full game payment balance', () => {
       const counts: Record<string, number> = { man: 0, pin: 0, sou: 0 };
       for (const t of player.hand) counts[suitOf(t)]!++;
       const voidSuit = (['man', 'pin', 'sou'] as const).reduce((a, b) =>
-        (counts[a]! <= counts[b]! ? a : b),
+        counts[a]! <= counts[b]! ? a : b,
       );
       const firstDiscard = player.hand.find(t => suitOf(t) === voidSuit) ?? null;
       const r = applyAction(state, { t: 'declareVoid', seat, suit: voidSuit, firstDiscard });
@@ -589,7 +797,10 @@ describe('Phase 4 — full game payment balance', () => {
       const currentPlayer = state.players[seat]!;
       if (isWinningHand(currentPlayer.hand, currentPlayer.melds, currentPlayer.voidedSuit)) {
         const hr = applyAction(state, { t: 'declareHuOnDraw', seat });
-        if (hr.ok) { state = hr.state; continue; }
+        if (hr.ok) {
+          state = hr.state;
+          continue;
+        }
       }
 
       const voidTiles = currentPlayer.hand.filter(t => suitOf(t) === currentPlayer.voidedSuit);
@@ -616,8 +827,9 @@ describe('Phase 4 — full game payment balance', () => {
     expect(final.phase).toBe('roundEnd');
     const inHands = final.players.reduce((sum, p) => sum + p.hand.length, 0);
     const inDiscards = final.players.reduce((sum, p) => sum + p.discards.length, 0);
-    const inMelds = final.players.reduce((sum, p) =>
-      sum + p.melds.reduce((ms, m) => ms + (m.kind === 'kong' ? 4 : 3), 0), 0,
+    const inMelds = final.players.reduce(
+      (sum, p) => sum + p.melds.reduce((ms, m) => ms + (m.kind === 'kong' ? 4 : 3), 0),
+      0,
     );
     const liveWall = Math.max(0, final.kongDrawIndex - final.drawIndex + 1);
     const kongUsed = 107 - final.kongDrawIndex;
@@ -639,9 +851,8 @@ describe('Phase 4 — full game payment balance', () => {
 
 describe('Phase 4 — property test: payment balance', () => {
   it('sum(scoreDelta) + penaltyPot = 0 for any seeded full game', () => {
-    fc.assert(fc.property(
-      fc.string({ minLength: 4, maxLength: 12 }),
-      (seed) => {
+    fc.assert(
+      fc.property(fc.string({ minLength: 4, maxLength: 12 }), seed => {
         let state = createGame(
           seed,
           [
@@ -683,7 +894,10 @@ describe('Phase 4 — property test: payment balance', () => {
           const cp = state.players[seat]!;
           if (isWinningHand(cp.hand, cp.melds, cp.voidedSuit)) {
             const h = applyAction(state, { t: 'declareHuOnDraw', seat });
-            if (h.ok) { state = h.state; continue; }
+            if (h.ok) {
+              state = h.state;
+              continue;
+            }
           }
           const vt = cp.hand.filter(t => suitOf(t) === cp.voidedSuit);
           const tile = vt.length > 0 ? vt[0]! : cp.hand[0]!;
@@ -695,8 +909,9 @@ describe('Phase 4 — property test: payment balance', () => {
         if (state.phase !== 'roundEnd') return true; // safety triggered, skip
         const total = state.players.reduce((s, p) => s + p.scoreDelta, 0) + state.penaltyPot;
         return total === 0;
-      },
-    ), { numRuns: 50 });
+      }),
+      { numRuns: 50 },
+    );
   });
 });
 
@@ -706,9 +921,19 @@ describe('Phase 4 — false-Hu penalty', () => {
   it('declareHuOnDraw with invalid hand applies penalty instead of failing', () => {
     // P0 hand has 13 tiles (no winning shape) — false Hu on draw
     const hand0: TileId[] = [
-      tid(M(1), 0), tid(M(3), 0), tid(M(5), 0), tid(M(7), 0), tid(M(9), 0),
-      tid(P(1), 0), tid(P(3), 0), tid(P(5), 0), tid(P(7), 0), tid(P(9), 0),
-      tid(S(2), 0), tid(S(4), 0), tid(S(6), 0),
+      tid(M(1), 0),
+      tid(M(3), 0),
+      tid(M(5), 0),
+      tid(M(7), 0),
+      tid(M(9), 0),
+      tid(P(1), 0),
+      tid(P(3), 0),
+      tid(P(5), 0),
+      tid(P(7), 0),
+      tid(P(9), 0),
+      tid(S(2), 0),
+      tid(S(4), 0),
+      tid(S(6), 0),
     ];
     const state = makeState({ hands: [hand0, [], [], []], lastDrawnTile: tid(M(9), 0) });
 
@@ -732,9 +957,19 @@ describe('Phase 4 — false-Hu penalty', () => {
   it('false-Hu via draw refunds offender kong payments', () => {
     // Seed P0 with 1 kong payment in log, then false Hu → that payment is refunded
     const hand0: TileId[] = [
-      tid(M(1), 0), tid(M(3), 0), tid(M(5), 0), tid(M(7), 0), tid(M(9), 0),
-      tid(P(1), 0), tid(P(3), 0), tid(P(5), 0), tid(P(7), 0), tid(P(9), 0),
-      tid(S(2), 0), tid(S(4), 0), tid(S(6), 0),
+      tid(M(1), 0),
+      tid(M(3), 0),
+      tid(M(5), 0),
+      tid(M(7), 0),
+      tid(M(9), 0),
+      tid(P(1), 0),
+      tid(P(3), 0),
+      tid(P(5), 0),
+      tid(P(7), 0),
+      tid(P(9), 0),
+      tid(S(2), 0),
+      tid(S(4), 0),
+      tid(S(6), 0),
     ];
     const state = makeState({ hands: [hand0, [], [], []], lastDrawnTile: tid(M(9), 0) });
     // Manually add a kong payment: P1 paid 2 to P0 earlier
@@ -764,18 +999,35 @@ describe('Phase 4 — false-Hu penalty', () => {
     // P3 has an empty hand → auto-passed.
     const winTile = tid(M(5), 1);
     const p1Hand: TileId[] = [
-      tid(M(1), 0), tid(M(1), 1), tid(M(1), 2),
-      tid(M(2), 0), tid(M(2), 1), tid(M(2), 2),
-      tid(M(3), 0), tid(M(3), 1), tid(M(3), 2),
-      tid(M(4), 0), tid(M(4), 1), tid(M(4), 2),
-      tid(M(5), 0),  // pair of M5 completes with winTile
+      tid(M(1), 0),
+      tid(M(1), 1),
+      tid(M(1), 2),
+      tid(M(2), 0),
+      tid(M(2), 1),
+      tid(M(2), 2),
+      tid(M(3), 0),
+      tid(M(3), 1),
+      tid(M(3), 2),
+      tid(M(4), 0),
+      tid(M(4), 1),
+      tid(M(4), 2),
+      tid(M(5), 0), // pair of M5 completes with winTile
     ];
     // P2: 2 copies of M5 (to avoid auto-pass) + scattered tiles (no winning shape)
     const p2Hand: TileId[] = [
-      tid(M(5), 2), tid(M(5), 3),
-      tid(P(1), 0), tid(P(3), 0), tid(P(5), 0), tid(P(7), 0), tid(P(9), 0),
-      tid(M(7), 0), tid(M(8), 0), tid(M(9), 0),
-      tid(S(2), 0), tid(S(4), 0), tid(S(6), 0),
+      tid(M(5), 2),
+      tid(M(5), 3),
+      tid(P(1), 0),
+      tid(P(3), 0),
+      tid(P(5), 0),
+      tid(P(7), 0),
+      tid(P(9), 0),
+      tid(M(7), 0),
+      tid(M(8), 0),
+      tid(M(9), 0),
+      tid(S(2), 0),
+      tid(S(4), 0),
+      tid(S(6), 0),
     ];
     const p0Hand: TileId[] = [winTile, tid(M(6), 0), tid(M(7), 1)];
 
@@ -783,7 +1035,7 @@ describe('Phase 4 — false-Hu penalty', () => {
       hands: [p0Hand, p1Hand, p2Hand, []],
       turn: 0,
       turnDrawNeeded: false,
-      voidedSuit: 'sou',  // voidCleared=true (default) so P0 can freely discard man
+      voidedSuit: 'sou', // voidCleared=true (default) so P0 can freely discard man
     });
 
     // P0 discards
@@ -814,7 +1066,11 @@ describe('Phase 4 — false-Hu penalty', () => {
     expect(falseHuEvent).toBeDefined();
     expect((falseHuEvent as { seat: number }).seat).toBe(2);
     // P2 paid 8 to each non-Hu non-self player (P0, P3; P1 is Hu by now)
-    const falsePayments = events.filter(e => e.e === 'falseHuPayment') as Array<{ from: number; to: number; amount: number }>;
+    const falsePayments = events.filter(e => e.e === 'falseHuPayment') as Array<{
+      from: number;
+      to: number;
+      amount: number;
+    }>;
     expect(falsePayments.every(p => p.from === 2 && p.amount === 8)).toBe(true);
   });
 });
@@ -825,14 +1081,23 @@ describe('Phase 4 — void-meld penalty', () => {
   it('concealed kong of voided suit emits voidMeldPenalty and deducts 48 pts', () => {
     // Player 0 voids 'sou'; holds all 4 copies of sou-1 — concealed kong should trigger penalty
     const hand0: TileId[] = [
-      tid(S(1), 0), tid(S(1), 1), tid(S(1), 2), tid(S(1), 3),
-      tid(M(1), 0), tid(M(2), 0), tid(M(3), 0), tid(M(4), 0), tid(M(5), 0),
+      tid(S(1), 0),
+      tid(S(1), 1),
+      tid(S(1), 2),
+      tid(S(1), 3),
+      tid(M(1), 0),
+      tid(M(2), 0),
+      tid(M(3), 0),
+      tid(M(4), 0),
+      tid(M(5), 0),
     ];
     const state = makeState({ hands: [hand0, [], [], []], voidedSuit: 'sou' });
 
     const result = applyAction(state, {
-      t: 'declareKongOnTurn', seat: 0,
-      tile: tileFromType(S(1)), subtype: 'concealed',
+      t: 'declareKongOnTurn',
+      seat: 0,
+      tile: tileFromType(S(1)),
+      subtype: 'concealed',
     });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
@@ -852,14 +1117,23 @@ describe('Phase 4 — void-meld penalty', () => {
   it('concealed kong of non-voided suit does NOT trigger penalty', () => {
     // Player 0 voids 'sou'; kong is man-1 → no penalty
     const hand0: TileId[] = [
-      tid(M(1), 0), tid(M(1), 1), tid(M(1), 2), tid(M(1), 3),
-      tid(M(2), 0), tid(M(3), 0), tid(M(4), 0), tid(M(5), 0), tid(M(6), 0),
+      tid(M(1), 0),
+      tid(M(1), 1),
+      tid(M(1), 2),
+      tid(M(1), 3),
+      tid(M(2), 0),
+      tid(M(3), 0),
+      tid(M(4), 0),
+      tid(M(5), 0),
+      tid(M(6), 0),
     ];
     const state = makeState({ hands: [hand0, [], [], []], voidedSuit: 'sou' });
 
     const result = applyAction(state, {
-      t: 'declareKongOnTurn', seat: 0,
-      tile: tileFromType(M(1)), subtype: 'concealed',
+      t: 'declareKongOnTurn',
+      seat: 0,
+      tile: tileFromType(M(1)),
+      subtype: 'concealed',
     });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
@@ -874,9 +1148,19 @@ describe('Phase 4 — void-meld penalty', () => {
 describe('Phase 4 — Flower Pig (花猪) house rule', () => {
   // A 13-tile junk hand spanning all 3 suits, clearly non-tenpai.
   const threeSuitJunk = (): TileId[] => [
-    tid(M(1),0), tid(M(2),0), tid(M(4),0), tid(M(7),0), tid(M(9),0),
-    tid(P(2),0), tid(P(4),0), tid(P(5),0), tid(P(8),0),
-    tid(S(1),0), tid(S(3),0), tid(S(6),0), tid(S(9),0),
+    tid(M(1), 0),
+    tid(M(2), 0),
+    tid(M(4), 0),
+    tid(M(7), 0),
+    tid(M(9), 0),
+    tid(P(2), 0),
+    tid(P(4), 0),
+    tid(P(5), 0),
+    tid(P(8), 0),
+    tid(S(1), 0),
+    tid(S(3), 0),
+    tid(S(6), 0),
+    tid(S(9), 0),
   ];
 
   function settleViaHu(config: Partial<typeof DEFAULT_CONFIG>) {
@@ -884,7 +1168,7 @@ describe('Phase 4 — Flower Pig (花猪) house rule', () => {
     // Seat 1 holds all 3 suits (flower pig); seats 2/3 empty.
     const s = makeState({
       hands: [winHand(), threeSuitJunk(), [], []],
-      voidedSuit: 'man',         // seat 0's winHand is all pin → valid win
+      voidedSuit: 'man', // seat 0's winHand is all pin → valid win
       wallEndReached: true,
       config,
     });
@@ -922,8 +1206,10 @@ describe('Phase 4 — Flower Pig (花猪) house rule', () => {
     let state = createGame(
       seed,
       [
-        { name: 'P0', isBot: true }, { name: 'P1', isBot: true },
-        { name: 'P2', isBot: true }, { name: 'P3', isBot: true },
+        { name: 'P0', isBot: true },
+        { name: 'P1', isBot: true },
+        { name: 'P2', isBot: true },
+        { name: 'P3', isBot: true },
       ],
       { enableHuanSanZhang: false, voidDiscardRule: 'strict', enableFlowerPig: true },
     );
@@ -932,14 +1218,19 @@ describe('Phase 4 — Flower Pig (花猪) house rule', () => {
       const player = state.players[seat]!;
       const counts: Record<string, number> = { man: 0, pin: 0, sou: 0 };
       for (const t of player.hand) counts[suitOf(t)]!++;
-      const voidSuit = (['man', 'pin', 'sou'] as const).reduce((a, b) => (counts[a]! <= counts[b]! ? a : b));
+      const voidSuit = (['man', 'pin', 'sou'] as const).reduce((a, b) =>
+        counts[a]! <= counts[b]! ? a : b,
+      );
       const firstDiscard = player.hand.find(t => suitOf(t) === voidSuit) ?? null;
       state = applyOk(state, { t: 'declareVoid', seat, suit: voidSuit, firstDiscard });
     }
     let safety = 15_000;
     while (state.phase === 'play') {
       if (--safety <= 0) throw new Error('safety limit reached');
-      if (state.pendingClaims !== null) { state = applyOk(state, { t: 'claimWindowExpire' }); continue; }
+      if (state.pendingClaims !== null) {
+        state = applyOk(state, { t: 'claimWindowExpire' });
+        continue;
+      }
       const seat = state.turn;
       const isEastFirstTurn = seat === state.dealer && !state.firstTurnDone[seat];
       if (!isEastFirstTurn && state.turnDrawNeeded) {
@@ -950,7 +1241,10 @@ describe('Phase 4 — Flower Pig (花猪) house rule', () => {
       const cur = state.players[seat]!;
       if (isWinningHand(cur.hand, cur.melds, cur.voidedSuit)) {
         const hr = applyAction(state, { t: 'declareHuOnDraw', seat });
-        if (hr.ok) { state = hr.state; continue; }
+        if (hr.ok) {
+          state = hr.state;
+          continue;
+        }
       }
       const voidTiles = cur.hand.filter(t => suitOf(t) === cur.voidedSuit);
       const tile = voidTiles.length > 0 ? voidTiles[0]! : cur.hand[0]!;
@@ -985,9 +1279,20 @@ describe('Phase 4 — wall-end blanket kong refund', () => {
   // 14-tile non-winning hand that also holds a void-suit (sou) tile, so the player
   // is treated as non-ready at wall end.
   const junkWithSou = (): TileId[] => [
-    tid(S(1), 0), tid(M(1), 0), tid(M(3), 0), tid(M(5), 0), tid(M(7), 0),
-    tid(M(9), 0), tid(P(1), 0), tid(P(3), 0), tid(P(5), 0), tid(P(7), 0),
-    tid(P(9), 0), tid(M(2), 0), tid(M(4), 0), tid(M(6), 0),
+    tid(S(1), 0),
+    tid(M(1), 0),
+    tid(M(3), 0),
+    tid(M(5), 0),
+    tid(M(7), 0),
+    tid(M(9), 0),
+    tid(P(1), 0),
+    tid(P(3), 0),
+    tid(P(5), 0),
+    tid(P(7), 0),
+    tid(P(9), 0),
+    tid(M(2), 0),
+    tid(M(4), 0),
+    tid(M(6), 0),
   ];
 
   it("refunds a non-Hu, non-ready declarer's kong payments at wall end", () => {
@@ -1013,13 +1318,27 @@ describe('Phase 4 — wall-end blanket kong refund', () => {
   it('does NOT refund the kong of a ready declarer at wall end', () => {
     // Seat 0 is tenpai (ready) — its kong payment must stand.
     const readyHand: TileId[] = [
-      tid(P(1),0), tid(P(1),1), tid(P(1),2),
-      tid(P(2),0), tid(P(2),1), tid(P(2),2),
-      tid(P(3),0), tid(P(3),1), tid(P(3),2),
-      tid(M(2),0), tid(M(3),0), tid(M(4),0),
-      tid(M(1),0), tid(M(1),1),  // 14 tiles; discard one → tanki/ready
+      tid(P(1), 0),
+      tid(P(1), 1),
+      tid(P(1), 2),
+      tid(P(2), 0),
+      tid(P(2), 1),
+      tid(P(2), 2),
+      tid(P(3), 0),
+      tid(P(3), 1),
+      tid(P(3), 2),
+      tid(M(2), 0),
+      tid(M(3), 0),
+      tid(M(4), 0),
+      tid(M(1), 0),
+      tid(M(1), 1), // 14 tiles; discard one → tanki/ready
     ];
-    let s = makeState({ hands: [readyHand, [], [], []], wallEndReached: true, turn: 0, voidedSuit: 'sou' });
+    let s = makeState({
+      hands: [readyHand, [], [], []],
+      wallEndReached: true,
+      turn: 0,
+      voidedSuit: 'sou',
+    });
     s.kongPaymentLog.push({ declarer: 0, kongSeq: 0, paidBy: 1, amount: 2, refunded: false });
 
     s = applyOk(s, { t: 'discard', seat: 0, tile: tid(M(1), 1) });
@@ -1039,19 +1358,37 @@ describe('Phase 4 — dealer rotation on multi-Hu discard', () => {
   it('when two players Hu the same discard, the discarder becomes next dealer', () => {
     const winTile = tid(M(1), 0);
     const junk: TileId[] = [
-      tid(S(1), 0), tid(M(3), 0), tid(M(5), 0), tid(M(7), 0), tid(M(9), 0),
-      tid(P(1), 0), tid(P(3), 0), tid(P(5), 0), tid(P(7), 0), tid(P(9), 0),
-      tid(M(2), 0), tid(M(4), 0), tid(M(6), 0), tid(M(8), 0),
+      tid(S(1), 0),
+      tid(M(3), 0),
+      tid(M(5), 0),
+      tid(M(7), 0),
+      tid(M(9), 0),
+      tid(P(1), 0),
+      tid(P(3), 0),
+      tid(P(5), 0),
+      tid(P(7), 0),
+      tid(P(9), 0),
+      tid(M(2), 0),
+      tid(M(4), 0),
+      tid(M(6), 0),
+      tid(M(8), 0),
     ];
     let s = makeState({ hands: [junk, [], [], []], wallEndReached: true, turn: 0 });
 
     // Seats 1 & 2 already Hu'd seat 3's discard of winTile (recorded earlier this round).
     const huRec = (seat: Seat) => ({
-      seat, subtype: 'normal' as const, fans: [], handValue: 2,
-      winningTile: winTile, byDiscard: true, discarder: 3 as Seat,
+      seat,
+      subtype: 'normal' as const,
+      fans: [],
+      handValue: 2,
+      winningTile: winTile,
+      byDiscard: true,
+      discarder: 3 as Seat,
     });
-    s.players[1]!.status = 'hu'; s.players[1]!.hu = huRec(1);
-    s.players[2]!.status = 'hu'; s.players[2]!.hu = huRec(2);
+    s.players[1]!.status = 'hu';
+    s.players[1]!.hu = huRec(1);
+    s.players[2]!.status = 'hu';
+    s.players[2]!.hu = huRec(2);
     s.huOrder = [1, 2];
 
     // Wall-end discard from seat 0 ends the round → settlement computes the dealer.
@@ -1065,15 +1402,31 @@ describe('Phase 4 — dealer rotation on multi-Hu discard', () => {
 
   it('single first-Hu → that player deals next', () => {
     const junk: TileId[] = [
-      tid(S(1), 0), tid(M(3), 0), tid(M(5), 0), tid(M(7), 0), tid(M(9), 0),
-      tid(P(1), 0), tid(P(3), 0), tid(P(5), 0), tid(P(7), 0), tid(P(9), 0),
-      tid(M(2), 0), tid(M(4), 0), tid(M(6), 0), tid(M(8), 0),
+      tid(S(1), 0),
+      tid(M(3), 0),
+      tid(M(5), 0),
+      tid(M(7), 0),
+      tid(M(9), 0),
+      tid(P(1), 0),
+      tid(P(3), 0),
+      tid(P(5), 0),
+      tid(P(7), 0),
+      tid(P(9), 0),
+      tid(M(2), 0),
+      tid(M(4), 0),
+      tid(M(6), 0),
+      tid(M(8), 0),
     ];
     let s = makeState({ hands: [junk, [], [], []], wallEndReached: true, turn: 0 });
     s.players[2]!.status = 'hu';
     s.players[2]!.hu = {
-      seat: 2, subtype: 'normal', fans: [], handValue: 2,
-      winningTile: tid(M(1), 0), byDiscard: false, discarder: null,
+      seat: 2,
+      subtype: 'normal',
+      fans: [],
+      handValue: 2,
+      winningTile: tid(M(1), 0),
+      byDiscard: false,
+      discarder: null,
     };
     s.huOrder = [2];
 
@@ -1092,7 +1445,10 @@ describe('Phase 4 — applyAction error guard', () => {
     // top-level guard must turn that into a typed failure, not crash the caller.
     const s = makeState({ hands: [[], [], [], []] });
     s.pendingClaims = {
-      tile: tid(M(1), 0), from: 1, afterKong: false, deadline: 0,
+      tile: tid(M(1), 0),
+      from: 1,
+      afterKong: false,
+      deadline: 0,
       passed: [false, false, false, false],
       claims: [null, null, null, null],
     };
@@ -1122,17 +1478,17 @@ describe('Phase 4 — applyAction error guard', () => {
 
 describe('Phase 4 — property test: JSON round-trip', () => {
   it('serialize → parse → deep-equals at every phase of a seeded game', () => {
-    fc.assert(fc.property(
-      fc.string({ minLength: 4, maxLength: 12 }),
-      (seed) => {
-        const roundTrips = (s: GameState) =>
-          expect(JSON.parse(JSON.stringify(s))).toEqual(s);
+    fc.assert(
+      fc.property(fc.string({ minLength: 4, maxLength: 12 }), seed => {
+        const roundTrips = (s: GameState) => expect(JSON.parse(JSON.stringify(s))).toEqual(s);
 
         let state = createGame(
           seed,
           [
-            { name: 'A', isBot: true }, { name: 'B', isBot: true },
-            { name: 'C', isBot: true }, { name: 'D', isBot: true },
+            { name: 'A', isBot: true },
+            { name: 'B', isBot: true },
+            { name: 'C', isBot: true },
+            { name: 'D', isBot: true },
           ],
           { enableHuanSanZhang: false, voidDiscardRule: 'strict' },
         );
@@ -1176,8 +1532,9 @@ describe('Phase 4 — property test: JSON round-trip', () => {
           roundTrips(state);
         }
         return true;
-      },
-    ), { numRuns: 30 });
+      }),
+      { numRuns: 30 },
+    );
   });
 });
 
@@ -1188,36 +1545,51 @@ describe('Phase 4 — property test: JSON round-trip', () => {
 
 describe('Phase 4 — property test: compatibility table', () => {
   const SUBTYPES: HuSubtype[] = [
-    'normal', 'winAfterKong', 'shootAfterKong', 'robbingTheKong', 'underTheSea',
+    'normal',
+    'winAfterKong',
+    'shootAfterKong',
+    'robbingTheKong',
+    'underTheSea',
   ];
 
   it('no scored hand ever contains two mutually-incompatible fans', () => {
-    fc.assert(fc.property(
-      // 4 distinct man/pin types for the pungs + 1 distinct type for the pair.
-      fc.uniqueArray(fc.integer({ min: 0, max: 17 }), { minLength: 5, maxLength: 5 }),
-      fc.integer({ min: 0, max: SUBTYPES.length - 1 }),
-      fc.boolean(),
-      (types, subIdx, winOnPair) => {
-        const [a, b, c, d, pairType] = types as [number, number, number, number, number];
-        const tiles: TileId[] = [];
-        for (const t of [a, b, c, d]) {
-          tiles.push(tid(t, 0), tid(t, 1), tid(t, 2)); // pung
-        }
-        tiles.push(tid(pairType, 0), tid(pairType, 1)); // pair
-        // Winning tile: either the pair tile (GoldenWait) or one of the pung tiles.
-        const winTile = winOnPair ? tid(pairType, 1) : tid(a, 2);
-        const subtype = SUBTYPES[subIdx]!;
-
-        const score = calcHandScore(tiles, [], 'sou', winTile, subtype, DEFAULT_CONFIG.fanCap, false);
-        const present = score.fans.map(f => f.fan);
-        for (const fan of present) {
-          for (const other of present) {
-            if (fan === other) continue;
-            if (COMPATIBILITY[fan].incompatible.includes(other)) return false;
+    fc.assert(
+      fc.property(
+        // 4 distinct man/pin types for the pungs + 1 distinct type for the pair.
+        fc.uniqueArray(fc.integer({ min: 0, max: 17 }), { minLength: 5, maxLength: 5 }),
+        fc.integer({ min: 0, max: SUBTYPES.length - 1 }),
+        fc.boolean(),
+        (types, subIdx, winOnPair) => {
+          const [a, b, c, d, pairType] = types as [number, number, number, number, number];
+          const tiles: TileId[] = [];
+          for (const t of [a, b, c, d]) {
+            tiles.push(tid(t, 0), tid(t, 1), tid(t, 2)); // pung
           }
-        }
-        return true;
-      },
-    ), { numRuns: 200 });
+          tiles.push(tid(pairType, 0), tid(pairType, 1)); // pair
+          // Winning tile: either the pair tile (GoldenWait) or one of the pung tiles.
+          const winTile = winOnPair ? tid(pairType, 1) : tid(a, 2);
+          const subtype = SUBTYPES[subIdx]!;
+
+          const score = calcHandScore(
+            tiles,
+            [],
+            'sou',
+            winTile,
+            subtype,
+            DEFAULT_CONFIG.fanCap,
+            false,
+          );
+          const present = score.fans.map(f => f.fan);
+          for (const fan of present) {
+            for (const other of present) {
+              if (fan === other) continue;
+              if (COMPATIBILITY[fan].incompatible.includes(other)) return false;
+            }
+          }
+          return true;
+        },
+      ),
+      { numRuns: 200 },
+    );
   });
 });
