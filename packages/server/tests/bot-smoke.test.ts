@@ -1,14 +1,13 @@
-import { describe, it, expect } from 'vitest';
+import { DEFAULT_CONFIG, applyAction, createGame } from '@sichuan-mahjong/engine';
+import type { GameAction, GameState, PlayerInit, Seat } from '@sichuan-mahjong/engine';
+import { describe, expect, it } from 'vitest';
 import {
-  applyAction,
-  createGame,
-  DEFAULT_CONFIG,
-} from '@sichuan-mahjong/engine';
-import type { GameState, GameAction, Seat, PlayerInit } from '@sichuan-mahjong/engine';
-import {
-  botHuanAction, botVoidAction,
-  botTurnAction, botClaimAction,
-  botTurnActionMedium, botClaimActionMedium,
+  botClaimAction,
+  botClaimActionMedium,
+  botHuanAction,
+  botTurnAction,
+  botTurnActionMedium,
+  botVoidAction,
 } from '../src/bot.js';
 
 const NUM_GAMES = 100;
@@ -69,7 +68,10 @@ function runGame(seed: string, difficulty: 'easy' | 'medium' = 'easy'): GameStat
       }
     }
 
-    if (action === null) throw new Error(`Game ${seed}: no action at phase=${state.phase} turn=${state.turn} iter=${iter}`);
+    if (action === null)
+      throw new Error(
+        `Game ${seed}: no action at phase=${state.phase} turn=${state.turn} iter=${iter}`,
+      );
 
     const result = applyAction(state, action);
     if (!result.ok) {
@@ -86,6 +88,7 @@ function runGame(seed: string, difficulty: 'easy' | 'medium' = 'easy'): GameStat
 describe('bot smoke test', () => {
   it(`runs ${NUM_GAMES} full bot-vs-bot games without rule violations or balance errors`, () => {
     let totalHus = 0;
+    let totalExposedPungs = 0;
 
     for (let g = 0; g < NUM_GAMES; g++) {
       const seed = `smoke-game-${g}`;
@@ -96,10 +99,17 @@ describe('bot smoke test', () => {
       expect(totalDelta + state.penaltyPot, `Game ${g} (${seed}): payment balance`).toBe(0);
 
       totalHus += state.players.filter(p => p.status === 'hu').length;
+      totalExposedPungs += state.players.reduce(
+        (n, p) => n + p.melds.filter(m => m.kind === 'pung' && !m.concealed).length,
+        0,
+      );
     }
 
     // At least some Hus across 100 games (highly likely)
     expect(totalHus).toBeGreaterThan(0);
+    // Bots must actually pung now — before A13 the heuristic always returned false,
+    // so no exposed pungs ever formed.
+    expect(totalExposedPungs).toBeGreaterThan(0);
   }, 120_000);
 
   it('runs medium-bot games without rule violations or balance errors', () => {

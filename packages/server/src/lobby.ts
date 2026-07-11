@@ -22,7 +22,7 @@ export type LobbySlot = {
 export type Lobby = {
   code: string;
   hostToken: string;
-  slots: (LobbySlot | null)[];  // length 4, index = seat
+  slots: (LobbySlot | null)[]; // length 4, index = seat
   started: boolean;
 };
 
@@ -30,7 +30,9 @@ const store = new Map<string, Lobby>();
 
 export function createLobby(hostToken: string): Lobby {
   let code: string;
-  do { code = generateCode(); } while (store.has(code));
+  do {
+    code = generateCode();
+  } while (store.has(code));
 
   const lobby: Lobby = {
     code,
@@ -50,8 +52,13 @@ export function deleteLobby(code: string): void {
   store.delete(code);
 }
 
-export function findOpenSeat(lobby: Lobby): Seat | null {
-  for (let i = 0; i < 4; i++) {
+/**
+ * First open seat, or null if full. With `skipHostSeat`, seat 0 (the host seat)
+ * is never returned — used so non-host joiners can't occupy the host's seat. (A8)
+ */
+export function findOpenSeat(lobby: Lobby, opts?: { skipHostSeat?: boolean }): Seat | null {
+  const start = opts?.skipHostSeat ? 1 : 0;
+  for (let i = start; i < 4; i++) {
     if (lobby.slots[i] === null) return i as Seat;
   }
   return null;

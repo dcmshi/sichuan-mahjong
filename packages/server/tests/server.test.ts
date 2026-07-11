@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 // node:sqlite is a native built-in; Vite 5 can't bundle it — mock before any imports touch it
 vi.mock('../src/persistence.js', () => ({
   saveGameWithCode: vi.fn(),
@@ -7,13 +7,13 @@ vi.mock('../src/persistence.js', () => ({
   loadLiveRooms: vi.fn().mockReturnValue([]),
   deleteLiveRoom: vi.fn(),
 }));
-import Fastify from 'fastify';
 import fastifyWebsocket from '@fastify/websocket';
+import { tileTypeOf } from '@sichuan-mahjong/engine';
+import type { ClientMsg, Seat, ServerMsg, TileId } from '@sichuan-mahjong/engine';
+import Fastify from 'fastify';
 import WebSocket from 'ws';
 import { registerHttpRoutes } from '../src/http.js';
 import { registerWsRoutes } from '../src/ws.js';
-import { tileTypeOf } from '@sichuan-mahjong/engine';
-import type { ServerMsg, ClientMsg, Seat, TileId } from '@sichuan-mahjong/engine';
 
 // ---------------------------------------------------------------------------
 // Test app factory
@@ -76,7 +76,7 @@ describe('HTTP routes', () => {
   it('GET /j/:code redirects with code param', async () => {
     const res = await app.inject({ method: 'GET', url: '/j/ABCD', redirect: false });
     expect(res.statusCode).toBe(302);
-    expect(res.headers['location']).toBe('/?code=ABCD');
+    expect(res.headers.location).toBe('/?code=ABCD');
   });
 });
 
@@ -94,8 +94,11 @@ function wsConnect(port: number, code: string, token?: string): WebSocket {
 function wsNextMessage(ws: WebSocket): Promise<ServerMsg> {
   return new Promise((resolve, reject) => {
     ws.once('message', (data: Buffer) => {
-      try { resolve(JSON.parse(data.toString()) as ServerMsg); }
-      catch (e) { reject(e); }
+      try {
+        resolve(JSON.parse(data.toString()) as ServerMsg);
+      } catch (e) {
+        reject(e);
+      }
     });
     ws.once('error', reject);
   });
@@ -123,8 +126,11 @@ function autoPlay(ws: WebSocket, seat: Seat): Promise<void> {
 
     ws.on('message', (data: Buffer) => {
       let msg: ServerMsg;
-      try { msg = JSON.parse(data.toString()) as ServerMsg; }
-      catch { return; }
+      try {
+        msg = JSON.parse(data.toString()) as ServerMsg;
+      } catch {
+        return;
+      }
 
       if (msg.t === 'roundEnd') {
         clearTimeout(timeout);
@@ -219,6 +225,49 @@ describe('WebSocket: lobby flow', () => {
     for (const ws of sockets) ws.close();
   }, 10_000);
 
+  it('A8: a non-host who joins before the host never lands in seat 0', async () => {
+    const create = await app.inject({ method: 'POST', url: '/api/lobby' });
+    const { code, hostToken } = create.json<{ code: string; hostToken: string }>();
+
+    // Friend (no token) joins FIRST — must be placed in seats 1–3, not the host seat.
+    const friend = wsConnect(port, code);
+    await waitOpen(friend);
+    wsSend(friend, { t: 'join', name: 'Friend' });
+    const friendJoined = await wsNextMessage(friend);
+    expect(friendJoined.t).toBe('joined');
+    if (friendJoined.t === 'joined') expect(friendJoined.seat).not.toBe(0);
+
+    // Host connects with the host token and still gets seat 0.
+    const host = wsConnect(port, code, hostToken);
+    await waitOpen(host);
+    wsSend(host, { t: 'join', name: 'Host' });
+    const hostJoined = await wsNextMessage(host);
+    expect(hostJoined.t).toBe('joined');
+    if (hostJoined.t === 'joined') expect(hostJoined.seat).toBe(0);
+
+    friend.close();
+    host.close();
+  }, 10_000);
+
+  it('A14: an over-long join name is clamped', async () => {
+    const create = await app.inject({ method: 'POST', url: '/api/lobby' });
+    const { code } = create.json<{ code: string }>();
+
+    const ws = wsConnect(port, code);
+    await waitOpen(ws);
+    wsSend(ws, { t: 'join', name: 'x'.repeat(200) });
+    const joined = await wsNextMessage(ws);
+    expect(joined.t).toBe('joined');
+
+    const info = await app.inject({ method: 'GET', url: `/api/lobby/${code}` });
+    const players = info.json<{ players: ({ name: string } | null)[] }>().players;
+    const occupied = players.filter((p): p is { name: string } => p !== null);
+    expect(occupied).toHaveLength(1);
+    expect(occupied[0]!.name.length).toBeLessThanOrEqual(24);
+
+    ws.close();
+  }, 10_000);
+
   it('host keeps its seat and can add bots after a lobby WS reconnect', async () => {
     const create = await app.inject({ method: 'POST', url: '/api/lobby' });
     const { code, hostToken } = create.json<{ code: string; hostToken: string }>();
@@ -248,7 +297,7 @@ describe('WebSocket: lobby flow', () => {
 
     const info = await app.inject({ method: 'GET', url: `/api/lobby/${code}` });
     const players = info.json<{ players: ({ isBot: boolean } | null)[] }>().players;
-    expect(players[0]).not.toBeNull();              // host seat preserved across reconnect
+    expect(players[0]).not.toBeNull(); // host seat preserved across reconnect
     expect(players.some(p => p?.isBot === true)).toBe(true); // addBot took effect
 
     ws2.close();
@@ -420,8 +469,8 @@ describe('Reconnection reclaim', () => {
 
       room.connect(1, fakeWs());
       room.start();
-      room.disconnect(1);              // seat 1 drops
-      vi.advanceTimersByTime(61_000);  // >60s → bot takeover
+      room.disconnect(1); // seat 1 drops
+      vi.advanceTimersByTime(61_000); // >60s → bot takeover
 
       // All seats are now bot/offline-driven — let the round play out.
       let guard = 0;
@@ -436,7 +485,7 @@ describe('Reconnection reclaim', () => {
 
       const s = room.getState();
       expect(s.players[1].isBot).toBe(false); // reclaimed
-      expect(s.players[0].isBot).toBe(true);  // offline human → bot
+      expect(s.players[0].isBot).toBe(true); // offline human → bot
       expect(s.players[2].isBot).toBe(true);
       expect(s.players[3].isBot).toBe(true);
     } finally {
@@ -533,7 +582,7 @@ describe('Live-room resume', () => {
     expect(resolveToken(tok)).toBeDefined();
 
     room.endMatch();
-    expect(getRoom('ENDM')).toBeUndefined();   // room removed from registry
+    expect(getRoom('ENDM')).toBeUndefined(); // room removed from registry
     expect(resolveToken(tok)).toBeUndefined(); // tokens revoked
   });
 
@@ -547,14 +596,43 @@ describe('Live-room resume', () => {
         { name: 'B2', isBot: true, connected: false },
         { name: 'B3', isBot: true, connected: false },
       ]);
-      room.start();                              // schedules bot "think" timers (huan phase)
+      room.start(); // schedules bot "think" timers (huan phase)
       const phaseBefore = room.getState().phase; // 'huan'
-      room.endMatch();                           // tears down → must cancel those timers
+      room.endMatch(); // tears down → must cancel those timers
 
       // If the timers weren't cancelled they'd fire here and drive the game
       // forward (bots submit huan/void/...), advancing the phase.
       vi.advanceTimersByTime(60_000);
       expect(room.getState().phase).toBe(phaseBefore);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('A11: a torn-down room ignores late actions/disconnects and never re-persists', async () => {
+    const persistence = await import('../src/persistence.js');
+    const { GameRoom } = await import('../src/room.js');
+    vi.useFakeTimers();
+    try {
+      const room = new GameRoom('A11Z', [
+        { name: 'B0', isBot: true, connected: false },
+        { name: 'B1', isBot: true, connected: false },
+        { name: 'B2', isBot: true, connected: false },
+        { name: 'B3', isBot: true, connected: false },
+      ]);
+      room.connect(0, fakeWs());
+      room.start();
+      room.endMatch();
+
+      vi.mocked(persistence.saveLiveRoom).mockClear();
+
+      // A client that ignores matchEnd keeps sending — all must be no-ops.
+      room.handleAction(0, { t: 'discard', seat: 0, tile: 0 });
+      room.disconnect(0, fakeWs());
+      vi.advanceTimersByTime(120_000); // no debounced persist, no bot takeover
+
+      expect(vi.mocked(persistence.saveLiveRoom)).not.toHaveBeenCalled();
+      expect(room.getState().phase).toBe('huan'); // state never advanced post-teardown
     } finally {
       vi.useRealTimers();
     }
@@ -586,6 +664,191 @@ describe('Live-room resume', () => {
     expect(getRoom('RSTR')).toBeDefined();
     const td = resolveToken('tok-rstr-0');
     expect(td).toEqual({ code: 'RSTR', seat: 0, role: 'host' });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Restore & reconnect grace (A10)
+// ---------------------------------------------------------------------------
+
+describe('Restore & reconnect grace', () => {
+  const fakeWs = () =>
+    ({ readyState: 1, OPEN: 1, send() {} }) as unknown as import('@fastify/websocket').WebSocket;
+
+  it('A10: restoring mid-claim-window rebases the stale deadline instead of expiring instantly', async () => {
+    const { GameRoom } = await import('../src/room.js');
+    vi.useFakeTimers();
+    try {
+      const room = new GameRoom('A10RB', [
+        { name: 'H0', isBot: false, connected: false },
+        { name: 'H1', isBot: false, connected: false },
+        { name: 'H2', isBot: false, connected: false },
+        { name: 'H3', isBot: false, connected: false },
+      ]);
+      const snap = JSON.parse(JSON.stringify(room.serialize())) as ReturnType<
+        typeof room.serialize
+      >;
+      snap.state.phase = 'play';
+      snap.state.pendingClaims = {
+        tile: 0,
+        from: 0,
+        afterKong: false,
+        deadline: 1, // epoch — long past by the time we restore
+        passed: [false, false, false, false],
+        claims: [null, null, null, null],
+      };
+
+      const restored = GameRoom.restore(snap);
+      restored.resumeAfterRestore();
+
+      const pc = restored.getState().pendingClaims;
+      expect(pc).not.toBeNull(); // window not force-expired on restore
+      expect(pc!.deadline).toBeGreaterThan(Date.now()); // deadline rebased into the future
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('A10: a disconnected human in reconnect grace is not bot-filled during huan; takeover resumes it', async () => {
+    const { GameRoom } = await import('../src/room.js');
+    vi.useFakeTimers();
+    try {
+      const room = new GameRoom('A10HN', [
+        { name: 'H0', isBot: false, connected: false },
+        { name: 'B1', isBot: true, connected: false },
+        { name: 'B2', isBot: true, connected: false },
+        { name: 'B3', isBot: true, connected: false },
+      ]);
+      room.connect(0, fakeWs());
+      room.start(); // huan phase; bots 1–3 scheduled to submit
+      room.disconnect(0); // seat 0 drops before submitting → 60s grace armed
+
+      vi.advanceTimersByTime(1_000); // bots submit huan; seat 0 must be left alone
+      expect(room.getState().phase).toBe('huan'); // still waiting on the human
+      expect(room.getState().pendingHuan[0]).toBeNull(); // NOT bot-filled during grace
+      expect(room.getState().pendingHuan[1]).not.toBeNull(); // bots did submit
+
+      // Grace lapses → takeover bot-fills seat 0 → the round proceeds past huan.
+      let guard = 0;
+      while (room.getState().phase === 'huan' && guard++ < 100_000) {
+        vi.advanceTimersByTime(1_000);
+      }
+      expect(room.getState().phase).not.toBe('huan');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// RoundEnd persistence (A9)
+// ---------------------------------------------------------------------------
+
+describe('RoundEnd persistence', () => {
+  const fakeWs = () =>
+    ({ readyState: 1, OPEN: 1, send() {} }) as unknown as import('@fastify/websocket').WebSocket;
+
+  it('A9: persists the games row exactly once even when clients reconnect at round end', async () => {
+    const persistence = await import('../src/persistence.js');
+    const { GameRoom } = await import('../src/room.js');
+    vi.mocked(persistence.saveGameWithCode).mockClear();
+    vi.useFakeTimers();
+    try {
+      const room = new GameRoom('A9RE', [
+        { name: 'B0', isBot: true, connected: false },
+        { name: 'B1', isBot: true, connected: false },
+        { name: 'B2', isBot: true, connected: false },
+        { name: 'B3', isBot: true, connected: false },
+      ]);
+      room.connect(0, fakeWs());
+      room.start();
+
+      let guard = 0;
+      while (room.getState().phase !== 'roundEnd' && guard++ < 100_000) {
+        vi.advanceTimersByTime(200);
+      }
+      expect(room.getState().phase).toBe('roundEnd');
+      expect(vi.mocked(persistence.saveGameWithCode).mock.calls.length).toBe(1);
+
+      // Several reconnects at round end must NOT insert additional rows.
+      room.connect(0, fakeWs());
+      room.connect(1, fakeWs());
+      room.connect(2, fakeWs());
+      expect(vi.mocked(persistence.saveGameWithCode).mock.calls.length).toBe(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Malformed input & action whitelist (A2/A4/A5)
+// ---------------------------------------------------------------------------
+
+describe('Malformed input & action whitelist', () => {
+  const recordingWs = (sink: ServerMsg[]) =>
+    ({
+      readyState: 1,
+      OPEN: 1,
+      send: (data: string) => sink.push(JSON.parse(data) as ServerMsg),
+    }) as unknown as import('@fastify/websocket').WebSocket;
+
+  const fourSeats = (seat0Human = true) =>
+    [
+      { name: 'P0', isBot: !seat0Human, connected: false },
+      { name: 'P1', isBot: true, connected: false },
+      { name: 'P2', isBot: true, connected: false },
+      { name: 'P3', isBot: true, connected: false },
+    ] as const;
+
+  it('A2: malformed action frames are rejected without throwing (would previously crash the server)', async () => {
+    const { GameRoom } = await import('../src/room.js');
+    const sent: ServerMsg[] = [];
+    const room = new GameRoom('MAL1', [...fourSeats()]);
+    room.connect(0, recordingWs(sent));
+
+    // Each of these used to reach `'seat' in action` (TypeError) or return
+    // `undefined` from the engine and crash the socket handler.
+    expect(() => room.handleAction(0, null)).not.toThrow();
+    expect(() => room.handleAction(0, 42)).not.toThrow();
+    expect(() => room.handleAction(0, {})).not.toThrow();
+    expect(() => room.handleAction(0, { t: 'bogus' })).not.toThrow();
+
+    const errs = sent.filter(m => m.t === 'error');
+    expect(errs.length).toBe(4);
+  });
+
+  it('A4: claimWindowExpire from a client is rejected (server-issued only)', async () => {
+    const { GameRoom } = await import('../src/room.js');
+    const sent: ServerMsg[] = [];
+    const room = new GameRoom('MAL2', [...fourSeats()]);
+    room.connect(0, recordingWs(sent));
+
+    room.handleAction(0, { t: 'claimWindowExpire' });
+
+    const err = sent.find(m => m.t === 'error');
+    expect(err?.t).toBe('error');
+    if (err?.t === 'error') expect(err.code).toBe('forbidden_action');
+  });
+
+  it('A5: a stale socket close does not evict a reconnected socket', async () => {
+    const { GameRoom } = await import('../src/room.js');
+    const room = new GameRoom('MAL3', [...fourSeats()]);
+    const ws1 = recordingWs([]);
+    const ws2 = recordingWs([]);
+
+    room.connect(0, ws1);
+    room.start();
+    room.connect(0, ws2); // reconnect: seat 0 now bound to ws2
+
+    room.disconnect(0, ws1); // stale close of the OLD socket
+
+    // Seat 0 must still be considered connected (ws2 is live).
+    expect(room.getLobbyPlayers()[0]!.connected).toBe(true);
+
+    // And a genuine close of the current socket still disconnects.
+    room.disconnect(0, ws2);
+    expect(room.getLobbyPlayers()[0]!.connected).toBe(false);
   });
 });
 

@@ -1,10 +1,10 @@
-import type { FastifyInstance } from 'fastify';
 import type { WebSocket } from '@fastify/websocket';
-import type { Seat, ClientMsg, ServerMsg, LobbyPlayer } from '@sichuan-mahjong/engine';
-import { getLobby, deleteLobby, findOpenSeat, canStart } from './lobby.js';
-import { issueToken, resolveToken } from './tokens.js';
-import { getRoom, createRoom, GameRoom } from './room.js';
+import type { ClientMsg, LobbyPlayer, Seat, ServerMsg } from '@sichuan-mahjong/engine';
+import type { FastifyInstance } from 'fastify';
+import { canStart, deleteLobby, findOpenSeat, getLobby } from './lobby.js';
+import { type GameRoom, createRoom, getRoom } from './room.js';
 import type { RoomSlot } from './room.js';
+import { issueToken, resolveToken } from './tokens.js';
 
 function send(ws: WebSocket, msg: ServerMsg): void {
   if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(msg));
@@ -12,8 +12,11 @@ function send(ws: WebSocket, msg: ServerMsg): void {
 
 /** Parse a raw WS frame into a ClientMsg, or null if malformed. */
 function parseClientMsg(raw: Buffer): ClientMsg | null {
-  try { return JSON.parse(raw.toString()) as ClientMsg; }
-  catch { return null; }
+  try {
+    return JSON.parse(raw.toString()) as ClientMsg;
+  } catch {
+    return null;
+  }
 }
 
 /** Bind a socket to in-game message routing for `seat` (used on join, start, and reconnect). */
@@ -23,7 +26,9 @@ function bindGameSocket(socket: WebSocket, room: GameRoom, seat: Seat): void {
     const m = parseClientMsg(raw);
     if (m) handleGameMessage(socket, room, seat, m);
   });
-  socket.on('close', () => room.disconnect(seat));
+  // Pass the socket so a stale close (after this seat was rebound to a newer
+  // socket on reconnect) is ignored instead of evicting the live one. (A5)
+  socket.on('close', () => room.disconnect(seat, socket));
 }
 
 // Active lobby WS connections: code → Map<seat, WebSocket>
@@ -31,7 +36,10 @@ const lobbyConnections = new Map<string, Map<Seat, WebSocket>>();
 
 function getLobbyConns(code: string): Map<Seat, WebSocket> {
   let m = lobbyConnections.get(code);
-  if (!m) { m = new Map(); lobbyConnections.set(code, m); }
+  if (!m) {
+    m = new Map();
+    lobbyConnections.set(code, m);
+  }
   return m;
 }
 
@@ -59,7 +67,13 @@ function broadcastLobbyTo(code: string, hostToken: string): void {
  * Used both on first join and on reconnect so a brief WS drop never strands
  * a player (their addBot/startGame/etc. keep working after reconnect).
  */
-function bindLobbySocket(socket: WebSocket, code: string, seat: Seat, isHost: boolean, hostToken: string): void {
+function bindLobbySocket(
+  socket: WebSocket,
+  code: string,
+  seat: Seat,
+  isHost: boolean,
+  hostToken: string,
+): void {
   socket.removeAllListeners('message');
   socket.on('message', (raw: Buffer) => {
     const msg = parseClientMsg(raw);
@@ -160,12 +174,15 @@ export async function registerWsRoutes(app: FastifyInstance): Promise<void> {
             return;
           }
 
-          // Host always gets seat 0
+          // Seat 0 is reserved for the host (nextRound/endMatch are gated on
+          // seat === 0). Non-host joiners are placed in seats 1–3, so a friend
+          // who joins before the host can never land in seat 0 and inherit host
+          // powers via their token. (A8)
           let assignedSeat: Seat;
           if (isHost) {
             assignedSeat = 0;
           } else {
-            const open = findOpenSeat(lobby);
+            const open = findOpenSeat(lobby, { skipHostSeat: true });
             if (open === null) {
               send(socket, { t: 'error', code: 'lobby_full', message: 'Lobby is full.' });
               return;
@@ -176,7 +193,12 @@ export async function registerWsRoutes(app: FastifyInstance): Promise<void> {
           seat = assignedSeat;
           const playerToken = isHost ? token : issueToken(code, seat, 'player');
 
-          lobby.slots[seat] = { name: msg.name, isBot: false, token: playerToken, connected: true };
+          // Sanitize the client-supplied name: it's broadcast to everyone, fed into
+          // the engine, and persisted. Clamp to a trimmed string ≤ 24 chars. (A14)
+          const rawName = typeof msg.name === 'string' ? msg.name.trim() : '';
+          const name = (rawName || `Player ${seat + 1}`).slice(0, 24);
+
+          lobby.slots[seat] = { name, isBot: false, token: playerToken, connected: true };
           getLobbyConns(code).set(seat, socket);
 
           send(socket, { t: 'joined', seat, token: playerToken });
@@ -239,26 +261,44 @@ function handleLobbyMessage(
     }
 
     case 'addBot': {
-      if (!isHost) { send(_ws, { t: 'error', code: 'not_host', message: 'Only the host can add bots.' }); return; }
+      if (!isHost) {
+        send(_ws, { t: 'error', code: 'not_host', message: 'Only the host can add bots.' });
+        return;
+      }
       const lobby = getLobby(code);
       if (!lobby) return;
       const open = findOpenSeat(lobby);
-      if (open === null) { send(_ws, { t: 'error', code: 'lobby_full', message: 'No open seats.' }); return; }
+      if (open === null) {
+        send(_ws, { t: 'error', code: 'lobby_full', message: 'No open seats.' });
+        return;
+      }
       const difficulty = msg.t === 'addBot' ? msg.difficulty : 'easy';
       const botToken = issueToken(code, open, 'player');
       const label = difficulty === 'medium' ? 'Bot (Hard)' : `Bot ${open + 1}`;
-      lobby.slots[open] = { name: label, isBot: true, token: botToken, connected: true, difficulty };
+      lobby.slots[open] = {
+        name: label,
+        isBot: true,
+        token: botToken,
+        connected: true,
+        difficulty,
+      };
       broadcastLobbyTo(code, hostToken);
       break;
     }
 
     case 'kickBot': {
-      if (!isHost) { send(_ws, { t: 'error', code: 'not_host', message: 'Only the host can kick bots.' }); return; }
+      if (!isHost) {
+        send(_ws, { t: 'error', code: 'not_host', message: 'Only the host can kick bots.' });
+        return;
+      }
       const lobby = getLobby(code);
       if (!lobby) return;
       const kickSeat = msg.seat;
       const slot = lobby.slots[kickSeat];
-      if (!slot?.isBot) { send(_ws, { t: 'error', code: 'not_bot', message: 'That seat is not a bot.' }); return; }
+      if (!slot?.isBot) {
+        send(_ws, { t: 'error', code: 'not_bot', message: 'That seat is not a bot.' });
+        return;
+      }
       lobby.slots[kickSeat] = null;
       broadcastLobbyTo(code, hostToken);
       break;
@@ -280,12 +320,7 @@ function handleLobbyMessage(
   }
 }
 
-function handleGameMessage(
-  _ws: WebSocket,
-  room: GameRoom,
-  seat: Seat,
-  msg: ClientMsg,
-): void {
+function handleGameMessage(_ws: WebSocket, room: GameRoom, seat: Seat, msg: ClientMsg): void {
   switch (msg.t) {
     case 'action':
       room.handleAction(seat, msg.action);
@@ -293,7 +328,11 @@ function handleGameMessage(
     case 'nextRound':
       // Host is always seat 0 (see startGame).
       if (seat !== 0) {
-        send(_ws, { t: 'error', code: 'not_host', message: 'Only the host can start the next round.' });
+        send(_ws, {
+          t: 'error',
+          code: 'not_host',
+          message: 'Only the host can start the next round.',
+        });
         return;
       }
       room.nextRound();

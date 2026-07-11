@@ -1,5 +1,11 @@
-import { computeLegalActions, tileTypeOf, tileToType, tileFromType, ukeire } from '@sichuan-mahjong/engine';
-import type { GameState, GameAction, Seat, TileId } from '@sichuan-mahjong/engine';
+import {
+  computeLegalActions,
+  tileFromType,
+  tileToType,
+  tileTypeOf,
+  ukeire,
+} from '@sichuan-mahjong/engine';
+import type { GameAction, GameState, Seat, TileId } from '@sichuan-mahjong/engine';
 
 function suitIndex(suit: string): number {
   return suit === 'man' ? 0 : suit === 'pin' ? 1 : 2;
@@ -13,7 +19,10 @@ function connectScore(id: TileId, hand: TileId[]): number {
   for (const t of hand) {
     if (t === id) continue;
     const tt = tileTypeOf(t);
-    if (tt === type) { score += 3; continue; }
+    if (tt === type) {
+      score += 3;
+      continue;
+    }
     const ti = tileFromType(tt);
     if (ti.suit === suit) {
       const dist = Math.abs(ti.rank - rank);
@@ -64,7 +73,7 @@ export function botHuanAction(state: GameState, seat: Seat): GameAction | null {
 
   // Pick suit with fewest tiles that has ≥3
   let chosen: TileId[] | null = null;
-  let minLen = Infinity;
+  let minLen = Number.POSITIVE_INFINITY;
   for (const tiles of bySuit) {
     if (tiles.length >= 3 && tiles.length < minLen) {
       chosen = tiles;
@@ -163,13 +172,17 @@ function shouldPung(state: GameState, seat: Seat): boolean {
   const player = state.players[seat];
   if (!player) return false;
 
-  // Avoid punging if the tile has 2+ adjacent same-suit tiles in hand (part of a chow shape)
-  let adjCount = 0;
+  // Avoid punging when the tile is more useful in chows: count same-suit hand
+  // tiles within a chow window (rank distance 1–2), EXCLUDING the pung pair
+  // itself (distance 0). The old `<= 1` counted the two matching copies that make
+  // the pung legal, so adjCount was always ≥ 2 and the bot never punged. (A13)
+  let chowNeighbors = 0;
   for (const t of player.hand) {
     const ti = tileFromType(tileTypeOf(t));
-    if (ti.suit === suit && Math.abs(ti.rank - rank) <= 1) adjCount++;
+    const d = Math.abs(ti.rank - rank);
+    if (ti.suit === suit && d >= 1 && d <= 2) chowNeighbors++;
   }
-  return adjCount < 2;
+  return chowNeighbors < 2;
 }
 
 // ---------------------------------------------------------------------------
@@ -199,12 +212,7 @@ function visibleTileTypes(state: GameState): number[] {
   return visible;
 }
 
-function ukeireAfterDiscard(
-  tile: TileId,
-  state: GameState,
-  seat: Seat,
-  visible: number[],
-): number {
+function ukeireAfterDiscard(tile: TileId, state: GameState, seat: Seat, visible: number[]): number {
   const player = state.players[seat];
   if (!player) return 0;
   const hand = player.hand.filter(t => t !== tile);

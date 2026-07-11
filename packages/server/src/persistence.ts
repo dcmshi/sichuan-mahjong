@@ -1,21 +1,29 @@
-import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { createRequire } from 'node:module';
 import { homedir, platform } from 'node:os';
-import type { GameState, GameConfig, GameAction } from '@sichuan-mahjong/engine';
+import { join } from 'node:path';
+import type { DatabaseSync } from 'node:sqlite';
+import type { GameAction, GameConfig, GameState } from '@sichuan-mahjong/engine';
 import type { RoundResult } from '@sichuan-mahjong/engine';
+
+// `node:sqlite` is loaded lazily (type-only import above; value via require below).
+// A static value import would be evaluated at module load, so a runtime that lacks
+// node:sqlite (e.g. a Bun-compiled binary on an older Bun) would crash the whole
+// server on boot rather than merely losing persistence. Lazy-loading lets the game
+// run with persistence disabled instead. (A17)
+const nodeRequire = createRequire(import.meta.url);
 
 function dataDir(): string {
   // Allow CLI --data-dir override via env var set before first DB access
-  if (process.env['SICHUAN_DATA_DIR']) return process.env['SICHUAN_DATA_DIR'];
+  if (process.env.SICHUAN_DATA_DIR) return process.env.SICHUAN_DATA_DIR;
   const p = platform();
   if (p === 'win32') {
-    return join(process.env['APPDATA'] ?? homedir(), 'sichuan-mahjong');
+    return join(process.env.APPDATA ?? homedir(), 'sichuan-mahjong');
   }
   if (p === 'darwin') {
     return join(homedir(), 'Library', 'Application Support', 'sichuan-mahjong');
   }
-  const xdg = process.env['XDG_DATA_HOME'];
+  const xdg = process.env.XDG_DATA_HOME;
   return join(xdg ?? join(homedir(), '.local', 'share'), 'sichuan-mahjong');
 }
 
@@ -40,14 +48,28 @@ CREATE TABLE IF NOT EXISTS live_rooms (
 `;
 
 let db: DatabaseSync | null = null;
+let dbInitFailed = false;
 
-export function getDb(): DatabaseSync {
-  if (db !== null) return db;
-  const dir = dataDir();
-  mkdirSync(dir, { recursive: true });
-  db = new DatabaseSync(join(dir, 'games.db'));
-  db.exec(DB_SCHEMA);
-  return db;
+/** The SQLite handle, or null if node:sqlite is unavailable (persistence disabled). */
+export function getDb(): DatabaseSync | null {
+  if (db !== null || dbInitFailed) return db;
+  try {
+    const { DatabaseSync } = nodeRequire('node:sqlite') as {
+      DatabaseSync: new (path: string) => DatabaseSync;
+    };
+    const dir = dataDir();
+    mkdirSync(dir, { recursive: true });
+    db = new DatabaseSync(join(dir, 'games.db'));
+    db.exec(DB_SCHEMA);
+    return db;
+  } catch (err) {
+    dbInitFailed = true;
+    console.error(
+      '[persistence] node:sqlite unavailable — persistence disabled:',
+      err instanceof Error ? err.message : err,
+    );
+    return null;
+  }
 }
 
 export type GameRecord = {
@@ -61,12 +83,9 @@ export type GameRecord = {
   results: RoundResult;
 };
 
-export function saveGameWithCode(
-  code: string,
-  state: GameState,
-  results: RoundResult,
-): number {
+export function saveGameWithCode(code: string, state: GameState, results: RoundResult): number {
   const database = getDb();
+  if (!database) return -1;
   const stmt = database.prepare(
     'INSERT INTO games (code, seed, config_json, started_at, ended_at, action_log, results) VALUES (?, ?, ?, ?, ?, ?, ?)',
   );
@@ -89,6 +108,7 @@ export function saveGameWithCode(
 /** Persist (or replace) the live snapshot for an in-progress room. */
 export function saveLiveRoom(code: string, snapshot: unknown): void {
   const database = getDb();
+  if (!database) return;
   database
     .prepare(
       'INSERT INTO live_rooms (code, snapshot_json, updated_at) VALUES (?, ?, ?) ' +
@@ -100,6 +120,7 @@ export function saveLiveRoom(code: string, snapshot: unknown): void {
 /** Load all persisted live-room snapshots (called once at server boot). */
 export function loadLiveRooms(): Array<{ code: string; snapshot: unknown }> {
   const database = getDb();
+  if (!database) return [];
   const rows = database.prepare('SELECT code, snapshot_json FROM live_rooms').all() as Array<{
     code: string;
     snapshot_json: string;
@@ -109,11 +130,13 @@ export function loadLiveRooms(): Array<{ code: string; snapshot: unknown }> {
 
 export function deleteLiveRoom(code: string): void {
   const database = getDb();
+  if (!database) return;
   database.prepare('DELETE FROM live_rooms WHERE code = ?').run(code);
 }
 
 export function getGame(id: number): GameRecord | null {
   const database = getDb();
+  if (!database) return null;
   const row = database.prepare('SELECT * FROM games WHERE id = ?').get(id) as
     | {
         id: number;

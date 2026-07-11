@@ -1,7 +1,13 @@
-import { networkInterfaces } from 'node:os';
 import { execSync, spawnSync } from 'node:child_process';
-import { readFileSync, existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import { networkInterfaces } from 'node:os';
 import { join } from 'node:path';
+
+// This package is ESM ("type": "module"), where the CommonJS `require` global does
+// not exist — a bare `require(...)` throws ReferenceError. createRequire gives us a
+// working synchronous require for the CJS-only optional deps below. (A12)
+const nodeRequire = createRequire(import.meta.url);
 
 // ---------------------------------------------------------------------------
 // LAN IP detection
@@ -35,11 +41,11 @@ export function getLanIp(): string | null {
 
 let mdnsInstance: unknown = null;
 
-export function startMdns(port: number): void {
-  // Lazy import so missing package doesn't crash when mDNS is disabled
+/** Starts the mDNS responder for mahjong.local. Returns true iff it actually started. */
+export function startMdns(port: number): boolean {
+  // Lazy require so a missing package (or platform issue) doesn't crash startup.
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const mdns = require('multicast-dns')() as {
+    const mdns = nodeRequire('multicast-dns')() as {
       on: (evt: string, cb: (query: unknown, rinfo: unknown) => void) => void;
       destroy: () => void;
     };
@@ -48,20 +54,31 @@ export function startMdns(port: number): void {
     mdns.on('query', (query: unknown) => {
       const q = query as { questions?: Array<{ name: string; type: string }> };
       for (const question of q.questions ?? []) {
-        if (question.name === 'mahjong.local' && (question.type === 'A' || question.type === 'ANY')) {
+        if (
+          question.name === 'mahjong.local' &&
+          (question.type === 'A' || question.type === 'ANY')
+        ) {
           const ip = getLanIp();
           if (!ip) continue;
           (mdns as unknown as { respond: (r: unknown) => void }).respond({
             answers: [
               { name: 'mahjong.local', type: 'A', ttl: 60, data: ip },
-              { name: 'mahjong.local', type: 'SRV', ttl: 60, data: { target: 'mahjong.local', port } },
+              {
+                name: 'mahjong.local',
+                type: 'SRV',
+                ttl: 60,
+                data: { target: 'mahjong.local', port },
+              },
             ],
           });
         }
       }
     });
+    return true;
   } catch {
-    // multicast-dns not available or platform issue — silently skip
+    // multicast-dns not available or platform issue — skip (and tell the caller
+    // so it doesn't advertise a mahjong.local URL that won't resolve).
+    return false;
   }
 }
 
@@ -91,7 +108,7 @@ export function getTailscaleIpFromInterfaces(): string | null {
     for (const addr of addrs) {
       if (addr.family === 'IPv4' && addr.address.startsWith(TAILSCALE_CGNAT_PREFIX)) {
         // Quick range check: 100.64.0.0/10 = 100.64.x.x to 100.127.x.x
-        const second = parseInt(addr.address.split('.')[1] ?? '0', 10);
+        const second = Number.parseInt(addr.address.split('.')[1] ?? '0', 10);
         if (second >= 64 && second <= 127) return addr.address;
       }
     }
@@ -110,7 +127,9 @@ function findTailscaleBin(): string | null {
     try {
       const result = spawnSync(bin, ['version'], { timeout: 2000, stdio: 'pipe' });
       if (result.status === 0) return bin;
-    } catch { /* try next */ }
+    } catch {
+      /* try next */
+    }
   }
   return null;
 }
@@ -173,7 +192,9 @@ export function getTailscaleCert(hostname: string): TlsCert | null {
   if (existsSync(certPath) && existsSync(keyPath)) {
     try {
       return { cert: readFileSync(certPath, 'utf8'), key: readFileSync(keyPath, 'utf8') };
-    } catch { /* fall through to provision */ }
+    } catch {
+      /* fall through to provision */
+    }
   }
 
   // Attempt to provision
@@ -182,14 +203,16 @@ export function getTailscaleCert(hostname: string): TlsCert | null {
     if (result.status === 0 && existsSync(certPath) && existsSync(keyPath)) {
       return { cert: readFileSync(certPath, 'utf8'), key: readFileSync(keyPath, 'utf8') };
     }
-  } catch { /* provisioning failed */ }
+  } catch {
+    /* provisioning failed */
+  }
 
   return null;
 }
 
 function getTailscaleStateDir(): string {
   const platform = process.platform;
-  if (platform === 'win32') return join(process.env['LOCALAPPDATA'] ?? 'C:\\', 'Tailscale');
+  if (platform === 'win32') return join(process.env.LOCALAPPDATA ?? 'C:\\', 'Tailscale');
   if (platform === 'darwin') return '/Library/Tailscale';
   return '/var/lib/tailscale';
 }

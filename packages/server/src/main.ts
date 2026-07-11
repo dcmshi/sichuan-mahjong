@@ -1,14 +1,23 @@
 #!/usr/bin/env node
-import Fastify from 'fastify';
 import fastifyWebsocket from '@fastify/websocket';
-import { registerHttpRoutes } from './http.js';
-import { registerWsRoutes } from './ws.js';
-import { getLanIp, startMdns, stopMdns, getTailscaleInfo, getTailscaleCert, getServerUrls } from './networking.js';
+import Fastify from 'fastify';
 import { parseCli, printBanner, printQr } from './cli.js';
-import { restoreRoomsFromDisk, flushAllRooms } from './room.js';
+import { registerHttpRoutes } from './http.js';
+import {
+  getLanIp,
+  getServerUrls,
+  getTailscaleCert,
+  getTailscaleInfo,
+  startMdns,
+  stopMdns,
+} from './networking.js';
+import { flushAllRooms, restoreRoomsFromDisk } from './room.js';
 import { createTailscaleShare } from './tailscaleShare.js';
+import { registerWsRoutes } from './ws.js';
 
-async function buildApp(serverOptions: { https?: { key: string; cert: string } } = {}): Promise<ReturnType<typeof Fastify>> {
+async function buildApp(
+  serverOptions: { https?: { key: string; cert: string } } = {},
+): Promise<ReturnType<typeof Fastify>> {
   const app = Fastify({ logger: false, ...serverOptions });
   await app.register(fastifyWebsocket);
   await registerHttpRoutes(app);
@@ -21,7 +30,7 @@ async function main(): Promise<void> {
   const { port, httpsPort, mdns, tailscale: useTailscale, share: useShare, dataDir } = opts;
 
   // Propagate data-dir override before persistence module initializes
-  if (dataDir) process.env['SICHUAN_DATA_DIR'] = dataDir;
+  if (dataDir) process.env.SICHUAN_DATA_DIR = dataDir;
 
   // Resume any in-progress games persisted before a previous shutdown/crash.
   try {
@@ -55,8 +64,8 @@ async function main(): Promise<void> {
     }
   }
 
-  // mDNS broadcast
-  if (mdns) startMdns(port);
+  // mDNS broadcast (startMdns reports whether it actually came up)
+  const mdnsActive = mdns ? startMdns(port) : false;
 
   // Startup banner
   const urls = getServerUrls(port, lanIp, tailscaleInfo, httpsPort);
@@ -68,6 +77,7 @@ async function main(): Promise<void> {
     tailscaleUrl,
     tailscaleHostname: hostname,
     hasTls: httpsStarted,
+    mdnsActive,
   });
 
   if (lanIp) printQr(`http://${lanIp}:${port}`);
@@ -81,14 +91,33 @@ async function main(): Promise<void> {
       if (result.ok) {
         console.log(`\n   🔗 Tailscale share invite (send to friends):\n      ${result.inviteUrl}`);
       } else if (result.reason === 'no_credentials') {
-        console.log('\n   --share: set TAILSCALE_API_KEY (and optionally TAILSCALE_TAILNET) to auto-create a share invite.');
-        console.log(`      Or share manually: https://login.tailscale.com/admin/machines (share "${tailscaleInfo.hostname}")`);
+        console.log(
+          '\n   --share: set TAILSCALE_API_KEY (and optionally TAILSCALE_TAILNET) to auto-create a share invite.',
+        );
+        console.log(
+          `      Or share manually: https://login.tailscale.com/admin/machines (share "${tailscaleInfo.hostname}")`,
+        );
       } else {
-        console.log(`\n   --share: could not create invite (${result.reason}${result.detail ? `: ${result.detail}` : ''}).`);
-        console.log(`      Share manually: https://login.tailscale.com/admin/machines (share "${tailscaleInfo.hostname}")`);
+        console.log(
+          `\n   --share: could not create invite (${result.reason}${result.detail ? `: ${result.detail}` : ''}).`,
+        );
+        console.log(
+          `      Share manually: https://login.tailscale.com/admin/machines (share "${tailscaleInfo.hostname}")`,
+        );
       }
     }
   }
+
+  // Last-resort backstop (A2): a self-hosted game server should never let one
+  // unforeseen throw in a WS handler kill every in-progress game. Log and keep
+  // running rather than exit. Input at the WS boundary is validated up-front
+  // (room.handleAction) and applyAction never throws, so this should stay quiet.
+  process.on('uncaughtException', err => {
+    console.error('[fatal] uncaught exception (kept alive):', err);
+  });
+  process.on('unhandledRejection', reason => {
+    console.error('[fatal] unhandled rejection (kept alive):', reason);
+  });
 
   // Graceful shutdown: flush live games to disk so a restart can resume them.
   let shuttingDown = false;
@@ -96,8 +125,16 @@ async function main(): Promise<void> {
     if (shuttingDown) return;
     shuttingDown = true;
     console.log(`\n${signal} received — saving in-progress games…`);
-    try { flushAllRooms(); } catch (err) { console.error('[shutdown] flush failed:', err); }
-    try { stopMdns(); } catch { /* best-effort: process is exiting anyway */ }
+    try {
+      flushAllRooms();
+    } catch (err) {
+      console.error('[shutdown] flush failed:', err);
+    }
+    try {
+      stopMdns();
+    } catch {
+      /* best-effort: process is exiting anyway */
+    }
     process.exit(0);
   };
   process.on('SIGINT', () => shutdown('SIGINT'));

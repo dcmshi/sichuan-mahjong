@@ -1,4 +1,8 @@
+import { createRequire } from 'node:module';
 import { parseArgs } from 'node:util';
+
+// ESM has no `require` global; createRequire loads the CJS-only qrcode-terminal. (A12)
+const nodeRequire = createRequire(import.meta.url);
 
 export type CliOptions = {
   port: number;
@@ -31,13 +35,13 @@ export function parseCli(argv = process.argv.slice(2)): CliOptions {
     const { values } = parseArgs({
       args: argv,
       options: {
-        port:         { type: 'string',  default: '8080' },
-        'https-port': { type: 'string',  default: '8443' },
-        'no-mdns':    { type: 'boolean', default: false },
+        port: { type: 'string', default: '8080' },
+        'https-port': { type: 'string', default: '8443' },
+        'no-mdns': { type: 'boolean', default: false },
         'no-tailscale': { type: 'boolean', default: false },
-        share:        { type: 'boolean', default: false },
-        'data-dir':   { type: 'string' },
-        help:         { type: 'boolean', default: false },
+        share: { type: 'boolean', default: false },
+        'data-dir': { type: 'string' },
+        help: { type: 'boolean', default: false },
       },
       strict: true,
     });
@@ -48,13 +52,13 @@ export function parseCli(argv = process.argv.slice(2)): CliOptions {
     }
 
     return {
-      port:       parseInt(values.port as string, 10) || 8080,
-      httpsPort:  parseInt(values['https-port'] as string, 10) || 8443,
-      mdns:       !(values['no-mdns'] as boolean),
-      tailscale:  !(values['no-tailscale'] as boolean),
-      share:      values.share as boolean,
-      dataDir:    (values['data-dir'] as string) ?? null,
-      help:       false,
+      port: Number.parseInt(values.port as string, 10) || 8080,
+      httpsPort: Number.parseInt(values['https-port'] as string, 10) || 8443,
+      mdns: !(values['no-mdns'] as boolean),
+      tailscale: !(values['no-tailscale'] as boolean),
+      share: values.share as boolean,
+      dataDir: (values['data-dir'] as string) ?? null,
+      help: false,
     };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -73,28 +77,33 @@ export function printBanner(opts: {
   tailscaleUrl: string | null;
   tailscaleHostname: string | null;
   hasTls: boolean;
+  mdnsActive: boolean;
 }): void {
-  const { httpPort, lanIp, tailscaleUrl, tailscaleHostname, hasTls } = opts;
+  const { httpPort, lanIp, tailscaleUrl, tailscaleHostname, hasTls, mdnsActive } = opts;
 
   console.log('\n\u{1F004}  Sichuan Mahjong — running on this machine\n');
 
   if (lanIp) {
     console.log(`   LAN:        http://${lanIp}:${httpPort}`);
   } else {
-    console.log(`   LAN:        (no LAN interface detected)`);
+    console.log('   LAN:        (no LAN interface detected)');
   }
-  console.log(`   mDNS:       http://mahjong.local:${httpPort}`);
+  // Only advertise the mahjong.local URL when the responder actually started —
+  // otherwise the address won't resolve for anyone who tries it. (A12)
+  if (mdnsActive) {
+    console.log(`   mDNS:       http://mahjong.local:${httpPort}`);
+  }
 
   if (tailscaleUrl) {
     console.log(`   Tailscale:  ${tailscaleUrl}  ← share with remote friends`);
   } else {
-    console.log(`   Tailscale:  (not detected — install Tailscale for cross-network play)`);
+    console.log('   Tailscale:  (not detected — install Tailscale for cross-network play)');
   }
 
   if (tailscaleHostname && !hasTls) {
-    console.log(`\n   ⚠️  Tailscale found but TLS cert unavailable.`);
+    console.log('\n   ⚠️  Tailscale found but TLS cert unavailable.');
     console.log(`       Run: tailscale cert ${tailscaleHostname}`);
-    console.log(`       Then restart the server.`);
+    console.log('       Then restart the server.');
   }
 
   console.log('\n   Server keeps running until you Ctrl-C.\n');
@@ -106,8 +115,11 @@ export function printBanner(opts: {
 
 export function printQr(url: string): void {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const qrcode = require('qrcode-terminal') as { generate: (url: string, opts: { small: boolean }) => void };
+    // ESM package: `require` is undefined here, so use createRequire for this
+    // CommonJS-only optional dep. (A12)
+    const qrcode = nodeRequire('qrcode-terminal') as {
+      generate: (url: string, opts: { small: boolean }) => void;
+    };
     console.log(`   QR code for ${url}:\n`);
     qrcode.generate(url, { small: true });
   } catch {
