@@ -1,18 +1,27 @@
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { existsSync } from 'node:fs';
-import type { FastifyInstance } from 'fastify';
 import fastifyStatic from '@fastify/static';
-import { createLobby, getLobby, canStart } from './lobby.js';
-import { issueToken, resolveToken } from './tokens.js';
+import type { FastifyInstance } from 'fastify';
+import { canStart, createLobby, getLobby } from './lobby.js';
 import { getGame } from './persistence.js';
+import { issueToken, resolveToken } from './tokens.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-// Client dist is two levels up from packages/server/dist → packages/client/dist
-const CLIENT_DIST = path.resolve(__dirname, '../../client/dist');
+// Where to find the built client SPA. Two layouts must both work:
+//   1. npm-published package: `prepack` copies the client build into
+//      packages/server/dist/client, which ships via the `files: ["dist"]` field.
+//   2. monorepo (dev / CI / e2e): the sibling packages/client/dist.
+// The first existing candidate wins. (A6 — without the bundled copy, `npx
+// sichuan-mahjong` served an API with no UI.)
+const CLIENT_DIST_CANDIDATES = [
+  path.resolve(__dirname, 'client'), // dist/client (bundled into the published package)
+  path.resolve(__dirname, '../../client/dist'), // packages/client/dist (monorepo)
+];
+const CLIENT_DIST = CLIENT_DIST_CANDIDATES.find(existsSync) ?? CLIENT_DIST_CANDIDATES[0]!;
 
 export async function registerHttpRoutes(app: FastifyInstance): Promise<void> {
-  // Serve client SPA from packages/client/dist (present in monorepo dev and npm-packed builds)
+  // Serve client SPA (present in monorepo dev and npm-packed builds)
   if (existsSync(CLIENT_DIST)) {
     await app.register(fastifyStatic, { root: CLIENT_DIST, prefix: '/', wildcard: false });
     app.setNotFoundHandler(async (_req, reply) => reply.sendFile('index.html'));
@@ -45,7 +54,7 @@ export async function registerHttpRoutes(app: FastifyInstance): Promise<void> {
 
   // Replay — returns persisted action log for a completed round
   app.get<{ Params: { id: string } }>('/api/replay/:id', async (req, reply) => {
-    const id = parseInt(req.params.id, 10);
+    const id = Number.parseInt(req.params.id, 10);
     if (Number.isNaN(id)) return reply.code(400).send({ error: 'invalid_id' });
     const record = getGame(id);
     if (!record) return reply.code(404).send({ error: 'not_found' });
