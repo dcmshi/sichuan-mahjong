@@ -2,7 +2,9 @@
 
 > Web-based 4-player Sichuan ("Bloody Rules") mahjong. Mobile-first PWA. Host runs the server on their own machine; friends connect over LAN or Tailscale. Bots fill empty seats and power a single-player practice mode.
 
-## Status: v2.1 — handoff-ready
+## Status: v2.2 — audit-hardened
+
+Changelog from v2.1 (2026-07): full repo audit + fixes (tracked as A1–A20 in [TODO.md](./TODO.md)). Highlights: hardened the WS boundary (malformed frames can no longer crash the server; `claimWindowExpire` is server-only); fixed a furiten bypass (pung → self-draw), the furiten override threshold (max-skipped, §5.5.5), host-seat reservation, reconnect/restore grace during huan/void/claim, once-per-round persistence, and `endMatch` teardown; bots now pung; mDNS/QR fixed (ESM `createRequire`); `node:sqlite` loads lazily so it degrades instead of crashing. **Distribution:** the npm package is now self-contained (engine inlined, client bundled) and the Bun binaries embed the client SPA. Biome adopted + enforced in CI.
 
 Changelog from v2: pre-handoff polish. Added `penaltyPot` field to `GameState` schema (referenced by §11.1 property test but missing from §4.3 type definition). Bu-ting payouts clarified to fire only on wall-end finals (vacuous in 3-Hu). Tile SVG license boundary spelled out — CC-BY-SA applies to standalone SVG files only, code remains MIT, no asset inlining.
 
@@ -47,14 +49,14 @@ been added as post-v1 features — see §12.)
 | Package | Purpose | Key deps |
 | --- | --- | --- |
 | `packages/engine` | Pure rules engine. Zero runtime deps. | (none) |
-| `packages/server` | HTTP+WS gateway, lobby, bots, persistence, Tailscale detection | `fastify`, `ws`, `better-sqlite3`, `multicast-dns`, `qrcode-terminal` |
-| `packages/client` | PWA | `react@18`, `vite`, `tailwindcss`, `zustand`, `framer-motion`, `vite-plugin-pwa` |
+| `packages/server` | HTTP+WS gateway, lobby, bots, persistence, Tailscale detection | `fastify`, `@fastify/static`, `@fastify/websocket`, `multicast-dns`, `qrcode-terminal`; `node:sqlite` (Node built-in); `esbuild` (build-time bundling); `ws` (test client only) |
+| `packages/client` | Mobile-first PWA (hand-rolled manifest + `sw.js`) | `react@18`, `vite`, `tailwindcss`, `zustand`, `framer-motion` |
 
 Both server and client import from engine. Protocol message types live in `engine/src/protocol.ts`.
 
 **Runtime:** Node 22 LTS, single process, runs on the host's own machine.
-**Tooling:** Biome (lint+format), Vitest, fast-check (engine property tests), Playwright (one e2e: 4-bot full game).
-**Distribution:** npm package `sichuan-mahjong` invokable via `npx sichuan-mahjong`. Optional precompiled single binaries (Bun compile) per OS released via GitHub Releases for hosts without Node.
+**Tooling:** Biome (lint+format, enforced in CI), Vitest, fast-check (engine property tests), Playwright (e2e: full 3-bot round, 2-round match, and a real-UI-click opening).
+**Distribution:** self-contained npm package `sichuan-mahjong` (esbuild inlines the private engine; the built client SPA ships in `dist/client`) invokable via `npx sichuan-mahjong`. Optional precompiled single binaries (Bun compile) per OS for hosts without Node — these embed the client SPA too, but run with persistence disabled (Bun has no `node:sqlite`; see §9/§10.4).
 
 ---
 
@@ -693,6 +695,8 @@ CREATE INDEX idx_games_started ON games(started_at);
 
 Written on `roundEnd`. Used in v1 for replay-debug via `/api/replay/:id`. No accounts table; no PII beyond player nicknames inside `action_log`.
 
+`node:sqlite` is loaded **lazily** (via `createRequire`): if it's unavailable — notably in the Bun-compiled binaries, which have no `node:sqlite` module — the server logs `persistence disabled` and runs without saving or resuming. Games still play; they just aren't persisted (no replay, no host-shutdown resume) in that mode. Under Node 22+ (npx / dev) persistence is fully active.
+
 ---
 
 ## 10. Networking & distribution
@@ -745,9 +749,10 @@ After step 4, every future game uses the same URL — no per-session re-sharing.
 
 ### 10.4 Distribution
 
-- **Primary:** npm package `sichuan-mahjong`, run via `npx sichuan-mahjong`. Requires Node 22+ on the host.
-- **Secondary:** precompiled single binaries via `bun build --compile` for macOS arm64/x64, Linux x64/arm64, Windows x64. Released through GitHub Releases. No Node install required.
-- **Config:** CLI flags `--port`, `--https-port`, `--no-mdns`, `--no-tailscale`, `--data-dir`. All optional with sensible defaults.
+- **Primary:** self-contained npm package `sichuan-mahjong`, run via `npx sichuan-mahjong` (Node 22+). `prepack` bundles the server and **inlines the zero-dep engine** into `dist/main.js` (esbuild) and copies the built client into `dist/client`; the engine is a `devDependency` so consumers never try to fetch the private workspace package. Ships only `dist/main.js` + `dist/client`.
+- **Secondary:** precompiled single binaries via `bun build --compile` (`scripts/release/compile.ts`) for macOS arm64/x64, Linux x64/arm64, Windows x64. The client SPA is **embedded** in the binary: `gen-embedded-client.mjs` writes `src/generated/embedded-client.ts` (URL → base64), the Bun-only entry `src/binary.ts` hands it to the server, and `http.ts` serves from the embedded map (else from disk). Persistence is disabled in the binary (no `node:sqlite`). No Node install required.
+- **Entries:** startup lives in `server.ts`; `main.ts` (Node/npm bin) and `binary.ts` (Bun) are thin wrappers that each call `run()` once.
+- **Config:** CLI flags `--port`, `--https-port`, `--no-mdns`, `--no-tailscale`, `--share`, `--data-dir`. All optional with sensible defaults.
 
 ---
 

@@ -11,7 +11,9 @@ all typechecks pass, 193 unit/integration + 5 Playwright e2e green, merged to ma
 A17 re-verified against Bun 1.3.14: Bun has no `node:sqlite`, and the lazy-load fix lets
 the compiled binary boot + serve (logs "persistence disabled") instead of crashing.
 A20 (that run surfaced the binary serving no UI) is fixed: the Bun binary now embeds and
-serves the client SPA. No open items.
+serves the client SPA. A second audit pass (2026-07-11) reviewed the session's changes +
+refreshed the docs; it fixed A22 (Biome ignoring `test-results/`) and left one LOW open
+item, **A21** (embedded binary assets lack cache headers — minor, binary-only).
 
 ### P0 — quick win / unblocks everything else
 
@@ -205,6 +207,23 @@ serves the client SPA. No open items.
   JS/CSS/tile assets, and SPA deep-links all serve from the embedded map; npm bundle still
   serves the disk client; e2e 5/5 + unit 193 green. (Persistence remains off in the binary
   per A17 — a Bun/`node:sqlite` limit, unrelated to the UI.)
+
+### Second audit pass (2026-07-11)
+
+Focused re-review of everything changed this session (embedding plumbing, server.ts
+refactor, the A2–A20 fixes) + docs refresh (README / ARCHITECTURE / CLAUDE synced to
+the new distribution model). Verdict: clean. Two items surfaced:
+
+- [x] **A22 · Biome lints Playwright's `test-results/` output.** DONE — `pnpm lint`
+  failed after any `pnpm e2e` run because Biome had no ignore for `test-results/`
+  (only `.gitignore` did). Added `**/test-results/**`, `**/playwright-report/**`,
+  and `**/dist-bin/**` to `biome.json` `files.ignore`. Lint is reliable post-e2e now.
+- [ ] **A21 · (LOW) Embedded binary assets have no cache headers.** The disk path
+  (`@fastify/static`) sets ETag/caching; the embedded-map path (`http.ts`, binary only)
+  serves raw buffers with none, so a page reload re-fetches every asset. Harmless on a
+  LAN (one-time load), but hashed `/assets/*` are content-immutable and should send
+  `cache-control: public, max-age=31536000, immutable` (and `no-cache` for index.html /
+  sw.js). Small fix in the embedded branch; deferred as a minor polish.
 - [x] **A18 · i18n catalogs have no completeness check.** DONE — exported `catalog` and
   added `catalog.test.ts` asserting zh-Hans/zh-Hant define exactly English's keys (base +
   help strings); currently all match. Added the client package to the CI test step so this

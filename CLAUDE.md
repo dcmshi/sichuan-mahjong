@@ -12,10 +12,10 @@ Full architecture, rules, and design decisions: see **[ARCHITECTURE.md](./ARCHIT
 | Package | Purpose |
 |---|---|
 | `packages/engine` | Pure rules engine. Zero deps. |
-| `packages/server` | Fastify HTTP+WS, bots, SQLite, networking (`sichuan-mahjong`) |
+| `packages/server` | Fastify HTTP+WS, bots, persistence (`node:sqlite`), networking (`sichuan-mahjong`) |
 | `packages/client` | React 18, Vite, Tailwind, Zustand, Framer Motion |
 
-Runtime: Node 22 LTS. Tooling: Biome, Vitest, fast-check, Playwright.
+Runtime: Node 22 LTS. Tooling: Biome (lint enforced in CI), Vitest, fast-check, Playwright.
 
 ---
 
@@ -26,11 +26,17 @@ pnpm install
 pnpm --filter @sichuan-mahjong/engine build  # required before typecheck
 pnpm typecheck
 pnpm lint
-pnpm test                                    # Vitest (engine + server)
+pnpm test                                    # Vitest (engine + server + client)
 pnpm --filter @sichuan-mahjong/client build
 pnpm --filter sichuan-mahjong build
 pnpm --filter sichuan-mahjong start          # run server (serves built client)
-pnpm e2e                                     # Playwright (needs built server+client)
+
+# e2e needs the client built with the window.__e2e helpers (VITE_E2E=1), then a built server:
+VITE_E2E=1 pnpm --filter @sichuan-mahjong/client build
+pnpm e2e                                     # Playwright: bot round, 2-round match, real-UI-click opening
+
+# Release binaries (embed the client, no persistence): needs Bun; see scripts/release/compile.ts
+bun run scripts/release/compile.ts
 ```
 
 ---
@@ -65,3 +71,9 @@ All v1 work and all originally-deferred features are complete — see
 [ARCHITECTURE.md §12](./ARCHITECTURE.md#12-open-questions--explicit-deferrals)
 for the per-item history. Host-shutdown resume and Tailscale node-sharing
 automation (the last two deferrals) are now implemented.
+
+A full audit + hardening pass (2026-07, items A1–A20 in [TODO.md](./TODO.md)) is
+also complete: WS-boundary crash hardening, several rules-engine correctness fixes,
+reconnect/restore edge cases, mDNS/QR, and distribution — the npm package is now
+self-contained (engine inlined, client bundled) and the Bun binaries embed the
+client SPA. No open items.

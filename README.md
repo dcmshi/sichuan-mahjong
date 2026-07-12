@@ -26,7 +26,7 @@
 - LAN play out of the box — no setup beyond running the server
 - Cross-network play via [Tailscale](https://tailscale.com), with `--share` to auto-create a share invite
 - Reconnect within 60 s of disconnect; bot takes over after that, and you reclaim your seat next round
-- Crash-safe: in-progress games are snapshotted and resume after a server restart
+- Crash-safe: in-progress games are snapshotted and resume after a server restart (npx / Node build; the standalone binaries run without persistence)
 
 ---
 
@@ -52,6 +52,8 @@ chmod +x sichuan-mahjong-macos-arm64
 # Windows
 sichuan-mahjong-windows-x64.exe
 ```
+
+> The binary bundles the full web UI — nothing else to install. Note it runs **without persistence** (no saved replays, no resume-after-restart), since the Bun runtime lacks `node:sqlite`. If you want persistence, use the `npx` build.
 
 The server prints your share URLs on startup:
 
@@ -122,8 +124,8 @@ pnpm --filter sichuan-mahjong build
 pnpm --filter sichuan-mahjong start
 
 # Tests
-pnpm test        # Vitest (engine + server unit/integration tests)
-pnpm e2e         # Playwright end-to-end (full round with 3 bots)
+pnpm test        # Vitest (engine + server + client unit/integration tests)
+pnpm e2e         # Playwright end-to-end (bot round, 2-round match, real-UI-click opening)
 
 # Typecheck / lint
 pnpm typecheck
