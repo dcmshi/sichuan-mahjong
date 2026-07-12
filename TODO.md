@@ -6,10 +6,11 @@ Full-repo audit (engine, server, client, cross-cutting). All items below were
 verified against current code with file:line references. Ordered by priority.
 IDs are stable so we can tackle them one at a time.
 
-**Status:** all 19 audit items (A1–A19) resolved and verified on 2026-07-11 —
-lint clean, all typechecks pass, 193 unit/integration tests + 4 Playwright e2e
-green. **One open item needs a product decision: A6b** (the published npm package
-can't resolve its private workspace engine dep — bundle vs. publish-engine).
+**Status:** all 19 audit items (A1–A19) + A6b resolved on 2026-07-11 — lint clean,
+all typechecks pass, 193 unit/integration tests + 4 Playwright e2e green, merged to
+main. A17 re-verified against Bun 1.3.14 (2026-07-11): Bun has no `node:sqlite`, and
+the lazy-load fix lets the compiled binary boot + serve (logs "persistence disabled")
+instead of crashing. That run surfaced **A20 (open)**: the Bun binary serves no client UI.
 
 ### P0 — quick win / unblocks everything else
 
@@ -185,17 +186,21 @@ can't resolve its private workspace engine dep — bundle vs. publish-engine).
   `minFanToOverride` (`actions.ts:399`) never rises when a larger Hu is later
   skipped. §5.5.5 intent is arguably the max skipped value. Verify against the PDF;
   low.
-- [x] **A17 · Verify the Bun-compiled binary actually boots.** DONE (hardened) — Bun isn't
-  installed here to test directly, so made `node:sqlite` load lazily via `createRequire`
-  (type-only static import): a runtime lacking it now logs "persistence disabled" and runs
-  on, instead of crashing at module load. Verified on Node that lazy load still works
-  (getDb returns a handle, games.db is created). If Bun access is available later, run
-  `bun run scripts/release/compile.ts` and launch a binary to confirm end-to-end. `compile.ts` claims
-  a "graceful fallback" when `node:sqlite` is missing, but `persistence.ts:1`
-  imports it at module load — a missing module throws at import, which the
-  per-write try/catch doesn't cover → the binary would crash on boot, not degrade.
-  Verify against the Bun version in use; if unsupported, make the sqlite import
-  lazy/optional.
+- [x] **A17 · Verify the Bun-compiled binary actually boots.** DONE + VERIFIED against
+  Bun 1.3.14 (2026-07-11). `node:sqlite` loads lazily via `createRequire` (type-only static
+  import). Compiled `bun build ... --compile --target=bun-windows-x64` and ran the .exe:
+  Bun has **no** `node:sqlite`, so the old static import would have crashed boot; the lazy
+  fix logs `[persistence] node:sqlite unavailable — persistence disabled` and the binary
+  boots + serves (healthz ok, lobby created). Persistence is off in the binary (no
+  games.db) — graceful degradation, as intended.
+- [ ] **A20 · (NEW) The Bun-compiled binary serves no client UI.** Running the compiled
+  .exe, `GET /` returns 404 — a standalone binary has no `dist/client` at its runtime
+  `__dirname`, and A6's client bundling only covered the npm package. The startup banner
+  still advertises a LAN URL that serves nothing. Pre-existing (compile.ts only compiles
+  the server entry; static assets were never embedded). Fix options: embed the client
+  build into the binary (Bun asset embedding / serve from an embedded dir), or document
+  the binaries as API/LAN-relay only. Distinct distribution channel from npm/npx (A6/A6b,
+  fixed). Persistence is also off in the binary (A17) — both are Bun-binary-only limits.
 - [x] **A18 · i18n catalogs have no completeness check.** DONE — exported `catalog` and
   added `catalog.test.ts` asserting zh-Hans/zh-Hant define exactly English's keys (base +
   help strings); currently all match. Added the client package to the CI test step so this
@@ -212,9 +217,12 @@ can't resolve its private workspace engine dep — bundle vs. publish-engine).
   (A9), restore deadline-rebase + huan-grace (A10), endMatch quiescence (A11), name clamp
   (A14), engine tests for A3/A7/A15/A16, bot-pung smoke assertion (A13), i18n parity (A18).
   Full Playwright suite (happy path + 2-round match) re-run green after all server changes.
-  Test totals: engine 149, server 42, client 2, e2e 4.
-  _Optional remaining:_ dedicated browser-level E2E specs for reconnect / spectator /
-  human-claim / i18n (these flows are covered at the integration layer today).
+  Also added `e2e/ui-clicks.spec.ts` (2026-07-11): plays the opening through **real UI
+  clicks** — huan tile taps, void suit button, and the tap-to-select/tap-to-discard
+  gesture — the interaction layer the other specs bypass via `window.__e2e`. This closes
+  the raw-UI-click gap. Test totals: engine 149, server 42, client 2, e2e 5.
+  _Optional remaining:_ browser-level specs for reconnect / spectator / i18n flows
+  (covered at the integration layer today).
 
 ---
 
