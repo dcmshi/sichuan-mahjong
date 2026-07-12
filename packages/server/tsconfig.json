@@ -6,5 +6,7 @@
     "outDir": "dist",
     "rootDir": "src"
   },
-  "include": ["src"]
+  "include": ["src"],
+  "//": "binary.ts + generated/ are Bun-only (binary.ts imports a module generated only at binary-build time); they are compiled by `bun build`, never tsc.",
+  "exclude": ["src/binary.ts", "src/generated"]
 }

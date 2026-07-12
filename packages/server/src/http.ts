@@ -20,9 +20,30 @@ const CLIENT_DIST_CANDIDATES = [
 ];
 const CLIENT_DIST = CLIENT_DIST_CANDIDATES.find(existsSync) ?? CLIENT_DIST_CANDIDATES[0]!;
 
-export async function registerHttpRoutes(app: FastifyInstance): Promise<void> {
-  // Serve client SPA (present in monorepo dev and npm-packed builds)
-  if (existsSync(CLIENT_DIST)) {
+/** A client SPA embedded in the binary: URL path → { content-type, base64 body }. */
+export type EmbeddedAsset = { type: string; body: string };
+export type EmbeddedClient = Record<string, EmbeddedAsset>;
+
+export async function registerHttpRoutes(
+  app: FastifyInstance,
+  embeddedClient?: EmbeddedClient,
+): Promise<void> {
+  if (embeddedClient && Object.keys(embeddedClient).length > 0) {
+    // Serve the client embedded in the compiled (Bun) binary — a standalone
+    // binary has no client dir on disk. (A20)
+    for (const [urlPath, asset] of Object.entries(embeddedClient)) {
+      const buf = Buffer.from(asset.body, 'base64');
+      app.get(urlPath, async (_req, reply) => reply.type(asset.type).send(buf));
+    }
+    const index = embeddedClient['/index.html'];
+    if (index) {
+      const idxBuf = Buffer.from(index.body, 'base64');
+      // Root + SPA deep-link fallback.
+      app.get('/', async (_req, reply) => reply.type(index.type).send(idxBuf));
+      app.setNotFoundHandler(async (_req, reply) => reply.type(index.type).send(idxBuf));
+    }
+  } else if (existsSync(CLIENT_DIST)) {
+    // Serve client SPA from disk (monorepo dev + npm-packed builds).
     await app.register(fastifyStatic, { root: CLIENT_DIST, prefix: '/', wildcard: false });
     app.setNotFoundHandler(async (_req, reply) => reply.sendFile('index.html'));
   }

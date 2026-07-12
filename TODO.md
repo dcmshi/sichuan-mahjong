@@ -6,11 +6,12 @@ Full-repo audit (engine, server, client, cross-cutting). All items below were
 verified against current code with file:line references. Ordered by priority.
 IDs are stable so we can tackle them one at a time.
 
-**Status:** all 19 audit items (A1–A19) + A6b resolved on 2026-07-11 — lint clean,
-all typechecks pass, 193 unit/integration tests + 4 Playwright e2e green, merged to
-main. A17 re-verified against Bun 1.3.14 (2026-07-11): Bun has no `node:sqlite`, and
-the lazy-load fix lets the compiled binary boot + serve (logs "persistence disabled")
-instead of crashing. That run surfaced **A20 (open)**: the Bun binary serves no client UI.
+**Status:** all audit items resolved on 2026-07-11 (A1–A19 + A6b + A20) — lint clean,
+all typechecks pass, 193 unit/integration + 5 Playwright e2e green, merged to main.
+A17 re-verified against Bun 1.3.14: Bun has no `node:sqlite`, and the lazy-load fix lets
+the compiled binary boot + serve (logs "persistence disabled") instead of crashing.
+A20 (that run surfaced the binary serving no UI) is fixed: the Bun binary now embeds and
+serves the client SPA. No open items.
 
 ### P0 — quick win / unblocks everything else
 
@@ -193,14 +194,17 @@ instead of crashing. That run surfaced **A20 (open)**: the Bun binary serves no 
   fix logs `[persistence] node:sqlite unavailable — persistence disabled` and the binary
   boots + serves (healthz ok, lobby created). Persistence is off in the binary (no
   games.db) — graceful degradation, as intended.
-- [ ] **A20 · (NEW) The Bun-compiled binary serves no client UI.** Running the compiled
-  .exe, `GET /` returns 404 — a standalone binary has no `dist/client` at its runtime
-  `__dirname`, and A6's client bundling only covered the npm package. The startup banner
-  still advertises a LAN URL that serves nothing. Pre-existing (compile.ts only compiles
-  the server entry; static assets were never embedded). Fix options: embed the client
-  build into the binary (Bun asset embedding / serve from an embedded dir), or document
-  the binaries as API/LAN-relay only. Distinct distribution channel from npm/npx (A6/A6b,
-  fixed). Persistence is also off in the binary (A17) — both are Bun-binary-only limits.
+- [x] **A20 · The Bun-compiled binary serves no client UI.** DONE + VERIFIED (2026-07-11)
+  — the standalone binary now embeds and serves the client SPA. `scripts/release/gen-embedded-client.mjs`
+  turns `packages/client/dist` into `src/generated/embedded-client.ts` (URL → base64 body);
+  a Bun-only entry `src/binary.ts` imports it and hands it to the server; `http.ts` serves
+  from the embedded map (SPA fallback to index.html) or, when absent, from disk (npm path).
+  Startup was extracted to `server.ts` so the thin `main.ts` (Node/npm) and `binary.ts`
+  (Bun) each call `run()` once — no double-start. `compile.ts` generates the embed and
+  compiles `binary.ts`. Verified: compiled a Windows binary and confirmed `GET /` (200 HTML),
+  JS/CSS/tile assets, and SPA deep-links all serve from the embedded map; npm bundle still
+  serves the disk client; e2e 5/5 + unit 193 green. (Persistence remains off in the binary
+  per A17 — a Bun/`node:sqlite` limit, unrelated to the UI.)
 - [x] **A18 · i18n catalogs have no completeness check.** DONE — exported `catalog` and
   added `catalog.test.ts` asserting zh-Hans/zh-Hant define exactly English's keys (base +
   help strings); currently all match. Added the client package to the CI test step so this
