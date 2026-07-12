@@ -12,8 +12,8 @@ A17 re-verified against Bun 1.3.14: Bun has no `node:sqlite`, and the lazy-load 
 the compiled binary boot + serve (logs "persistence disabled") instead of crashing.
 A20 (that run surfaced the binary serving no UI) is fixed: the Bun binary now embeds and
 serves the client SPA. A second audit pass (2026-07-11) reviewed the session's changes +
-refreshed the docs; it fixed A22 (Biome ignoring `test-results/`) and left one LOW open
-item, **A21** (embedded binary assets lack cache headers — minor, binary-only).
+refreshed the docs, fixing A22 (Biome ignoring `test-results/`) and A21 (embedded-asset
+cache headers, 2026-07-12). **No open items** — A1–A22 all resolved.
 
 ### P0 — quick win / unblocks everything else
 
@@ -218,12 +218,12 @@ the new distribution model). Verdict: clean. Two items surfaced:
   failed after any `pnpm e2e` run because Biome had no ignore for `test-results/`
   (only `.gitignore` did). Added `**/test-results/**`, `**/playwright-report/**`,
   and `**/dist-bin/**` to `biome.json` `files.ignore`. Lint is reliable post-e2e now.
-- [ ] **A21 · (LOW) Embedded binary assets have no cache headers.** The disk path
-  (`@fastify/static`) sets ETag/caching; the embedded-map path (`http.ts`, binary only)
-  serves raw buffers with none, so a page reload re-fetches every asset. Harmless on a
-  LAN (one-time load), but hashed `/assets/*` are content-immutable and should send
-  `cache-control: public, max-age=31536000, immutable` (and `no-cache` for index.html /
-  sw.js). Small fix in the embedded branch; deferred as a minor polish.
+- [x] **A21 · Embedded binary assets have no cache headers.** DONE + VERIFIED (2026-07-12)
+  — the embedded branch in `http.ts` now sets `cache-control` per asset class: hashed
+  `/assets/*` → `public, max-age=31536000, immutable`; the SPA shell (`/`, `/index.html`,
+  `/sw.js`) → `no-cache` (so a binary upgrade's new bundle loads); tiles/manifest →
+  `public, max-age=86400`. Verified against a freshly compiled Windows binary via
+  `curl -I` — each class returns the expected header.
 - [x] **A18 · i18n catalogs have no completeness check.** DONE — exported `catalog` and
   added `catalog.test.ts` asserting zh-Hans/zh-Hant define exactly English's keys (base +
   help strings); currently all match. Added the client package to the CI test step so this

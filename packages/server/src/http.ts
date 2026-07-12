@@ -31,16 +31,32 @@ export async function registerHttpRoutes(
   if (embeddedClient && Object.keys(embeddedClient).length > 0) {
     // Serve the client embedded in the compiled (Bun) binary — a standalone
     // binary has no client dir on disk. (A20)
+    // Cache policy (A21): hashed /assets/* are content-immutable → cache forever;
+    // the SPA shell (index.html, sw.js) must stay fresh so a binary upgrade's new
+    // asset bundle loads; everything else (tiles, manifest) gets a modest cache.
+    const cacheControlFor = (p: string): string => {
+      if (p === '/index.html' || p === '/sw.js') return 'no-cache';
+      if (p.startsWith('/assets/')) return 'public, max-age=31536000, immutable';
+      return 'public, max-age=86400';
+    };
     for (const [urlPath, asset] of Object.entries(embeddedClient)) {
       const buf = Buffer.from(asset.body, 'base64');
-      app.get(urlPath, async (_req, reply) => reply.type(asset.type).send(buf));
+      const cacheControl = cacheControlFor(urlPath);
+      app.get(urlPath, async (_req, reply) =>
+        reply.header('cache-control', cacheControl).type(asset.type).send(buf),
+      );
     }
     const index = embeddedClient['/index.html'];
     if (index) {
       const idxBuf = Buffer.from(index.body, 'base64');
-      // Root + SPA deep-link fallback.
-      app.get('/', async (_req, reply) => reply.type(index.type).send(idxBuf));
-      app.setNotFoundHandler(async (_req, reply) => reply.type(index.type).send(idxBuf));
+      const idxType = index.type;
+      // Root + SPA deep-link fallback; kept fresh (no-cache) like the shell.
+      app.get('/', async (_req, reply) =>
+        reply.header('cache-control', 'no-cache').type(idxType).send(idxBuf),
+      );
+      app.setNotFoundHandler(async (_req, reply) =>
+        reply.header('cache-control', 'no-cache').type(idxType).send(idxBuf),
+      );
     }
   } else if (existsSync(CLIENT_DIST)) {
     // Serve client SPA from disk (monorepo dev + npm-packed builds).
