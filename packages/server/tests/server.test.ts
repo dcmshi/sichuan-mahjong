@@ -124,6 +124,13 @@ function autoPlay(ws: WebSocket, seat: Seat): Promise<void> {
       60_000,
     );
 
+    // Send huan/void at most once per round: several view broadcasts arrive
+    // while the phase is still huan/voidDeclare (one per other player's
+    // submission), and firing on each would spam duplicate actions whose
+    // rejections drown out real warns in the test output. (A26)
+    let sentHuan = false;
+    let sentVoid = false;
+
     ws.on('message', (data: Buffer) => {
       let msg: ServerMsg;
       try {
@@ -143,6 +150,8 @@ function autoPlay(ws: WebSocket, seat: Seat): Promise<void> {
       const { phase, you } = view;
 
       if (phase === 'huan') {
+        if (sentHuan) return;
+        sentHuan = true;
         // Pick 3 tiles of the suit with the most tiles
         const bySuit: TileId[][] = [[], [], []];
         for (const t of you.hand) {
@@ -160,6 +169,8 @@ function autoPlay(ws: WebSocket, seat: Seat): Promise<void> {
       }
 
       if (phase === 'voidDeclare') {
+        if (sentVoid) return;
+        sentVoid = true;
         // Pick suit with fewest tiles as void
         const bySuit: TileId[][] = [[], [], []];
         for (const t of you.hand) {

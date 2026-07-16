@@ -81,6 +81,14 @@ export class GameRoom {
   /** Pending bot/auto-action callbacks, tracked so teardown leaves nothing scheduled. */
   private botTimers: Set<ReturnType<typeof setTimeout>> = new Set();
   private botImmediates: Set<ReturnType<typeof setImmediate>> = new Set();
+  /**
+   * Seats with a bot/auto action already scheduled. scheduleNext runs after every
+   * state change (and on every reconnect), so without this each pass would queue
+   * a duplicate decision per pending seat — the extras then fire against a state
+   * that has moved on and get rejected, flooding the log with warns that the
+   * "a rejection is unexpected" contract treats as bugs. (A26)
+   */
+  private botPendingSeats: Set<Seat> = new Set();
   private started = false;
   /** Guards the once-per-round roundEnd persist + broadcast (reset in nextRound). (A9) */
   private roundEndBroadcast = false;
@@ -169,21 +177,33 @@ export class GameRoom {
     this.botTimers.clear();
     for (const im of this.botImmediates) clearImmediate(im);
     this.botImmediates.clear();
+    this.botPendingSeats.clear();
   }
 
-  /** Schedule a bot "think" callback, tracked so teardown can cancel it. */
-  private scheduleBot(fn: () => void): void {
+  /**
+   * Schedule a bot "think" callback for `seat`, tracked so teardown can cancel
+   * it. No-ops if the seat already has a decision queued — a seat only ever has
+   * one pending decision at a time (huan/void/claim/turn are mutually
+   * exclusive), so one in-flight callback per seat is always enough. (A26)
+   */
+  private scheduleBot(seat: Seat, fn: () => void): void {
+    if (this.botPendingSeats.has(seat)) return;
+    this.botPendingSeats.add(seat);
     const timer = setTimeout(() => {
       this.botTimers.delete(timer);
+      this.botPendingSeats.delete(seat);
       fn();
     }, BOT_THINK_MS);
     this.botTimers.add(timer);
   }
 
-  /** Schedule a server-issued action on the next tick, tracked for teardown. */
-  private scheduleBotImmediate(fn: () => void): void {
+  /** Schedule a server-issued action for `seat` on the next tick, tracked for teardown. Deduped per seat like scheduleBot. */
+  private scheduleBotImmediate(seat: Seat, fn: () => void): void {
+    if (this.botPendingSeats.has(seat)) return;
+    this.botPendingSeats.add(seat);
     const im = setImmediate(() => {
       this.botImmediates.delete(im);
+      this.botPendingSeats.delete(seat);
       fn();
     });
     this.botImmediates.add(im);
@@ -443,7 +463,7 @@ export class GameRoom {
         const seat = s as Seat;
         if (!this.isBotOrOffline(seat) || this.isInReconnectGrace(seat)) continue;
         if (this.state.pendingHuan[seat] != null) continue;
-        this.scheduleBot(() => this.botHuanSelect(seat));
+        this.scheduleBot(seat, () => this.botHuanSelect(seat));
       }
       return;
     }
@@ -455,7 +475,7 @@ export class GameRoom {
         const seat = s as Seat;
         if (!this.isBotOrOffline(seat) || this.isInReconnectGrace(seat)) continue;
         if (this.state.pendingVoid[seat] != null) continue;
-        this.scheduleBot(() => this.botVoidDeclare(seat));
+        this.scheduleBot(seat, () => this.botVoidDeclare(seat));
       }
       return;
     }
@@ -483,7 +503,7 @@ export class GameRoom {
 
     if (this.state.turnDrawNeeded) {
       const seat = this.state.turn;
-      this.scheduleBotImmediate(() => this.applyAndPropagate({ t: 'draw', seat }));
+      this.scheduleBotImmediate(seat, () => this.applyAndPropagate({ t: 'draw', seat }));
       return;
     }
 
@@ -521,7 +541,7 @@ export class GameRoom {
     if (!player || player.status === 'hu') return;
 
     const medium = this.slots[seat]?.difficulty === 'medium';
-    this.scheduleBot(() => {
+    this.scheduleBot(seat, () => {
       const action = medium
         ? botTurnActionMedium(this.state, seat)
         : botTurnAction(this.state, seat);
@@ -543,8 +563,9 @@ export class GameRoom {
       if (!this.isBotOrOffline(seat) || this.isInReconnectGrace(seat)) continue;
 
       const medium = this.slots[seat]?.difficulty === 'medium';
-      this.scheduleBot(() => {
-        if (this.state.pendingClaims === null || this.state.pendingClaims.passed[seat]) return;
+      this.scheduleBot(seat, () => {
+        const w = this.state.pendingClaims;
+        if (w === null || w.passed[seat] || w.claims[seat] !== null) return;
         const action = medium
           ? botClaimActionMedium(this.state, seat)
           : botClaimAction(this.state, seat);
