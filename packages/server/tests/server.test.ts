@@ -149,7 +149,11 @@ function autoPlay(ws: WebSocket, seat: Seat): Promise<void> {
       // A31 invariant, checked on every broadcast of every full-game test:
       // another seat's drawn tile must never reach this client.
       for (const ev of msg.events) {
-        if ((ev.e === 'drew' || ev.e === 'kongReplacement') && ev.seat !== seat && ev.tile !== null) {
+        if (
+          (ev.e === 'drew' || ev.e === 'kongReplacement') &&
+          ev.seat !== seat &&
+          ev.tile !== null
+        ) {
           clearTimeout(timeout);
           reject(new Error(`A31: seat ${seat} received seat ${ev.seat}'s ${ev.e} tile ${ev.tile}`));
           return;
