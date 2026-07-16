@@ -6,6 +6,7 @@ import {
   createGame,
   projectSpectatorView,
   projectView,
+  redactEventsFor,
   startNextRound,
 } from '@sichuan-mahjong/engine';
 import type {
@@ -598,8 +599,9 @@ export class GameRoom {
     }
     if (this.spectators.size > 0) {
       const view = projectSpectatorView(this.state);
+      const redacted = redactEventsFor('spectator', events);
       for (const ws of this.spectators) {
-        this.send(ws, { t: 'spectate', view, events });
+        this.send(ws, { t: 'spectate', view, events: redacted });
       }
     }
   }
@@ -611,7 +613,9 @@ export class GameRoom {
 
   private sendViewTo(seat: Seat, ws: WebSocket, events: GameEvent[]): void {
     const view = projectView(this.state, seat);
-    this.send(ws, { t: 'view', view, events });
+    // Events are shared across the broadcast; drawn tiles are only for the
+    // seat that drew them. (A31)
+    this.send(ws, { t: 'view', view, events: redactEventsFor(seat, events) });
   }
 
   private buildRoundResult(): RoundResult {

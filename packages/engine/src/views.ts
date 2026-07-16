@@ -1,4 +1,4 @@
-import type { GameAction } from './actions.js';
+import type { GameAction, GameEvent } from './actions.js';
 import { canHuConsideringFuriten, canKongOnTile, canPungOnTile } from './claims.js';
 import { isWinningHand } from './hand.js';
 import type { Meld } from './melds.js';
@@ -275,6 +275,22 @@ export function projectView(state: GameState, seat: Seat): PlayerView {
     claimDeadline: state.pendingClaims?.deadline ?? null,
     config: state.config,
   };
+}
+
+/**
+ * Redact per-viewer secrets from the event delta log. Events are produced once
+ * per action but broadcast to every seat and spectator, and `drew` /
+ * `kongReplacement` carry the drawn tile — which only the drawer may see
+ * (anyone else's client would be one dev-tools tab away from reading every
+ * opponent draw). Pass 'spectator' for spectate streams: they see no drawn
+ * tiles at all. (A31)
+ */
+export function redactEventsFor(viewer: Seat | 'spectator', events: GameEvent[]): GameEvent[] {
+  return events.map(ev =>
+    (ev.e === 'drew' || ev.e === 'kongReplacement') && ev.seat !== viewer
+      ? { ...ev, tile: null }
+      : ev,
+  );
 }
 
 export function projectSpectatorView(state: GameState): SpectatorView {

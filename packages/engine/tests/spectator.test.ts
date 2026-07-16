@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import type { GameEvent } from '../src/actions.js';
 import { createGame } from '../src/state.js';
 import type { PlayerInit } from '../src/state.js';
-import { projectSpectatorView, projectView } from '../src/views.js';
+import { projectSpectatorView, projectView, redactEventsFor } from '../src/views.js';
 
 const INITS: [PlayerInit, PlayerInit, PlayerInit, PlayerInit] = [
   { name: 'P0', isBot: false },
@@ -83,5 +84,29 @@ describe('Spectator view', () => {
       kind: 'kong',
       tile: { suit: 'man', rank: 5 },
     });
+  });
+
+  it('A31: redactEventsFor hides drawn tiles from everyone but the drawer', () => {
+    const events: GameEvent[] = [
+      { e: 'drew', seat: 1, tile: 42 },
+      { e: 'kongReplacement', seat: 2, tile: 17 },
+      { e: 'discarded', seat: 1, tile: 5 }, // public — must pass through untouched
+    ];
+
+    const forDrawer = redactEventsFor(1, events);
+    expect(forDrawer[0]).toEqual({ e: 'drew', seat: 1, tile: 42 });
+    expect(forDrawer[1]).toEqual({ e: 'kongReplacement', seat: 2, tile: null });
+    expect(forDrawer[2]).toEqual({ e: 'discarded', seat: 1, tile: 5 });
+
+    const forOther = redactEventsFor(3, events);
+    expect(forOther[0]).toEqual({ e: 'drew', seat: 1, tile: null });
+    expect(forOther[1]).toEqual({ e: 'kongReplacement', seat: 2, tile: null });
+
+    const forSpectator = redactEventsFor('spectator', events);
+    expect(forSpectator[0]).toEqual({ e: 'drew', seat: 1, tile: null });
+    expect(forSpectator[1]).toEqual({ e: 'kongReplacement', seat: 2, tile: null });
+
+    // The source array is not mutated — the engine's own events keep real ids.
+    expect(events[0]).toEqual({ e: 'drew', seat: 1, tile: 42 });
   });
 });

@@ -81,7 +81,10 @@ export type GameEvent =
   | { e: 'huanComplete' }
   | { e: 'voidDeclared'; seat: Seat; suit: Suit }
   | { e: 'voidPhaseComplete' }
-  | { e: 'drew'; seat: Seat; tile: TileId }
+  // `drew` / `kongReplacement` carry a hand-bound tile: the engine emits the
+  // real id, and redactEventsFor nulls it for every viewer except the drawer
+  // before broadcast — like PublicMeld, but for the event delta log. (A31)
+  | { e: 'drew'; seat: Seat; tile: TileId | null }
   | { e: 'discarded'; seat: Seat; tile: TileId }
   | { e: 'claimWindowOpened'; tile: TileId; from: Seat }
   | { e: 'claimWindowClosed' }
@@ -94,7 +97,7 @@ export type GameEvent =
       subtype: 'concealed' | 'promoted' | 'postponed';
       tile: TileId | null;
     }
-  | { e: 'kongReplacement'; seat: Seat; tile: TileId }
+  | { e: 'kongReplacement'; seat: Seat; tile: TileId | null }
   | { e: 'hu'; seat: Seat; record: HuRecord }
   | { e: 'huPayment'; from: Seat; to: Seat; amount: number }
   | {
