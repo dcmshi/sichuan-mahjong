@@ -78,4 +78,6 @@ reconnect/restore edge cases, mDNS/QR, and distribution — the npm package is n
 self-contained (engine inlined, client bundled) and the Bun binaries embed the
 client SPA. A third audit pass (2026-07-16, A23–A30) closed a `declareVoid`
 rule-integrity hole, added multi-viewport (phone/tablet, both orientations)
-Playwright coverage, and cleaned up bot/GC/info-leak smaller findings. No open items.
+Playwright coverage, and cleaned up bot/GC/info-leak smaller findings; a fourth
+pass (A31–A33) redacted drawn tiles from the broadcast event stream and
+hardened bot scheduling/visibility. No open items.

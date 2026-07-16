@@ -1,5 +1,35 @@
 # TODO
 
+## 🔍 Audit backlog — fourth pass (2026-07-16)
+
+Review of the third pass's changes + the areas earlier passes never read
+(client screens/hooks, server entries, release scripts, PWA assets).
+**Status: all items resolved on 2026-07-16.**
+
+- [x] **A31 · (HIGH, info leak) Drawn tiles were broadcast to every seat and
+  spectator.** The event delta log is produced once per action and sent
+  identically to all connections, and `drew` / `kongReplacement` carried the
+  actual tile id — so any client could read every opponent draw from the WS
+  payload, despite `projectView` hiding hands. `redactEventsFor()` (views.ts)
+  now nulls those tiles for everyone but the drawer; wired into `sendViewTo`
+  and the spectate broadcast. The server-test autoplay harness asserts the
+  invariant on every broadcast of every full-game test.
+- [x] **A32 · nextRound left stale bot callbacks pending.** With the A26
+  per-seat dedup, a leftover entry could suppress the new round's first
+  huan/void scheduling and stall the game (reachable only for programmatic
+  hosts calling nextRound within the 150ms bot-think window). nextRound now
+  cancels all pending bot work via the same helper teardown uses.
+- [x] **A33 · Medium bot counted opponents' concealed kong ranks.**
+  `visibleTileTypes` fed ukeire from the raw state including hidden kong
+  ranks (information a human wouldn't have — A27). It now takes the viewing
+  seat and skips concealed kongs that aren't its own.
+
+**Noted, deliberately not fixed:** the PWA offline shell (`sw.js`) is nominal —
+it caches `/` plus the dev-only `/src/main.tsx` path and never the hashed
+production assets, so an offline navigation renders a shell whose JS/CSS fail
+to load. Offline play was never a goal (the game needs a live WS anyway);
+proper asset caching would need build integration for marginal value.
+
 ## 🔍 Audit backlog — third pass (2026-07-16)
 
 Fresh full-repo audit after A1–A22. **Status: all items resolved on 2026-07-16** —
