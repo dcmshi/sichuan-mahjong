@@ -549,6 +549,13 @@ function applyHuResolution(
   const discarder = fromRobbingKong ? (robbedFrom ?? null) : (s.lastDiscard?.from ?? null);
   const actualWinTile = fromRobbingKong ? robbingTile! : s.lastDiscard!.tile;
 
+  // The won discard leaves the discarder's pond — it now lives in the winner's
+  // Hu record, same as a claimed pung/kong tile leaves for the meld (A15/A28).
+  // A robbed kong tile was never in a pond, so there's nothing to remove.
+  if (!fromRobbingKong && discarder !== null) {
+    takeClaimedDiscard(s, discarder, actualWinTile);
+  }
+
   for (const winner of winners) {
     const player = s.players[winner]!;
 

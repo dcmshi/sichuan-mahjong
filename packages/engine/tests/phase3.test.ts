@@ -495,6 +495,9 @@ describe('Phase 3 — Hu claim off discard', () => {
     expect(s.players[1]!.hu!.winningTile).toBe(tid(M(1), 0));
     expect(s.players[1]!.hu!.byDiscard).toBe(true);
     expect(s.players[1]!.hu!.discarder).toBe(0);
+    // A28: the won tile left the discarder's pond — it lives in the Hu record now,
+    // just like a punged/konged tile leaves for the meld (A15).
+    expect(s.players[0]!.discards).not.toContain(tid(M(1), 0));
   });
 
   it('multi-Hu: two players Hu on same discard', () => {
@@ -527,6 +530,8 @@ describe('Phase 3 — Hu claim off discard', () => {
     // Of seats 1 and 2, nearest to 0 is 2 (dist 2 < dist 3). So first=2, second=1.
     // Turn = CCW of second (seat 1) = seat 0.
     expect(s.turn).toBe(0);
+    // A28: the shared winning tile leaves the pond exactly once (no double-splice).
+    expect(s.players[0]!.discards).not.toContain(tid(M(1), 0));
   });
 });
 
