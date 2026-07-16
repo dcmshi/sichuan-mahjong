@@ -59,6 +59,7 @@ export type RuleViolation =
   | 'huan_tiles_not_same_suit'
   | 'huan_tiles_not_in_hand'
   | 'void_first_discard_wrong_suit'
+  | 'invalid_suit'
   | 'invalid_seat'
   | 'not_a_winning_hand'
   | 'no_claim_window'
@@ -862,6 +863,10 @@ function applyDeclareVoid(
 ): ActionResult {
   if (state.phase !== 'voidDeclare') return fail('wrong_phase');
   const { seat, suit, firstDiscard } = action;
+  // The suit arrives from an untrusted WS frame. An unknown string would be
+  // stored as voidedSuit, never match any tile, and silently exempt the player
+  // from the void-suit rule (and its penalties) for the whole round. (A23)
+  if (suit !== 'man' && suit !== 'pin' && suit !== 'sou') return fail('invalid_suit');
   if (state.pendingVoid[seat] !== null) return fail('already_submitted_void');
 
   const player = state.players[seat]!;

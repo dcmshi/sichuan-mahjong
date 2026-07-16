@@ -190,6 +190,32 @@ describe('Phase 1 — basic round (no claims, no Hu)', () => {
     expect(state.players[3]!.hand).toHaveLength(13);
   });
 
+  it('A23: rejects declareVoid with a suit that is not man/pin/sou', () => {
+    const state = createGame(
+      'a23',
+      [
+        { name: 'A', isBot: false },
+        { name: 'B', isBot: false },
+        { name: 'C', isBot: false },
+        { name: 'D', isBot: false },
+      ],
+      { enableHuanSanZhang: false },
+    );
+    // A crafted WS frame can carry any string here. Without validation the bogus
+    // suit is stored as voidedSuit, never matches any tile, and the player
+    // escapes the void-suit rule entirely (can win holding all three suits).
+    const r = applyAction(state, {
+      t: 'declareVoid',
+      seat: 0,
+      suit: 'dragon',
+      firstDiscard: null,
+    } as unknown as Parameters<typeof applyAction>[1]);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.reason).toBe('invalid_suit');
+    // State untouched: seat 0 has not submitted a void
+    expect(state.pendingVoid[0]).toBeNull();
+  });
+
   it('rejects declareVoid with a tile not in hand', () => {
     const state = createGame(
       'reject',
