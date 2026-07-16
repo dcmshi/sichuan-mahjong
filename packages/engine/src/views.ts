@@ -66,7 +66,7 @@ export type SpectatorView = {
 // Legal actions computation
 // ---------------------------------------------------------------------------
 
-function getConcealdedKongTypes(state: GameState, seat: Seat): TileType[] {
+function getConcealedKongTypes(state: GameState, seat: Seat): TileType[] {
   const player = state.players[seat]!;
   const counts = new Map<TileType, number>();
   for (const t of player.hand) {
@@ -154,7 +154,7 @@ export function computeLegalActions(state: GameState, seat: Seat): GameAction[] 
       }
     }
     if (!state.wallEndReached) {
-      for (const type of getConcealdedKongTypes(state, seat)) {
+      for (const type of getConcealedKongTypes(state, seat)) {
         if (state.drawIndex <= state.kongDrawIndex) {
           actions.push({
             t: 'declareKongOnTurn',
@@ -182,7 +182,7 @@ export function computeLegalActions(state: GameState, seat: Seat): GameAction[] 
   }
 
   if (!state.wallEndReached) {
-    for (const type of getConcealdedKongTypes(state, seat)) {
+    for (const type of getConcealedKongTypes(state, seat)) {
       if (state.drawIndex <= state.kongDrawIndex) {
         actions.push({
           t: 'declareKongOnTurn',

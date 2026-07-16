@@ -10,9 +10,10 @@ export type LobbyPlayer = {
   difficulty?: 'easy' | 'medium';
 };
 
+// (A30: an `events: GameEvent[]` field used to ride along here — it was always
+// [] and nothing read it.)
 export type RoundResult = {
   players: Array<{ seat: Seat; name: string; scoreDelta: number; hu: HuRecord | null }>;
-  events: GameEvent[];
 };
 
 export type ClientMsg =

@@ -622,7 +622,6 @@ export class GameRoom {
         scoreDelta: p.scoreDelta,
         hu: p.hu,
       })),
-      events: [],
     };
   }
 

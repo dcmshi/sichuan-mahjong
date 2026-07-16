@@ -1315,8 +1315,6 @@ function applyDeclareHuOnDraw(
     return ok(s, events);
   }
 
-  const winningTile = state.lastDrawnTile ?? player.hand[player.hand.length - 1]!;
-
   // Derive subtype
   let subtype: HuRecord['subtype'] = 'normal';
   if (state.lastDrawWasKongReplacement) {
@@ -1331,6 +1329,34 @@ function applyDeclareHuOnDraw(
     !state.anyClaimsHappened
   ) {
     subtype = 'earthly';
+  }
+
+  // lastDrawnTile is null only on the dealer's first turn, where the 14 tiles
+  // were dealt whole and no single one is "the draw". The choice matters solely
+  // for GoldenWait (winning tile must complete the pair), so score every
+  // candidate type and keep the best rather than an arbitrary tile. (A30)
+  let winningTile: TileId;
+  if (state.lastDrawnTile !== null) {
+    winningTile = state.lastDrawnTile;
+  } else {
+    winningTile = player.hand[player.hand.length - 1]!;
+    let bestValue = -1;
+    for (const type of new Set(player.hand.map(tileTypeOf))) {
+      const probe = player.hand.find(t => tileTypeOf(t) === type)!;
+      const probeScore = calcHandScore(
+        player.hand,
+        player.melds,
+        player.voidedSuit,
+        probe,
+        subtype,
+        state.config.fanCap,
+        state.config.enableHeavenlyEarthly,
+      );
+      if (probeScore.handValue > bestValue) {
+        bestValue = probeScore.handValue;
+        winningTile = probe;
+      }
+    }
   }
 
   const score = calcHandScore(

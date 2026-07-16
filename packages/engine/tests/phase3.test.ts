@@ -1635,3 +1635,45 @@ describe('Furiten override threshold (A16)', () => {
     expect(state.players[1]!.furiten?.since).toBe(5); // original entry preserved
   });
 });
+
+// ─── Dealer turn-1 Hu: winning-tile choice (A30) ─────────────────────────────
+
+describe('Phase 3 — dealer turn-1 declareHuOnDraw picks the best winning tile', () => {
+  it('grants GoldenWait when the dealt hand supports it, regardless of tile order', () => {
+    // All-pung hand where the PAIR (man1) sorts lowest: the old fallback used the
+    // highest hand tile (a man5 pung member) as the winning tile and missed
+    // GoldenWait; the fixed fallback probes every type and finds it.
+    const dealerHand = [
+      tid(M(1), 0),
+      tid(M(1), 1), // pair
+      tid(M(2), 0),
+      tid(M(2), 1),
+      tid(M(2), 2),
+      tid(M(3), 0),
+      tid(M(3), 1),
+      tid(M(3), 2),
+      tid(M(4), 0),
+      tid(M(4), 1),
+      tid(M(4), 2),
+      tid(M(5), 0),
+      tid(M(5), 1),
+      tid(M(5), 2),
+    ];
+    // fanCap 6 so the choice changes the value: with GoldenWait the hand is
+    // AllPungs(1)+GoldenWait(1)+FullFlush(2) = 4 fan → 16; without it, 3 → 8.
+    // (At the default cap of 3 both choices tie and nothing discriminates.)
+    const s = makeState({
+      hands: [dealerHand, [], [], []],
+      turn: 0,
+      firstTurnDone: [false, true, true, true],
+      config: { enableHeavenlyEarthly: false, fanCap: 6 },
+    });
+    expect(s.lastDrawnTile).toBeNull();
+
+    const after = applyOk(s, { t: 'declareHuOnDraw', seat: 0 });
+    const hu = after.players[0]!.hu!;
+    expect(hu.fans).toContain('GoldenWait');
+    expect(hu.handValue).toBe(16);
+    expect(tileTypeOf(hu.winningTile)).toBe(M(1));
+  });
+});
