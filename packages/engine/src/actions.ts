@@ -86,7 +86,14 @@ export type GameEvent =
   | { e: 'claimWindowOpened'; tile: TileId; from: Seat }
   | { e: 'claimWindowClosed' }
   | { e: 'claimed'; seat: Seat; kind: 'pung' | 'kong' | 'hu'; tile: TileId }
-  | { e: 'kongDeclared'; seat: Seat; subtype: 'concealed' | 'promoted' | 'postponed'; tile: TileId }
+  // Events are broadcast identically to all seats, so a concealed kong's tile
+  // must not ride along — it's null until the round-end views reveal it. (A27)
+  | {
+      e: 'kongDeclared';
+      seat: Seat;
+      subtype: 'concealed' | 'promoted' | 'postponed';
+      tile: TileId | null;
+    }
   | { e: 'kongReplacement'; seat: Seat; tile: TileId }
   | { e: 'hu'; seat: Seat; record: HuRecord }
   | { e: 'huPayment'; from: Seat; to: Seat; amount: number }
@@ -1140,7 +1147,7 @@ function applyDeclareKongOnTurn(
     );
 
     const events: GameEvent[] = [
-      { e: 'kongDeclared', seat, subtype: 'concealed', tile: (tileType * 4) as TileId },
+      { e: 'kongDeclared', seat, subtype: 'concealed', tile: null },
       ...payers.map(from => ({
         e: 'kongPayment' as const,
         from,

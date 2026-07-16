@@ -11,11 +11,21 @@ import { suitOf, tileFromType, tileToType, tileTypeOf } from './tiles.js';
 // Public view types
 // ---------------------------------------------------------------------------
 
+/**
+ * A meld as other players see it. A concealed kong's tile type is secret until
+ * the round ends (the meld's existence and its payments are public, its rank is
+ * not) — so in projected views it ships with `tile: null`. The owner's own view
+ * and all round-end views carry the real `Meld`. (A27)
+ */
+export type PublicMeld =
+  | Meld
+  | { kind: 'kong'; subtype: 'concealed'; tile: null; claimedFrom: null; turnDeclared: number };
+
 export type PublicPlayer = {
   seat: Seat;
   name: string;
   isBot: boolean;
-  melds: Meld[];
+  melds: PublicMeld[];
   discards: TileId[];
   firstDiscardFaceDown: boolean;
   status: 'playing' | 'hu';
@@ -198,12 +208,27 @@ export function computeLegalActions(state: GameState, seat: Seat): GameAction[] 
 // Projection
 // ---------------------------------------------------------------------------
 
-function toPublicPlayer(p: PlayerState): PublicPlayer {
+function toPublicMelds(melds: Meld[], reveal: boolean): PublicMeld[] {
+  if (reveal) return melds;
+  return melds.map(m =>
+    m.kind === 'kong' && m.subtype === 'concealed'
+      ? {
+          kind: 'kong' as const,
+          subtype: 'concealed' as const,
+          tile: null,
+          claimedFrom: null,
+          turnDeclared: m.turnDeclared,
+        }
+      : m,
+  );
+}
+
+function toPublicPlayer(p: PlayerState, revealMelds: boolean): PublicPlayer {
   return {
     seat: p.seat,
     name: p.name,
     isBot: p.isBot,
-    melds: p.melds,
+    melds: toPublicMelds(p.melds, revealMelds),
     discards: p.discards,
     firstDiscardFaceDown: p.firstDiscardFaceDown,
     status: p.status,
@@ -224,14 +249,18 @@ export function projectView(state: GameState, seat: Seat): PlayerView {
     ((seat + 1) % 4) as Seat,
   ];
 
+  // Concealed kong ranks are revealed once the round settles (they always were
+  // to their owner).
+  const reveal = state.phase === 'roundEnd';
+
   return {
     you: {
-      ...toPublicPlayer(you),
+      ...toPublicPlayer(you, true),
       hand: [...you.hand],
       voidedSuit: you.voidedSuit,
       furiten: you.furiten,
     },
-    others: otherSeats.map(s => toPublicPlayer(state.players[s]!)) as [
+    others: otherSeats.map(s => toPublicPlayer(state.players[s]!, reveal)) as [
       PublicPlayer,
       PublicPlayer,
       PublicPlayer,
@@ -249,8 +278,9 @@ export function projectView(state: GameState, seat: Seat): PlayerView {
 }
 
 export function projectSpectatorView(state: GameState): SpectatorView {
+  const reveal = state.phase === 'roundEnd';
   return {
-    players: state.players.map(toPublicPlayer) as [
+    players: state.players.map(p => toPublicPlayer(p, reveal)) as [
       PublicPlayer,
       PublicPlayer,
       PublicPlayer,

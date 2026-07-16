@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createGame } from '../src/state.js';
 import type { PlayerInit } from '../src/state.js';
-import { projectSpectatorView } from '../src/views.js';
+import { projectSpectatorView, projectView } from '../src/views.js';
 
 const INITS: [PlayerInit, PlayerInit, PlayerInit, PlayerInit] = [
   { name: 'P0', isBot: false },
@@ -38,5 +38,50 @@ describe('Spectator view', () => {
       expect(p.discards).toEqual([]);
       expect(p.melds).toEqual([]);
     }
+  });
+
+  it('A27: masks concealed kong tiles from opponents and spectators until round end', () => {
+    const g = createGame('a27', INITS, { enableHuanSanZhang: false });
+    g.phase = 'play';
+    g.players[1]!.melds.push(
+      {
+        kind: 'kong',
+        tile: { suit: 'man', rank: 5 },
+        subtype: 'concealed',
+        claimedFrom: null,
+        turnDeclared: 3,
+      },
+      { kind: 'pung', tile: { suit: 'pin', rank: 2 }, concealed: false, claimedFrom: 0 },
+    );
+
+    // Spectators: concealed kong rank hidden, exposed pung untouched.
+    const sv = projectSpectatorView(g);
+    expect(sv.players[1].melds[0]).toEqual({
+      kind: 'kong',
+      subtype: 'concealed',
+      tile: null,
+      claimedFrom: null,
+      turnDeclared: 3,
+    });
+    expect(sv.players[1].melds[1]).toMatchObject({ kind: 'pung', tile: { suit: 'pin', rank: 2 } });
+
+    // Opponents: hidden. The owner still sees their own kong.
+    const opp = projectView(g, 0).others.find(o => o.seat === 1)!;
+    expect(opp.melds[0]).toMatchObject({ kind: 'kong', tile: null });
+    expect(projectView(g, 1).you.melds[0]).toMatchObject({
+      kind: 'kong',
+      tile: { suit: 'man', rank: 5 },
+    });
+
+    // Round end reveals it everywhere.
+    g.phase = 'roundEnd';
+    expect(projectSpectatorView(g).players[1].melds[0]).toMatchObject({
+      kind: 'kong',
+      tile: { suit: 'man', rank: 5 },
+    });
+    expect(projectView(g, 0).others.find(o => o.seat === 1)!.melds[0]).toMatchObject({
+      kind: 'kong',
+      tile: { suit: 'man', rank: 5 },
+    });
   });
 });
