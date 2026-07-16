@@ -10,9 +10,14 @@ import {
   startMdns,
   stopMdns,
 } from './networking.js';
-import { flushAllRooms, restoreRoomsFromDisk } from './room.js';
+import { flushAllRooms, restoreRoomsFromDisk, sweepIdleRooms } from './room.js';
 import { createTailscaleShare } from './tailscaleShare.js';
-import { registerWsRoutes } from './ws.js';
+import { registerWsRoutes, sweepStaleLobbies } from './ws.js';
+
+// Stale-state GC (A29): abandoned lobbies die after 2h, idle rooms after 24h.
+const SWEEP_INTERVAL_MS = 10 * 60_000;
+const LOBBY_TTL_MS = 2 * 60 * 60_000;
+const ROOM_IDLE_TTL_MS = 24 * 60 * 60_000;
 
 async function buildApp(
   serverOptions: { https?: { key: string; cert: string } } = {},
@@ -114,6 +119,16 @@ export async function run(embeddedClient?: EmbeddedClient): Promise<void> {
       }
     }
   }
+
+  // Periodic stale-state sweep; unref'd so it never holds the process open. (A29)
+  setInterval(() => {
+    try {
+      sweepStaleLobbies(LOBBY_TTL_MS);
+      sweepIdleRooms(ROOM_IDLE_TTL_MS);
+    } catch (err) {
+      console.error('[sweep] error:', err);
+    }
+  }, SWEEP_INTERVAL_MS).unref();
 
   // Last-resort backstop (A2): a self-hosted game server should never let one
   // unforeseen throw in a WS handler kill every in-progress game. Log and keep

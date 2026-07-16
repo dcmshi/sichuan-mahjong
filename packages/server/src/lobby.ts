@@ -24,6 +24,7 @@ export type Lobby = {
   hostToken: string;
   slots: (LobbySlot | null)[]; // length 4, index = seat
   started: boolean;
+  createdAt: number; // for the stale-lobby sweep (A29)
 };
 
 const store = new Map<string, Lobby>();
@@ -39,9 +40,15 @@ export function createLobby(hostToken: string): Lobby {
     hostToken,
     slots: [null, null, null, null],
     started: false,
+    createdAt: Date.now(),
   };
   store.set(code, lobby);
   return lobby;
+}
+
+/** All lobbies currently in the store (for the stale-lobby sweep). */
+export function allLobbies(): Lobby[] {
+  return [...store.values()];
 }
 
 export function getLobby(code: string): Lobby | undefined {

@@ -90,6 +90,13 @@ export class GameRoom {
    */
   private botPendingSeats: Set<Seat> = new Set();
   private started = false;
+  /**
+   * Last time anything happened here (state change or a connection). A room can
+   * end up parked forever — e.g. everyone leaves and the bots play to roundEnd,
+   * or play freezes awaiting a human who never returns — so the idle sweep uses
+   * this to reclaim it. (A29)
+   */
+  private lastActivityAt = Date.now();
   /** Guards the once-per-round roundEnd persist + broadcast (reset in nextRound). (A9) */
   private roundEndBroadcast = false;
   /** Set once the match ends: the room is torn down and must accept no further work. (A11) */
@@ -215,6 +222,7 @@ export class GameRoom {
 
   connect(seat: Seat, ws: WebSocket): void {
     if (this.ended) return; // torn-down room accepts no new connections (A11)
+    this.lastActivityAt = Date.now();
     const timer = this.disconnectTimers.get(seat);
     if (timer !== undefined) {
       clearTimeout(timer);
@@ -361,9 +369,15 @@ export class GameRoom {
   // -------------------------------------------------------------------------
 
   private afterStateChange(events: GameEvent[]): void {
+    this.lastActivityAt = Date.now();
     this.broadcastViews(events);
     this.scheduleNext();
     this.schedulePersist();
+  }
+
+  /** Milliseconds since the last state change or connection (for the idle sweep). */
+  idleMs(now = Date.now()): number {
+    return now - this.lastActivityAt;
   }
 
   // -------------------------------------------------------------------------
@@ -725,4 +739,23 @@ export function restoreRoomsFromDisk(): number {
 /** Flush all live rooms to disk (called on graceful shutdown). */
 export function flushAllRooms(): void {
   for (const room of rooms.values()) room.persistNow();
+}
+
+/**
+ * Tear down rooms with no activity for `maxIdleMs` — abandoned games would
+ * otherwise sit in memory (and re-restore from live_rooms on every restart)
+ * forever. Goes through endMatch, so lingering clients get a clean `matchEnd`
+ * and tokens + the persisted snapshot are dropped. Returns the number swept. (A29)
+ */
+export function sweepIdleRooms(maxIdleMs: number, now = Date.now()): number {
+  let swept = 0;
+  for (const room of [...rooms.values()]) {
+    if (room.idleMs(now) <= maxIdleMs) continue;
+    console.log(
+      `[sweep] Ending idle room ${room.code} (idle ${Math.round(room.idleMs(now) / 60_000)}m).`,
+    );
+    room.endMatch();
+    swept++;
+  }
+  return swept;
 }

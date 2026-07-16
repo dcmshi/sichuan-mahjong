@@ -1,10 +1,10 @@
 import type { WebSocket } from '@fastify/websocket';
 import type { ClientMsg, LobbyPlayer, Seat, ServerMsg } from '@sichuan-mahjong/engine';
 import type { FastifyInstance } from 'fastify';
-import { canStart, deleteLobby, findOpenSeat, getLobby } from './lobby.js';
+import { allLobbies, canStart, deleteLobby, findOpenSeat, getLobby } from './lobby.js';
 import { type GameRoom, createRoom, getRoom } from './room.js';
 import type { RoomSlot } from './room.js';
-import { issueToken, resolveToken } from './tokens.js';
+import { issueToken, resolveToken, revokeTokensForCode } from './tokens.js';
 
 function send(ws: WebSocket, msg: ServerMsg): void {
   if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(msg));
@@ -33,6 +33,36 @@ function bindGameSocket(socket: WebSocket, room: GameRoom, seat: Seat): void {
 
 // Active lobby WS connections: code → Map<seat, WebSocket>
 const lobbyConnections = new Map<string, Map<Seat, WebSocket>>();
+
+/**
+ * Drop never-started lobbies older than `maxAgeMs` that have no connected human
+ * — without a sweep, every abandoned "Host a Game" click leaks a lobby, its
+ * tokens, and its connection map for the life of the server. Started lobbies
+ * are already consumed by startGame. Returns the number swept. (A29)
+ */
+export function sweepStaleLobbies(maxAgeMs: number, now = Date.now()): number {
+  let swept = 0;
+  for (const lobby of allLobbies()) {
+    if (lobby.started) continue;
+    if (now - lobby.createdAt <= maxAgeMs) continue;
+    if (lobby.slots.some(s => s && !s.isBot && s.connected)) continue;
+    deleteLobby(lobby.code);
+    revokeTokensForCode(lobby.code);
+    const conns = lobbyConnections.get(lobby.code);
+    if (conns) {
+      for (const [, ws] of conns) {
+        try {
+          ws.close();
+        } catch {
+          /* already closing */
+        }
+      }
+      lobbyConnections.delete(lobby.code);
+    }
+    swept++;
+  }
+  return swept;
+}
 
 function getLobbyConns(code: string): Map<Seat, WebSocket> {
   let m = lobbyConnections.get(code);
