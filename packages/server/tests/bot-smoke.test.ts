@@ -120,3 +120,57 @@ describe('bot smoke test', () => {
     }
   }, 120_000);
 });
+
+describe('medium bot defensive pung (A25)', () => {
+  /**
+   * Rig a claim window where seat 0 (medium bot) can pung man-1 discarded by
+   * seat 1. Seat 2's hand is the variable: tenpai in one case, hopeless in the
+   * other. Tile ids are hand-picked so no id appears twice (id = type*4 + copy).
+   */
+  function rigClaimState(opponentTenpai: boolean): GameState {
+    const state = createGame('a25', PLAYERS, { ...DEFAULT_CONFIG, enableHuanSanZhang: false });
+    state.phase = 'play';
+    for (const p of state.players) {
+      p.voidedSuit = 'sou';
+      p.voidCleared = true;
+      p.usedIndicator = true;
+    }
+
+    // Seat 0: two more man-1 copies (pung-eligible), no man-2/man-3 so the
+    // shouldPung chow heuristic doesn't veto, and nothing close to tenpai.
+    state.players[0]!.hand = [1, 2, 16, 17, 20, 28, 29, 32, 60, 61, 64, 68, 69];
+
+    // Seat 2: pin111 222 333 444 + single pin5 → tenpai (pair wait on pin5);
+    // or pin111 222 333 + four isolated singles → nowhere near a win.
+    state.players[2]!.hand = opponentTenpai
+      ? [36, 37, 38, 40, 41, 42, 44, 45, 46, 48, 49, 50, 52]
+      : [36, 37, 38, 40, 41, 42, 44, 45, 46, 18, 34, 52, 70];
+
+    // Seat 3: five pairs + three isolated singles — not tenpai.
+    state.players[3]!.hand = [4, 5, 8, 12, 13, 24, 25, 33, 56, 57, 62, 65, 66];
+
+    // Seat 1 discarded man-1 (id 0); claim window open on it.
+    state.players[1]!.hand = state.players[1]!.hand.slice(0, 13);
+    state.players[1]!.discards.push(0);
+    state.lastDiscard = { tile: 0, from: 1, afterKong: false };
+    state.pendingClaims = {
+      tile: 0,
+      from: 1,
+      afterKong: false,
+      deadline: Date.now() + 3000,
+      passed: [false, false, false, false],
+      claims: [null, null, null, null],
+    };
+    return state;
+  }
+
+  it('declines the pung while an opponent is tenpai', () => {
+    const action = botClaimActionMedium(rigClaimState(true), 0);
+    expect(action.t).toBe('pass');
+  });
+
+  it('takes the pung when no opponent is tenpai', () => {
+    const action = botClaimActionMedium(rigClaimState(false), 0);
+    expect(action).toEqual({ t: 'claim', seat: 0, claim: { kind: 'pung' } });
+  });
+});

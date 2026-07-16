@@ -1,5 +1,7 @@
 import {
   computeLegalActions,
+  isTenpai,
+  meldTileTypes,
   tileFromType,
   tileToType,
   tileTypeOf,
@@ -223,9 +225,22 @@ function ukeireAfterDiscard(tile: TileId, state: GameState, seat: Seat, visible:
 }
 
 /**
+ * True if any opponent of `seat` is tenpai (one tile from a win). Server-side
+ * bots see the full state, so this is a genuine look at opponents' hands —
+ * the "don't help a player who is about to win" defensive signal.
+ */
+function anyOpponentTenpai(state: GameState, seat: Seat): boolean {
+  return state.players.some(
+    p =>
+      p.seat !== seat &&
+      p.status === 'playing' &&
+      isTenpai(p.hand, p.melds, p.voidedSuit, meldTileTypes(p.melds)).length > 0,
+  );
+}
+
+/**
  * Medium bot turn action: uses ukeire to pick the discard that maximises
- * acceptance count. Defensive: if any opponent has declared Hu this round,
- * additionally penalise tiles that the winning player would want.
+ * acceptance count.
  */
 export function botTurnActionMedium(state: GameState, seat: Seat): GameAction | null {
   if (state.phase !== 'play') return null;
@@ -289,11 +304,11 @@ export function botClaimActionMedium(state: GameState, seat: Seat): GameAction {
   );
   if (kong) return kong;
 
-  // Pung only if no opponent is currently at ≤2 wall tiles from a win (simplified heuristic)
-  const anyOpponentClose = state.players.some(
-    p => p.seat !== seat && p.status === 'playing' && p.isReady,
-  );
-  if (!anyOpponentClose) {
+  // Defensive pung gate: don't pung while any opponent is tenpai — exposing a
+  // meld and advancing play mostly helps whoever is about to win. (A25: the old
+  // check read p.isReady, which is only computed during round-end settlement,
+  // so it was always false in play and this gate never fired.)
+  if (!anyOpponentTenpai(state, seat)) {
     const pung = legal.find(
       a => a.t === 'claim' && (a as { t: 'claim'; claim: { kind: string } }).claim.kind === 'pung',
     );
