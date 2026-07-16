@@ -17,7 +17,25 @@ const getPhase = (page: import('@playwright/test').Page) =>
       (window as unknown as { __e2e?: { getPhase(): string | null } }).__e2e?.getPhase() ?? null,
   );
 
-test('opening played via real UI clicks (huan tiles, void suit, discard tap)', async ({ page }) => {
+/** Fail if the page overflows horizontally — on a phone this means clipped UI. */
+async function expectNoHorizontalOverflow(page: import('@playwright/test').Page, where: string) {
+  const o = await page.evaluate(() => ({
+    scrollW: document.documentElement.scrollWidth,
+    innerW: window.innerWidth,
+  }));
+  expect(o.scrollW, `${where}: page must not scroll horizontally`).toBeLessThanOrEqual(
+    o.innerW + 1,
+  );
+}
+
+test('opening played via real UI clicks (huan tiles, void suit, discard tap)', async ({
+  page,
+}, testInfo) => {
+  // Attach a screenshot per phase so each viewport project leaves a reviewable
+  // record of how the layout renders on that device (A24).
+  const snap = async (name: string) =>
+    testInfo.attach(name, { body: await page.screenshot(), contentType: 'image/png' });
+
   await page.goto(BASE);
 
   // Practice mode auto-creates a lobby + 3 bots and starts the game.
@@ -36,6 +54,8 @@ test('opening played via real UI clicks (huan tiles, void suit, discard tap)', a
   });
   const suit = Object.keys(bySuit).find(s => (bySuit[s]?.length ?? 0) >= 3);
   expect(suit, 'hand should have ≥3 tiles of some suit').toBeTruthy();
+  await expectNoHorizontalOverflow(page, 'huan');
+  await snap('huan');
   for (const i of bySuit[suit!]!.slice(0, 3)) await handTiles.nth(i).click();
   await page.getByRole('button', { name: /Confirm Swap/i }).click();
 
@@ -56,6 +76,8 @@ test('opening played via real UI clicks (huan tiles, void suit, discard tap)', a
 
   const discardable = page.locator('ul li:not(.opacity-60)');
   await expect.poll(() => discardable.count(), { timeout: 10_000 }).toBeGreaterThan(0);
+  await expectNoHorizontalOverflow(page, 'play');
+  await snap('play');
 
   await discardable.first().click(); // select
   await expect(page.getByText('Tap again to discard')).toBeVisible({ timeout: 5_000 });

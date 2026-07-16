@@ -14,9 +14,13 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 //   2. monorepo (dev / CI / e2e): the sibling packages/client/dist.
 // The first existing candidate wins. (A6 — without the bundled copy, `npx
 // sichuan-mahjong` served an API with no UI.)
+// Monorepo path first: `tsc` never cleans dist/, so a stale dist/client left by
+// an earlier `prepack` would otherwise shadow a freshly built client in dev/e2e
+// (bit us in A24 — Playwright got a bundle without the __e2e helpers). In the
+// published package the monorepo path doesn't exist, so dist/client still wins.
 const CLIENT_DIST_CANDIDATES = [
-  path.resolve(__dirname, 'client'), // dist/client (bundled into the published package)
   path.resolve(__dirname, '../../client/dist'), // packages/client/dist (monorepo)
+  path.resolve(__dirname, 'client'), // dist/client (bundled into the published package)
 ];
 const CLIENT_DIST = CLIENT_DIST_CANDIDATES.find(existsSync) ?? CLIENT_DIST_CANDIDATES[0]!;
 

@@ -16,7 +16,35 @@ export default defineConfig({
     baseURL: 'http://localhost:8080',
     headless: true,
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  projects: [
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    // A24: the real-click spec also runs across phone/tablet viewports, both
+    // orientations — it performs genuine taps, so a layout that clips or covers
+    // a control fails the run. Device descriptors default to webkit; force the
+    // chromium engine so CI needs no extra browser installs (viewport, touch,
+    // and mobile emulation still apply). The __e2e-driven specs stay
+    // chromium-only: they bypass the UI, so extra viewports add nothing.
+    {
+      name: 'iphone-portrait',
+      use: { ...devices['iPhone 14'], browserName: 'chromium' },
+      testMatch: /ui-clicks/,
+    },
+    {
+      name: 'iphone-landscape',
+      use: { ...devices['iPhone 14 landscape'], browserName: 'chromium' },
+      testMatch: /ui-clicks/,
+    },
+    {
+      name: 'ipad-portrait',
+      use: { ...devices['iPad (gen 7)'], browserName: 'chromium' },
+      testMatch: /ui-clicks/,
+    },
+    {
+      name: 'ipad-landscape',
+      use: { ...devices['iPad (gen 7) landscape'], browserName: 'chromium' },
+      testMatch: /ui-clicks/,
+    },
+  ],
   webServer: {
     command: 'node packages/server/dist/main.js --no-mdns --no-tailscale',
     url: 'http://localhost:8080/healthz',
