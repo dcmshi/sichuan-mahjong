@@ -130,6 +130,12 @@ export class GameRoom {
       this.claimWindowTimer = null;
     }
     this.roundEndBroadcast = false; // arm the next round's once-only roundEnd persist (A9)
+    // Cancel bot callbacks left over from the old round: with the per-seat
+    // dedup (A26), a stale pending entry would otherwise suppress this round's
+    // first huan/void scheduling for that seat, stalling the game. Reachable
+    // only when nextRound lands within the 150ms bot-think window — i.e.
+    // programmatic hosts — but cheap to make airtight. (A32)
+    this.clearPendingBotWork();
     this.state = startNextRound(this.state, randomUUID());
 
     // Reconnection reclaim (§6.5): a human who reconnected after a >60s bot
@@ -181,6 +187,11 @@ export class GameRoom {
     }
     for (const timer of this.disconnectTimers.values()) clearTimeout(timer);
     this.disconnectTimers.clear();
+    this.clearPendingBotWork();
+  }
+
+  /** Cancel every pending bot/auto callback and reset the per-seat dedup. */
+  private clearPendingBotWork(): void {
     for (const timer of this.botTimers) clearTimeout(timer);
     this.botTimers.clear();
     for (const im of this.botImmediates) clearImmediate(im);
