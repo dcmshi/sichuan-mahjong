@@ -196,13 +196,19 @@ function shouldPung(state: GameState, seat: Seat): boolean {
  * removing `tile`. Returns 0 if removing the tile leaves a hand where ukeire
  * cannot be computed (e.g., wrong size).
  */
-/** Tile types visible to everyone (all discards + all exposed melds). */
-function visibleTileTypes(state: GameState): number[] {
+/**
+ * Tile types visible to `seat`: all discards, exposed melds, and the seat's own
+ * concealed kongs. Other players' concealed kong ranks are hidden information
+ * in real play (A27), so the bot must not count them either — even though it
+ * technically holds the full state. Exported for tests.
+ */
+export function visibleTileTypes(state: GameState, seat: Seat): number[] {
   const visible: number[] = [];
   for (const p of state.players) {
     for (const id of p.discards) visible.push(tileTypeOf(id));
     for (const meld of p.melds) {
       if (meld.kind === 'pung' || meld.kind === 'kong') {
+        if (meld.kind === 'kong' && meld.subtype === 'concealed' && p.seat !== seat) continue;
         const tt = tileToType(meld.tile);
         visible.push(tt, tt, tt);
         if (meld.kind === 'kong') visible.push(tt);
@@ -272,7 +278,7 @@ export function botTurnActionMedium(state: GameState, seat: Seat): GameAction | 
 
   // Pick tile that maximises ukeire after discard. The visible-tile set is the
   // same for every candidate, so compute it once instead of per-candidate.
-  const visible = visibleTileTypes(state);
+  const visible = visibleTileTypes(state, seat);
   let bestTile = candidates[0];
   let bestUke = -1;
   for (const t of candidates) {

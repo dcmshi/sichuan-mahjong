@@ -8,6 +8,7 @@ import {
   botTurnAction,
   botTurnActionMedium,
   botVoidAction,
+  visibleTileTypes,
 } from '../src/bot.js';
 
 const NUM_GAMES = 100;
@@ -172,5 +173,40 @@ describe('medium bot defensive pung (A25)', () => {
   it('takes the pung when no opponent is tenpai', () => {
     const action = botClaimActionMedium(rigClaimState(false), 0);
     expect(action).toEqual({ t: 'claim', seat: 0, claim: { kind: 'pung' } });
+  });
+});
+
+describe('bot tile visibility (A33)', () => {
+  it("excludes other players' concealed kong ranks but keeps its own", () => {
+    const state = createGame('a33', PLAYERS, { ...DEFAULT_CONFIG, enableHuanSanZhang: false });
+    // Seat 0: own concealed kong of man-1 — visible to itself.
+    state.players[0]!.melds.push({
+      kind: 'kong',
+      tile: { suit: 'man', rank: 1 },
+      subtype: 'concealed',
+      claimedFrom: null,
+      turnDeclared: 1,
+    });
+    // Seat 1: concealed kong of man-2 (hidden from seat 0) and an exposed pung
+    // of man-3 (public).
+    state.players[1]!.melds.push(
+      {
+        kind: 'kong',
+        tile: { suit: 'man', rank: 2 },
+        subtype: 'concealed',
+        claimedFrom: null,
+        turnDeclared: 2,
+      },
+      { kind: 'pung', tile: { suit: 'man', rank: 3 }, concealed: false, claimedFrom: 2 },
+    );
+
+    const forSeat0 = visibleTileTypes(state, 0);
+    expect(forSeat0.filter(t => t === 0)).toHaveLength(4); // own man-1 kong: all 4
+    expect(forSeat0.filter(t => t === 1)).toHaveLength(0); // seat 1's concealed kong: hidden
+    expect(forSeat0.filter(t => t === 2)).toHaveLength(3); // exposed pung: public
+
+    const forSeat1 = visibleTileTypes(state, 1);
+    expect(forSeat1.filter(t => t === 1)).toHaveLength(4); // own kong visible to itself
+    expect(forSeat1.filter(t => t === 0)).toHaveLength(0); // seat 0's concealed kong: hidden
   });
 });
