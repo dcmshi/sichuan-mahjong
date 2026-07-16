@@ -1,5 +1,23 @@
 # TODO
 
+## 🔍 Audit backlog — fifth pass (2026-07-16, final)
+
+Covered the last unread corners (remaining client screens/hooks, i18n, release
+scripts, PWA assets, e2e specs, configs) and re-reviewed A31–A33. **No larger
+items found** — the codebase is in good shape. One small polish item:
+
+- [x] **A34 · Client polish.** (1) The lobby's Copy button called
+  `navigator.clipboard.writeText` bare — the clipboard API doesn't exist on
+  insecure origins, so on plain LAN HTTP (the primary path) it threw and did
+  nothing; now falls back to the legacy textarea copy, also covering denied
+  permissions. (2) `manifest.webmanifest` referenced `/icon-192.png` +
+  `/icon-512.png` which were never created (PWA install icon 404'd); replaced
+  with a real `/icon.svg` (mahjong-tile motif) also wired as the favicon,
+  which was missing too. (3) ARCHITECTURE.md §6.4 now documents the A27/A31
+  per-viewer redaction of views + events. (iOS home-screen icons want a PNG
+  `apple-touch-icon`; left as a nice-to-have alongside the nominal-offline
+  sw.js note below.)
+
 ## 🔍 Audit backlog — fourth pass (2026-07-16)
 
 Review of the third pass's changes + the areas earlier passes never read

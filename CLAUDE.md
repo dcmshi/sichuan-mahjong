@@ -80,4 +80,5 @@ client SPA. A third audit pass (2026-07-16, A23–A30) closed a `declareVoid`
 rule-integrity hole, added multi-viewport (phone/tablet, both orientations)
 Playwright coverage, and cleaned up bot/GC/info-leak smaller findings; a fourth
 pass (A31–A33) redacted drawn tiles from the broadcast event stream and
-hardened bot scheduling/visibility. No open items.
+hardened bot scheduling/visibility; a final fifth pass (A34) found no larger
+items and fixed LAN clipboard copy + the missing PWA icon/favicon. No open items.

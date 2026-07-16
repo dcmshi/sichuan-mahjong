@@ -584,6 +584,8 @@ export type ServerMsg =
 
 Server pushes `view` to each player after every state-changing action (filtered through `projectView`). `events` is a delta log so the client can animate ("seat 2 claimed pung", "kong on 3-pin from seat 1").
 
+Both halves are per-viewer redacted before send: melds project as `PublicMeld` (a concealed kong's tile is `null` for everyone but its owner until round end — A27), and `redactEventsFor` nulls the tile on `drew`/`kongReplacement` events for everyone but the drawer; spectators never see drawn tiles (A31).
+
 ### 6.5 Reconnection
 
 - Player tokens stored in `Map<token, {code, seat}>` (in-memory).
