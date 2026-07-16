@@ -1,5 +1,62 @@
 # TODO
 
+## 🔍 Audit backlog — third pass (2026-07-16)
+
+Fresh full-repo audit after A1–A22. **Status: all items resolved on 2026-07-16** —
+lint clean, typecheck clean, all unit/integration tests + Playwright e2e (now 5
+viewport projects) green.
+
+- [x] **A23 · (HIGH, rule integrity) `declareVoid` accepted any `suit` string.**
+  With `firstDiscard: null`, a crafted frame like `suit: 'dragon'` was stored as
+  `voidedSuit`, never matched any tile, and exempted the player from the entire
+  void-suit rule (could win holding all three suits, skipped forced discards,
+  gained Heavenly/Earthly eligibility, dodged all void penalties). Same threat
+  class as A4. Fixed with a `man|pin|sou` guard in `applyDeclareVoid`
+  (`invalid_suit` violation) + regression test in phase1.test.ts.
+- [x] **A24 · Viewport e2e coverage.** Playwright ran Desktop Chrome only; the
+  mobile-first UI had no phone/tablet/orientation testing at all. Added 4
+  projects (iPhone 14 portrait/landscape, iPad gen-7 portrait/landscape, all on
+  the chromium engine so CI needs no new browsers) scoped to the real-click
+  `ui-clicks` spec, plus a no-horizontal-overflow assertion and per-viewport
+  screenshot attachments. All pass — the layout scrolls (not clips) on short
+  viewports. Bonus fix: a stale `packages/server/dist/client` left by `prepack`
+  shadowed freshly built clients in dev/e2e (http.ts candidates now prefer the
+  monorepo path, which never exists in the published package).
+- [x] **A25 · Medium bot's defensive pung check was dead code.** It read
+  `p.isReady`, which is only computed during round-end settlement — always false
+  in play, so the gate never fired and medium punged exactly like easy. Now does
+  a live `isTenpai` scan of opponents; deterministic tests in bot-smoke.test.ts.
+- [x] **A26 · Bot scheduling double-fired per seat.** `scheduleNext` queued a new
+  decision for every pending seat on every state change/reconnect; the extras
+  fired against moved-on state and got rejected, flooding the "a rejection is
+  unexpected" log. Added per-seat dedup (`botPendingSeats`) for both
+  `scheduleBot` and `scheduleBotImmediate`; also stopped the server-test
+  autoplay harness re-sending huan/void on every broadcast. Server tests now log
+  zero rejections (previously dozens).
+- [x] **A27 · Concealed kong tile type leaked to all seats.** Views shipped the
+  full meld and the `kongDeclared` event carried the tile — one dev-tools tab
+  from revealing a secret. Views now send `PublicMeld` (`tile: null` for others'
+  concealed kongs until roundEnd; owner always sees theirs), and the concealed
+  `kongDeclared` event carries `tile: null`. Client `MeldDisplay` already drew
+  backs, so no visual change. Tests in spectator.test.ts.
+- [x] **A28 · Hu'd discard stayed in the discarder's pond.** Pung/kong claims
+  remove the claimed tile (A15) but Hu didn't — the winning tile rendered in the
+  pond *and* in the Hu record, and inflated bots' visible-tile counts.
+  `applyHuResolution` now takes it (once, robbing-kong excepted — that tile was
+  never in a pond). Assertions added to the phase3 Hu tests.
+- [x] **A29 · Abandoned lobbies/rooms were never GC'd.** Every abandoned "Host a
+  Game" leaked a lobby + tokens forever; rooms whose humans all left played out
+  and then sat in memory (re-restoring from `live_rooms` on every restart).
+  Added `sweepStaleLobbies` (2h TTL, spares connected humans) and
+  `sweepIdleRooms` (24h idle → clean `endMatch`), on a 10-min unref'd interval
+  in server.ts. Tests in gc.test.ts.
+- [x] **A30 · Small cleanups.** Renamed `getConcealdedKongTypes` typo; removed
+  the always-empty `RoundResult.events` field; dealer-turn-1 `declareHuOnDraw`
+  now picks the best-scoring winning tile instead of an arbitrary one (was: the
+  highest tile, which could miss GoldenWait when Heavenly/Earthly is disabled —
+  test in phase3.test.ts); added client store unit tests (matchScores
+  accumulation, joined/matchEnd transitions).
+
 ## 🔍 Audit backlog (2026-07-11)
 
 Full-repo audit (engine, server, client, cross-cutting). All items below were
