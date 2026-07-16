@@ -85,6 +85,26 @@ export function HostSetup() {
 
   const shareUrl = `${window.location.origin}/j/${code}`;
 
+  function copyShareUrl() {
+    // navigator.clipboard only exists in secure contexts — on plain LAN HTTP
+    // (this app's primary path) it's undefined, so the old bare writeText call
+    // threw and the button silently did nothing. Legacy fallback covers HTTP
+    // and any denied-permission rejection. (A34)
+    const legacyCopy = () => {
+      const ta = document.createElement('textarea');
+      ta.value = shareUrl;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      ta.remove();
+    };
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(shareUrl).catch(legacyCopy);
+    } else {
+      legacyCopy();
+    }
+  }
+
   return (
     <div className="min-h-screen bg-green-900 flex flex-col p-4 text-white gap-4">
       <div className="flex items-center gap-3 mt-2">
@@ -98,7 +118,7 @@ export function HostSetup() {
         <button
           type="button"
           className="mt-1 text-xs text-green-400 underline"
-          onClick={() => void navigator.clipboard.writeText(shareUrl)}
+          onClick={copyShareUrl}
         >
           {t('host.copy')}
         </button>

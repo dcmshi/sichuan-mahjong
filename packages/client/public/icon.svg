@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- App icon: a mahjong tile (red-dot back motif) on the board-felt green. -->
+  <rect width="512" height="512" rx="96" fill="#14532d"/>
+  <rect x="106" y="76" width="300" height="360" rx="44" fill="#fdfaf3"/>
+  <rect x="106" y="76" width="300" height="360" rx="44" fill="none" stroke="#d9cfc0" stroke-width="10"/>
+  <circle cx="256" cy="256" r="86" fill="#b91c1c"/>
+  <circle cx="256" cy="256" r="34" fill="#fdfaf3"/>
+</svg>
