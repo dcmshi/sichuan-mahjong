@@ -54,8 +54,10 @@ function SeatRow({ view, seat }: { view: SpectatorView; seat: number }) {
         ))}
       </div>
 
-      {p.discards.length > 0 && (
+      {(p.discards.length > 0 || p.pendingFirstDiscard) && (
         <div className="flex flex-wrap gap-0.5 discard-tray">
+          {/* Face down until its owner flips it on their first turn (A37) */}
+          {p.pendingFirstDiscard && <TileBack size="sm" />}
           {p.discards.map(id => (
             <Tile key={id} id={id} size="sm" lastDiscard={id === lastFromHere} />
           ))}

@@ -60,7 +60,7 @@ function makeState(opts: {
       hand: opts.hands?.[i] ?? [],
       melds: opts.melds?.[i] ?? [],
       discards: opts.discards?.[i] ?? [],
-      firstDiscardFaceDown: false,
+      pendingFirstDiscard: null,
       voidedSuit: vs as 'man' | 'pin' | 'sou',
       usedIndicator: false,
       voidCleared: true,

@@ -55,7 +55,7 @@ function makeState(opts: {
       hand: opts.hands?.[i] ?? [],
       melds: opts.melds?.[i] ?? [],
       discards: [],
-      firstDiscardFaceDown: false,
+      pendingFirstDiscard: null,
       voidedSuit: 'sou' as const, // sou is voided for all players
       usedIndicator: false,
       voidCleared: true,
@@ -1374,7 +1374,14 @@ describe('Phase 3 — full game with claims', () => {
         }
       }
 
-      // Discard: void tiles first, then first tile
+      // Discard: the pending face-down tile is the mandatory first discard (A35),
+      // otherwise void tiles first, then the first tile.
+      if (currentPlayer.pendingFirstDiscard !== null) {
+        const flip = applyAction(state, { t: 'flipFirstDiscard', seat });
+        if (!flip.ok) throw new Error(`flipFirstDiscard: ${flip.reason}`);
+        state = flip.state;
+        continue;
+      }
       const voidTiles = currentPlayer.hand.filter(t => suitOf(t) === currentPlayer.voidedSuit);
       const tile = voidTiles.length > 0 ? voidTiles[0]! : currentPlayer.hand[0]!;
       const disc = applyAction(state, { t: 'discard', seat, tile });

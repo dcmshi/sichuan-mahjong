@@ -78,7 +78,15 @@ export type PlayerState = {
   hand: TileId[];
   melds: Meld[];
   discards: TileId[];
-  firstDiscardFaceDown: boolean;
+  /**
+   * The void-suit tile separated from the hand at declaration and laid face down
+   * in the center — "the same tile is the first mandatory discard of the player"
+   * (PDF, Lesson 4). It has already left `hand` but is not yet in `discards`: on
+   * the player's first turn they draw as usual and flip *this* tile instead of
+   * discarding from hand, which is what keeps them at 13 standing tiles. Null
+   * once flipped, and for indicator users who never separated one. (A35/A37)
+   */
+  pendingFirstDiscard: TileId | null;
   voidedSuit: Suit | null;
   usedIndicator: boolean;
   voidCleared: boolean;
@@ -140,7 +148,7 @@ function makePlayer(seat: Seat, name: string, isBot: boolean): PlayerState {
     hand: [],
     melds: [],
     discards: [],
-    firstDiscardFaceDown: false,
+    pendingFirstDiscard: null,
     voidedSuit: null,
     usedIndicator: false,
     voidCleared: false,

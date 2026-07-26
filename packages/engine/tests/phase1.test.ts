@@ -64,13 +64,19 @@ function runToWallEnd(seed: string, voidDiscardRule: 'strict' | 'lenient'): Game
       if (state.phase !== 'play') break; // wall exhausted on draw
     }
 
-    // Discard: pick a void-suit tile first (for clearing), then any tile
+    // Discard. The face-down void tile separated at declaration *is* this
+    // player's first discard — flip it rather than spending a hand tile. (A35)
     const currentPlayer = state.players[seat]!;
-    const voidTiles = currentPlayer.hand.filter(t => suitOf(t) === currentPlayer.voidedSuit);
-    const tile = voidTiles.length > 0 ? voidTiles[0]! : currentPlayer.hand[0]!;
-
-    const disc = applyAction(state, { t: 'discard', seat, tile });
-    if (!disc.ok) throw new Error(`discard seat ${seat} failed: ${disc.reason} (tile ${tile})`);
+    let disc: ReturnType<typeof applyAction>;
+    if (currentPlayer.pendingFirstDiscard !== null) {
+      disc = applyAction(state, { t: 'flipFirstDiscard', seat });
+      if (!disc.ok) throw new Error(`flip seat ${seat} failed: ${disc.reason}`);
+    } else {
+      const voidTiles = currentPlayer.hand.filter(t => suitOf(t) === currentPlayer.voidedSuit);
+      const tile = voidTiles.length > 0 ? voidTiles[0]! : currentPlayer.hand[0]!;
+      disc = applyAction(state, { t: 'discard', seat, tile });
+      if (!disc.ok) throw new Error(`discard seat ${seat} failed: ${disc.reason} (tile ${tile})`);
+    }
     state = disc.state;
     if (state.phase !== 'play') break;
 

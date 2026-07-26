@@ -169,7 +169,7 @@ export type PlayerState = {
   hand: TileId[];                   // private, sorted by (suit, rank, id)
   melds: Meld[];                    // public
   discards: TileId[];               // public
-  firstDiscardFaceDown: boolean;    // UI hint for the void-declaration first discard
+  pendingFirstDiscard: TileId | null; // separated void tile, face down until flipped (§5.4)
   voidedSuit: Suit | null;
   usedIndicator: boolean;           // true if had no void-suit tiles at declaration time
   voidCleared: boolean;             // true once all void-suit tiles discarded
@@ -245,6 +245,7 @@ export type GameAction =
   | { t: 'declareVoid';       seat: Seat; suit: Suit; firstDiscard: TileId | null }
   | { t: 'draw';              seat: Seat }                                 // server-issued at turn start
   | { t: 'discard';           seat: Seat; tile: TileId }
+  | { t: 'flipFirstDiscard';  seat: Seat }                                 // the mandatory first discard (§5.4)
   | { t: 'claim';             seat: Seat; claim: ClaimDecision }
   | { t: 'pass';              seat: Seat }
   | { t: 'declareKongOnTurn'; seat: Seat; tile: Tile; subtype: 'concealed' | 'promoted' | 'postponed' }
@@ -269,8 +270,20 @@ The Hu subtype (`heavenly | earthly | winAfterKong | shootAfterKong | underTheSe
 ### 4.5 Views
 
 ```ts
+export type PublicPlayer = {                    // what every seat may see about a player
+  seat: Seat; name: string; isBot: boolean;
+  melds: PublicMeld[];                          // concealed kong tile null'd until roundEnd (A27)
+  discards: TileId[];
+  pendingFirstDiscard: boolean;                 // owes the §5.4 flip — the tile itself stays secret
+  status: 'playing' | 'hu'; hu: HuRecord | null;
+  isReady: boolean; scoreDelta: number; handCount: number;
+};
+
 export type PlayerView = {
-  you: PublicPlayer & { hand: TileId[]; voidedSuit: Suit | null; furiten: PlayerState['furiten'] };
+  you: PublicPlayer & {
+    hand: TileId[]; voidedSuit: Suit | null; furiten: PlayerState['furiten'];
+    pendingFirstDiscardTile: TileId | null;     // your own face-down tile — you chose it
+  };
   others: [PublicPlayer, PublicPlayer, PublicPlayer]; // counter-clockwise from you
   wallRemaining: number;
   phase: Phase;
@@ -314,11 +327,41 @@ Each player simultaneously commits:
 - A voided suit (`man | pin | sou`).
 - Their first-discard tile of that suit, OR `null` if their hand contains no tiles of that suit (in which case they "use the indicator").
 
+`firstDiscard === null` is only legal when the hand genuinely holds no tile of that
+suit — otherwise the frame is rejected with `void_indicator_not_allowed`, since
+"using the indicator" while holding the suit would keep a tile that should have
+been separated and falsely grant Heavenly/Earthly eligibility (A36).
+
 Server reveals all four atomically. For each player:
-- If `firstDiscard !== null`: tile is removed from hand, appended to discards with `firstDiscardFaceDown = true` and discard marked non-claimable. Hand size: 13 (East ends void phase with 13 too).
+- If `firstDiscard !== null`: the tile leaves `hand` and is parked in
+  `pendingFirstDiscard` — face down in the center, **not** in `discards`. Hand
+  size: 12 (13 for East).
 - If `firstDiscard === null`: `usedIndicator = true`. Hand size unchanged (14 for East, 13 for others).
 
 Phase transitions to `play`.
+
+**The separated tile is the player's first discard** (PDF Lesson 4: "the same tile
+is the first mandatory discard of the player"). It is *not* a free extra discard:
+on that player's first turn they draw as usual and flip this tile via
+`flipFirstDiscard` **instead of** discarding from hand — "grab the first tile off
+the wall with one hand and flip the tile in the center of the table with the
+other". So the standing count is the standard 13 from turn 1 onward, and 14 at
+each subsequent draw, which is what `isWinningHand` requires. Consequences:
+
+- Until they flip, `discard` is rejected with `must_flip_first_discard`, and
+  `yourLegalActions` offers `flipFirstDiscard` in place of every discard option.
+  A concealed/promoted kong is still available first (14 → 11 standing, per the PDF).
+- A player who still owes the flip holds one tile fewer than a win needs, so they
+  cannot Hu before their first turn — correct, since the tile they still owe is a
+  void-suit tile that could never appear in a winning hand.
+- The flipped tile opens a normal claim window like any other discard.
+- Until the flip, views ship only `pendingFirstDiscard: boolean` to others (the
+  owner gets the id in `you.pendingFirstDiscardTile`), and clients draw a tile
+  back — same per-viewer redaction as §6.4 (A37).
+
+Before A35 the engine charged the separation *and* a normal turn-1 hand discard,
+pinning every player who separated a tile permanently one tile below the 14 a win
+needs — only indicator users could ever Hu.
 
 ### 5.5 Phase: Play
 
@@ -330,9 +373,9 @@ Per the PDF (Lesson 4, "The initial East's turn"), East has exactly three option
 
 1. **Declare Heavenly Hand** via `declareHeavenly` (only when `enableHeavenlyEarthly` AND `usedIndicator === true` AND `isWinningHand(east.hand, [], east.voidedSuit)` returns truthy). Engine emits Hu with subtype `heavenly`.
 2. **Declare a concealed kong** via `declareKongOnTurn` with `subtype: 'concealed'`. After laying out and taking the kong-replacement tile, East faces the same three choices again with 11 standing tiles + 1 fresh tile (so back to 13, then 14, etc., looping until a discard or Hu).
-3. **Discard.**
+3. **Discard** — which for an East who separated a tile means `flipFirstDiscard`, not a hand discard (§5.4).
 
-If East had void-suit tiles at deal time (`usedIndicator === false`), Heavenly Hand is unavailable since the void-declaration discard already broke East's 14-tile starting hand.
+If East had void-suit tiles at deal time (`usedIndicator === false`), Heavenly Hand is unavailable since the separated tile already broke East's 14-tile starting hand.
 
 #### 5.5.2 All other turns
 
@@ -364,7 +407,7 @@ Window duration = `config.claimWindowMs` (default 3000ms, per PDF). Closes early
 Resolution priority: **Hu > Kong > Pung**.
 - Multiple Hu claims on the same discard: all honored (see §5.6).
 - Pung tiebreak: nearest counter-clockwise from discarder wins.
-- A claim against a non-claimable discard (face-down first discard): rejected.
+- The flipped first discard (§5.4) opens a normal claim window — it is a discard like any other.
 
 #### 5.5.5 Skip-Hu / furiten-like rule
 
@@ -584,7 +627,9 @@ export type ServerMsg =
 
 Server pushes `view` to each player after every state-changing action (filtered through `projectView`). `events` is a delta log so the client can animate ("seat 2 claimed pung", "kong on 3-pin from seat 1").
 
-Both halves are per-viewer redacted before send: melds project as `PublicMeld` (a concealed kong's tile is `null` for everyone but its owner until round end — A27), and `redactEventsFor` nulls the tile on `drew`/`kongReplacement` events for everyone but the drawer; spectators never see drawn tiles (A31).
+Both halves are per-viewer redacted before send: melds project as `PublicMeld` (a concealed kong's tile is `null` for everyone but its owner until round end — A27), the unflipped first discard projects as a bare `pendingFirstDiscard: boolean` (its owner alone gets the id, in `you.pendingFirstDiscardTile` — A37), and `redactEventsFor` nulls the tile on `drew`/`kongReplacement` events for everyone but the drawer; spectators never see drawn tiles (A31).
+
+`RoundResult` carries a `roundIndex`. A client that reconnects at round end is handed that round's result again (§6.5), so anything cumulative — the client's match-score totals — must be keyed on it rather than incremented on arrival (A39).
 
 ### 6.5 Reconnection
 
@@ -603,6 +648,7 @@ Heuristic, server-side. Each bot subscribes to its own `PlayerView` and emits `G
 
 - **Huan selection:** pick 3 tiles of the suit with fewest tiles (overlaps with intended void suit).
 - **Void declaration:** pick suit with fewest tiles. `firstDiscard` = first tile of that suit if any; otherwise indicator.
+- **First turn after separating a tile:** take `flipFirstDiscard` — it's ahead of discard selection, since no hand tile is discardable until the flip (§5.4).
 - **Discard while void-uncleared (strict mode):** random void-suit tile.
 - **Discard while void-uncleared (lenient mode):** same — easy bot doesn't risk the 48-point penalty.
 - **Discard otherwise:** drop most-isolated tile (no neighbors in suit, not in pair, not in near-pung). Tiebreak: lower rank, terminals first.
@@ -640,7 +686,8 @@ Mobile-first. Portrait phone is the design target; tablets and desktop scale up 
    - **Top-right:** running score deltas per player.
    - **Top-left:** round phase indicator (huan / void / playing).
    - **Furiten badge:** visible to your own seat if you're in furiten state (skip-Hu locked until next self-draw). Tooltip explains the rule.
-6. **Round end** — score breakdown table, hand reveals (face-down voids revealed), penalty annotations (false Hu / void-at-end / kong refund), "Next round" button.
+   - **First-discard flip panel:** on your first turn, if you separated a tile at void declaration (§5.4), the hand is not discardable and this panel shows that tile plus a "Flip your first discard" button — the one discard you don't get to choose. Opponents' unflipped tiles render as a tile back at the head of their pond.
+6. **Round end** — score breakdown table, hand reveals, penalty annotations (false Hu / void-at-end / kong refund), "Next round" button.
 
 ### 8.2 Tile rendering
 
@@ -772,17 +819,20 @@ After step 4, every future game uses the same URL — no per-session re-sharing.
   - Furiten state: a furiten player's `yourLegalActions` contains a discard-Hu action *iff* the candidate hand's `totalFan` strictly exceeds `minFanToOverride` (the greater-value override of §5.5.5).
   - Compatibility table: for any winning hand and Hu subtype, `calcHandScore` never produces a result containing two mutually-incompatible fans per the matrix (`phase4.test.ts`).
 - **Replay tests:** canned action logs from real games → expected end states. Include at least one game per fan combination from §5.8.
+- **Standing-tile rhythm** (`first-discard.test.ts`): across a sample of full rounds, every player who separated a face-down tile must reach the `14 − 3·melds` tiles a win needs, wins must actually occur for them, and wall-end readiness must be computable. Synthetic-state tests can't catch this class of bug — they build a correctly-sized hand by construction, which is exactly how A35 survived five audit passes.
 
 ### 11.2 Server
 
 - Integration tests with fake WebSocket clients.
-- **Bot-vs-bot smoke:** 100 full games with 4 easy bots. Assert no crashes, no rule violations rejected mid-game, average ≥1 hu per game, payment-matrix balance invariant holds for every game.
+- **Bot-vs-bot smoke:** 100 full games with 4 easy bots (plus 30 with medium bots). Assert no crashes, no rule violations rejected mid-game, payment-matrix balance for every game, exposed pungs actually form (A13), and — crucially — that wins come from players who separated a face-down first discard, not only from the rare indicator user. A bare "some Hu happened" assertion is what let A35 hide behind indicator users through five audit passes.
 - Tailscale detection mock tests (unit-level): given mocked `tailscale status --json` outputs, verify URL generation.
 
 ### 11.3 E2E
 
-- Playwright test: `e2e/game.spec.ts` — host + 3 bots, full round to round-end screen, replay 404, healthz.
-- Game loop polls phase from Zustand store (not DOM) to avoid Framer Motion 12 pointer-event interception timing issues.
+- `e2e/game.spec.ts` — host + 3 bots, full round to round-end screen, replay 404, healthz.
+- `e2e/match.spec.ts` — two-round match with running totals, then "End match".
+- `e2e/ui-clicks.spec.ts` — the same opening driven entirely by **real clicks** (huan tile taps, void suit button, first-discard flip, tap-to-select/tap-to-discard), which is the only spec that exercises the interaction layer. Runs on 5 viewport projects (desktop, iPhone 14 portrait/landscape, iPad portrait/landscape), each asserting no horizontal overflow and attaching a screenshot.
+- The other specs poll phase from the Zustand store via `window.__e2e` (not the DOM) to avoid Framer Motion 12 pointer-event interception timing issues.
 
 ### 11.4 Packaging
 

@@ -90,6 +90,12 @@ describe('bot smoke test', () => {
   it(`runs ${NUM_GAMES} full bot-vs-bot games without rule violations or balance errors`, () => {
     let totalHus = 0;
     let totalExposedPungs = 0;
+    // Wins by players who separated a face-down first discard (i.e. everyone but
+    // the rare indicator user). Before A35 this was structurally zero: the void
+    // phase took their tile *and* charged them a normal turn-1 discard, pinning
+    // them a tile below the 14 a win needs — and the old `totalHus > 0` assertion
+    // sailed through on indicator users alone.
+    let separatedHus = 0;
 
     for (let g = 0; g < NUM_GAMES; g++) {
       const seed = `smoke-game-${g}`;
@@ -100,6 +106,7 @@ describe('bot smoke test', () => {
       expect(totalDelta + state.penaltyPot, `Game ${g} (${seed}): payment balance`).toBe(0);
 
       totalHus += state.players.filter(p => p.status === 'hu').length;
+      separatedHus += state.players.filter(p => p.status === 'hu' && !p.usedIndicator).length;
       totalExposedPungs += state.players.reduce(
         (n, p) => n + p.melds.filter(m => m.kind === 'pung' && !m.concealed).length,
         0,
@@ -108,6 +115,8 @@ describe('bot smoke test', () => {
 
     // At least some Hus across 100 games (highly likely)
     expect(totalHus).toBeGreaterThan(0);
+    // …and they must not all come from indicator users. (A35)
+    expect(separatedHus).toBeGreaterThan(0);
     // Bots must actually pung now — before A13 the heuristic always returned false,
     // so no exposed pungs ever formed.
     expect(totalExposedPungs).toBeGreaterThan(0);

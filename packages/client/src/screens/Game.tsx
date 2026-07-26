@@ -218,8 +218,10 @@ function OpponentTop({ view, relSeat }: { view: PlayerView; relSeat: 0 | 1 | 2 }
           ))}
         </div>
       )}
-      {opp.discards.length > 0 && (
+      {(opp.discards.length > 0 || opp.pendingFirstDiscard) && (
         <div className="flex flex-wrap gap-0.5 max-w-full discard-tray">
+          {/* Their void tile is face down until they flip it on their first turn (A37) */}
+          {opp.pendingFirstDiscard && <TileBack size="sm" />}
           {opp.discards.slice(-8).map(id => (
             <Tile key={id} id={id} size="sm" lastDiscard={id === lastDiscardTile} />
           ))}
@@ -256,8 +258,9 @@ function OpponentSide({
           <TileBack key={i} size="sm" />
         ))}
       </div>
-      {opp.discards.length > 0 && (
+      {(opp.discards.length > 0 || opp.pendingFirstDiscard) && (
         <div className="flex flex-wrap gap-0.5 discard-tray">
+          {opp.pendingFirstDiscard && <TileBack size="sm" />}
           {opp.discards.slice(-6).map(id => (
             <Tile key={id} id={id} size="sm" lastDiscard={id === lastDiscardTile} />
           ))}
@@ -369,6 +372,10 @@ function PlayPhase({ view }: { view: PlayerView }) {
 
   const isMyTurn = view.turn === seat && view.phase === 'play' && view.claimDeadline === null;
   const canDiscard = isMyTurn && view.yourLegalActions.some(a => a.t === 'discard');
+  // The tile set aside at void declaration is the mandatory first discard: on this
+  // turn it's flipped instead of discarding from hand. (A35)
+  const canFlip = isMyTurn && view.yourLegalActions.some(a => a.t === 'flipFirstDiscard');
+  const pendingFlipTile = view.you.pendingFirstDiscardTile;
   const canHu = view.yourLegalActions.some(a => a.t === 'declareHuOnDraw');
   const canHeavenly = view.yourLegalActions.some(a => a.t === 'declareHeavenly');
   const inClaimWindow = view.claimDeadline !== null;
@@ -384,6 +391,11 @@ function PlayPhase({ view }: { view: PlayerView }) {
     } else {
       setSelectedTile(id);
     }
+  }
+
+  function flipFirstDiscard() {
+    play('discard');
+    sendAction({ t: 'action', action: { t: 'flipFirstDiscard', seat } });
   }
 
   function declareHu() {
@@ -567,6 +579,24 @@ function PlayPhase({ view }: { view: PlayerView }) {
       {isMyTurn && !inClaimWindow && (
         <div className="px-3 py-1">
           <KongButtons view={view} seat={seat} />
+        </div>
+      )}
+
+      {/* First-discard flip — the one discard the player doesn't get to choose (A35) */}
+      {canFlip && !inClaimWindow && (
+        <div className="mx-3 my-1 p-2 rounded-xl bg-black/30 flex items-center gap-3">
+          {pendingFlipTile !== null && <Tile id={pendingFlipTile} size="md" interactive={false} />}
+          <div className="flex-1 min-w-0">
+            <p className="text-[11px] text-green-300 leading-snug">{t('play.flipHint')}</p>
+          </div>
+          <motion.button
+            type="button"
+            whileTap={{ scale: 0.95 }}
+            className="px-3 py-2.5 bg-amber-500 hover:bg-amber-400 rounded-xl font-bold text-black text-sm flex-shrink-0"
+            onClick={flipFirstDiscard}
+          >
+            {t('play.flipFirstDiscard')}
+          </motion.button>
         </div>
       )}
 

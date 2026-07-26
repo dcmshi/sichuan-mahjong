@@ -27,7 +27,12 @@ export type PublicPlayer = {
   isBot: boolean;
   melds: PublicMeld[];
   discards: TileId[];
-  firstDiscardFaceDown: boolean;
+  /**
+   * True while this player still owes their first-discard flip. Only the fact is
+   * public — the tile itself is face down on the table, and stays out of
+   * `discards` until flipped. Its owner gets the id in `you`. (A37)
+   */
+  pendingFirstDiscard: boolean;
   status: 'playing' | 'hu';
   hu: HuRecord | null;
   isReady: boolean;
@@ -40,6 +45,8 @@ export type PlayerView = {
     hand: TileId[];
     voidedSuit: Suit | null;
     furiten: PlayerState['furiten'];
+    /** Your own face-down first discard — you chose it, so you may see it. (A37) */
+    pendingFirstDiscardTile: TileId | null;
   };
   others: [PublicPlayer, PublicPlayer, PublicPlayer];
   wallRemaining: number;
@@ -99,12 +106,19 @@ function getPromotedPostponedKongActions(state: GameState, seat: Seat): GameActi
   return result;
 }
 
-function getDiscardOptions(state: GameState, seat: Seat): TileId[] {
+/**
+ * The discard (or flip) actions available to `seat` right now. A player who still
+ * owes their face-down first discard has exactly one option — flip it; the hand
+ * is off limits until then. (A35)
+ */
+function getDiscardActions(state: GameState, seat: Seat): GameAction[] {
   const player = state.players[seat]!;
-  if (state.config.voidDiscardRule === 'strict' && !player.voidCleared) {
-    return player.hand.filter(t => suitOf(t) === player.voidedSuit);
-  }
-  return [...player.hand];
+  if (player.pendingFirstDiscard !== null) return [{ t: 'flipFirstDiscard', seat }];
+  const tiles =
+    state.config.voidDiscardRule === 'strict' && !player.voidCleared
+      ? player.hand.filter(t => suitOf(t) === player.voidedSuit)
+      : player.hand;
+  return tiles.map(tile => ({ t: 'discard', seat, tile }));
 }
 
 export function computeLegalActions(state: GameState, seat: Seat): GameAction[] {
@@ -165,9 +179,7 @@ export function computeLegalActions(state: GameState, seat: Seat): GameAction[] 
         }
       }
     }
-    for (const tile of getDiscardOptions(state, seat)) {
-      actions.push({ t: 'discard', seat, tile });
-    }
+    actions.push(...getDiscardActions(state, seat));
     return actions;
   }
 
@@ -197,9 +209,7 @@ export function computeLegalActions(state: GameState, seat: Seat): GameAction[] 
     }
   }
 
-  for (const tile of getDiscardOptions(state, seat)) {
-    actions.push({ t: 'discard', seat, tile });
-  }
+  actions.push(...getDiscardActions(state, seat));
 
   return actions;
 }
@@ -230,7 +240,7 @@ function toPublicPlayer(p: PlayerState, revealMelds: boolean): PublicPlayer {
     isBot: p.isBot,
     melds: toPublicMelds(p.melds, revealMelds),
     discards: p.discards,
-    firstDiscardFaceDown: p.firstDiscardFaceDown,
+    pendingFirstDiscard: p.pendingFirstDiscard !== null,
     status: p.status,
     hu: p.hu,
     isReady: p.isReady,
@@ -259,6 +269,7 @@ export function projectView(state: GameState, seat: Seat): PlayerView {
       hand: [...you.hand],
       voidedSuit: you.voidedSuit,
       furiten: you.furiten,
+      pendingFirstDiscardTile: you.pendingFirstDiscard,
     },
     others: otherSeats.map(s => toPublicPlayer(state.players[s]!, reveal)) as [
       PublicPlayer,

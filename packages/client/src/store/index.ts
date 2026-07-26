@@ -48,6 +48,9 @@ export interface GameStore {
 
   // Cumulative scores across rounds this match (seat → total)
   matchScores: Record<number, number>;
+  // Round indices already folded into matchScores — a replayed roundEnd must not
+  // be counted twice. (A39)
+  countedRounds: number[];
 
   // Connection status
   connected: boolean;
@@ -83,6 +86,7 @@ export const useStore = create<GameStore>((set, get) => ({
   spectatorView: null,
   roundResult: null,
   matchScores: {},
+  countedRounds: [],
   connected: false,
   reconnecting: false,
   soundEnabled: true,
@@ -126,13 +130,25 @@ export const useStore = create<GameStore>((set, get) => ({
         break;
 
       case 'roundEnd': {
-        // Accumulate match scores
-        const prev = get().matchScores;
-        const next = { ...prev };
+        // Accumulate match scores — but only once per round. A client that
+        // reconnects at round end is handed the same result again (the A9 path),
+        // and incrementing on every arrival inflated the match totals by that
+        // round's delta each time. (A39)
+        const { roundIndex } = msg.results;
+        if (get().countedRounds.includes(roundIndex)) {
+          set({ roundResult: msg.results, screen: 'roundEnd' });
+          break;
+        }
+        const next = { ...get().matchScores };
         for (const p of msg.results.players) {
           next[p.seat] = (next[p.seat] ?? 0) + p.scoreDelta;
         }
-        set({ roundResult: msg.results, matchScores: next, screen: 'roundEnd' });
+        set({
+          roundResult: msg.results,
+          matchScores: next,
+          countedRounds: [...get().countedRounds, roundIndex],
+          screen: 'roundEnd',
+        });
         break;
       }
 
@@ -165,6 +181,7 @@ export const useStore = create<GameStore>((set, get) => ({
       spectatorView: null,
       roundResult: null,
       matchScores: {},
+      countedRounds: [],
       connected: false,
       reconnecting: false,
     });

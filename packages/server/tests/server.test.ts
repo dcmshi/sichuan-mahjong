@@ -763,6 +763,48 @@ describe('Restore & reconnect grace', () => {
       vi.useRealTimers();
     }
   });
+
+  it('A38: a briefly-dropped human keeps their play-phase turn through the grace window', async () => {
+    const { GameRoom } = await import('../src/room.js');
+    vi.useFakeTimers();
+    try {
+      const room = new GameRoom('A38TT', [
+        { name: 'H0', isBot: false, connected: false },
+        { name: 'H1', isBot: false, connected: false },
+        { name: 'H2', isBot: false, connected: false },
+        { name: 'H3', isBot: false, connected: false },
+      ]);
+      // Jump straight to a play-phase state with seat 0 on turn, holding a live
+      // hand: the huan/void phases aren't what's under test here.
+      const snap = JSON.parse(JSON.stringify(room.serialize())) as ReturnType<
+        typeof room.serialize
+      >;
+      snap.state.phase = 'play';
+      snap.state.turn = 0;
+      snap.state.turnDrawNeeded = false;
+      snap.state.firstTurnDone = [true, true, true, true];
+      for (const p of snap.state.players) {
+        p.voidedSuit = 'sou';
+        p.voidCleared = true;
+      }
+
+      const restored = GameRoom.restore(snap);
+      restored.resumeAfterRestore(); // arms the 60s grace on all four human seats
+
+      // A *different* player reconnecting re-runs scheduleNext. Before A38 that
+      // bot-played seat 0's discard on the spot, mid-grace.
+      restored.connect(1, fakeWs());
+      vi.advanceTimersByTime(5_000);
+      expect(restored.getState().players[0]!.discards).toHaveLength(0);
+      expect(restored.getState().turn).toBe(0);
+
+      // Once the grace lapses the takeover bot does play the turn, as before.
+      vi.advanceTimersByTime(120_000);
+      expect(restored.getState().players[0]!.discards.length).toBeGreaterThan(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------

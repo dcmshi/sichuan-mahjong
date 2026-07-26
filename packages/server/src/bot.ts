@@ -122,6 +122,11 @@ export function botTurnAction(state: GameState, seat: Seat): GameAction | null {
   const kong = legal.find(a => a.t === 'declareKongOnTurn');
   if (kong) return kong;
 
+  // The face-down void tile is this turn's mandatory discard — there is nothing
+  // to choose, and no hand tile is discardable until it is flipped. (A35)
+  const flip = legal.find(a => a.t === 'flipFirstDiscard');
+  if (flip) return flip;
+
   // Build candidate discard pool
   const legalDiscardSet = new Set(
     legal
@@ -260,6 +265,11 @@ export function botTurnActionMedium(state: GameState, seat: Seat): GameAction | 
 
   const kong = legal.find(a => a.t === 'declareKongOnTurn');
   if (kong) return kong;
+
+  // The face-down void tile is this turn's mandatory discard — there is nothing
+  // to choose, and no hand tile is discardable until it is flipped. (A35)
+  const flip = legal.find(a => a.t === 'flipFirstDiscard');
+  if (flip) return flip;
 
   const legalDiscardSet = new Set(
     legal

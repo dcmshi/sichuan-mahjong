@@ -31,6 +31,9 @@ export type GameAction =
   | { t: 'declareVoid'; seat: Seat; suit: Suit; firstDiscard: TileId | null }
   | { t: 'draw'; seat: Seat }
   | { t: 'discard'; seat: Seat; tile: TileId }
+  // The mandatory first discard: turn the face-down void-suit tile up. Carries no
+  // tile because there is no choice — the tile was committed at declaration. (A35)
+  | { t: 'flipFirstDiscard'; seat: Seat }
   | { t: 'claim'; seat: Seat; claim: ClaimDecision }
   | { t: 'pass'; seat: Seat }
   | {
@@ -59,6 +62,9 @@ export type RuleViolation =
   | 'huan_tiles_not_same_suit'
   | 'huan_tiles_not_in_hand'
   | 'void_first_discard_wrong_suit'
+  | 'void_indicator_not_allowed'
+  | 'must_flip_first_discard'
+  | 'no_pending_first_discard'
   | 'invalid_suit'
   | 'invalid_seat'
   | 'not_a_winning_hand'
@@ -890,6 +896,12 @@ function applyDeclareVoid(
   if (firstDiscard !== null) {
     if (suitOf(firstDiscard) !== suit) return fail('void_first_discard_wrong_suit');
     if (!player.hand.includes(firstDiscard)) return fail('tile_not_in_hand');
+  } else if (player.hand.some(t => suitOf(t) === suit)) {
+    // The indicator card stands in for a tile the player does not have. Claiming
+    // it while holding the suit keeps a tile that should have been separated —
+    // an extra tile for the whole round, plus the usedIndicator flag that gates
+    // Heavenly/Earthly. Same threat class as A23. (A36)
+    return fail('void_indicator_not_allowed');
   }
 
   const s = clone(state);
@@ -919,8 +931,11 @@ function applyVoidResolution(state: GameState): GameEvent[] {
     if (pv.firstDiscardTile !== null) {
       const hand = removeFromHand(player.hand, pv.firstDiscardTile);
       if (hand !== null) player.hand = hand;
-      player.discards.push(pv.firstDiscardTile);
-      player.firstDiscardFaceDown = true;
+      // Face down in the center, NOT in the pond: it becomes a real (public)
+      // discard only when the player flips it on their first turn. Pushing it
+      // straight into `discards` used to both leak it and charge the player a
+      // second discard on turn 1, leaving them permanently a tile short. (A35/A37)
+      player.pendingFirstDiscard = pv.firstDiscardTile;
       player.usedIndicator = false;
     } else {
       player.usedIndicator = true;
@@ -988,6 +1003,9 @@ function applyDiscard(
   if (player.status !== 'playing') return fail('already_hu');
   if (player.voidedSuit === null) return fail('void_not_declared');
   if (state.turnDrawNeeded) return fail('wrong_turn'); // must draw before discarding
+  // The separated tile is this player's first discard; until it is flipped they
+  // owe that and nothing else. (A35)
+  if (player.pendingFirstDiscard !== null) return fail('must_flip_first_discard');
 
   if (!player.voidCleared) {
     const discardingVoid = suitOf(tile) === player.voidedSuit;
@@ -1008,13 +1026,51 @@ function applyDiscard(
     sp.voidCleared = true;
   }
 
+  s.history.push(action);
+  return finishDiscard(s, seat, tile);
+}
+
+/**
+ * Turn the face-down void-suit tile up — the player's first mandatory discard.
+ * No draw is consumed and no tile leaves the hand (the tile left at declaration),
+ * which is exactly what restores the standard 13-standing-tile rhythm. Like any
+ * discard it can be claimed. (A35)
+ */
+function applyFlipFirstDiscard(
+  state: GameState,
+  action: Extract<GameAction, { t: 'flipFirstDiscard' }>,
+): ActionResult {
+  if (state.phase !== 'play') return fail('wrong_phase');
+  const { seat } = action;
+  if (seat !== state.turn) return fail('wrong_turn');
+  if (state.pendingClaims !== null) return fail('wrong_phase');
+
+  const player = state.players[seat]!;
+  if (player.status !== 'playing') return fail('already_hu');
+  if (state.turnDrawNeeded) return fail('wrong_turn'); // draw first, then flip
+  const tile = player.pendingFirstDiscard;
+  if (tile === null) return fail('no_pending_first_discard');
+
+  const s = clone(state);
+  const sp = s.players[seat]!;
+  sp.pendingFirstDiscard = null;
+  sp.discards.push(tile);
+  s.history.push(action);
+  return finishDiscard(s, seat, tile);
+}
+
+/**
+ * Shared tail of a discard (hand discard or first-discard flip): stamp the turn
+ * as taken, open a claim window if anyone can claim, else advance the turn.
+ * `s` must already be a clone with the tile moved into `discards`.
+ */
+function finishDiscard(s: GameState, seat: Seat, tile: TileId): ActionResult {
   s.firstTurnDone[seat] = true;
   s.lastDiscard = {
     tile,
     from: seat,
     afterKong: s.lastDrawWasKongReplacement,
   };
-  s.history.push(action);
 
   const events: GameEvent[] = [{ e: 'discarded', seat, tile }];
 
@@ -1445,6 +1501,8 @@ function dispatchAction(state: GameState, action: GameAction): ActionResult {
       return applyDraw(state, action);
     case 'discard':
       return applyDiscard(state, action);
+    case 'flipFirstDiscard':
+      return applyFlipFirstDiscard(state, action);
     case 'claim':
       return applyClaim(state, action);
     case 'pass':

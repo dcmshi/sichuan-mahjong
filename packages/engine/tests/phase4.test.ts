@@ -54,7 +54,7 @@ function makeState(opts: {
       hand: opts.hands?.[i] ?? [],
       melds: opts.melds?.[i] ?? [],
       discards: [],
-      firstDiscardFaceDown: false,
+      pendingFirstDiscard: null,
       voidedSuit: vs as const,
       usedIndicator: false,
       voidCleared: true,
@@ -803,6 +803,13 @@ describe('Phase 4 — full game payment balance', () => {
         }
       }
 
+      // The separated face-down tile is the mandatory first discard. (A35)
+      if (currentPlayer.pendingFirstDiscard !== null) {
+        const flip = applyAction(state, { t: 'flipFirstDiscard', seat });
+        if (!flip.ok) throw new Error(`flipFirstDiscard: ${flip.reason}`);
+        state = flip.state;
+        continue;
+      }
       const voidTiles = currentPlayer.hand.filter(t => suitOf(t) === currentPlayer.voidedSuit);
       const tile = voidTiles.length > 0 ? voidTiles[0]! : currentPlayer.hand[0]!;
       const disc = applyAction(state, { t: 'discard', seat, tile });
@@ -898,6 +905,12 @@ describe('Phase 4 — property test: payment balance', () => {
               state = h.state;
               continue;
             }
+          }
+          if (cp.pendingFirstDiscard !== null) {
+            const flip = applyAction(state, { t: 'flipFirstDiscard', seat });
+            if (!flip.ok) return true;
+            state = flip.state;
+            continue;
           }
           const vt = cp.hand.filter(t => suitOf(t) === cp.voidedSuit);
           const tile = vt.length > 0 ? vt[0]! : cp.hand[0]!;
@@ -1246,6 +1259,10 @@ describe('Phase 4 — Flower Pig (花猪) house rule', () => {
           continue;
         }
       }
+      if (cur.pendingFirstDiscard !== null) {
+        state = applyOk(state, { t: 'flipFirstDiscard', seat }); // A35
+        continue;
+      }
       const voidTiles = cur.hand.filter(t => suitOf(t) === cur.voidedSuit);
       const tile = voidTiles.length > 0 ? voidTiles[0]! : cur.hand[0]!;
       state = applyOk(state, { t: 'discard', seat, tile });
@@ -1524,6 +1541,12 @@ describe('Phase 4 — property test: JSON round-trip', () => {
           }
           if (state.pendingClaims !== null) continue;
           const cp = state.players[seat]!;
+          if (cp.pendingFirstDiscard !== null) {
+            const flip = applyAction(state, { t: 'flipFirstDiscard', seat });
+            if (!flip.ok) return true;
+            state = flip.state;
+            continue;
+          }
           const vt = cp.hand.filter(t => suitOf(t) === cp.voidedSuit);
           const tile = vt.length > 0 ? vt[0]! : cp.hand[0]!;
           const disc = applyAction(state, { t: 'discard', seat, tile });

@@ -2,10 +2,11 @@ import type { Seat, ServerMsg } from '@sichuan-mahjong/engine';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { useStore } from '../src/store/index.js';
 
-function roundEnd(deltas: [number, number, number, number]): ServerMsg {
+function roundEnd(roundIndex: number, deltas: [number, number, number, number]): ServerMsg {
   return {
     t: 'roundEnd',
     results: {
+      roundIndex,
       players: deltas.map((scoreDelta, seat) => ({
         seat: seat as Seat,
         name: `P${seat}`,
@@ -23,11 +24,27 @@ beforeEach(() => {
 describe('client store (A30)', () => {
   it('accumulates matchScores across rounds and shows the round-end screen', () => {
     const { handleServerMsg } = useStore.getState();
-    handleServerMsg(roundEnd([10, -5, -5, 0]));
-    handleServerMsg(roundEnd([-2, 8, -3, -3]));
+    handleServerMsg(roundEnd(0, [10, -5, -5, 0]));
+    handleServerMsg(roundEnd(1, [-2, 8, -3, -3]));
 
     expect(useStore.getState().matchScores).toEqual({ 0: 8, 1: 3, 2: -8, 3: -3 });
     expect(useStore.getState().screen).toBe('roundEnd');
+  });
+
+  it('A39: a replayed roundEnd (reconnect at round end) is not counted twice', () => {
+    const { handleServerMsg } = useStore.getState();
+    handleServerMsg(roundEnd(0, [10, -5, -5, 0]));
+    // The server hands a client reconnecting at round end the same result again
+    // (the A9 path) — and a flaky connection can do that any number of times.
+    handleServerMsg(roundEnd(0, [10, -5, -5, 0]));
+    handleServerMsg(roundEnd(0, [10, -5, -5, 0]));
+
+    expect(useStore.getState().matchScores).toEqual({ 0: 10, 1: -5, 2: -5, 3: 0 });
+    expect(useStore.getState().screen).toBe('roundEnd');
+
+    // A genuinely new round still accumulates.
+    handleServerMsg(roundEnd(1, [-2, 8, -3, -3]));
+    expect(useStore.getState().matchScores).toEqual({ 0: 8, 1: 3, 2: -8, 3: -3 });
   });
 
   it("'joined' stores seat + token; isHost survives only for seat 0", () => {

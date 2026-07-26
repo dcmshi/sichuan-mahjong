@@ -1,5 +1,95 @@
 # TODO
 
+## 🔍 Audit backlog — sixth pass (2026-07-26)
+
+Full-repo inline re-audit (engine, server, client, cross-checked against
+`SBR_ENG_part_1.pdf` via pdftotext). Baseline verified green before write-up:
+lint clean, typecheck clean, 153 engine + 48 server + 5 client tests pass.
+**One critical rules bug surfaced** (A35) that all five earlier passes missed,
+plus a related exploit and three smaller items.
+**Status: all items resolved in the follow-up session** — lint clean, typecheck
+clean, 163 engine + 49 server + 6 client tests and 9 Playwright e2e (5 viewports)
+green. Each fix is described inline below.
+
+- [x] **A35 · (CRITICAL, rule integrity) The face-down void first-discard leaves
+  the player one tile short for the whole round — they can never Hu.**
+  `applyVoidResolution` (`engine/src/actions.ts:919`) removed the first-discard
+  tile from the hand at void phase, and the turn loop then ran normal
+  draw-then-discard turns. A non-dealer stood at 12 tiles (13 at the draw
+  moment, 12 after discarding); East stood at 13→12 after turn 1. But
+  `isWinningHand` requires `14 − 3·melds` tiles (`engine/src/hand.ts:151`), so
+  any player who placed a face-down tile could *never* complete a hand — only
+  indicator users (no void-suit tiles at declaration, hand intact at 13/14) could
+  win. Verified empirically: a 30-game probe driving full games through
+  huan/void/play topped out at 13 concealed tiles for every seat, and produced
+  zero wins by separated-tile players. The PDF is explicit (Lesson 4, "Forbidden
+  suit"): "each player separates a tile of a forbidden suit from the hand and
+  places it face down in the center …; **the same tile is the first mandatory
+  discard of the player**", and the first-discard note describes the mechanic —
+  "grab the first tile off the wall with one hand and flip the tile in the center
+  of the table with the other". FIXED: the separated tile now parks in
+  `PlayerState.pendingFirstDiscard` (out of `hand`, not yet in `discards`); a new
+  `flipFirstDiscard` action turns it up as that player's first discard, and
+  `discard` is rejected with `must_flip_first_discard` until they do.
+  `computeLegalActions` offers the flip in place of every discard option (kongs
+  still available first). Standing counts are back to the standard 13/14, so the
+  win check is reachable for everyone. Server whitelists the action, bots take it
+  ahead of discard selection, the client shows a flip panel (tile + hint +
+  button), and the e2e real-click spec drives it on all 5 viewports. Test
+  coverage: new `engine/tests/first-discard.test.ts` (hold/reject/flip mechanics,
+  30-round reachability + Hu probe, tile conservation), and the bot smoke test now
+  asserts wins by non-indicator players — the assertion that would have caught
+  this in the first place, since the old `totalHus > 0` passed on indicator users
+  alone. ARCHITECTURE.md §5.4 rewritten (it encoded the same wrong model).
+- [x] **A36 · (HIGH, rule integrity / exploit) `declareVoid` accepts
+  `firstDiscard: null` while the player holds void-suit tiles.** The guard
+  (`engine/src/actions.ts:890`) only validated a non-null firstDiscard. A
+  crafted frame with `firstDiscard: null` set `usedIndicator = true` and kept
+  the tile that should have been separated — one extra concealed tile for the
+  whole round, plus false indicator status (the Heavenly/Earthly eligibility
+  surface). Same threat class as A23. FIXED: rejects with
+  `void_indicator_not_allowed` when `firstDiscard === null` but the hand contains
+  the declared suit; regression test in first-discard.test.ts.
+- [x] **A37 · (MEDIUM, info leak + UI) The face-down first discard is public
+  from the void phase onward.** `toPublicPlayer` (`engine/src/views.ts:226`)
+  shipped `discards` verbatim — including the face-down tile's id — in every
+  player and spectator view; the client rendered it face-up in opponents' ponds
+  and never read the `firstDiscardFaceDown` flag it shipped; bots counted it in
+  `visibleTileTypes` (`server/src/bot.ts:208`). FIXED as a consequence of A35:
+  the tile isn't in `discards` until flipped, so it can't leak through any of
+  those paths. Views ship `PublicPlayer.pendingFirstDiscard: boolean` (its owner
+  alone gets the id via `you.pendingFirstDiscardTile`, so it survives a
+  reconnect), and both Game and Spectate draw a tile back in the pond until the
+  flip. `firstDiscardFaceDown` is gone.
+- [x] **A38 · (LOW, server) Reconnect grace doesn't cover the play-phase turn
+  owner.** `botActIfNeeded` (`server/src/room.ts:559`) gated on
+  `isBotOrOffline` (mere disconnection) with no `isInReconnectGrace` check, so
+  any `scheduleNext` that fired while a briefly-dropped human held the turn —
+  e.g. *another* player reconnecting (`connect` → `scheduleNext`) — bot-played
+  their discard inside the 60s grace that huan/void/claim decisions correctly
+  wait out (A10). FIXED with the same grace guard. Regression test in
+  server.test.ts (verified to fail with the guard removed).
+- [x] **A39 · (LOW, client) Match totals double-accumulate on a round-end
+  reconnect.** The server hands a reconnecting client the round results
+  directly (`server/src/room.ts:255`, the A9 path), and the store's `roundEnd`
+  case added each `scoreDelta` into `matchScores` unconditionally
+  (`client/src/store/index.ts:128`). Disconnect/reconnect twice at round end
+  and the match totals inflated by the round delta each time. FIXED: `RoundResult`
+  now carries a `roundIndex` (tracked per room, incremented in `nextRound`, and
+  carried through the live-room snapshot so a host restart doesn't reset it); the
+  store folds each index into `matchScores` once. Regression test in
+  client/tests/store.test.ts.
+
+**Noted, deliberately not filed:** `anyOpponentTenpai` (`server/src/bot.ts:238`)
+reads opponents' concealed hands — documented in its comment, but it sits oddly
+next to A33's "only information a human would have" principle; `MeldDisplay`
+renders concealed kongs as four backs even for their owner and at round end
+(deliberate per A27, but the §8.1 "hand reveals at round end" promise doesn't
+cover them); a reconnected client isn't told it already submitted huan/void, so
+it may resubmit and eat a harmless `already_submitted_*` rejection; `addBot`'s
+`difficulty` passes unvalidated into the lobby slot (`server/src/ws.ts:305`,
+inert beyond the label/medium check).
+
 ## 🔍 Audit backlog — fifth pass (2026-07-16, final)
 
 Covered the last unread corners (remaining client screens/hooks, i18n, release

@@ -44,6 +44,7 @@ const CLIENT_ACTION_TYPES: ReadonlySet<string> = new Set([
   'huanSelect',
   'declareVoid',
   'discard',
+  'flipFirstDiscard',
   'claim',
   'pass',
   'declareKongOnTurn',
@@ -65,6 +66,8 @@ export type RoomSnapshot = {
   slots: RoomSlot[];
   isHumanSeat: boolean[];
   tokens: Array<{ token: string; code: string; seat: Seat; role: 'host' | 'player' }>;
+  /** Optional: snapshots written before A39 don't carry it. */
+  roundIndex?: number;
 };
 
 export class GameRoom {
@@ -100,6 +103,8 @@ export class GameRoom {
   private lastActivityAt = Date.now();
   /** Guards the once-per-round roundEnd persist + broadcast (reset in nextRound). (A9) */
   private roundEndBroadcast = false;
+  /** 0-based round counter for this match; rides along in RoundResult. (A39) */
+  private roundIndex = 0;
   /** Set once the match ends: the room is torn down and must accept no further work. (A11) */
   private ended = false;
 
@@ -130,6 +135,7 @@ export class GameRoom {
       this.claimWindowTimer = null;
     }
     this.roundEndBroadcast = false; // arm the next round's once-only roundEnd persist (A9)
+    this.roundIndex += 1; // lets clients tell a replayed result from a new one (A39)
     // Cancel bot callbacks left over from the old round: with the per-seat
     // dedup (A26), a stale pending entry would otherwise suppress this round's
     // first huan/void scheduling for that seat, stalling the game. Reachable
@@ -403,6 +409,7 @@ export class GameRoom {
       state: this.state,
       slots: this.slots.map(s => ({ ...s })),
       isHumanSeat: [...this.isHumanSeat],
+      roundIndex: this.roundIndex,
       tokens: tokensForCode(this.code).map(t => ({
         token: t.token,
         code: t.code,
@@ -421,6 +428,7 @@ export class GameRoom {
     );
     room.state = snap.state;
     room.isHumanSeat = [...snap.isHumanSeat];
+    room.roundIndex = snap.roundIndex ?? 0;
     room.started = snap.state.phase !== undefined;
     return room;
   }
@@ -558,6 +566,11 @@ export class GameRoom {
 
   private botActIfNeeded(seat: Seat): void {
     if (!this.isBotOrOffline(seat)) return;
+    // A briefly-dropped human still inside their 60s grace keeps their turn —
+    // scheduleNext runs on every state change and reconnect, so without this a
+    // *different* player reconnecting would bot-play this seat's discard. The
+    // huan/void/claim paths already wait the grace out; the turn owner didn't. (A38)
+    if (this.isInReconnectGrace(seat)) return;
     if (this.state.phase !== 'play') return;
     if (this.state.pendingClaims !== null) return;
     if (this.state.turnDrawNeeded) return;
@@ -631,6 +644,7 @@ export class GameRoom {
 
   private buildRoundResult(): RoundResult {
     return {
+      roundIndex: this.roundIndex,
       players: this.state.players.map(p => ({
         seat: p.seat as Seat,
         name: p.name,

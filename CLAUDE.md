@@ -80,5 +80,16 @@ client SPA. A third audit pass (2026-07-16, A23–A30) closed a `declareVoid`
 rule-integrity hole, added multi-viewport (phone/tablet, both orientations)
 Playwright coverage, and cleaned up bot/GC/info-leak smaller findings; a fourth
 pass (A31–A33) redacted drawn tiles from the broadcast event stream and
-hardened bot scheduling/visibility; a final fifth pass (A34) found no larger
-items and fixed LAN clipboard copy + the missing PWA icon/favicon. No open items.
+hardened bot scheduling/visibility; a fifth pass (A34) fixed LAN clipboard copy
+and the missing PWA icon/favicon.
+
+A sixth pass (2026-07-25, A35–A39) found the one thing every earlier pass had
+missed: **the void phase's face-down tile was charged twice**, so anyone who
+separated one stood permanently a tile below the 14 a win needs and could never
+Hu (and was never "ready" at wall end). Per the PDF that tile *is* the player's
+first discard — it now parks in `pendingFirstDiscard` and is turned up by a new
+`flipFirstDiscard` action on the player's first turn, restoring the standard
+13/14 rhythm. Same pass closed the matching `declareVoid` indicator exploit
+(A36), stopped the face-down tile leaking into views/clients (A37), extended the
+reconnect grace to the play-phase turn owner (A38), and keyed the client's match
+totals on a new `RoundResult.roundIndex` (A39). No open items.

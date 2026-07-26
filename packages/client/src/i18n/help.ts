@@ -12,7 +12,8 @@ const en: Dict = {
 Each round continues until 3 players have won or the wall is exhausted — winning players sit out but the game goes on.`,
   'htp.setup.title': 'Setup',
   'htp.setup.body': `• Huan San Zhang: each player secretly passes 3 tiles of one suit to the next player.
-• Void Declaration (定缺): each player declares one suit to permanently void. You must discard all tiles of that suit.`,
+• Void Declaration (定缺): each player declares one suit to permanently void. You must discard all tiles of that suit.
+• The tile you set aside when declaring is placed face down — it is your first discard. On your first turn you draw as usual and flip it instead of discarding from hand. (If your hand held none of that suit, you use the indicator and simply discard normally.)`,
   'htp.turn.title': 'Your Turn',
   'htp.turn.body': `• Draw a tile from the wall.
 • Optionally declare a Kong (4-of-a-kind) to draw a replacement tile.
@@ -75,7 +76,8 @@ const zhHans: Dict = {
 每局持续到3名玩家胡牌或牌墙摸完为止——已胡牌的玩家退出，但牌局继续。`,
   'htp.setup.title': '准备',
   'htp.setup.body': `• 换三张：每位玩家暗中将同花色的3张牌传给下一位玩家。
-• 定缺：每位玩家选定一门花色作为缺门，必须打出该花色的所有牌。`,
+• 定缺：每位玩家选定一门花色作为缺门，必须打出该花色的所有牌。
+• 定缺时扣下的那张牌反扣在桌面中央 —— 它就是你的第一张打牌。轮到你第一手时照常摸牌，然后翻开它，而不是从手牌中打出。（若手中本无该花色，则用指示牌，第一手正常打牌。）`,
   'htp.turn.title': '你的回合',
   'htp.turn.body': `• 从牌墙摸一张牌。
 • 可选择杠牌（四张相同），并补摸一张。
@@ -138,7 +140,8 @@ const zhHant: Dict = {
 每局持續到3名玩家胡牌或牌牆摸完為止——已胡牌的玩家退出，但牌局繼續。`,
   'htp.setup.title': '準備',
   'htp.setup.body': `• 換三張：每位玩家暗中將同花色的3張牌傳給下一位玩家。
-• 定缺：每位玩家選定一門花色作為缺門，必須打出該花色的所有牌。`,
+• 定缺：每位玩家選定一門花色作為缺門，必須打出該花色的所有牌。
+• 定缺時扣下的那張牌反扣在桌面中央 —— 它就是你的第一張打牌。輪到你第一手時照常摸牌，然後翻開它，而不是從手牌中打出。（若手中本無該花色，則用指示牌，第一手正常打牌。）`,
   'htp.turn.title': '你的回合',
   'htp.turn.body': `• 從牌牆摸一張牌。
 • 可選擇槓牌（四張相同），並補摸一張。

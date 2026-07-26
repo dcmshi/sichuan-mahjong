@@ -64,20 +64,36 @@ test('opening played via real UI clicks (huan tiles, void suit, discard tap)', a
 
   // ── Void: click the first suit button, then the confirm ("Void <suit>") ──
   await page.locator('div.flex.gap-3 > button').first().click();
+  // The screen lists the tiles of the chosen suit; holding ≥1 means one gets
+  // separated face down, which is what turn 1 must then flip (A35).
+  const voidSuitTiles = await page.locator('div.flex.flex-wrap.gap-1 img[alt]').count();
   await page.getByRole('button', { name: /Void /i }).click();
 
   await expect.poll(() => getPhase(page), { timeout: 15_000 }).toBe('play');
 
-  // ── Play: round-1 dealer is the host (us), so it's our turn first. Tap a
-  //    discardable hand tile to select it, then tap again to discard. ──
+  // ── Play: round-1 dealer is the host (us), so it's our turn first. ──
   const hand = page.locator('ul li img[alt]');
   await expect.poll(() => hand.count(), { timeout: 10_000 }).toBeGreaterThan(0);
-  const before = await hand.count();
-
-  const discardable = page.locator('ul li:not(.opacity-60)');
-  await expect.poll(() => discardable.count(), { timeout: 10_000 }).toBeGreaterThan(0);
   await expectNoHorizontalOverflow(page, 'play');
   await snap('play');
+
+  // The tile set aside at void declaration is the mandatory first discard, so
+  // turn 1 offers exactly one action: flip it. No hand tile is discardable yet.
+  // (Unless we were an indicator user — a hand missing a whole suit — in which
+  // case there's nothing to flip and we discard normally.) (A35)
+  const flipButton = page.getByRole('button', { name: /Flip your first discard/i });
+  if (voidSuitTiles > 0) {
+    await expect(flipButton).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator('ul li:not(.opacity-60)')).toHaveCount(0);
+    await flipButton.click();
+    await expect(flipButton).toBeHidden({ timeout: 10_000 });
+  }
+
+  // ── Wait for our next turn, then tap a discardable hand tile to select it and
+  //    tap again to discard. ──
+  const discardable = page.locator('ul li:not(.opacity-60)');
+  await expect.poll(() => discardable.count(), { timeout: 30_000 }).toBeGreaterThan(0);
+  const before = await hand.count();
 
   await discardable.first().click(); // select
   await expect(page.getByText('Tap again to discard')).toBeVisible({ timeout: 5_000 });

@@ -73,8 +73,10 @@ if (__E2E__) {
 
       if (view.turn === seat) {
         const hu = actions.find(a => a.t === 'declareHuOnDraw' || a.t === 'declareHeavenly');
+        // The mandatory first-discard flip stands in for a discard on turn 1 (A35)
+        const flip = actions.find(a => a.t === 'flipFirstDiscard');
         const discard = actions.find(a => a.t === 'discard');
-        const act = hu ?? discard;
+        const act = hu ?? flip ?? discard;
         if (act) {
           sendAction({ t: 'action', action: act });
           return true;
