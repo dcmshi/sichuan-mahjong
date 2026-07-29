@@ -101,7 +101,8 @@ sichuan-mahjong/
 │   │   │   ├── store/
 │   │   │   ├── ws/
 │   │   │   ├── hooks/
-│   │   │   ├── styles/
+│   │   │   ├── i18n/            # EN / zh-Hans / zh-Hant string catalogs
+│   │   │   ├── index.css        # Tailwind entry
 │   │   │   ├── App.tsx
 │   │   │   └── main.tsx
 │   │   ├── index.html

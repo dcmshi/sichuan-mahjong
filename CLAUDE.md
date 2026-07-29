@@ -3,7 +3,18 @@
 Web-based 4-player Sichuan ("Bloody Rules") mahjong. Mobile-first PWA.
 Host runs on their own machine; friends join over LAN or Tailscale.
 
-Full architecture, rules, and design decisions: see **[ARCHITECTURE.md](./ARCHITECTURE.md)**.
+---
+
+## Where things are documented
+
+Keep this file short. New documentation goes in one of these instead:
+
+| File | Holds | Write here when… |
+|---|---|---|
+| **[ARCHITECTURE.md](./ARCHITECTURE.md)** | Types, engine API, full ruleset, protocol, persistence, networking, testing strategy | …you change behavior, a type, or a rule |
+| **[TODO.md](./TODO.md)** | Phase history + audit backlog (A1–A39), each item with diagnosis and fix | …you fix a bug or close an audit item |
+| **[README.md](./README.md)** | User-facing: install, host/join, CLI flags | …you change the CLI or the player-facing flow |
+| `SBR_ENG_part_1.pdf` | Novikov, *Sichuan Mahjong? It's that simple!* — the canonical ruleset | (read-only; extract with `pdftotext` when a rule is in question) |
 
 ---
 
@@ -11,9 +22,9 @@ Full architecture, rules, and design decisions: see **[ARCHITECTURE.md](./ARCHIT
 
 | Package | Purpose |
 |---|---|
-| `packages/engine` | Pure rules engine. Zero deps. |
+| `packages/engine` | Pure rules engine (`@sichuan-mahjong/engine`). Zero deps. |
 | `packages/server` | Fastify HTTP+WS, bots, persistence (`node:sqlite`), networking (`sichuan-mahjong`) |
-| `packages/client` | React 18, Vite, Tailwind, Zustand, Framer Motion |
+| `packages/client` | React 18, Vite, Tailwind, Zustand, Framer Motion (`@sichuan-mahjong/client`) |
 
 Runtime: Node 22 LTS. Tooling: Biome (lint enforced in CI), Vitest, fast-check, Playwright.
 
@@ -23,19 +34,20 @@ Runtime: Node 22 LTS. Tooling: Biome (lint enforced in CI), Vitest, fast-check, 
 
 ```bash
 pnpm install
-pnpm --filter @sichuan-mahjong/engine build  # required before typecheck
+pnpm --filter @sichuan-mahjong/engine build  # required before typecheck/test
 pnpm typecheck
-pnpm lint
+pnpm lint                                    # biome check .  (pnpm format to fix)
 pnpm test                                    # Vitest (engine + server + client)
 pnpm --filter @sichuan-mahjong/client build
 pnpm --filter sichuan-mahjong build
 pnpm --filter sichuan-mahjong start          # run server (serves built client)
 
-# e2e needs the client built with the window.__e2e helpers (VITE_E2E=1), then a built server:
-VITE_E2E=1 pnpm --filter @sichuan-mahjong/client build
-pnpm e2e                                     # Playwright: bot round, 2-round match, real-UI-click opening
+# e2e needs the client built with the window.__e2e helpers, then a built server
+# (Playwright starts the server itself from packages/server/dist/main.js):
+VITE_E2E=1 pnpm --filter @sichuan-mahjong/client build   # PowerShell: $env:VITE_E2E=1
+pnpm e2e
 
-# Release binaries (embed the client, no persistence): needs Bun; see scripts/release/compile.ts
+# Release binaries (embed the client, no persistence): needs Bun
 bun run scripts/release/compile.ts
 ```
 
@@ -46,50 +58,48 @@ bun run scripts/release/compile.ts
 ```
 packages/engine/src/
   tiles.ts       tile encoding (TileId 0..107, TileType 0..26)
+  rng.ts         xoshiro128** seedable PRNG — the only source of randomness
   hand.ts        isWinningHand, isTenpai, ukeire
   scoring.ts     fan calc, payment matrix, TMV
   claims.ts      claim window resolution
   state.ts       GameState, PlayerState types
   actions.ts     applyAction(state, action) → ActionResult
-  views.ts       projectView(state, seat) → PlayerView
+  views.ts       projectView(state, seat) → PlayerView (per-viewer redaction)
   protocol.ts    ClientMsg / ServerMsg types
 packages/server/src/
   room.ts        GameRoom (owns GameState, drives bots, broadcasts views)
   bot.ts         easy + medium bot heuristics
+  ws.ts          WebSocket gateway (validates every inbound frame)
 packages/client/src/
-  main.tsx       window.__e2e test helpers
+  main.tsx       window.__e2e test helpers (VITE_E2E builds only)
   store/         Zustand store (mirrors PlayerView)
   ws/client.ts   WsClient singleton + sendAction
-e2e/game.spec.ts   Playwright full-round test
+e2e/
+  game.spec.ts   full bot round      } chromium only (drive the game via __e2e)
+  match.spec.ts  2-round match       }
+  ui-clicks.spec.ts  real UI taps — runs on 5 viewports (phone/tablet × orientation)
 ```
+
+Full tree: [ARCHITECTURE.md §3](./ARCHITECTURE.md#3-repo-layout).
+
+---
+
+## Conventions
+
+- **Engine stays pure.** No I/O, no deps, randomness only through `rng.ts`. Replays,
+  determinism, and the fast-check property tests depend on it.
+- **Everything reaching a client goes through `views.ts`.** Any field added to
+  `GameState` needs a redaction decision before it lands in `PlayerView` —
+  concealed kongs, drawn tiles, and the face-down first discard are all redacted
+  today, each after an audit caught the leak.
+- **The WS boundary trusts nothing.** Inbound frames are validated in `ws.ts`;
+  server-only actions (e.g. `claimWindowExpire`) are never accepted from a client.
 
 ---
 
 ## Status
 
-All v1 work and all originally-deferred features are complete — see
-[ARCHITECTURE.md §12](./ARCHITECTURE.md#12-open-questions--explicit-deferrals)
-for the per-item history. Host-shutdown resume and Tailscale node-sharing
-automation (the last two deferrals) are now implemented.
-
-A full audit + hardening pass (2026-07, items A1–A20 in [TODO.md](./TODO.md)) is
-also complete: WS-boundary crash hardening, several rules-engine correctness fixes,
-reconnect/restore edge cases, mDNS/QR, and distribution — the npm package is now
-self-contained (engine inlined, client bundled) and the Bun binaries embed the
-client SPA. A third audit pass (2026-07-16, A23–A30) closed a `declareVoid`
-rule-integrity hole, added multi-viewport (phone/tablet, both orientations)
-Playwright coverage, and cleaned up bot/GC/info-leak smaller findings; a fourth
-pass (A31–A33) redacted drawn tiles from the broadcast event stream and
-hardened bot scheduling/visibility; a fifth pass (A34) fixed LAN clipboard copy
-and the missing PWA icon/favicon.
-
-A sixth pass (2026-07-25, A35–A39) found the one thing every earlier pass had
-missed: **the void phase's face-down tile was charged twice**, so anyone who
-separated one stood permanently a tile below the 14 a win needs and could never
-Hu (and was never "ready" at wall end). Per the PDF that tile *is* the player's
-first discard — it now parks in `pendingFirstDiscard` and is turned up by a new
-`flipFirstDiscard` action on the player's first turn, restoring the standard
-13/14 rhythm. Same pass closed the matching `declareVoid` indicator exploit
-(A36), stopped the face-down tile leaking into views/clients (A37), extended the
-reconnect grace to the play-phase turn owner (A38), and keyed the client's match
-totals on a new `RoundResult.roundIndex` (A39). No open items.
+All v1 work, every originally-deferred feature, and six audit passes (A1–A39,
+through 2026-07-25) are complete. **No open items.** Per-item history in
+[TODO.md](./TODO.md); the deferral record is
+[ARCHITECTURE.md §12](./ARCHITECTURE.md#12-open-questions--explicit-deferrals).
