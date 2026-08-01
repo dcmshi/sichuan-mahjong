@@ -9,6 +9,7 @@ import { OpponentSide } from '../components/OpponentSide.js';
 import { OpponentTop } from '../components/OpponentTop.js';
 import { OwnZone } from '../components/OwnZone.js';
 import { PlayTopBar } from '../components/PlayTopBar.js';
+import { RotateOverlay } from '../components/RotateOverlay.js';
 import { Tile } from '../components/Tile.js';
 import { useSound } from '../hooks/useSound.js';
 import { useT } from '../i18n/useT.js';
@@ -292,6 +293,9 @@ function PlayPhase({ view }: { view: PlayerView }) {
           windowMs={view.config.claimWindowMs}
         />
       )}
+
+      {/* Landscape phones only (index.css); see RotateOverlay.tsx (R4 Phase 1). */}
+      <RotateOverlay />
     </div>
   );
 }

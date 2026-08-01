@@ -119,6 +119,9 @@ const en: Dict = {
   'play.toggleSound': 'Toggle sound',
   'play.howToPlay': 'How to play',
   'play.scores': 'Scores',
+  'play.rotateTitle': 'Rotate to portrait',
+  'play.rotateHint':
+    'This screen needs more height than landscape gives it — turn your phone upright to keep your hand on screen.',
 
   'kong.concealed': 'concealed',
   'kong.promoted': 'promoted',
@@ -308,6 +311,8 @@ const zhHans: Dict = {
   'play.toggleSound': '开关音效',
   'play.howToPlay': '玩法说明',
   'play.scores': '分数',
+  'play.rotateTitle': '请切换为竖屏',
+  'play.rotateHint': '横屏画面高度不够，将手机竖起才能看到你的手牌。',
 
   'kong.concealed': '暗杠',
   'kong.promoted': '补杠',
@@ -493,6 +498,8 @@ const zhHant: Dict = {
   'play.toggleSound': '開關音效',
   'play.howToPlay': '玩法說明',
   'play.scores': '分數',
+  'play.rotateTitle': '請切換為直向',
+  'play.rotateHint': '橫向畫面高度不足，將手機直立才能看到你的手牌。',
 
   'kong.concealed': '暗槓',
   'kong.promoted': '補槓',

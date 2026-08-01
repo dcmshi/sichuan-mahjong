@@ -123,3 +123,46 @@ body {
     display: none;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Rotate-to-portrait overlay (R4 Phase 1, viewport-audit.md) — landscape
+   phones only. Hidden by default; the media query is the only thing that
+   flips it on, so there's no JS resize listener, no hydration flash, and
+   nothing to clean up when the phone rotates back. The breakpoint
+   deliberately excludes tablets: an iPad in landscape is 1080x810, well
+   outside max-height: 480px.
+--------------------------------------------------------------------------- */
+.rotate-overlay {
+  display: none;
+}
+
+@media (orientation: landscape) and (max-height: 480px) {
+  .rotate-overlay {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+/* Transform only, never opacity — a past bug (F11) left a screen permanently
+   invisible where its opacity-driven entrance animation didn't run. Under
+   prefers-reduced-motion the global rule above collapses this to one
+   near-instant frame, landing on the closing "sideways phone" keyframe. */
+.rotate-overlay-icon {
+  animation: rotate-overlay-hint 2.4s ease-in-out infinite;
+}
+
+@keyframes rotate-overlay-hint {
+  0%,
+  15% {
+    transform: rotate(-90deg);
+  }
+  50%,
+  65% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(-90deg);
+  }
+}
