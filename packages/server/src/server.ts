@@ -10,7 +10,7 @@ import {
   startMdns,
   stopMdns,
 } from './networking.js';
-import { flushAllRooms, restoreRoomsFromDisk, sweepIdleRooms } from './room.js';
+import { flushAllRooms, restoreRoomsFromDisk, setBotPaceMs, sweepIdleRooms } from './room.js';
 import { createTailscaleShare } from './tailscaleShare.js';
 import { registerWsRoutes, sweepStaleLobbies } from './ws.js';
 
@@ -43,6 +43,8 @@ export async function run(embeddedClient?: EmbeddedClient): Promise<void> {
 
   // Propagate data-dir override before persistence module initializes
   if (dataDir) process.env.SICHUAN_DATA_DIR = dataDir;
+
+  if (opts.botDelayMs !== null) setBotPaceMs(opts.botDelayMs);
 
   // Resume any in-progress games persisted before a previous shutdown/crash.
   try {

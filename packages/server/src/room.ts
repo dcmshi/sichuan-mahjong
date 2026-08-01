@@ -31,8 +31,50 @@ import { deleteLiveRoom, loadLiveRooms, saveGameWithCode, saveLiveRoom } from '.
 import { importToken, revokeTokensForCode, tokensForCode } from './tokens.js';
 
 const RECONNECT_TIMEOUT_MS = 60_000;
-const BOT_THINK_MS = 150;
 const PERSIST_DEBOUNCE_MS = 1000;
+
+/**
+ * How long a bot pauses before acting. This was 150ms, at which a circuit of
+ * three bots — discard, claim window, discard, discard — resolved inside a
+ * second: by the time you looked up, the tile you might have ponged was four
+ * discards back. The transient event feed doesn't recover it either (it holds
+ * two lines for 3.5s and drops to one on a short viewport, by design), so the
+ * pace itself had to give. (O2)
+ *
+ * A pace, not a rule: it lives here rather than in `GameConfig` because it
+ * changes nothing about the game, and a replay of the same seed is identical at
+ * any value.
+ */
+const DEFAULT_BOT_PACE_MS = 700;
+const MAX_BOT_PACE_MS = 5000;
+
+/**
+ * `SM_BOT_DELAY_MS` is the harness seam: the unit and Playwright suites play
+ * whole rounds through bots, so they pin the old 150ms rather than pay four
+ * seconds a circuit for a pace no assertion looks at.
+ */
+function paceFromEnv(): number | null {
+  const raw = process.env.SM_BOT_DELAY_MS;
+  if (raw === undefined) return null;
+  const ms = Number.parseInt(raw, 10);
+  return Number.isFinite(ms) && ms >= 0 ? ms : null;
+}
+
+let botPace = clampBotPace(paceFromEnv() ?? DEFAULT_BOT_PACE_MS);
+
+function clampBotPace(ms: number): number {
+  if (!Number.isFinite(ms)) return DEFAULT_BOT_PACE_MS;
+  return Math.min(MAX_BOT_PACE_MS, Math.max(0, Math.round(ms)));
+}
+
+/** Set the bot pace for every room in this process (CLI `--bot-delay`). */
+export function setBotPaceMs(ms: number): void {
+  botPace = clampBotPace(ms);
+}
+
+export function botPaceMs(): number {
+  return botPace;
+}
 
 /**
  * Action types a client is allowed to originate over the WS. `claimWindowExpire`
@@ -139,8 +181,8 @@ export class GameRoom {
     // Cancel bot callbacks left over from the old round: with the per-seat
     // dedup (A26), a stale pending entry would otherwise suppress this round's
     // first huan/void scheduling for that seat, stalling the game. Reachable
-    // only when nextRound lands within the 150ms bot-think window — i.e.
-    // programmatic hosts — but cheap to make airtight. (A32)
+    // only when nextRound lands inside a pending bot pause — i.e. programmatic
+    // hosts — but cheap to make airtight. (A32)
     this.clearPendingBotWork();
     this.state = startNextRound(this.state, randomUUID());
 
@@ -218,7 +260,7 @@ export class GameRoom {
       this.botTimers.delete(timer);
       this.botPendingSeats.delete(seat);
       fn();
-    }, BOT_THINK_MS);
+    }, botPaceMs());
     this.botTimers.add(timer);
   }
 

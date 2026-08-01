@@ -86,7 +86,13 @@ player passes three same-suit tiles first.
 | `--no-tailscale` | — | Disable Tailscale detection |
 | `--share` | — | Auto-create a Tailscale share invite (needs `TAILSCALE_API_KEY`, optionally `TAILSCALE_TAILNET`) |
 | `--data-dir` | OS user data dir | Where to store the SQLite database |
+| `--bot-delay` | `700` | Milliseconds a bot pauses per move (max 5000; `0` for instant) |
 | `--help` | — | Show usage and exit |
+
+Bots pause about three quarters of a second per move so a circuit of them is
+followable — at the old 150ms the discard you might have ponged was already four
+tiles back by the time you looked up. Lower `--bot-delay` if you'd rather grind
+practice hands quickly.
 
 ### As a joiner (connecting to someone else's game)
 

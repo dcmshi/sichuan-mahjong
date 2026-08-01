@@ -53,7 +53,11 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'node packages/server/dist/main.js --no-mdns --no-tailscale',
+    // --bot-delay 150 pins the pre-O2 pace. The 700ms default exists so a human
+    // can follow a bot circuit; these specs play whole rounds and assert nothing
+    // about timing, so paying it would add minutes across six projects for
+    // nothing. Anything that ever *does* depend on the pace must set it itself.
+    command: 'node packages/server/dist/main.js --no-mdns --no-tailscale --bot-delay 150',
     url: 'http://localhost:8080/healthz',
     reuseExistingServer: false,
     timeout: 15_000,

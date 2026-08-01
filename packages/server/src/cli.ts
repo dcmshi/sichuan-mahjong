@@ -11,6 +11,8 @@ export type CliOptions = {
   tailscale: boolean;
   share: boolean;
   dataDir: string | null;
+  /** Bot pause per move, in ms. `null` leaves the server default in place. */
+  botDelayMs: number | null;
   help: boolean;
 };
 
@@ -27,8 +29,16 @@ Options:
   --share             Auto-create a Tailscale share invite for this node
                       (needs TAILSCALE_API_KEY; optional TAILSCALE_TAILNET)
   --data-dir <path>   Override SQLite data directory
+  --bot-delay <ms>    How long bots pause per move (default: 700, max 5000).
+                      Lower it to speed practice games up, 0 for instant.
   --help              Show this message
 `.trim();
+
+function parseDelay(raw: string | undefined): number | null {
+  if (raw === undefined) return null;
+  const ms = Number.parseInt(raw, 10);
+  return Number.isFinite(ms) && ms >= 0 ? ms : null;
+}
 
 export function parseCli(argv = process.argv.slice(2)): CliOptions {
   try {
@@ -41,6 +51,7 @@ export function parseCli(argv = process.argv.slice(2)): CliOptions {
         'no-tailscale': { type: 'boolean', default: false },
         share: { type: 'boolean', default: false },
         'data-dir': { type: 'string' },
+        'bot-delay': { type: 'string' },
         help: { type: 'boolean', default: false },
       },
       strict: true,
@@ -58,6 +69,10 @@ export function parseCli(argv = process.argv.slice(2)): CliOptions {
       tailscale: !(values['no-tailscale'] as boolean),
       share: values.share as boolean,
       dataDir: (values['data-dir'] as string) ?? null,
+      // `|| 700` is wrong here — `--bot-delay 0` is a legitimate value (instant
+      // bots), so an unparseable argument has to fall through to null and leave
+      // the server default alone rather than land on a number.
+      botDelayMs: parseDelay(values['bot-delay'] as string | undefined),
       help: false,
     };
   } catch (err) {
