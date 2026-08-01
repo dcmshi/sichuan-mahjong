@@ -120,7 +120,8 @@ breakdown (2026-07-31) are complete. Per-item history is in
 [TODO.md](./TODO.md); the deferral record is
 [ARCHITECTURE.md §12](./ARCHITECTURE.md#12-open-questions--explicit-deferrals).
 
-**One open item:** a real landscape layout for phones (R4 Phase 2 in
-[docs/viewport-audit.md](./docs/viewport-audit.md)). Landscape currently shows a
-rotate-to-portrait prompt during play. Everything else from the viewport audit
-has shipped, and `e2e/viewport.spec.ts` guards it from regressing.
+**No scheduled work.** A real landscape layout for phones (R4 Phase 2 in
+[docs/viewport-audit.md](./docs/viewport-audit.md)) is shelved with its reasons
+recorded there; landscape shows a rotate-to-portrait prompt during play.
+Everything else from the viewport audit shipped, and `e2e/viewport.spec.ts`
+guards it from regressing.

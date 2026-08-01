@@ -134,8 +134,8 @@ overflows by **0px at peak across a round**, down from +129px, verified over 209
 samples spanning three rounds including 41 with the melds row present. Round end
 still scrolls, by design, but its controls are pinned and reachable at every
 scroll position. Landscape phones get a rotate prompt rather than an unusable
-board; R4 Phase 2, a real landscape layout, remains deliberately out of scope and
-is the one open item from this audit.
+board. **R4 Phase 2, a real landscape layout, is shelved** — see the reasons
+recorded under R4.
 
 Two things the batch changed that are worth knowing: the landscape `ui-clicks`
 e2e run now asserts the rotate overlay instead of tapping a board that R4
@@ -247,8 +247,38 @@ stopping point, not an answer.
 "rotate to portrait" overlay during play. Honest, cheap, ends the
 scroll-away-hand trap today.
 
-**Phase 2 — a real landscape layout (larger; NOT in this batch).** Do not
-compress the portrait stack; rearrange it. Sketch for 844×340:
+**Phase 2 — a real landscape layout. SHELVED 2026-08-01.** Not scheduled. The
+sketch below is kept because it is a reasonable starting point, but four things
+have to be answered before anyone builds it:
+
+1. **The budget is vertical only, and the horizontal one does not close.** The
+   opponent strip puts three opponents in one row "with melds inline". Melds
+   render at `sm`, so a pung is ~100px wide and a kong ~134px. Three opponents
+   with two pungs each is ~600px of melds before names, turn glows and counts —
+   against an 844px viewport. A kong-heavy round, where each player can hold
+   four melds, runs past 1500px. `e2e/ui-clicks.spec.ts` fails on horizontal
+   overflow, so this is a hard CI failure rather than a visual squeeze.
+2. **16px of vertical headroom is not a margin here.** 324 against 340 is 5%,
+   and every estimate in this audit has come in worse than predicted: the play
+   screen was estimated at ~135px over and measured 310px, then 434px at peak,
+   and R1's own stated mechanism was wrong until measured.
+3. **The composition abstraction does not exist.** R2.1 extracted the zones,
+   which was the prerequisite, but there is still one `PlayPhase` rendering one
+   arrangement. Phase 2 means layout selection plus a second arrangement over
+   shared zones, and the implementation note below rules out the shortcut.
+4. **It may be unnecessary.** The manifest declares no `orientation`. Declaring
+   one would stop landscape arising in an installed PWA — which is the case this
+   recommendation leans on. The catch is that manifest orientation is app-wide,
+   so it would also pin iPads, which measure clean in landscape today; a runtime
+   `screen.orientation.lock()` gated on screen size could pin phones only, at the
+   cost of a JS path and patchier support.
+
+If it is picked up, de-risk it by building the opponent strip alone against a
+kong-heavy state and measuring both axes before committing to the rest of the
+layout. That strip is what the whole budget rests on and is the most likely to
+break.
+
+Sketch for 844×340:
 
 - **Top bar (40px)** absorbs the score chip from R2.1 — it is the only chrome
   row.
@@ -264,11 +294,8 @@ compress the portrait stack; rearrange it. Sketch for 844×340:
   inside a tray is fine — it is not page scroll), then the hand with Sort
   inline. Hand tiles stay ≥ 40px wide, inside the F15 tap-target rule.
 
-Budget: 40 + 64 + 110 + 110 ≈ 324 ≤ 340. That is a paper estimate with ~5%
-headroom — too tight to build on assumption. Phase 2 gets built behind
-measurement (the audit harness, extended with landscape device profiles), as
-its own piece of work, and the budget gets validated on a real build before
-the layout is committed to.
+Budget: 40 + 64 + 110 + 110 ≈ 324 ≤ 340 — vertical only, and see point 1 above
+for why the horizontal budget is the harder problem.
 
 **Implementation note for R1, and for Phase 2 when its turn comes:** extract
 the play-screen zones into components (top bar, opponent chip, well, own

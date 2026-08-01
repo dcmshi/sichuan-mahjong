@@ -29,9 +29,12 @@ Measured on an iPhone SE: play overflows **0px at peak** across a round, down
 from +129px, over 209 samples spanning three rounds. Extracting the play-screen
 zones into components took `Game.tsx` from ~760 lines to ~250.
 
-**Still open:** R4 Phase 2, a real landscape layout. Deliberately out of this
-batch — its 324/340px budget is a paper estimate and needs validating against a
-real build before the layout is committed to.
+**Shelved:** R4 Phase 2, a real landscape layout. Not scheduled. Its 324/340px
+budget is vertical only and has 5% headroom, the horizontal budget for the
+opponent strip does not close (three opponents' melds inline can exceed 1500px
+against an 844px viewport, which `ui-clicks.spec.ts` fails on), the layout
+composition abstraction doesn't exist yet, and declaring a manifest orientation
+might remove the need entirely. Reasons recorded under R4 in the audit.
 
 ## ✅ Play screen fits a phone again (2026-08-01)
 
@@ -410,11 +413,14 @@ Review of the third pass's changes + the areas earlier passes never read
   ranks (information a human wouldn't have — A27). It now takes the viewing
   seat and skips concealed kongs that aren't its own.
 
-**Noted, deliberately not fixed:** the PWA offline shell (`sw.js`) is nominal —
-it caches `/` plus the dev-only `/src/main.tsx` path and never the hashed
-production assets, so an offline navigation renders a shell whose JS/CSS fail
-to load. Offline play was never a goal (the game needs a live WS anyway);
-proper asset caching would need build integration for marginal value.
+**Noted, deliberately not fixed** *(superseded — F5 fixed this on 2026-07-31;
+kept for the record)*: the PWA offline shell (`sw.js`) was nominal — it cached
+`/` plus the dev-only `/src/main.tsx` path and never the hashed production
+assets, so an offline navigation rendered a shell whose JS/CSS failed to load.
+Judged not worth build integration at the time. F5 found it was worse than
+described — `cache.addAll` is atomic, so the dev-only path's 404 rejected the
+whole install and the cache stayed empty — and fixed it with runtime caching,
+no build step required.
 
 ## 🔍 Audit backlog — third pass (2026-07-16)
 

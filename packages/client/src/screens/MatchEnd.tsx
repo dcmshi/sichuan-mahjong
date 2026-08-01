@@ -27,11 +27,9 @@ export function MatchEnd() {
 
   return (
     <div className="min-h-dvh bg-green-900 flex flex-col items-center p-6 text-white gap-6">
-      <motion.div
-        className="text-5xl mt-4"
-        initial={{ scale: 0.6, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-      >
+      {/* Scale only, never opacity: an entrance that fades in from 0 leaves the
+          element invisible anywhere the animation doesn't run. (F11) */}
+      <motion.div className="text-5xl mt-4" initial={{ scale: 0.6 }} animate={{ scale: 1 }}>
         🏁
       </motion.div>
       <h2 className="text-2xl font-bold">{t('match.title')}</h2>
