@@ -7,7 +7,7 @@ import { EventFeed } from '../components/EventFeed.js';
 import { HowToPlay } from '../components/HowToPlay.js';
 import { LangSwitch } from '../components/LangSwitch.js';
 import { MeldDisplay } from '../components/MeldDisplay.js';
-import { Tile, TileBack } from '../components/Tile.js';
+import { Tile, TileBack, tileLabel } from '../components/Tile.js';
 import { useSound } from '../hooks/useSound.js';
 import { useT } from '../i18n/useT.js';
 import { useStore } from '../store/index.js';
@@ -681,7 +681,20 @@ function PlayPhase({ view }: { view: PlayerView }) {
               }}
               whileDrag={{ scale: 1.08, zIndex: 10 }}
             >
-              <Tile id={id} selected={selectedTile === id} interactive={false} fill />
+              {/* The list item owns tap and drag; this button is what makes the
+                  tile reachable from the keyboard and gives it a spoken name. (F16) */}
+              <button
+                type="button"
+                className="block w-full"
+                aria-label={tileLabel(id, t)}
+                onKeyDown={e => {
+                  if (e.key !== 'Enter' && e.key !== ' ') return;
+                  e.preventDefault();
+                  handleTileTap(id);
+                }}
+              >
+                <Tile id={id} selected={selectedTile === id} interactive={false} fill />
+              </button>
             </Reorder.Item>
           ))}
         </Reorder.Group>
