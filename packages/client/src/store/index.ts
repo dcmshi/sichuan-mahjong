@@ -153,9 +153,12 @@ export const useStore = create<GameStore>((set, get) => ({
         // reconnects at round end is handed the same result again (the A9 path),
         // and incrementing on every arrival inflated the match totals by that
         // round's delta each time. (A39)
+        // Spectators get the same payload but must not be navigated onto the
+        // player round-end screen; they render the reveals in place.
+        const screen = get().screen === 'spectate' ? 'spectate' : 'roundEnd';
         const { roundIndex } = msg.results;
         if (get().countedRounds.includes(roundIndex)) {
-          set({ roundResult: msg.results, screen: 'roundEnd' });
+          set({ roundResult: msg.results, screen });
           break;
         }
         const next = { ...get().matchScores };
@@ -166,7 +169,7 @@ export const useStore = create<GameStore>((set, get) => ({
           roundResult: msg.results,
           matchScores: next,
           countedRounds: [...get().countedRounds, roundIndex],
-          screen: 'roundEnd',
+          screen,
         });
         break;
       }

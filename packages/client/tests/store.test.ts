@@ -12,6 +12,10 @@ function roundEnd(roundIndex: number, deltas: [number, number, number, number]):
         name: `P${seat}`,
         scoreDelta,
         hu: null,
+        hand: [],
+        melds: [],
+        isReady: false,
+        ledger: [],
       })),
     },
   };
@@ -45,6 +49,15 @@ describe('client store (A30)', () => {
     // A genuinely new round still accumulates.
     handleServerMsg(roundEnd(1, [-2, 8, -3, -3]));
     expect(useStore.getState().matchScores).toEqual({ 0: 8, 1: 3, 2: -8, 3: -3 });
+  });
+
+  it('a spectator receiving roundEnd stays on the spectate screen', () => {
+    useStore.setState({ screen: 'spectate' });
+    useStore.getState().handleServerMsg(roundEnd(0, [10, -5, -5, 0]));
+
+    const s = useStore.getState();
+    expect(s.screen).toBe('spectate');
+    expect(s.roundResult).not.toBeNull();
   });
 
   it("'joined' stores seat + token; isHost survives only for seat 0", () => {
