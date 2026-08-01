@@ -738,6 +738,74 @@ export function createRoom(
   return room;
 }
 
+/**
+ * Fields a snapshot must carry, taken from a freshly created game rather than
+ * a hand-written list — so the check cannot drift as `GameState` grows. This is
+ * what makes the validation below self-maintaining: add a field to the engine
+ * and old snapshots start being rejected for it automatically.
+ */
+function requiredShape(): { state: string[]; player: string[] } {
+  const fresh = createGame('shape-probe', [
+    { name: 'a', isBot: true },
+    { name: 'b', isBot: true },
+    { name: 'c', isBot: true },
+    { name: 'd', isBot: true },
+  ]);
+  return { state: Object.keys(fresh), player: Object.keys(fresh.players[0]) };
+}
+
+/**
+ * The one field a missing value can be defaulted for: an empty ledger costs the
+ * round its payment breakdown and corrupts nothing. Every other field is real
+ * game state with no safe default — a missing `hand` or `turn` cannot be
+ * invented, so those snapshots are rejected rather than half-restored.
+ */
+function normalizeSnapshotState(state: Record<string, unknown>): void {
+  if (state.ledger === undefined) state.ledger = [];
+}
+
+/**
+ * Names every field a persisted snapshot is missing, or [] when it matches the
+ * current shape. `GameRoom.restore` used to assign `snap.state` verbatim, so a
+ * field added or renamed since the snapshot was written came back `undefined`:
+ * two fields throw on restore and seventeen silently corrupt the projected
+ * view — `pendingFirstDiscard` (renamed in A35) reads as "has a pending tile"
+ * and soft-locks the seat. Silent corruption is the worst outcome available,
+ * so an incompatible snapshot is refused instead.
+ */
+export function validateRoomSnapshot(snapshot: unknown): string[] {
+  if (typeof snapshot !== 'object' || snapshot === null) return ['snapshot (not an object)'];
+  const snap = snapshot as { state?: unknown };
+  if (typeof snap.state !== 'object' || snap.state === null) return ['state (missing)'];
+
+  const state = snap.state as Record<string, unknown>;
+  normalizeSnapshotState(state);
+
+  const shape = requiredShape();
+  const missing: string[] = [];
+  for (const key of shape.state) {
+    if (key === 'players') continue;
+    if (state[key] === undefined) missing.push(`state.${key}`);
+  }
+
+  const players = state.players;
+  if (!Array.isArray(players) || players.length !== 4) {
+    missing.push('state.players (expected 4)');
+    return missing;
+  }
+  players.forEach((p, i) => {
+    if (typeof p !== 'object' || p === null) {
+      missing.push(`players[${i}] (not an object)`);
+      return;
+    }
+    const player = p as Record<string, unknown>;
+    for (const key of shape.player) {
+      if (player[key] === undefined) missing.push(`players[${i}].${key}`);
+    }
+  });
+  return missing;
+}
+
 export function getRoom(code: string): GameRoom | undefined {
   return rooms.get(code);
 }
@@ -766,18 +834,38 @@ export function restoreRoomsFromDisk(): number {
     console.error('[resume] Failed to load live rooms:', err);
     return 0;
   }
-  for (const { snapshot } of snapshots) {
+  for (const { code, snapshot } of snapshots) {
+    // A row that can't be restored is dropped rather than left to fail on every
+    // future boot — that's what produced repeating restore errors in the logs.
+    const drop = (why: string) => {
+      console.error(`[resume] Discarding room ${code}: ${why}`);
+      try {
+        deleteLiveRoom(code);
+      } catch {
+        /* best-effort */
+      }
+    };
+
+    const missing = validateRoomSnapshot(snapshot);
+    if (missing.length > 0) {
+      drop(`snapshot predates this version (missing ${missing.join(', ')})`);
+      continue;
+    }
+
     try {
       const snap = snapshot as RoomSnapshot;
+      const room = GameRoom.restore(snap);
+      rooms.set(room.code, room);
+      // Tokens are imported only once the room is known good; importing them
+      // first would leave dangling seats for a room that never materialised.
       for (const t of snap.tokens) {
         importToken(t.token, { code: t.code, seat: t.seat, role: t.role });
       }
-      const room = GameRoom.restore(snap);
-      rooms.set(room.code, room);
       room.resumeAfterRestore();
       restored++;
     } catch (err) {
-      console.error('[resume] Failed to restore a room:', err);
+      rooms.delete(code);
+      drop(`restore threw — ${err instanceof Error ? err.message : String(err)}`);
     }
   }
   return restored;
