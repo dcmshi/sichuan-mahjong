@@ -14,6 +14,7 @@ Keep this file short. New documentation goes in one of these instead:
 | **[ARCHITECTURE.md](./ARCHITECTURE.md)** | Types, engine API, full ruleset, protocol, persistence, networking, testing strategy | …you change behavior, a type, or a rule |
 | **[TODO.md](./TODO.md)** | Phase history + audit backlog (A1–A39, F1–F25), each item with diagnosis and fix | …you fix a bug or close an audit item |
 | **[README.md](./README.md)** | User-facing: install, host/join, CLI flags | …you change the CLI or the player-facing flow |
+| **[docs/viewport-audit.md](./docs/viewport-audit.md)** | Measured mobile viewport overflow + the open layout questions | …you change the play or round-end layout |
 | `SBR_ENG_part_1.pdf` | Novikov, *Sichuan Mahjong? It's that simple!* — the canonical ruleset | (read-only; extract with `pdftotext` when a rule is in question) |
 
 ---
@@ -115,6 +116,12 @@ Full tree: [ARCHITECTURE.md §3](./ARCHITECTURE.md#3-repo-layout).
 
 All v1 work, six full-repo audit passes (A1–A39, through 2026-07-25), a
 frontend/design pass (F1–F25) and round-end hand reveals with a fan/penalty
-breakdown (2026-07-31) are complete. **No open items.** Per-item history is in
+breakdown (2026-07-31) are complete. Per-item history is in
 [TODO.md](./TODO.md); the deferral record is
 [ARCHITECTURE.md §12](./ARCHITECTURE.md#12-open-questions--explicit-deferrals).
+
+**Open: three mobile layout questions awaiting design input** — landscape phone
+has no layout of its own, round end overflows on every device, and portrait play
+fits with nothing to spare. Measurements and the specific questions are in
+[docs/viewport-audit.md](./docs/viewport-audit.md). No code work until that comes
+back.

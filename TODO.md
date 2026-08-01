@@ -1,5 +1,26 @@
 # TODO
 
+## 🎨 Open — mobile layout, awaiting design input (2026-08-01)
+
+Full measurements and the questions: **[docs/viewport-audit.md](./docs/viewport-audit.md)**
+(and `viewport-audit.html` for the same thing drawn as bars).
+
+25 screen-and-device combinations measured, 10 overflow, none horizontally.
+iPad is clean in both orientations. Three decisions are design's, not
+engineering's:
+
+- [ ] **Landscape phone has no layout of its own.** Every screen overflows; play
+  needs ~2× the viewport height, round end 3.3×. Structural — the board is a
+  vertical stack, and 844×340 is the opposite shape. Support it with a real
+  landscape arrangement, or detect and prompt to rotate?
+- [ ] **Round end overflows on every device**, iPad landscape included. The
+  winner's row opens by default and pushes "Next Round" / "End Match" 416px below
+  the fold on an iPhone SE. Pin the actions? Collapse the winner by default?
+- [ ] **Portrait play fits with nothing spare** — +34px on iPhone 14, +129px on
+  SE. The remaining height is all real content; the next reduction costs
+  information. Which is least costly: denser discard tray, shorter
+  across-opponent zone, or score strip folded into the top bar?
+
 ## ✅ Play screen fits a phone again (2026-08-01)
 
 F13 stopped the play screen *clipping* by making it scroll, which is what the
