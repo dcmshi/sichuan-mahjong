@@ -494,6 +494,16 @@ export function loadLang(): Lang {
   return 'en';
 }
 
+/**
+ * Keep <html lang> in step with the UI language. It was pinned to "en" in the
+ * markup and never changed, so screen readers pronounced Chinese as English
+ * and hyphenation used the wrong rules. (F19)
+ */
+export function applyDocumentLang(lang: Lang): void {
+  if (typeof document === 'undefined') return;
+  document.documentElement.lang = lang;
+}
+
 export function persistLang(lang: Lang): void {
   try {
     localStorage.setItem(STORAGE_KEY, lang);

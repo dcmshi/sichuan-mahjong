@@ -3,8 +3,12 @@ import { tileFromType, tileTypeOf } from '@sichuan-mahjong/engine';
 import type { Suit } from '@sichuan-mahjong/engine';
 import { createRoot } from 'react-dom/client';
 import { App } from './App.js';
+import { applyDocumentLang } from './i18n/index.js';
 import { useStore } from './store/index.js';
 import { sendAction } from './ws/client.js';
+
+// The stored language must reach <html lang> before the first paint. (F19)
+applyDocumentLang(useStore.getState().lang);
 
 const el = document.getElementById('root');
 if (!el) throw new Error('No #root element');

@@ -8,7 +8,7 @@ import type {
   SpectatorView,
 } from '@sichuan-mahjong/engine';
 import { create } from 'zustand';
-import { type Lang, loadLang, persistLang } from '../i18n/index.js';
+import { type Lang, applyDocumentLang, loadLang, persistLang } from '../i18n/index.js';
 import { clearSession, persistSession } from '../session.js';
 import { closeConnection } from '../ws/client.js';
 
@@ -105,6 +105,7 @@ export const useStore = create<GameStore>((set, get) => ({
   lang: loadLang(),
   setLang: lang => {
     persistLang(lang);
+    applyDocumentLang(lang);
     set({ lang });
   },
 
