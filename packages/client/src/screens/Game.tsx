@@ -1,5 +1,5 @@
 import { tileFromType, tileTypeOf } from '@sichuan-mahjong/engine';
-import type { PlayerView, Suit, TileId } from '@sichuan-mahjong/engine';
+import type { PlayerView, Seat, Suit, TileId } from '@sichuan-mahjong/engine';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import { ClaimPanel } from '../components/ClaimPanel.js';
@@ -8,6 +8,7 @@ import { LangSwitch } from '../components/LangSwitch.js';
 import { OpponentSide } from '../components/OpponentSide.js';
 import { OpponentTop } from '../components/OpponentTop.js';
 import { OwnZone } from '../components/OwnZone.js';
+import { PlayHistory } from '../components/PlayHistory.js';
 import { PlayTopBar } from '../components/PlayTopBar.js';
 import { RotateOverlay } from '../components/RotateOverlay.js';
 import { Tile } from '../components/Tile.js';
@@ -84,6 +85,8 @@ function HuanPhase({ view }: { view: PlayerView }) {
                 id={id}
                 selected={isSelected}
                 size="lg"
+                flat
+                solo
                 onClick={() => !disabled && toggle(id)}
               />
             </div>
@@ -182,7 +185,7 @@ function VoidDeclarePhase({ view }: { view: PlayerView }) {
           </p>
           <div className="flex flex-wrap gap-1">
             {counts[chosenSuit].map(id => (
-              <Tile key={id} id={id} size="md" />
+              <Tile key={id} id={id} size="md" flat solo />
             ))}
             {counts[chosenSuit].length === 0 && (
               <span className="text-white/60 italic text-sm">{t('void.none')}</span>
@@ -210,11 +213,16 @@ function VoidDeclarePhase({ view }: { view: PlayerView }) {
 
 function PlayPhase({ view }: { view: PlayerView }) {
   const reconnecting = useStore(s => s.reconnecting);
+  const [showHistory, setShowHistory] = useState(false);
   const t = useT();
   const seat = view.you.seat;
 
   const inClaimWindow = view.claimDeadline !== null;
   const lastDiscardTile = view.lastDiscard?.tile ?? null;
+  // "You discarded", not "David discarded" — your own rows read the way the top
+  // bar already talks about you.
+  const nameOf = (s: Seat) =>
+    s === seat ? t('history.you') : (view.others.find(o => o.seat === s)?.name ?? '');
 
   return (
     // h-dvh (not min-h-dvh): the middle row's flex-1 min-h-0 below only has
@@ -271,8 +279,13 @@ function PlayPhase({ view }: { view: PlayerView }) {
                 {/* lg on a tall viewport, md on a short one (index.css) — once
                     the side columns stop setting the row's height, the well's
                     own minimum content is what it bottoms out at instead. */}
+                {/* Flat, like every other tile on the board. It kept the 3D art
+                    at first on the "a singleton should look like a singleton"
+                    argument, but a few centimetres from the flat hand and trays
+                    it just read as glossier — a second tile design rather than
+                    the same tile. `solo` gives back the lift a lone tile needs. (O4) */}
                 <div className="last-discard-tile">
-                  <Tile id={lastDiscardTile} lastDiscard fill />
+                  <Tile id={lastDiscardTile} lastDiscard fill flat solo />
                 </div>
               </motion.div>
             </div>
@@ -280,6 +293,19 @@ function PlayPhase({ view }: { view: PlayerView }) {
           <div className="text-xs text-white/30 mt-1">
             {view.you.voidedSuit ? t('play.void', { suit: t(`suit.${view.you.voidedSuit}`) }) : ''}
           </div>
+          {/* In the well, not the top bar: a fourth icon up there truncated the
+              turn indicator to "Y...", and the bar has no width to spare. Here it
+              is absolutely positioned, so it costs no height either — and the
+              middle of the board is the empty space anyway. (O2) */}
+          <button
+            type="button"
+            className="absolute bottom-0 right-0 min-h-10 min-w-10 flex items-center justify-center text-white/40 hover:text-white text-base"
+            onClick={() => setShowHistory(true)}
+            title={t('play.history')}
+            aria-label={t('play.history')}
+          >
+            🗒
+          </button>
         </div>
         {/* Plain block, not `flex justify-end`: as a flex parent this made
             OpponentSide size to min-content, so the tray's `max-w-full` resolved
@@ -301,6 +327,8 @@ function PlayPhase({ view }: { view: PlayerView }) {
           windowMs={view.config.claimWindowMs}
         />
       )}
+
+      {showHistory && <PlayHistory nameOf={nameOf} onClose={() => setShowHistory(false)} />}
 
       {/* Landscape phones only (index.css); see RotateOverlay.tsx (R4 Phase 1). */}
       <RotateOverlay />

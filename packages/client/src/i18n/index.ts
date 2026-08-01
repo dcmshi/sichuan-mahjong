@@ -122,6 +122,7 @@ const en: Dict = {
   'play.toggleSound': 'Toggle sound',
   'play.howToPlay': 'How to play',
   'play.scores': 'Scores',
+  'play.history': 'Move history',
   'play.rotateTitle': 'Rotate to portrait',
   'play.rotateHint':
     'This screen needs more height than landscape gives it — turn your phone upright to keep your hand on screen.',
@@ -138,6 +139,12 @@ const en: Dict = {
   'event.pung': '{name} ponged',
   'event.kong': '{name} konged',
   'event.hu': '{name} declared Hu!',
+
+  'history.title': 'This round',
+  'history.empty': 'No moves yet this round.',
+  'history.discarded': '{name} discarded',
+  'history.falseHu': '{name} called a false Hu',
+  'history.you': 'You',
 
   'end.title': 'Round End',
   'end.thisRound': 'This Round',
@@ -317,6 +324,7 @@ const zhHans: Dict = {
   'play.toggleSound': '开关音效',
   'play.howToPlay': '玩法说明',
   'play.scores': '分数',
+  'play.history': '出牌记录',
   'play.rotateTitle': '请切换为竖屏',
   'play.rotateHint': '横屏画面高度不够，将手机竖起才能看到你的手牌。',
 
@@ -332,6 +340,12 @@ const zhHans: Dict = {
   'event.pung': '{name} 碰了',
   'event.kong': '{name} 杠了',
   'event.hu': '{name} 胡了！',
+
+  'history.title': '本局记录',
+  'history.empty': '本局还没有出牌。',
+  'history.discarded': '{name} 打出',
+  'history.falseHu': '{name} 诈胡',
+  'history.you': '你',
 
   'end.title': '本局结束',
   'end.thisRound': '本局',
@@ -507,6 +521,7 @@ const zhHant: Dict = {
   'play.toggleSound': '開關音效',
   'play.howToPlay': '玩法說明',
   'play.scores': '分數',
+  'play.history': '出牌記錄',
   'play.rotateTitle': '請切換為直向',
   'play.rotateHint': '橫向畫面高度不足，將手機直立才能看到你的手牌。',
 
@@ -522,6 +537,12 @@ const zhHant: Dict = {
   'event.pung': '{name} 碰了',
   'event.kong': '{name} 槓了',
   'event.hu': '{name} 胡了！',
+
+  'history.title': '本局記錄',
+  'history.empty': '本局還沒有出牌。',
+  'history.discarded': '{name} 打出',
+  'history.falseHu': '{name} 詐胡',
+  'history.you': '你',
 
   'end.title': '本局結束',
   'end.thisRound': '本局',

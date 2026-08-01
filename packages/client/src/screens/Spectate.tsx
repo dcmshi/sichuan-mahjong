@@ -125,7 +125,7 @@ export function Spectate() {
             initial={{ scale: 1.3, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
           >
-            <Tile id={view.lastDiscard.tile} lastDiscard size="md" />
+            <Tile id={view.lastDiscard.tile} lastDiscard size="md" flat solo />
           </motion.div>
         </div>
       )}

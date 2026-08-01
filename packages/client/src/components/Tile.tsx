@@ -41,11 +41,18 @@ export type TileProps = {
   fill?: boolean;
   /**
    * Draw the flat face — glyph on a plain cell — instead of the standalone 3D
-   * tile. Used wherever tiles sit flush against each other (hand, melds, discard
-   * trays); singletons like the well's last discard keep the 3D art, because a
-   * lone tile should look like a lone tile. See `.tile-cell` in index.css.
+   * tile. Every tile on the board is drawn this way — the 3D art was kept for
+   * singletons at first, on the grounds that a lone tile should look like a lone
+   * tile, but beside a flat hand it just read as glossier. See `.tile-cell`.
    */
   flat?: boolean;
+  /**
+   * A flat tile with nothing flush beside it — the well's last discard, a
+   * picker. It carries its own lift, since there's no `.tile-run` around it to
+   * hang the strip shadow on. No effect without `flat`: the 3D art brings its
+   * own shadow.
+   */
+  solo?: boolean;
 };
 
 /**
@@ -68,6 +75,7 @@ export function Tile({
   interactive = true,
   fill = false,
   flat = false,
+  solo = false,
 }: TileProps) {
   const { suit, rank } = tileFromType(tileTypeOf(id));
   const src = flat ? `/tiles/flat/${suit}-${rank}.svg` : `/tiles/${suit}-${rank}.svg`;
@@ -122,6 +130,7 @@ export function Tile({
         className={[
           'tile select-none overflow-hidden',
           flat ? 'tile-cell' : '',
+          flat && solo ? 'tile-solo' : '',
           fill ? 'w-full' : SIZE_CLASSES[size],
           selected ? 'is-selected' : '',
           lastDiscard ? 'tile-last-discard' : '',
@@ -163,9 +172,17 @@ export function Tile({
               initial={{ scale: 0.5 }}
               animate={{ scale: 1 }}
               exit={{ scale: 0.5 }}
-              className={`tile overflow-hidden ${SIZE_CLASSES.xl}`}
+              // Mirrors however the tile itself is drawn rather than deciding
+              // for itself: magnifying a flat tile into the 3D art reads as a
+              // second tile design rather than as a closer look at this one.
+              className={`tile tile-solo overflow-hidden ${flat ? 'tile-cell' : ''} ${SIZE_CLASSES.xl}`}
             >
-              <img src={src} alt={`${suit}-${rank}`} className="tile-face" draggable={false} />
+              <img
+                src={src}
+                alt={`${suit}-${rank}`}
+                className={flat ? 'tile-glyph' : 'tile-face'}
+                draggable={false}
+              />
             </motion.div>
           </motion.div>
         )}
@@ -178,9 +195,14 @@ export function TileBack({
   size = 'md',
   fill = false,
   flat = false,
-}: { size?: 'sm' | 'md' | 'lg'; fill?: boolean; flat?: boolean }) {
+  solo = false,
+}: { size?: 'sm' | 'md' | 'lg'; fill?: boolean; flat?: boolean; solo?: boolean }) {
   return (
-    <div className={`tile ${flat ? 'tile-cell' : ''} ${fill ? 'w-full' : SIZE_CLASSES[size]}`}>
+    <div
+      className={`tile ${flat ? 'tile-cell' : ''} ${flat && solo ? 'tile-solo' : ''} ${
+        fill ? 'w-full' : SIZE_CLASSES[size]
+      }`}
+    >
       <img
         src={flat ? '/tiles/flat/back.svg' : '/tiles/back.svg'}
         alt=""

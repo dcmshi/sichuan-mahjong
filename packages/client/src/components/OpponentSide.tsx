@@ -1,5 +1,6 @@
 import type { PlayerView } from '@sichuan-mahjong/engine';
 import { HandCountChip } from './HandCountChip.js';
+import { MeldChip } from './MeldDisplay.js';
 import { Tile, TileBack } from './Tile.js';
 
 /** A side opponent's column (left or right of the well). */
@@ -33,6 +34,20 @@ export function OpponentSide({
       <div className="flex-shrink-0">
         <HandCountChip count={opp.handCount} />
       </div>
+      {/* Two chips a row at 80px, wrapping — four melds is the maximum a hand can
+          hold. See MeldChip for why this isn't the full flush run the across
+          opponent gets. */}
+      {opp.melds.length > 0 && (
+        <div
+          className={`flex flex-wrap gap-1 w-20 flex-shrink-0 ${
+            side === 'right' ? 'justify-end' : ''
+          }`}
+        >
+          {opp.melds.map((m, i) => (
+            <MeldChip key={i} meld={m} />
+          ))}
+        </div>
+      )}
       {/* Grows downward, two flush tiles wide, scrolling inside the column.
           The old single sideways row cut a tile in half at 80px — and worse, on
           the right the column is a flex parent, so `max-w-full` resolved against

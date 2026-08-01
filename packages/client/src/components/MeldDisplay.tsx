@@ -51,6 +51,31 @@ export function meldRender(meld: PublicMeld): { ids: TileId[] | null; badged: bo
   return { ids: meldTileIds(meld), badged };
 }
 
+/**
+ * A meld in an 80px column — the side opponents' form. They used to render no
+ * melds at all, so a player who had ponged simply had a smaller hand for no
+ * visible reason; but three flush `sm` tiles are ~96px and would spill the
+ * column the way their discard tray did before R6. One tile with the meld's name
+ * fits, and carries what a player actually reads off an opponent's melds: which
+ * tile they've locked away. The kind implies the count.
+ */
+export function MeldChip({ meld }: { meld: PublicMeld }) {
+  const t = useT();
+  const { ids } = meldRender(meld);
+  return (
+    <div className="relative flex-shrink-0">
+      {ids === null || ids[0] === undefined ? (
+        <TileBack size="sm" flat solo />
+      ) : (
+        <Tile id={ids[0]} size="sm" flat solo interactive={false} />
+      )}
+      <span className="absolute -bottom-1 -right-1 px-0.5 rounded bg-amber-500 text-black text-[8px] font-bold leading-tight">
+        {t(meld.kind === 'kong' ? 'claim.kong' : 'claim.pung')}
+      </span>
+    </div>
+  );
+}
+
 export function MeldDisplay({ meld }: { meld: PublicMeld }) {
   const t = useT();
   const { ids, badged } = meldRender(meld);

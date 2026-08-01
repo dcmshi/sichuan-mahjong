@@ -12,6 +12,22 @@ import { type Lang, applyDocumentLang, loadLang, persistLang } from '../i18n/ind
 import { clearSession, persistSession } from '../session.js';
 import { closeConnection } from '../ws/client.js';
 
+export type HistoryItem = { id: number; event: GameEvent };
+
+/**
+ * A round is at most ~80 discards plus claims, so this holds a whole one with
+ * room to spare; the cap exists so a very long match can't grow the array
+ * without bound rather than to truncate anything a player would look for.
+ */
+const HISTORY_MAX = 200;
+
+function appendHistory(prev: HistoryItem[], events: GameEvent[]): HistoryItem[] {
+  if (events.length === 0) return prev;
+  let id = prev.at(-1)?.id ?? 0;
+  const added = events.map(event => ({ id: ++id, event }));
+  return [...prev, ...added].slice(-HISTORY_MAX);
+}
+
 export type Screen =
   | 'landing'
   | 'hostSetup'
@@ -41,6 +57,18 @@ export interface GameStore {
   // Game
   view: PlayerView | null;
   lastEvents: GameEvent[];
+  /**
+   * Every event of the current round, oldest first, for the history panel.
+   * `lastEvents` is the transient batch the feed announces and then forgets; this
+   * is what lets a player who looked away find out what they missed, which the
+   * feed can't do — it holds two lines for 3.5s, one on a short viewport. (O2)
+   *
+   * Ids are assigned here because events carry no identity of their own and two
+   * identical discards are indistinguishable otherwise. Raw events, not
+   * formatted lines: the store has no translator, and a player switching
+   * language mid-round should see the whole list switch with them.
+   */
+  history: HistoryItem[];
 
   // Spectator
   spectatorView: SpectatorView | null;
@@ -93,6 +121,7 @@ export const useStore = create<GameStore>((set, get) => ({
   canStart: false,
   view: null,
   lastEvents: [],
+  history: [],
   spectatorView: null,
   roundResult: null,
   matchScores: {},
@@ -144,6 +173,7 @@ export const useStore = create<GameStore>((set, get) => ({
         set({
           view: msg.view,
           lastEvents: msg.events,
+          history: appendHistory(get().history, msg.events),
           screen: 'game',
         });
         break;
@@ -169,13 +199,23 @@ export const useStore = create<GameStore>((set, get) => ({
           roundResult: msg.results,
           matchScores: next,
           countedRounds: [...get().countedRounds, roundIndex],
+          // The history panel covers the round in progress, so the finished
+          // round's moves are dropped here rather than bleeding into the next
+          // one. Only on the first arrival: a replayed roundEnd (the A9
+          // reconnect path) takes the branch above and touches nothing.
+          history: [],
           screen,
         });
         break;
       }
 
       case 'spectate':
-        set({ spectatorView: msg.view, lastEvents: msg.events, screen: 'spectate' });
+        set({
+          spectatorView: msg.view,
+          lastEvents: msg.events,
+          history: appendHistory(get().history, msg.events),
+          screen: 'spectate',
+        });
         break;
 
       case 'matchEnd':
@@ -222,6 +262,7 @@ export const useStore = create<GameStore>((set, get) => ({
       canStart: false,
       view: null,
       lastEvents: [],
+      history: [],
       spectatorView: null,
       roundResult: null,
       matchScores: {},

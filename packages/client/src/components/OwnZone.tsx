@@ -1,6 +1,6 @@
 import type { PlayerView, TileId } from '@sichuan-mahjong/engine';
 import { AnimatePresence, Reorder, motion } from 'framer-motion';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useSound } from '../hooks/useSound.js';
 import { useT } from '../i18n/useT.js';
 import { sendAction } from '../ws/client.js';
@@ -15,6 +15,45 @@ import { Tile, TileBack, tileLabel } from './Tile.js';
  * reduced motion skipping the animation entirely. (F20)
  */
 const HU_CELEBRATION_MS = 1200;
+
+/**
+ * How long a discarded tile takes to travel from your hand to your tray. Short
+ * enough not to sit in front of the next decision, long enough to be a movement
+ * you can follow rather than a jump.
+ */
+const DISCARD_FLIGHT_MS = 280;
+
+/** A tile in transit: where it left from, and where in the tray it's headed. */
+type Flight = {
+  tile: TileId;
+  from: { left: number; top: number; width: number };
+  to: { left: number; top: number; width: number };
+};
+
+const boxOf = (el: Element): Flight['from'] => {
+  const r = el.getBoundingClientRect();
+  return { left: r.left, top: r.top, width: r.width };
+};
+
+/**
+ * The discard, mid-air. Deliberately a fixed-position overlay rather than a
+ * transform on the tray tile itself: `e2e/viewport.spec.ts` asserts that no
+ * tile's box escapes its tray, sampling every ~130ms across a round, so a tray
+ * tile animating in from somewhere else would fail that guard the moment a
+ * sample caught it in flight. Nothing here is inside a tray.
+ */
+function FlyingDiscard({ flight }: { flight: Flight }) {
+  return (
+    <motion.div
+      className="fixed left-0 top-0 z-30 pointer-events-none"
+      initial={{ x: flight.from.left, y: flight.from.top, width: flight.from.width }}
+      animate={{ x: flight.to.left, y: flight.to.top, width: flight.to.width }}
+      transition={{ duration: DISCARD_FLIGHT_MS / 1000, ease: [0.3, 0.7, 0.4, 1] }}
+    >
+      <Tile id={flight.tile} interactive={false} fill flat solo />
+    </motion.div>
+  );
+}
 
 function HuCelebration() {
   return (
@@ -82,6 +121,40 @@ export function OwnZone({ view }: { view: PlayerView }) {
     return () => clearTimeout(id);
   }, [showHuCelebration]);
 
+  // Discard flight (hand → tray). The source box is captured at the tap, because
+  // by the time the server's view comes back the hand has already re-laid out
+  // without that tile; the destination can only be measured once the tray tile
+  // exists, so the two halves meet here.
+  const trayRef = useRef<HTMLDivElement | null>(null);
+  const takeoff = useRef<{ tile: TileId; from: Flight['from'] } | null>(null);
+  const [flight, setFlight] = useState<Flight | null>(null);
+  const discardKey = view.you.discards.join(',');
+
+  // Layout effect, not effect: measure and start before the browser paints the
+  // tile sitting in the tray, or you see it land and then fly.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: keyed on the discard list, not the view
+  useLayoutEffect(() => {
+    const pending = takeoff.current;
+    if (!pending) return;
+    const landed = view.you.discards.at(-1);
+    if (landed !== pending.tile) return; // our discard hasn't come back yet
+    takeoff.current = null;
+    // The newest discard is the tray's last child: discards render in order, and
+    // the face-down first discard renders ahead of them.
+    const target = trayRef.current?.lastElementChild;
+    if (!target) return;
+    setFlight({ tile: pending.tile, from: pending.from, to: boxOf(target) });
+  }, [discardKey]);
+
+  // Cleared on a timer rather than onAnimationComplete: under reduced motion
+  // Framer skips the animation, and a completion callback that never fires would
+  // leave the landing tile hidden for the rest of the round.
+  useEffect(() => {
+    if (!flight) return;
+    const id = setTimeout(() => setFlight(null), DISCARD_FLIGHT_MS + 60);
+    return () => clearTimeout(id);
+  }, [flight]);
+
   const isMyTurn = view.turn === seat && view.phase === 'play' && view.claimDeadline === null;
   const canDiscard = isMyTurn && view.yourLegalActions.some(a => a.t === 'discard');
   // The tile set aside at void declaration is the mandatory first discard: on this
@@ -93,11 +166,12 @@ export function OwnZone({ view }: { view: PlayerView }) {
   const inClaimWindow = view.claimDeadline !== null;
   const lastDiscardTile = view.lastDiscard?.tile ?? null;
 
-  function handleTileTap(id: TileId) {
+  function handleTileTap(id: TileId, source?: Element | null) {
     if (!canDiscard) return;
     play('tile');
     if (selectedTile === id) {
       play('discard');
+      if (source) takeoff.current = { tile: id, from: boxOf(source) };
       sendAction({ t: 'action', action: { t: 'discard', seat, tile: id } });
       setSelectedTile(null);
     } else {
@@ -139,12 +213,20 @@ export function OwnZone({ view }: { view: PlayerView }) {
       {/* Hu celebration */}
       <AnimatePresence>{showHuCelebration && <HuCelebration />}</AnimatePresence>
 
-      {/* Your melds */}
+      {flight && <FlyingDiscard flight={flight} />}
+
+      {/* Your melds. One row that scrolls, like the across opponent's (R6): this
+          was a plain non-wrapping flex of fixed-width tiles, so a third or fourth
+          meld ran past the screen edge and the root's `overflow-x-hidden` cut it
+          off with nothing to say it was there. pt-1 keeps the kong badge out of
+          the clip that comes with overflow-x. */}
       {view.you.melds.length > 0 && (
-        <div className="flex gap-1 px-3 py-1">
-          {view.you.melds.map((m, i) => (
-            <MeldDisplay key={i} meld={m} />
-          ))}
+        <div className="max-w-full overflow-x-auto px-3 pt-1 pb-1">
+          <div className="flex flex-nowrap gap-1 w-max">
+            {view.you.melds.map((m, i) => (
+              <MeldDisplay key={i} meld={m} />
+            ))}
+          </div>
         </div>
       )}
 
@@ -191,7 +273,9 @@ export function OwnZone({ view }: { view: PlayerView }) {
       {/* First-discard flip — the one discard the player doesn't get to choose (A35) */}
       {canFlip && !inClaimWindow && (
         <div className="mx-3 my-1 p-2 rounded-xl bg-black/30 flex items-center gap-3">
-          {pendingFlipTile !== null && <Tile id={pendingFlipTile} size="md" interactive={false} />}
+          {pendingFlipTile !== null && (
+            <Tile id={pendingFlipTile} size="md" interactive={false} flat solo />
+          )}
           <div className="flex-1 min-w-0">
             <p className="text-[11px] text-green-300 leading-snug">{t('play.flipHint')}</p>
           </div>
@@ -223,7 +307,14 @@ export function OwnZone({ view }: { view: PlayerView }) {
               `content-start items-start` because a wrapping flex container
               defaults to `align-content: stretch` — any spare height goes into
               the lines and the tiles are drawn past their aspect ratio. */}
-          <div className="flex flex-wrap content-start items-start discard-tray mt-0.5 min-h-0 overflow-y-auto">
+          {/* discard-landing hides the tile the flight is heading for, so it isn't
+              drawn in the pile and in the air at the same time. */}
+          <div
+            ref={trayRef}
+            className={`flex flex-wrap content-start items-start discard-tray mt-0.5 min-h-0 overflow-y-auto ${
+              flight ? 'discard-landing' : ''
+            }`}
+          >
             {/* Face down until you flip it on your first turn (A37) */}
             {view.you.pendingFirstDiscard && <TileBack size="sm" flat />}
             {view.you.discards.map(id => (
@@ -279,7 +370,8 @@ export function OwnZone({ view }: { view: PlayerView }) {
                 const s = tapStart.current;
                 tapStart.current = null;
                 // Treat as a tap (not a drag-to-reorder) only if the pointer barely moved.
-                if (s && Math.hypot(e.clientX - s.x, e.clientY - s.y) < 10) handleTileTap(id);
+                if (s && Math.hypot(e.clientX - s.x, e.clientY - s.y) < 10)
+                  handleTileTap(id, e.currentTarget);
               }}
               whileDrag={{ scale: 1.08, zIndex: 10 }}
             >
@@ -292,7 +384,7 @@ export function OwnZone({ view }: { view: PlayerView }) {
                 onKeyDown={e => {
                   if (e.key !== 'Enter' && e.key !== ' ') return;
                   e.preventDefault();
-                  handleTileTap(id);
+                  handleTileTap(id, e.currentTarget);
                 }}
               >
                 <Tile id={id} selected={selectedTile === id} interactive={false} fill flat />
