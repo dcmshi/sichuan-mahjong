@@ -849,6 +849,65 @@ describe('RoundEnd persistence', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Round-end reveals (hand/melds/ledger carried on RoundResult)
+// ---------------------------------------------------------------------------
+
+describe('Round-end reveals', () => {
+  const fakeWs = () =>
+    ({ readyState: 1, OPEN: 1, send() {} }) as unknown as import('@fastify/websocket').WebSocket;
+
+  /**
+   * No shared "drive a bot game to roundEnd" helper exists yet in this file —
+   * every other test that needs one (A9, A10, "reconnected human reclaims...")
+   * inlines the same fake-timer loop. This factors that proven loop out for
+   * reuse across the two tests below, rather than inventing new driving logic.
+   */
+  async function playRoundToEnd(): Promise<import('../src/room.js').GameRoom> {
+    const { GameRoom } = await import('../src/room.js');
+    vi.useFakeTimers();
+    try {
+      const room = new GameRoom('RER1', [
+        { name: 'B0', isBot: true, connected: false },
+        { name: 'B1', isBot: true, connected: false },
+        { name: 'B2', isBot: true, connected: false },
+        { name: 'B3', isBot: true, connected: false },
+      ]);
+      room.connect(0, fakeWs());
+      room.start();
+
+      let guard = 0;
+      while (room.getState().phase !== 'roundEnd' && guard++ < 100_000) {
+        vi.advanceTimersByTime(200);
+      }
+      expect(room.getState().phase).toBe('roundEnd');
+      return room;
+    } finally {
+      vi.useRealTimers();
+    }
+  }
+
+  it('round result reveals hands, melds, ready state and a per-seat ledger', async () => {
+    const room = await playRoundToEnd();
+    const results = room.buildRoundResultForTest();
+
+    for (const p of results.players) {
+      expect(Array.isArray(p.hand)).toBe(true);
+      expect(Array.isArray(p.melds)).toBe(true);
+      expect(typeof p.isReady).toBe('boolean');
+      // Every entry in a seat's ledger must actually involve that seat.
+      for (const e of p.ledger) {
+        expect(e.from === p.seat || e.to === p.seat).toBe(true);
+      }
+    }
+
+    // The seats' ledgers together account for the whole round.
+    const seen = new Set(results.players.flatMap(p => p.ledger.map(e => JSON.stringify(e))));
+    const all = new Set(room.getState().ledger.map(e => JSON.stringify(e)));
+    for (const e of all) expect(seen.has(e)).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Malformed input & action whitelist (A2/A4/A5)
 // ---------------------------------------------------------------------------
 

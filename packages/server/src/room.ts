@@ -650,8 +650,17 @@ export class GameRoom {
         name: p.name,
         scoreDelta: p.scoreDelta,
         hu: p.hu,
+        hand: [...p.hand],
+        melds: [...p.melds],
+        isReady: p.isReady,
+        ledger: this.state.ledger.filter(e => e.from === p.seat || e.to === p.seat),
       })),
     };
+  }
+
+  /** Test seam for the round-result payload. */
+  buildRoundResultForTest(): RoundResult {
+    return this.buildRoundResult();
   }
 
   private broadcastRoundEnd(): void {
