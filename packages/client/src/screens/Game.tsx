@@ -467,10 +467,10 @@ function PlayPhase({ view }: { view: PlayerView }) {
       <EventFeed view={view} />
 
       {/* Top bar */}
-      <div className="flex items-center justify-between px-3 py-1.5 bg-black/30 text-xs">
-        <span>{t('play.wall', { n: view.wallRemaining })}</span>
+      <div className="flex items-center justify-between gap-2 px-3 bg-black/30 text-xs">
+        <span className="flex-shrink-0">{t('play.wall', { n: view.wallRemaining })}</span>
         <span
-          className={`font-semibold ${view.turn === seat ? 'text-amber-400' : 'text-white/60'}`}
+          className={`font-semibold min-w-0 truncate ${view.turn === seat ? 'text-amber-400' : 'text-white/60'}`}
         >
           {view.turn === seat
             ? t('play.yourTurn')
@@ -478,11 +478,12 @@ function PlayPhase({ view }: { view: PlayerView }) {
                 name: view.others.find(o => o.seat === view.turn)?.name ?? '...',
               })}
         </span>
-        <div className="flex gap-2 items-center">
+        {/* These were bare text with no padding — a sub-20px tap target. (F15) */}
+        <div className="flex gap-1 items-center flex-shrink-0">
           <LangSwitch />
           <button
             type="button"
-            className="text-white/50 hover:text-white"
+            className="min-h-10 min-w-10 flex items-center justify-center text-white/50 hover:text-white"
             onClick={toggleSound}
             title="Toggle sound"
             aria-label="Toggle sound"
@@ -491,7 +492,7 @@ function PlayPhase({ view }: { view: PlayerView }) {
           </button>
           <button
             type="button"
-            className="text-white/50 hover:text-white"
+            className="min-h-10 min-w-10 flex items-center justify-center text-white/50 hover:text-white"
             onClick={() => setShowHowToPlay(true)}
             title="How to play"
             aria-label="How to play"
@@ -649,7 +650,7 @@ function PlayPhase({ view }: { view: PlayerView }) {
           </span>
           <button
             type="button"
-            className="text-xs px-2 py-0.5 rounded-md bg-black/25 text-white/70 hover:text-white"
+            className="text-xs px-3 min-h-10 rounded-md bg-black/25 text-white/70 hover:text-white"
             onClick={() => setHandOrder([...hand])}
             title={t('play.sort')}
           >
