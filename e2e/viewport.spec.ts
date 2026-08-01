@@ -59,6 +59,52 @@ function boardSample(page: Page): Promise<{ overflow: number; rows: string }> {
   });
 }
 
+/**
+ * Discard trays drawing outside where they belong. Two distinct faults, both live
+ * before the density pass and each invisible to the other's check:
+ *
+ *  - The left tray cut its third tile in half — 110px of tiles in an 80px box, so
+ *    it overflowed *itself*. Caught by scrollWidth, and by a tile's box escaping
+ *    the tray's.
+ *  - The right tray was 211.6px wide in an 80px column, spilling 132px leftward
+ *    across the well. Its own box fit its content perfectly, so neither check
+ *    above sees it; what it overflowed was the column. Caught by overlapping the
+ *    well, which is the defect as a player sees it — discards drawn over the
+ *    middle of the table.
+ */
+function trayProblems(page: Page): Promise<string[]> {
+  return page.evaluate(() => {
+    const bad: string[] = [];
+    const well = document.querySelector('.play-well')?.getBoundingClientRect();
+    const trays = Array.from(document.querySelectorAll('.discard-tray')) as HTMLElement[];
+    for (const [i, el] of trays.entries()) {
+      const box = el.getBoundingClientRect();
+      if (el.scrollWidth > el.clientWidth) {
+        bad.push(`tray ${i}: scrollWidth ${el.scrollWidth} > clientWidth ${el.clientWidth}`);
+      }
+      for (const t of Array.from(el.querySelectorAll('.tile'))) {
+        const tile = t.getBoundingClientRect();
+        if (tile.right > box.right + 0.5 || tile.left < box.left - 0.5) {
+          bad.push(
+            `tray ${i}: a tile spans ${Math.round(tile.left)}..${Math.round(tile.right)} in a box of ${Math.round(box.left)}..${Math.round(box.right)}`,
+          );
+        }
+      }
+      // The across opponent's tray sits above the well, so only horizontal
+      // overlap counts as spilling into it.
+      if (well && box.width > 0 && box.left < well.right - 0.5 && box.right > well.left + 0.5) {
+        const vertical = box.top < well.bottom - 0.5 && box.bottom > well.top + 0.5;
+        if (vertical) {
+          bad.push(
+            `tray ${i}: spans ${Math.round(box.left)}..${Math.round(box.right)}, over a well of ${Math.round(well.left)}..${Math.round(well.right)}`,
+          );
+        }
+      }
+    }
+    return bad;
+  });
+}
+
 test('play fits the viewport, and the round-end controls stay reachable', async ({ page }) => {
   test.setTimeout(180_000);
   const g = e2e(page);
@@ -74,6 +120,7 @@ test('play fits the viewport, and the round-end controls stay reachable', async 
   // Peak across the round, not one moment — the board grows as the trays fill.
   let peak = 0;
   let worstRows = '';
+  const clipped = new Set<string>();
   const deadline = Date.now() + 90_000;
   while (Date.now() < deadline) {
     if ((await g.getScreen()) === 'roundEnd') break;
@@ -83,6 +130,7 @@ test('play fits the viewport, and the round-end controls stay reachable', async 
         peak = s.overflow;
         worstRows = s.rows;
       }
+      for (const problem of await trayProblems(page)) clipped.add(problem);
     }
     await g.autoPlay();
     await page.waitForTimeout(130);
@@ -91,6 +139,10 @@ test('play fits the viewport, and the round-end controls stay reachable', async 
     peak,
     `play screen must not overflow its scroll container at any point in a round (rows at peak: ${worstRows})`,
   ).toBe(0);
+  expect(
+    [...clipped],
+    'no discard tray may draw outside its column — that is what cuts a tile in half or lays discards over the well',
+  ).toEqual([]);
 
   await expect(page.locator('text=Round End')).toBeVisible({ timeout: 20_000 });
   await page.waitForTimeout(700); // let the row entrance settle

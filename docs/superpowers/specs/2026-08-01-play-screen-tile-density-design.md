@@ -108,6 +108,13 @@ existing inset are kept, so each flat face is a glyph correctly padded inside a
 210×255 cell. Output is committed, and the script is rerun when the source art
 changes — the same arrangement as `scripts/icons/`.
 
+**`back.svg` needs a flat variant too.** A wrapping tray renders a `TileBack` for
+the face-down first discard (A37), and `MeldDisplay` draws four backs for a live
+concealed kong (A27) — in a run, both would sit 3D-bevelled among flat faces.
+`back.svg` has its own structure rather than the shared `g3062` stack, so its flat
+form is authored directly: the red-dot motif on a transparent cell, matching the
+faces' treatment. That makes 28 derived assets, not 27.
+
 **Two flush forms, because the contexts differ.**
 
 - **Hand and melds are single non-wrapping runs**, so they get a `TileRun`: one
@@ -149,9 +156,9 @@ every estimate in this audit's history has come in worse than predicted.
 - **The clipping bug needs its own assertion or it silently returns.** In
   `e2e/viewport.spec.ts`: no tray's `scrollWidth` exceeds its `clientWidth`, and no
   tile's bounding box escapes its tray's. Both fail today, on both side columns.
-- **The derivation gets a unit test**, since the client suite has no DOM: every
-  generated flat SVG parses, retains glyph paths, and contains none of the seven
-  stripped ids.
+- **The derivation gets a unit test**, since the client suite has no DOM: all 28
+  generated flat assets parse, retain their glyph paths, and contain none of the
+  seven stripped ids.
 - `docs/*.png` are regenerated at the end — this change genuinely alters what they
   show.
 

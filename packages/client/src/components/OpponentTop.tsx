@@ -22,8 +22,9 @@ export function OpponentTop({ view, relSeat }: { view: PlayerView; relSeat: 0 | 
       </div>
       {/* Used to be 14 shrink-to-fit backs, one per tile — real information is
           never in the backs (see HandCountChip), and the row was wide enough to
-          clip off both screen edges before it shrank. (F4, R2.2) */}
-      <HandCountChip count={opp.handCount} />
+          clip off both screen edges before it shrank. (F4, R2.2) Overlapped
+          sideways, because this is the seat whose hand faces you as a row. */}
+      <HandCountChip count={opp.handCount} orientation="horizontal" />
       {/* One row that scrolls, not a wrapping block: three pungs are ~300px and
           a 320px phone wrapped them onto a second 47px row, which is height the
           play screen has none of. The inner w-max still centres while it fits —
@@ -44,11 +45,11 @@ export function OpponentTop({ view, relSeat }: { view: PlayerView; relSeat: 0 | 
           column is full-width, so a row holds plenty — no scroll needed
           (contrast OpponentSide, whose 80px column can't fit one). (R2.3) */}
       {(opp.discards.length > 0 || opp.pendingFirstDiscard) && (
-        <div className="flex gap-0.5 max-w-full overflow-x-hidden discard-tray">
+        <div className="flex max-w-full overflow-x-hidden discard-tray">
           {/* Their void tile is face down until they flip it on their first turn (A37) */}
-          {opp.pendingFirstDiscard && <TileBack size="sm" />}
-          {opp.discards.slice(-8).map(id => (
-            <Tile key={id} id={id} size="sm" lastDiscard={id === lastDiscardTile} />
+          {opp.pendingFirstDiscard && <TileBack size="sm" flat />}
+          {opp.discards.slice(-9).map(id => (
+            <Tile key={id} id={id} size="sm" flat lastDiscard={id === lastDiscardTile} />
           ))}
         </div>
       )}

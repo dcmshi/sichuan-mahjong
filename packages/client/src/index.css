@@ -73,6 +73,40 @@ body {
 }
 
 /* ---------------------------------------------------------------------------
+   Flush tiles — the density pass. The source SVGs are complete 3D tiles with
+   their own bevelled sides, so two of them edge to edge show two bevels where a
+   real run of tiles shows one shared edge. The variants in tiles/flat/ carry the
+   glyph alone (see scripts/tiles/flatten-tiles.mjs) and the cell draws the face,
+   which also hands the glyph the whole cell instead of the ~75% the 3D frame
+   left it — the readability win is bigger than the width increase alone.
+
+   Each cell keeps its OWN face rather than sharing one across the run: a hand
+   tile lifts when selected, and a lifted glyph over a shared surface reads as a
+   hole in the strip rather than as a tile in the air. The small radius is what
+   separates neighbours, so no divider rule is needed and nothing has to know
+   where in the run it sits.
+--------------------------------------------------------------------------- */
+.tile-cell {
+  background: linear-gradient(#fbffec, #d0e4cc);
+  border-radius: 0.15rem;
+}
+
+.tile-glyph {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* A run held as one group — your hand, or a meld. One shadow for the strip
+   instead of one per tile, which is what stops flush tiles reading as a stack of
+   separately-lit objects. No overflow clipping: it would cut the lift off the
+   selected tile. */
+.tile-run {
+  display: inline-flex;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.45));
+}
+
+/* ---------------------------------------------------------------------------
    Board — vibrant jade felt table with recessed wells
 --------------------------------------------------------------------------- */
 .board-felt {

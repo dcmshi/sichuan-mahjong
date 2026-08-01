@@ -281,7 +281,11 @@ function PlayPhase({ view }: { view: PlayerView }) {
             {view.you.voidedSuit ? t('play.void', { suit: t(`suit.${view.you.voidedSuit}`) }) : ''}
           </div>
         </div>
-        <div className="w-20 flex-shrink-0 flex justify-end">
+        {/* Plain block, not `flex justify-end`: as a flex parent this made
+            OpponentSide size to min-content, so the tray's `max-w-full` resolved
+            against 211.6px instead of this column's 80px and spilled across the
+            well. The left column never had the bug because it was always a block. */}
+        <div className="w-20 flex-shrink-0">
           <OpponentSide view={view} relSeat={0} side="right" />
         </div>
       </div>

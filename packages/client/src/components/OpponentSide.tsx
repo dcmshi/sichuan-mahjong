@@ -12,11 +12,11 @@ export function OpponentSide({
   const lastDiscardTile = view.lastDiscard?.from === opp.seat ? view.lastDiscard.tile : null;
   return (
     <div
-      className={`flex flex-col items-center gap-1 ${side === 'right' ? 'items-end' : 'items-start'}`}
+      className={`flex flex-col min-h-0 h-full gap-1 ${side === 'right' ? 'items-end' : 'items-start'}`}
     >
       <div
         className={[
-          'text-xs font-semibold px-2 py-0.5 rounded-full',
+          'text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0',
           view.turn === opp.seat
             ? 'bg-amber-400 text-black shadow-[0_0_10px_rgba(251,191,36,0.7)]'
             : 'bg-black/25 text-green-200',
@@ -28,25 +28,23 @@ export function OpponentSide({
       {/* A short overlapped stack plus the count, not one back per tile: thirteen
           stacked backs stood ~500px tall, which set the height of the whole
           middle row and pushed the player's own hand off a phone screen. The
-          number is also easier to read than counting slivers. */}
-      <HandCountChip count={opp.handCount} />
-      {/* Single row, horizontally scrollable — not a capped non-wrapping row
-          like the across opponent's: this column is only 80px wide (two `sm`
-          tiles), so a non-scrolling row would throw away real information a
-          player uses to judge safety. Scrolling keeps the same slice(-6)
-          history reachable at the same fixed height — the mechanism a later
-          phase applies to the player's own tray too. (R2.3, amended) */}
+          number is also easier to read than counting slivers. Stays vertical —
+          this seat's hand faces you edge-on, and 80px has no room for a row. */}
+      <div className="flex-shrink-0">
+        <HandCountChip count={opp.handCount} />
+      </div>
+      {/* Grows downward, two flush tiles wide, scrolling inside the column.
+          The old single sideways row cut a tile in half at 80px — and worse, on
+          the right the column is a flex parent, so `max-w-full` resolved against
+          min-content instead of 80px and the tray rendered 211.6px wide, spilling
+          132px across the well. Two 32px tiles fit 80px exactly, so nothing is
+          ever cut mid-tile, and flex-1 min-h-0 means this can never set the middle
+          row's height the way thirteen backs once did. */}
       {(opp.discards.length > 0 || opp.pendingFirstDiscard) && (
-        <div className="flex flex-nowrap items-center gap-0.5 overflow-x-auto max-w-full discard-tray">
-          {opp.pendingFirstDiscard && (
-            <div className="flex-shrink-0">
-              <TileBack size="sm" />
-            </div>
-          )}
+        <div className="flex flex-wrap w-20 flex-1 min-h-0 overflow-y-auto discard-tray">
+          {opp.pendingFirstDiscard && <TileBack size="sm" flat />}
           {opp.discards.slice(-6).map(id => (
-            <div key={id} className="flex-shrink-0">
-              <Tile id={id} size="sm" lastDiscard={id === lastDiscardTile} />
-            </div>
+            <Tile key={id} id={id} size="sm" flat lastDiscard={id === lastDiscardTile} />
           ))}
         </div>
       )}

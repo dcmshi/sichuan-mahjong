@@ -216,16 +216,19 @@ export function OwnZone({ view }: { view: PlayerView }) {
           capping — the tray keeps every row the viewport can afford and the rest
           stays one scroll away, so no discard is ever dropped. (R6) */}
       {(view.you.discards.length > 0 || view.you.pendingFirstDiscard) && (
-        <div className="px-3 pt-1 flex flex-col min-h-0">
+        <div className="px-2 pt-1 flex flex-col min-h-0">
           <span className="text-[10px] text-green-300 flex-shrink-0">{t('play.yourDiscards')}</span>
-          <div className="flex flex-wrap gap-0.5 discard-tray mt-0.5 min-h-0 overflow-y-auto">
+          {/* Flush, so a 320px phone fits 9 tiles a row instead of 8 and a full
+              round's discards land in two rows rather than three. */}
+          <div className="flex flex-wrap discard-tray mt-0.5 min-h-0 overflow-y-auto">
             {/* Face down until you flip it on your first turn (A37) */}
-            {view.you.pendingFirstDiscard && <TileBack size="sm" />}
+            {view.you.pendingFirstDiscard && <TileBack size="sm" flat />}
             {view.you.discards.map(id => (
               <Tile
                 key={id}
                 id={id}
                 size="sm"
+                flat
                 lastDiscard={view.lastDiscard?.from === seat && id === lastDiscardTile}
               />
             ))}
@@ -234,7 +237,7 @@ export function OwnZone({ view }: { view: PlayerView }) {
       )}
 
       {/* Your hand — drag tiles to rearrange; Sort resets to the standard order */}
-      <div className="px-3 py-2">
+      <div className="px-2 py-2">
         <div className="flex items-center justify-between mb-1">
           <span className="text-xs text-amber-300 h-4">
             {selectedTile !== null ? t('play.tapDiscard') : ''}
@@ -252,7 +255,12 @@ export function OwnZone({ view }: { view: PlayerView }) {
           axis="x"
           values={handOrder}
           onReorder={setHandOrder}
-          className="flex gap-1 pb-1 list-none justify-center"
+          // tile-run: flush, with one shadow for the strip. The 4px gaps between
+          // 13 tiles were 48px of a 296px row — 16% spent on nothing — which held
+          // each tile to 19.1px on a 320px phone, under the ~24px at which the
+          // suit markings stop being readable. Flush at px-2 they reach 23.4px,
+          // and the flat faces hand the glyph the whole cell on top of that.
+          className="tile-run pb-1 list-none justify-center"
         >
           {handOrder.map(id => (
             <Reorder.Item
@@ -284,7 +292,7 @@ export function OwnZone({ view }: { view: PlayerView }) {
                   handleTileTap(id);
                 }}
               >
-                <Tile id={id} selected={selectedTile === id} interactive={false} fill />
+                <Tile id={id} selected={selectedTile === id} interactive={false} fill flat />
               </button>
             </Reorder.Item>
           ))}

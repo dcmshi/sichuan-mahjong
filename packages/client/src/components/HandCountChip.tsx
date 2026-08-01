@@ -7,14 +7,25 @@ import { TileBack } from './Tile.js';
  * faster than counting slivers and, unlike one tile back per tile, doesn't set
  * the height of the row it sits in. Shared by the across and side opponent
  * displays. (R2.2)
+ *
+ * The stack overlaps the way that seat's hand actually faces you: the opponent
+ * across the table shows theirs as a row, so `horizontal` there makes the chip
+ * exactly one tile tall instead of three overlapped ones — 61px to 39px in the
+ * zone with the tightest height budget on the screen. The side seats face you
+ * edge-on and keep the vertical stack, which is also all an 80px column has room
+ * for.
  */
-export function HandCountChip({ count }: { count: number }) {
+export function HandCountChip({
+  count,
+  orientation = 'vertical',
+}: { count: number; orientation?: 'vertical' | 'horizontal' }) {
   if (count === 0) return null;
+  const horizontal = orientation === 'horizontal';
   return (
     <div className="flex items-center gap-1">
-      <div className="flex flex-col">
+      <div className={horizontal ? 'flex' : 'flex flex-col'}>
         {Array.from({ length: Math.min(count, 3) }, (_, i) => (
-          <div key={i} className={i > 0 ? '-mt-7' : ''}>
+          <div key={i} className={i > 0 ? (horizontal ? '-ml-7' : '-mt-7') : ''}>
             <TileBack size="sm" />
           </div>
         ))}

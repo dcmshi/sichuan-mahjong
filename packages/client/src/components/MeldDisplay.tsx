@@ -2,7 +2,7 @@ import type { Meld, PublicMeld } from '@sichuan-mahjong/engine';
 import { tileToType } from '@sichuan-mahjong/engine';
 import type { TileId } from '@sichuan-mahjong/engine';
 import { useT } from '../i18n/useT.js';
-import { Tile, TileBack } from './Tile.js';
+import { Tile, TileBack, TileRun } from './Tile.js';
 
 // Build tile IDs from a Meld for display purposes (using canonical tile IDs)
 function meldTileIds(meld: Meld): TileId[] {
@@ -21,8 +21,8 @@ function meldTileIds(meld: Meld): TileId[] {
  */
 function BadgedGroup({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="relative flex gap-0.5">
-      {children}
+    <div className="relative">
+      <TileRun>{children}</TileRun>
       <span className="absolute -top-1 -right-1 px-1 rounded bg-amber-500 text-black text-[8px] font-bold leading-tight">
         {label}
       </span>
@@ -57,12 +57,14 @@ export function MeldDisplay({ meld }: { meld: PublicMeld }) {
 
   const tiles =
     ids === null
-      ? Array.from({ length: 4 }, (_, i) => <TileBack key={i} size="sm" />)
-      : ids.map(id => <Tile key={id} id={id} size="sm" />);
+      ? Array.from({ length: 4 }, (_, i) => <TileBack key={i} size="sm" flat />)
+      : ids.map(id => <Tile key={id} id={id} size="sm" flat />);
 
+  // A meld is a declared group, so it is drawn as one flush run rather than
+  // spaced tiles — which is also how it sits on a real table.
   return badged ? (
     <BadgedGroup label={t('claim.kong')}>{tiles}</BadgedGroup>
   ) : (
-    <div className="flex gap-0.5">{tiles}</div>
+    <TileRun>{tiles}</TileRun>
   );
 }

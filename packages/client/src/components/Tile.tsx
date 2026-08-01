@@ -39,7 +39,25 @@ export type TileProps = {
   interactive?: boolean;
   /** Fill the parent's width (height follows the aspect-ratio) instead of a fixed size. */
   fill?: boolean;
+  /**
+   * Draw the flat face — glyph on a plain cell — instead of the standalone 3D
+   * tile. Used wherever tiles sit flush against each other (hand, melds, discard
+   * trays); singletons like the well's last discard keep the 3D art, because a
+   * lone tile should look like a lone tile. See `.tile-cell` in index.css.
+   */
+  flat?: boolean;
 };
+
+/**
+ * A run of tiles held as one group — your hand, or a meld. Carries the strip's
+ * single shadow; see `.tile-run`.
+ */
+export function TileRun({
+  children,
+  className = '',
+}: { children: React.ReactNode; className?: string }) {
+  return <div className={`tile-run ${className}`}>{children}</div>;
+}
 
 export function Tile({
   id,
@@ -49,9 +67,10 @@ export function Tile({
   size = 'md',
   interactive = true,
   fill = false,
+  flat = false,
 }: TileProps) {
   const { suit, rank } = tileFromType(tileTypeOf(id));
-  const src = `/tiles/${suit}-${rank}.svg`;
+  const src = flat ? `/tiles/flat/${suit}-${rank}.svg` : `/tiles/${suit}-${rank}.svg`;
   const [preview, setPreview] = useState(false);
   const t = useT();
   const label = tileLabel(id, t);
@@ -102,6 +121,7 @@ export function Tile({
       <motion.div
         className={[
           'tile select-none overflow-hidden',
+          flat ? 'tile-cell' : '',
           fill ? 'w-full' : SIZE_CLASSES[size],
           selected ? 'is-selected' : '',
           lastDiscard ? 'tile-last-discard' : '',
@@ -121,7 +141,12 @@ export function Tile({
       >
         {/* alt is the stable internal id, not a name: e2e selectors match on it,
             and the wrapper's aria-label is what gets announced. */}
-        <img src={src} alt={`${suit}-${rank}`} className="tile-face" draggable={false} />
+        <img
+          src={src}
+          alt={`${suit}-${rank}`}
+          className={flat ? 'tile-glyph' : 'tile-face'}
+          draggable={false}
+        />
       </motion.div>
 
       {/* Long-press 2× preview */}
@@ -152,10 +177,16 @@ export function Tile({
 export function TileBack({
   size = 'md',
   fill = false,
-}: { size?: 'sm' | 'md' | 'lg'; fill?: boolean }) {
+  flat = false,
+}: { size?: 'sm' | 'md' | 'lg'; fill?: boolean; flat?: boolean }) {
   return (
-    <div className={`tile ${fill ? 'w-full' : SIZE_CLASSES[size]}`}>
-      <img src="/tiles/back.svg" alt="" className="tile-face" draggable={false} />
+    <div className={`tile ${flat ? 'tile-cell' : ''} ${fill ? 'w-full' : SIZE_CLASSES[size]}`}>
+      <img
+        src={flat ? '/tiles/flat/back.svg' : '/tiles/back.svg'}
+        alt=""
+        className={flat ? 'tile-glyph' : 'tile-face'}
+        draggable={false}
+      />
     </div>
   );
 }
