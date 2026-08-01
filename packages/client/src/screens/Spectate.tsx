@@ -48,21 +48,29 @@ function SeatRow({ view, seat }: { view: SpectatorView; seat: number }) {
         </span>
       </div>
 
-      <div className="flex gap-0.5 flex-wrap items-end">
-        {Array.from({ length: p.handCount }, (_, i) => (
-          <TileBack key={i} size="sm" />
-        ))}
-        {p.melds.map((m, i) => (
-          <MeldDisplay key={`m${i}`} meld={m} />
-        ))}
+      {/* Flush, and grouped: a concealed hand is one run and each meld another,
+          which is what separates them now that no tile carries its own bevel. */}
+      <div className="flex flex-wrap items-start gap-2">
+        <div className="flex flex-wrap">
+          {Array.from({ length: p.handCount }, (_, i) => (
+            <TileBack key={i} size="sm" flat />
+          ))}
+        </div>
+        {p.melds.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {p.melds.map((m, i) => (
+              <MeldDisplay key={`m${i}`} meld={m} />
+            ))}
+          </div>
+        )}
       </div>
 
       {(p.discards.length > 0 || p.pendingFirstDiscard) && (
-        <div className="flex flex-wrap gap-0.5 discard-tray">
+        <div className="flex flex-wrap discard-tray">
           {/* Face down until its owner flips it on their first turn (A37) */}
-          {p.pendingFirstDiscard && <TileBack size="sm" />}
+          {p.pendingFirstDiscard && <TileBack size="sm" flat />}
           {p.discards.map(id => (
-            <Tile key={id} id={id} size="sm" lastDiscard={id === lastFromHere} />
+            <Tile key={id} id={id} size="sm" flat lastDiscard={id === lastFromHere} />
           ))}
         </div>
       )}

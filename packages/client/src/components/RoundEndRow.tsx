@@ -61,13 +61,24 @@ export function RoundEndRow({
 
       {open && (
         <div className="px-4 pb-3 flex flex-col gap-2">
-          <div className="flex flex-wrap gap-0.5">
-            {player.hand.map(id => (
-              <Tile key={id} id={id} size="sm" />
-            ))}
-            {player.melds.map((m, i) => (
-              <MeldDisplay key={`m${i}`} meld={m} />
-            ))}
+          {/* Flat and flush, like the melds beside them: this is a hand laid out
+              on the table at the end of a round, and 3D tiles next to a flush
+              meld read as two different kinds of object in one hand. Concealed
+              tiles and declared melds are separate groups, which is what keeps
+              the two readable as different things now that nothing has a gap. */}
+          <div className="flex flex-wrap items-start gap-2">
+            <div className="flex flex-wrap">
+              {player.hand.map(id => (
+                <Tile key={id} id={id} size="sm" flat />
+              ))}
+            </div>
+            {player.melds.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {player.melds.map((m, i) => (
+                  <MeldDisplay key={`m${i}`} meld={m} />
+                ))}
+              </div>
+            )}
           </div>
 
           {player.hu ? (

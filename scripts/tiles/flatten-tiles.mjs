@@ -110,14 +110,20 @@ export function flattenSvg(svg) {
 
 /**
  * The tile back has its own structure rather than the shared body stack, so its
- * flat form is authored: the felt green face full-bleed, with the top-edge
- * highlight kept so a run of backs still reads as tiles rather than one slab.
- * Colours are lifted from back.svg.
+ * flat form is authored. Colours are lifted from back.svg.
+ *
+ * Unlike a face, the back paints the whole cell, so it covers the cell's rounded
+ * corners — thirteen flush backs drew one unbroken green slab where a spectator
+ * should see a concealed hand, and a concealed kong drew a green bar. Hence the
+ * darker edge: a stroke on the cell boundary is what separates a back from the
+ * back beside it. Width 10 of a 210-unit box lands near a hairline at the `sm`
+ * size these are drawn at, half of it clipped by the viewBox.
  */
 const FLAT_BACK =
   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 210 255">' +
   '<path d="M0 0h210v255H0z" style="fill:#147e48"/>' +
   '<path d="M0 0h210v14H0z" opacity=".6" style="fill:#1a8c50"/>' +
+  '<path d="M0 0h210v255H0z" fill="none" stroke="#0b5c33" stroke-width="10"/>' +
   '</svg>';
 
 function main() {

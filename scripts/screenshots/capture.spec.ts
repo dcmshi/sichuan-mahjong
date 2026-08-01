@@ -132,6 +132,10 @@ test('regenerate docs screenshots', async ({ page, browser }) => {
   // no winner and every row starts collapsed — expand the top one so the shot
   // always shows the hand and the payment breakdown.
   await page.locator('[aria-expanded="false"]').first().click();
+  // Clicking a row scrolls it into view, so the viewport shot framed wherever
+  // that left the page — which is how tall the row above happened to be. Back to
+  // the top, so the image is the same screen every time.
+  await page.evaluate(() => window.scrollTo(0, 0));
   // Viewport, not full page: the action bar is sticky (R3). See shot().
   await shot(page, 'round-end.png', { fullPage: false });
 });
