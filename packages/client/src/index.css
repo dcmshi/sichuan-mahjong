@@ -147,8 +147,10 @@ body {
 
 /* Transform only, never opacity — a past bug (F11) left a screen permanently
    invisible where its opacity-driven entrance animation didn't run. Under
-   prefers-reduced-motion the global rule above collapses this to one
-   near-instant frame, landing on the closing "sideways phone" keyframe. */
+   prefers-reduced-motion the global rule above collapses this to a single
+   near-instant iteration; with no fill-mode the icon then reverts to its
+   unanimated base, which is the upright phone — the orientation we are asking
+   for, so the static state reads correctly. */
 .rotate-overlay-icon {
   animation: rotate-overlay-hint 2.4s ease-in-out infinite;
 }

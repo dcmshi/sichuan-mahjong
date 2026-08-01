@@ -10,3 +10,6 @@ test-results/
 # Generated at binary-build time (embedded client SPA); Bun-only, never committed
 packages/server/src/generated/
 dist-bin/
+
+# Subagent scratch (briefs, reports, ledgers) — never part of the source tree
+.superpowers/
