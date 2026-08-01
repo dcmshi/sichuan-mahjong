@@ -113,10 +113,8 @@ Full tree: [ARCHITECTURE.md §3](./ARCHITECTURE.md#3-repo-layout).
 
 ## Status
 
-All v1 work, six full-repo audit passes (A1–A39, through 2026-07-25) and a
-frontend/design pass (F1–F25, 2026-07-31) are complete. Per-item history is in
-[TODO.md](./TODO.md).
-
-**One open item:** round-end hand reveals and a fan/penalty breakdown —
-documented since v1, never built, and the data is already on the wire. See
-[ARCHITECTURE.md §12.11](./ARCHITECTURE.md#12-open-questions--explicit-deferrals).
+All v1 work, six full-repo audit passes (A1–A39, through 2026-07-25), a
+frontend/design pass (F1–F25) and round-end hand reveals with a fan/penalty
+breakdown (2026-07-31) are complete. **No open items.** Per-item history is in
+[TODO.md](./TODO.md); the deferral record is
+[ARCHITECTURE.md §12](./ARCHITECTURE.md#12-open-questions--explicit-deferrals).

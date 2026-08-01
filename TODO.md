@@ -1,5 +1,68 @@
 # TODO
 
+## ✅ Round-end hand reveals and score breakdown (2026-07-31)
+
+Closes the one open deferral, [ARCHITECTURE.md §12.11](./ARCHITECTURE.md#12-open-questions--explicit-deferrals).
+Spec: `docs/superpowers/specs/2026-07-31-round-end-reveals-design.md`.
+Plan: `docs/superpowers/plans/2026-07-31-round-end-reveals.md`.
+
+§8.1 promised hand reveals and a fan/penalty breakdown from v1; the screen never
+had either, showing a score delta per seat and nothing about why. Contrary to the
+first read, only the fan list was already on the wire — hands and the payment
+breakdown both needed the server to send more.
+
+- [x] **Engine — payment ledger.** `GameState.ledger: LedgerEntry[]`
+  (`{reason, from, to, amount, detail}`), where `to: null` marks the two
+  non-redistributive void penalties. Entries are *derived* from the payment
+  events the engine already emits, inside the single `ok()` constructor every
+  successful action returns through, so the log cannot drift from the events
+  and no payment site had to be touched. It lives on the state rather than in
+  `GameRoom` because `serialize()` persists the state: a room-local accumulator
+  would come back empty after a host restart and quietly produce a wrong
+  breakdown.
+- [x] **Engine — reconciliation property.** For every seat, the ledger signed
+  from its perspective equals its `scoreDelta`, and `to: null` entries sum to
+  `penaltyPot`. This checks the payment matrix from a second direction — the
+  existing balance property is satisfied by any consistent set of transfers,
+  including ones that emitted no event. It passed on first run: the engine's
+  payments and its event log already agreed.
+- [x] **Engine — structured fans.** `HuRecord.fans` was `string[]` holding
+  pre-baked English (`"AllPungs×2"`), untranslatable in a trilingual UI. Now
+  `FanEntry[]`.
+- [x] **Protocol/server.** `RoundResult.players[]` gained `hand`, `melds`,
+  `isReady` and that seat's ledger slice. Built only once the round has ended,
+  so the reveal needs no new redaction rule in `PlayerView`. Spectators now
+  receive `roundEnd` too, on broadcast and on late join.
+- [x] **Client.** `RoundEndRow` — an expandable row per seat with the revealed
+  hand and melds, fans and hand value or ready state, and the itemised
+  payments, signed from that seat's perspective. Winners start expanded.
+  Reused on the spectate screen. New `fan.*` and `ledger.*` catalogs in three
+  languages, and pure helpers in `src/roundEnd.ts` so the no-DOM client tests
+  can reach the logic.
+- [x] **Restore back-compat (found in review).** Adding a required
+  `GameState.ledger` broke restoring any snapshot written by an earlier
+  version: `GameRoom.restore` assigned `snap.state` verbatim, so `ledger` came
+  back `undefined` and the next `clone()` spread it. Resume-after-restart is a
+  supported feature, so every host with a game in progress would have hit this
+  on upgrade. Normalised on read, following the `snap.roundIndex ?? 0`
+  precedent already in that method.
+- [x] **Replay back-compat.** Rows already in a user's `games.db` hold the old
+  `fans` strings; parsed back on read rather than migrating a user's file.
+- [x] **Client tests are now typechecked.** `packages/client/tsconfig.json` had
+  `include: ["src"]`, so the client's own tests never typechecked — which is why
+  a stale `RoundResult` helper in `store.test.ts` produced no error. Now
+  `["src", "tests"]`.
+
+**Noted, not filed:** `LedgerEntry.detail` (kong subtype, refund reason) renders
+as the raw English identifier — `Kong (exposed)`, `Kong refund (wallEnd)` — in
+all three languages. The reason itself is localized; only the qualifier is not.
+Also, two more instances of the same bug class as the ledger restore bug exist
+in the restore path and were left alone: `pendingFirstDiscard` (renamed in A35)
+is compared `!== null` at `actions.ts:1068` and `views.ts:116`/`243`, so a
+pre-A35 snapshot restores as `undefined`, reads as "has a pending tile", and
+`views.ts:116` then offers only `flipFirstDiscard` — a soft-locked seat; and
+`drewThisTurn` (added A7) restores falsy, which fails safe.
+
 ## 🔍 Frontend & design audit — seventh pass (2026-07-31)
 
 Audit of `packages/client` only (React 18 + Tailwind + Zustand + Framer Motion

@@ -641,6 +641,8 @@ Server pushes `view` to each player after every state-changing action (filtered 
 
 Both halves are per-viewer redacted before send: melds project as `PublicMeld` (a concealed kong's tile is `null` for everyone but its owner until round end — A27), the unflipped first discard projects as a bare `pendingFirstDiscard: boolean` (its owner alone gets the id, in `you.pendingFirstDiscardTile` — A37), and `redactEventsFor` nulls the tile on `drew`/`kongReplacement` events for everyone but the drawer; spectators never see drawn tiles (A31).
 
+`roundEnd` also goes to spectators — on broadcast and on a late join, mirroring the A9 player path — so the store keeps a spectating client on its own screen rather than navigating it to the player round-end screen. `RoundResult.players[]` carries each seat's revealed `hand` and `melds`, its `isReady` state, and its slice of the round's payment `ledger`; it is only ever built once the round has ended, which is what keeps the reveal out of `PlayerView` and out of the redaction rules above.
+
 `RoundResult` carries a `roundIndex`. A client that reconnects at round end is handed that round's result again (§6.5), so anything cumulative — the client's match-score totals — must be keyed on it rather than incremented on arrival (A39).
 
 ### 6.5 Reconnection
@@ -701,7 +703,7 @@ Mobile-first. Portrait phone is the design target; tablets and desktop scale up 
    - Huan and void declaration are whole screens of their own rather than states of this one, so there is no phase indicator here.
    - **Furiten badge:** visible to your own seat if you're in furiten state (skip-Hu locked until next self-draw). Tooltip explains the rule.
    - **First-discard flip panel:** on your first turn, if you separated a tile at void declaration (§5.4), the hand is not discardable and this panel shows that tile plus a "Flip your first discard" button — the one discard you don't get to choose. Opponents' unflipped tiles render as a tile back at the head of their pond.
-6. **Round end** — per-seat rank, wind, name, a Hu badge and this round's score delta, then match totals, then "Next round" / "End match" (host) or "Leave". It does *not* reveal hands or break the score down into fans and penalties, though `RoundResult` carries what that would need — see §12.11.
+6. **Round end** — per-seat rank, wind, name, a Hu badge and this round's score delta, then match totals, then "Next round" / "End match" (host) or "Leave". Each row expands (`RoundEndRow`) to that seat's revealed hand and melds, its fan list and hand value if it won or its ready state if it didn't, and an itemised list of the payments that produced its delta. Winners' rows start expanded. Spectators get the same rows on their own screen once the round settles.
 7. **Match end** — final standings from the accumulated `matchScores`, then back to the menu. Reached on the server's `matchEnd` frame, which used to reset straight to Landing with no result shown. (F9)
 
 App-root overlays, mounted alongside whichever screen is active:
@@ -855,6 +857,7 @@ After step 4, every future game uses the same URL — no per-session re-sharing.
 
 - Unit tests per module (tiles, melds, hand, scoring, claims, transitions).
 - **Property tests** with fast-check:
+  - **Ledger reconciliation:** for every seat, the ledger signed from its perspective (minus when it is the `from`, plus when it is the `to`) equals its `scoreDelta`, and entries with `to: null` sum to `penaltyPot`. This checks the payment matrix from a second direction: the existing balance property is satisfied by any internally consistent set of transfers, including ones that never emitted an event, and this one is not.
   - JSON round-trip: serialize → parse → equal for any GameState.
   - Tile conservation: `applyAction` never changes total tile count of 108.
   - **Payment-matrix balance:** redistributive payments sum to zero, with non-redistributive penalty deltas tracked separately. The engine maintains `state.penaltyPot` (tracked separately from `scoreDelta`) for the 48-point void-suit penalties, which are pure deductions per PDF page 27 and 31. The property: `sum(scoreDelta) === -sum(penaltyPot)`. Redistributive flows (Hu payments, kong payments, false-Hu penalty, bu-ting payouts) net to zero in `scoreDelta`.
@@ -870,6 +873,8 @@ After step 4, every future game uses the same URL — no per-session re-sharing.
 - Integration tests with fake WebSocket clients.
 - **Bot-vs-bot smoke:** 100 full games with 4 easy bots (plus 30 with medium bots). Assert no crashes, no rule violations rejected mid-game, payment-matrix balance for every game, exposed pungs actually form (A13), and — crucially — that wins come from players who separated a face-down first discard, not only from the rare indicator user. A bare "some Hu happened" assertion is what let A35 hide behind indicator users through five audit passes.
 - Tailscale detection mock tests (unit-level): given mocked `tailscale status --json` outputs, verify URL generation.
+- Round-end reveals: `buildRoundResult` carries hands, melds, ready state and a per-seat ledger; a spectator joining at round end is handed the result; and a snapshot written before `GameState.ledger` existed restores with an empty ledger rather than an undefined one (the same defence as `roundIndex`).
+- Replay back-compat lives in its own file because `server.test.ts` mocks `src/persistence.js` wholesale.
 
 ### 11.3 Client
 
@@ -881,6 +886,7 @@ helpers behind the components rather than rendered output:
 - `WsClient`: the retry cap and budget reset (F6), and that only the `join` handshake survives a closed socket (F21).
 - Pure helpers extracted for exactly this reason — `tileLabel` (F16), the event-feed sound/announcement mapping (F7), `joinErrorForStatus` (F22), the claim countdown's skew handling (F25) — each also asserted against the catalog so a rendered key can't go missing.
 - i18n catalog parity across the three languages (A18).
+- Round-end display helpers in `src/roundEnd.ts`: `formatFan` localizes a `FanEntry` and only shows a multiplier above 1; `ledgerLines` signs each entry from the viewing seat's perspective, since a redistributive entry appears in both the payer's and the payee's ledger.
 - `tests/sw.test.ts` runs the real `public/sw.js` in a stubbed worker global. Three of its four cases fail against the pre-F5 file, which is the point: the worker ships as a plain asset and nothing else type-checks or exercises it.
 
 ### 11.4 E2E
@@ -902,8 +908,8 @@ GitHub Actions: build engine → lint → typecheck → test (vitest) → build 
 
 ## 12. Open questions / explicit deferrals
 
-Items 1–10 were deferred at v1 and have since been implemented (✅); they are
-kept as a record of the decisions and where each landed. Item 11 is open.
+All items below have since been implemented (✅). Kept here as a record of the
+decisions and where each landed.
 
 1. **Reconnection > 60s** — ✅ Done: bot takeover holds for the rest of the round; a reconnected human reclaims their seat at the next round (`GameRoom.nextRound` recomputes `isBot` from `isHumanSeat` + connection state). See §6.5.
 2. **Host shutdown midgame** — ✅ Done: in-progress rooms are snapshotted to SQLite (`live_rooms` table) — debounced on every state change and flushed on graceful shutdown (SIGINT/SIGTERM). On boot, `restoreRoomsFromDisk()` rehydrates each room and re-registers its tokens, so players reconnect with their saved token and resume; unconnected human seats arm the normal 60s bot-takeover so play never stalls. Snapshots are deleted on `endMatch`. (A hard crash loses at most the last ~1s of actions.)
@@ -915,7 +921,7 @@ kept as a record of the decisions and where each landed. Item 11 is open.
 8. **Set-with-void-suit meld penalty** — ✅ Done: 48-point deduction enforced on pung/kong/concealed-kong of voided suit (`voidMeldPenalty` event).
 9. **False-Hu detection** — ✅ Done: 8 pts/opponent redistributive penalty + kong refund on invalid draw-Hu or claim-window Hu.
 10. **Replay-test corpus** — ✅ Done: canned games per fan combination + penalty paths.
-11. **Round-end hand reveals and score breakdown** — ⏳ Open. §8.1 promised them from v1 and the screen never had them: it shows a score delta per seat and nothing about *why*. The data is already on the wire — `RoundResult.players[].hu` is a full `HuRecord` with `fans`, `handValue` and `winningTile` — so this is presentation work, not protocol work. Note that concealed kongs would need a deliberate decision: they render as four backs even to their owner (A27), so a reveal has to opt them in explicitly.
+11. **Round-end hand reveals and score breakdown** — ✅ Done (2026-07-31). Only the fan list was on the wire; hands and the payment breakdown both needed the server to send more. `GameState.ledger` accumulates a `LedgerEntry` per payment, derived from the events the engine already emits inside the single `ok()` constructor so the two cannot drift, and living on the state so it survives the snapshot/restore path. `RoundResult.players[]` carries `hand`, `melds`, `isReady` and that seat's slice of the ledger; `HuRecord.fans` became `FanEntry[]` so fan names are translatable. See §8.1, §6.4 and §11.3.
 
 ---
 

@@ -120,5 +120,9 @@ test('regenerate docs screenshots', async ({ page, browser }) => {
     await page.waitForTimeout(180);
   }
   await expect(page.locator('text=Round End')).toBeVisible({ timeout: 15_000 });
+  // Winners' rows open themselves, but a round that ends on an exhausted wall has
+  // no winner and every row starts collapsed — expand the top one so the shot
+  // always shows the hand and the payment breakdown.
+  await page.locator('[aria-expanded="false"]').first().click();
   await shot(page, 'round-end.png');
 });
