@@ -161,11 +161,22 @@ hand-count stack keeps 3D backs — flat backs overlapped merge into one slab.
 **`.tile-cell` rebuilds the art's body in CSS** — the source layers' own order
 (outline → `#005f00` side → `#cddacd` plate → white → face) on the **top and
 right**, plus the art's top-right specular. Those are the two sides the art shows
-(it is lit from the bottom-left) and the two that *can't* double up between flush
-neighbours, unlike left+right. Compressed from the measured 20.6%/22.5% insets to
-5.6%/7.5% so it fits inside the glyphs' existing margins and no glyph shrinks; the
-measurements are in [TODO.md](./TODO.md). Layers are named custom properties
-because Biome reflows a six-layer `background` and eats inline comments.
+(it is lit from the bottom-left, so its green never reaches the bottom or left
+edge) and the two that *can't* double up between flush neighbours, unlike
+left+right. Compressed from the measured 20.6%/22.5% insets so it fits inside the
+glyphs' existing margins and no glyph shrinks; measurements in
+[TODO.md](./TODO.md).
+
+- The **right side shows only when exposed** — `.tile-solo`, or a `.tile-run`'s
+  last child, via `--tile-side`. Everything else gets a hairline seam, the one
+  shared edge two flush tiles show. Trays keep the seam throughout on purpose: a
+  wrapping tray's `:last-child` sits mid-block when the last row is partial.
+- The **corner radius is proportional** (`10.5% / 8.6%`), because a fixed rem that
+  reads as a tile at 64px is a blob at the 23px hand size.
+- Layers are **named custom properties**: Biome reflows a six-layer `background`
+  and drags inline comments into the middle of the declaration.
+- The flat back's front edge (`flatten-tiles.mjs`) splits at **243**, matching the
+  faces — a back covers the whole cell, so a mismatch shows in trays and kongs.
 
 **Open** (see the last section of [TODO.md](./TODO.md)): a central discard pool is
 held as a fallback, and needs a deliberate reveal for opponents' void suits — A40

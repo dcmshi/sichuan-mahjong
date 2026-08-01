@@ -163,11 +163,16 @@ const round = n => Math.round(n * 10) / 10;
  * puts the bevel on a face — because covering the cell means covering the cell's
  * bevel, and a green tile above an ivory front edge reads as a mistake.
  */
+// The front edge splits at 243, not 227: `.tile-cell` moved the faces' own front
+// edge up to ~95.4% of the height to match the source art, whose green side is on
+// the top and right and whose bottom is a thin plate-and-outline edge. A back
+// covers the whole cell, so a back still splitting at 227 (89%) drew a visibly
+// deeper edge than the faces it sits beside in a tray or a concealed kong.
 const FLAT_BACK =
   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 210 255">' +
-  '<path d="M0 0h210v227H0z" style="fill:#147e48"/>' +
+  '<path d="M0 0h210v243H0z" style="fill:#147e48"/>' +
   '<path d="M0 0h210v14H0z" opacity=".6" style="fill:#1a8c50"/>' +
-  '<path d="M0 227h210v28H0z" style="fill:#0b5c33"/>' +
+  '<path d="M0 243h210v12H0z" style="fill:#0b5c33"/>' +
   '<path d="M0 0h210v255H0z" fill="none" stroke="#073f23" stroke-width="10"/>' +
   '</svg>';
 

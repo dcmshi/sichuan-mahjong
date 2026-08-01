@@ -1,5 +1,37 @@
 # TODO
 
+## ✅ Rounded corners, and the side shows only when it's exposed (2026-08-01)
+
+Follow-up to the shoulders work below: round the corners, and show the sides the
+art shows — the right one "unless it's stacked against another tile", and the top.
+Both were right, and the second one exposed that the first pass had kept R7's
+emphasis rather than the art's.
+
+- [x] **The bottom is a thin plate-and-outline edge now, not a deep green one.**
+  The art's green side layer insets are top 5% and right 5.5% but **bottom 12.9%
+  and left 20.6%** — it never reaches those edges, which show the pale plate and
+  the outline instead. R7's thick green front edge was its own invention, and
+  keeping it while adding thin top/right shoulders had the emphasis backwards.
+- [x] **The right shoulder shows only where nothing abuts the tile** — the end of
+  a run, or a lone tile. Elsewhere it is the art's outline as a hairline seam,
+  which is what two flush tiles really show between them: one shared edge, not two
+  sides. Driven by `--tile-side` swapped in `.tile-solo` and on a run's last child.
+- [x] **Trays keep the seam throughout, deliberately.** A wrapping tray's
+  `:last-child` is the end of its *last row*, which sits mid-block whenever that
+  row is partial — so the one tile with a green side would be a stray in the middle
+  of the pile. "Last in a wrapped row" isn't expressible in CSS, and a gap to make
+  every tile's side legitimately exposed would cost the density R7 bought.
+- [x] **A proportional radius, `10.5% / 8.6%`.** A fixed rem that reads as a tile
+  at 64px is a blob at the 23px hand size; two values keep the corner circular on a
+  210×255 box. Checked at 64/40/28/23px.
+- [x] **The glyph box grew 89% → 93%**, which the shallower front edge freed. It
+  re-centres the glyph in the taller face and buys clearance under the wider top
+  shoulder — so the glyphs got slightly *larger*, not smaller.
+- [x] **The flat back's own edge moved with them**, 227 → 243 in
+  `flatten-tiles.mjs`, or a back would have drawn a visibly deeper edge than the
+  faces beside it in a tray or a concealed kong. Regenerated; the committed-output
+  test passes against the script.
+
 ## ✅ The flat cell gets the art's shoulders and its gloss back (2026-08-01)
 
 The flat cell kept only a bottom front edge, so beside the original art it read
