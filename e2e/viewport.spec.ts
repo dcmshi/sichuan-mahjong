@@ -39,11 +39,23 @@ const e2e = (page: Page) => ({
   getScreen: () => page.evaluate(() => (window as unknown as { __e2e: E2E }).__e2e.getScreen()),
 });
 
-/** Overflow of the play screen's scroll container, in px. 0 means it fits. */
-function boardOverflow(page: Page): Promise<number> {
+/**
+ * Overflow of the play screen's scroll container, in px (0 means it fits), plus
+ * the height of every row inside it. Overflow alone says nothing about which row
+ * grew, and CI uploads no Playwright artifacts — the row list in the failure
+ * message is the only evidence a CI-only failure leaves behind.
+ */
+function boardSample(page: Page): Promise<{ overflow: number; rows: string }> {
   return page.evaluate(() => {
     const el = document.querySelector('.board-felt');
-    return el ? Math.max(0, el.scrollHeight - el.clientHeight) : 0;
+    if (!el) return { overflow: 0, rows: '' };
+    const rows = Array.from(el.children)
+      .map(c => {
+        const row = c as HTMLElement;
+        return `${row.className.split(' ').slice(0, 2).join('.')}=${row.offsetHeight}`;
+      })
+      .join(' ');
+    return { overflow: Math.max(0, el.scrollHeight - el.clientHeight), rows };
   });
 }
 
@@ -61,16 +73,24 @@ test('play fits the viewport, and the round-end controls stay reachable', async 
 
   // Peak across the round, not one moment — the board grows as the trays fill.
   let peak = 0;
+  let worstRows = '';
   const deadline = Date.now() + 90_000;
   while (Date.now() < deadline) {
     if ((await g.getScreen()) === 'roundEnd') break;
-    if ((await g.getPhase()) === 'play') peak = Math.max(peak, await boardOverflow(page));
+    if ((await g.getPhase()) === 'play') {
+      const s = await boardSample(page);
+      if (s.overflow > peak) {
+        peak = s.overflow;
+        worstRows = s.rows;
+      }
+    }
     await g.autoPlay();
     await page.waitForTimeout(130);
   }
-  expect(peak, 'play screen must not overflow its scroll container at any point in a round').toBe(
-    0,
-  );
+  expect(
+    peak,
+    `play screen must not overflow its scroll container at any point in a round (rows at peak: ${worstRows})`,
+  ).toBe(0);
 
   await expect(page.locator('text=Round End')).toBeVisible({ timeout: 20_000 });
   await page.waitForTimeout(700); // let the row entrance settle

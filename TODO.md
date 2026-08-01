@@ -1,5 +1,46 @@
 # TODO
 
+## ✅ R6 — the R5 guard was red in CI from the day it landed (2026-08-01)
+
+`e2e/viewport.spec.ts` failed on all three CI runs after R5 shipped (+42px, +42px,
++95px) while passing locally every time. Root cause is a width the audit never
+measured: its row budget and the "0px at peak" result were taken at **375×568**,
+the figure printed in the measurement table, but the `se-portrait` project uses
+Playwright's `devices['iPhone SE']`, which is **320×568** — 55px narrower.
+
+55px of width turns into height. Measured at 320×568 with the play screen's rows
+summing to 559 of 568 and the middle row already squeezed to 30px:
+
+- Your discard tray fits **8** `sm` tiles a row at 320px against 10 at 375px, so
+  a full round wraps to three rows instead of two. The third row is 41px — the
+  +42px failures.
+- The across opponent's melds wrapped: three pungs are ~300px against 296px of
+  usable width, and the second row is 47px. 41 + 47 + slack is the +95px one.
+
+Both were unbounded by construction, so a random CI game either hit them or
+didn't — which is why local runs looked fine.
+
+- [x] **Your discard tray gives height back instead of overflowing.** The row is
+  `min-h-0` and the tray scrolls internally, making it the flex child that
+  absorbs pressure once the well is at zero. It keeps every row the viewport can
+  afford and the rest is one scroll away, so the furiten constraint still holds —
+  nothing is truncated. Verified by injecting a 200px spacer into the live play
+  screen: overflow stayed 0 and the tray shrank 89px → 10px. (The same probe
+  pre-R6 is on record in the audit at 160px → +98px overflow.)
+- [x] **The across opponent's melds are one scrolling row**, matching the tray
+  below them and `OpponentSide`. An inner `w-max mx-auto` keeps them centred
+  while they fit, instead of centring the scroller and putting the leftmost meld
+  out of reach. `pt-1` keeps the kong badge clear of the clip `overflow-x` brings.
+- [x] **The guard names the row that grew.** CI uploads no Playwright artifacts,
+  so a CI-only failure left nothing behind but a number; the assertion message now
+  carries every row's height at the peak sample.
+
+Worst case now bounds at roughly 506px of fixed rows against 568 — melds, kong
+buttons, a furiten badge and a full tray all at once — where before it reached
+~627px. Not regenerating `docs/*.png`: the only visible delta is 4px of padding
+above an across opponent's melds, and the iPhone 14 profile the screenshots use
+has the height to keep both tray rows.
+
 ## ✅ Two front-end defects found by sweep (2026-08-01)
 
 Both surfaced by asking "are the front-end items actually finished?" and

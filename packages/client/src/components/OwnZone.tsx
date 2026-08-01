@@ -208,11 +208,17 @@ export function OwnZone({ view }: { view: PlayerView }) {
 
       {/* Your discards — furiten is computed from these, and the badge above is
           unreadable without them. (F3) Full history, always wrapping — never
-          capped like an opponent's tray. */}
+          capped like an opponent's tray.
+          min-h-0 + an internal scroll makes this the row that gives height back
+          when the board runs out: a 320px-wide phone fits 8 `sm` tiles a row, so
+          a full round wraps to three rows where a 375px one needs two, and the
+          third row was 41px the play screen doesn't have. Shrinking beats
+          capping — the tray keeps every row the viewport can afford and the rest
+          stays one scroll away, so no discard is ever dropped. (R6) */}
       {(view.you.discards.length > 0 || view.you.pendingFirstDiscard) && (
-        <div className="px-3 pt-1">
-          <span className="text-[10px] text-green-300">{t('play.yourDiscards')}</span>
-          <div className="flex flex-wrap gap-0.5 discard-tray mt-0.5">
+        <div className="px-3 pt-1 flex flex-col min-h-0">
+          <span className="text-[10px] text-green-300 flex-shrink-0">{t('play.yourDiscards')}</span>
+          <div className="flex flex-wrap gap-0.5 discard-tray mt-0.5 min-h-0 overflow-y-auto">
             {/* Face down until you flip it on your first turn (A37) */}
             {view.you.pendingFirstDiscard && <TileBack size="sm" />}
             {view.you.discards.map(id => (

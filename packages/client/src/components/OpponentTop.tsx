@@ -24,11 +24,19 @@ export function OpponentTop({ view, relSeat }: { view: PlayerView; relSeat: 0 | 
           never in the backs (see HandCountChip), and the row was wide enough to
           clip off both screen edges before it shrank. (F4, R2.2) */}
       <HandCountChip count={opp.handCount} />
+      {/* One row that scrolls, not a wrapping block: three pungs are ~300px and
+          a 320px phone wrapped them onto a second 47px row, which is height the
+          play screen has none of. The inner w-max still centres while it fits —
+          centring the scroller itself would put the leftmost meld out of reach
+          once it doesn't. pt-1 keeps the kong badge (-top-1) out of the clip
+          that comes with overflow-x. (R6) */}
       {opp.melds.length > 0 && (
-        <div className="flex flex-wrap justify-center gap-1 max-w-full">
-          {opp.melds.map((m, i) => (
-            <MeldDisplay key={i} meld={m} />
-          ))}
+        <div className="max-w-full overflow-x-auto pt-1">
+          <div className="flex flex-nowrap gap-1 w-max mx-auto">
+            {opp.melds.map((m, i) => (
+              <MeldDisplay key={i} meld={m} />
+            ))}
+          </div>
         </div>
       )}
       {/* A single non-wrapping row, not the full wrapping history: the discard

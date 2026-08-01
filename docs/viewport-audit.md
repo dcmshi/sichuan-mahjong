@@ -30,6 +30,13 @@ chrome visible** — an iPhone 14 reports 390×664, not 390×844. Installed as a
 there is no chrome, so the real budget is taller and portrait play fits
 comfortably. Don't over-correct for the tab figures.
 
+**The iPhone SE row above is 375 wide, and Playwright's `devices['iPhone SE']` is
+320.** Every figure in this document — the row budget, the R2.3 side-column
+numbers, the 0px-at-peak result — was measured at 375×568 by the throwaway harness
+described under [Reproducing](#reproducing). The `se-portrait` CI project uses the
+device descriptor, so it asserts 55px narrower than anything here was tuned for.
+That gap is what R6 fixed; read any width-sensitive number below as a 375px one.
+
 ---
 
 ## What needs a decision
@@ -128,10 +135,12 @@ tile backs. That is the whole reason the board didn't fit.
 
 ## Status
 
-**All of R1–R5 shipped on 2026-08-01** (branch `viewport-remediation`). Measured
-result on an iPhone SE, the tightest profile: the play screen's scroll container
-overflows by **0px at peak across a round**, down from +129px, verified over 209
-samples spanning three rounds including 41 with the melds row present. Round end
+**All of R1–R6 shipped on 2026-08-01** (R1–R5 on branch `viewport-remediation`;
+R6 after CI showed the R5 guard red). Measured result at 375×568: the play
+screen's scroll container overflows by **0px at peak across a round**, down from
++129px, verified over 209 samples spanning three rounds including 41 with the
+melds row present. R6 makes that hold at 320×568 too, and bounds it by
+construction rather than by tuning. Round end
 still scrolls, by design, but its controls are pinned and reachable at every
 scroll position. Landscape phones get a rotate prompt rather than an unusable
 board. **R4 Phase 2, a real landscape layout, is shelved** — see the reasons
@@ -328,6 +337,41 @@ two ways, and the shipped guard differs:
 Shipped as `e2e/viewport.spec.ts` on an `se-portrait` project. Verified capable
 of failing: a 160px spacer injected into the play screen produces a 98px
 overflow and a named failure.
+
+### R6. Make the play screen fit 320px, and bound it by construction
+
+**Added and shipped 2026-08-01, after R5's guard came back red in CI** on all
+three runs following it (+42px, +42px, +95px) while passing locally every time.
+The guard was right; two things were wrong behind it.
+
+The first is the width. Everything measured for R1–R5 was 375 wide (see the note
+under [Measurements](#measurements)); `devices['iPhone SE']` is 320. At 320 the
+own discard tray holds 8 `sm` tiles a row against 10, so a full round wraps to a
+third 41px row, and the across opponent's melds — three pungs at ~300px against
+296px of usable width — wrap onto a second 47px row. 41 and 41+47 are the two
+CI numbers.
+
+The second is that neither row had a height bound, so whether a CI run went red
+depended on how far its random game got. The rest of the play screen had nothing
+left to give: rows summed to 559 of 568 with the middle row already at 30px.
+
+- **The own discard tray is the row that absorbs pressure.** `min-h-0` on the row
+  and an internal scroll on the tray, so once the well is at zero the tray gives
+  up rows rather than the container overflowing. It shows every row the viewport
+  can afford and keeps the rest one scroll away, so the full-history constraint
+  holds — this is truncation-free, unlike an opponent's `slice(-6)`.
+- **The across opponent's melds are one scrolling row.** Same treatment as the
+  tray directly below them, with `w-max mx-auto` inside the scroller so they stay
+  centred while they fit; centring the scroller instead would put the leftmost
+  meld permanently out of reach.
+- **The guard reports the row heights it saw at the peak.** CI uploads no
+  Playwright artifacts, so the number on its own left nothing to diagnose from.
+
+Verified with the same spacer probe as R5, run against the live play screen: 200px
+of injected spacer now produces 0px of overflow, with the tray shrinking 89px →
+10px to pay for it. Worst-case fixed rows — opponent melds, own melds, kong
+buttons, furiten badge and a full tray together — bound at ~506px against 568,
+where before they reached ~627px.
 
 ---
 
