@@ -64,10 +64,10 @@ export function OpponentSide({
           lines and the tiles grow *past* their aspect ratio. On a desktop-height
           window six discards were drawn as six very long tiles. */}
       {(opp.discards.length > 0 || opp.pendingFirstDiscard) && (
-        <div className="flex flex-wrap content-start items-start w-20 min-h-0 overflow-y-auto discard-tray">
-          {opp.pendingFirstDiscard && <TileBack size="sm" flat />}
+        <div className="flex flex-wrap content-start items-start w-20 min-h-0 overflow-y-auto discard-tray tile-lap">
+          {opp.pendingFirstDiscard && <TileBack size="sm" />}
           {opp.discards.slice(-6).map(id => (
-            <Tile key={id} id={id} size="sm" flat lastDiscard={id === lastDiscardTile} />
+            <Tile key={id} id={id} size="sm" lastDiscard={id === lastDiscardTile} />
           ))}
         </div>
       )}

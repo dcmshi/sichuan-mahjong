@@ -85,8 +85,6 @@ function HuanPhase({ view }: { view: PlayerView }) {
                 id={id}
                 selected={isSelected}
                 size="lg"
-                flat
-                solo
                 onClick={() => !disabled && toggle(id)}
               />
             </div>
@@ -214,7 +212,7 @@ function VoidDeclarePhase({ view }: { view: PlayerView }) {
                 // the red and the blue do. `tile-mark` matches the tile's corner.
                 className={marked ? `tile-mark ring-[3px] ${SUIT_RINGS[suit]}` : ''}
               >
-                <Tile id={id} size="md" flat solo />
+                <Tile id={id} size="md" />
               </div>
             );
           })}
@@ -309,13 +307,12 @@ function PlayPhase({ view }: { view: PlayerView }) {
                 {/* lg on a tall viewport, md on a short one (index.css) — once
                     the side columns stop setting the row's height, the well's
                     own minimum content is what it bottoms out at instead. */}
-                {/* Flat, like every other tile on the board. It kept the 3D art
-                    at first on the "a singleton should look like a singleton"
-                    argument, but a few centimetres from the flat hand and trays
-                    it just read as glossier — a second tile design rather than
-                    the same tile. `solo` gives back the lift a lone tile needs. (O4) */}
+                {/* Nothing special: it is the same art the hand and trays draw,
+                    just with no neighbour to lap over. The glossier-singleton
+                    problem that O4 chased was an artefact of the hand being flat
+                    while this one was not. */}
                 <div className="last-discard-tile">
-                  <Tile id={lastDiscardTile} lastDiscard fill flat solo />
+                  <Tile id={lastDiscardTile} lastDiscard fill />
                 </div>
               </motion.div>
             </div>

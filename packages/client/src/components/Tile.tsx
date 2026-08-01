@@ -18,11 +18,13 @@ export function tileLabel(id: TileId, t: Translate): string {
 }
 
 // Width only — height comes from the tile's aspect-ratio (see .tile in index.css).
+// Not Tailwind's w-*: inside a run the layout box shrinks to the pitch while the
+// art keeps this size, and that needs the width as a custom property.
 const SIZE_CLASSES = {
-  sm: 'w-8',
-  md: 'w-10',
-  lg: 'w-14',
-  xl: 'w-20',
+  sm: 'tile-sized tile-sm',
+  md: 'tile-sized tile-md',
+  lg: 'tile-sized tile-lg',
+  xl: 'tile-sized tile-xl',
 };
 
 export type TileProps = {
@@ -39,31 +41,18 @@ export type TileProps = {
   interactive?: boolean;
   /** Fill the parent's width (height follows the aspect-ratio) instead of a fixed size. */
   fill?: boolean;
-  /**
-   * Draw the flat face — glyph on a plain cell — instead of the standalone 3D
-   * tile. Every tile on the board is drawn this way — the 3D art was kept for
-   * singletons at first, on the grounds that a lone tile should look like a lone
-   * tile, but beside a flat hand it just read as glossier. See `.tile-cell`.
-   */
-  flat?: boolean;
-  /**
-   * A flat tile with nothing flush beside it — the well's last discard, a
-   * picker. It carries its own lift, since there's no `.tile-run` around it to
-   * hang the strip shadow on. No effect without `flat`: the 3D art brings its
-   * own shadow.
-   */
-  solo?: boolean;
 };
 
 /**
  * A run of tiles held as one group — your hand, or a meld. Carries the strip's
- * single shadow; see `.tile-run`.
+ * single shadow, and laps its tiles so the run shows one shared edge rather than
+ * a bevel per tile; see `.tile-run` and `.tile-lap`.
  */
 export function TileRun({
   children,
   className = '',
 }: { children: React.ReactNode; className?: string }) {
-  return <div className={`tile-run ${className}`}>{children}</div>;
+  return <div className={`tile-run tile-lap ${className}`}>{children}</div>;
 }
 
 export function Tile({
@@ -74,11 +63,9 @@ export function Tile({
   size = 'md',
   interactive = true,
   fill = false,
-  flat = false,
-  solo = false,
 }: TileProps) {
   const { suit, rank } = tileFromType(tileTypeOf(id));
-  const src = flat ? `/tiles/flat/${suit}-${rank}.svg` : `/tiles/${suit}-${rank}.svg`;
+  const src = `/tiles/${suit}-${rank}.svg`;
   const [preview, setPreview] = useState(false);
   const t = useT();
   const label = tileLabel(id, t);
@@ -128,9 +115,9 @@ export function Tile({
     <>
       <motion.div
         className={[
-          'tile select-none overflow-hidden',
-          flat ? 'tile-cell' : '',
-          flat && solo ? 'tile-solo' : '',
+          // No overflow clipping: in a run the art is drawn wider than its box
+          // and bleeds left over the tile before it.
+          'tile select-none',
           fill ? 'w-full' : SIZE_CLASSES[size],
           selected ? 'is-selected' : '',
           lastDiscard ? 'tile-last-discard' : '',
@@ -150,12 +137,7 @@ export function Tile({
       >
         {/* alt is the stable internal id, not a name: e2e selectors match on it,
             and the wrapper's aria-label is what gets announced. */}
-        <img
-          src={src}
-          alt={`${suit}-${rank}`}
-          className={flat ? 'tile-glyph' : 'tile-face'}
-          draggable={false}
-        />
+        <img src={src} alt={`${suit}-${rank}`} className="tile-face" draggable={false} />
       </motion.div>
 
       {/* Long-press 2× preview */}
@@ -172,17 +154,9 @@ export function Tile({
               initial={{ scale: 0.5 }}
               animate={{ scale: 1 }}
               exit={{ scale: 0.5 }}
-              // Mirrors however the tile itself is drawn rather than deciding
-              // for itself: magnifying a flat tile into the 3D art reads as a
-              // second tile design rather than as a closer look at this one.
-              className={`tile tile-solo overflow-hidden ${flat ? 'tile-cell' : ''} ${SIZE_CLASSES.xl}`}
+              className={`tile ${SIZE_CLASSES.xl}`}
             >
-              <img
-                src={src}
-                alt={`${suit}-${rank}`}
-                className={flat ? 'tile-glyph' : 'tile-face'}
-                draggable={false}
-              />
+              <img src={src} alt={`${suit}-${rank}`} className="tile-face" draggable={false} />
             </motion.div>
           </motion.div>
         )}
@@ -194,21 +168,10 @@ export function Tile({
 export function TileBack({
   size = 'md',
   fill = false,
-  flat = false,
-  solo = false,
-}: { size?: 'sm' | 'md' | 'lg'; fill?: boolean; flat?: boolean; solo?: boolean }) {
+}: { size?: 'sm' | 'md' | 'lg'; fill?: boolean }) {
   return (
-    <div
-      className={`tile ${flat ? 'tile-cell' : ''} ${flat && solo ? 'tile-solo' : ''} ${
-        fill ? 'w-full' : SIZE_CLASSES[size]
-      }`}
-    >
-      <img
-        src={flat ? '/tiles/flat/back.svg' : '/tiles/back.svg'}
-        alt=""
-        className={flat ? 'tile-glyph is-back' : 'tile-face'}
-        draggable={false}
-      />
+    <div className={`tile ${fill ? 'w-full' : SIZE_CLASSES[size]}`}>
+      <img src="/tiles/back.svg" alt="" className="tile-face" draggable={false} />
     </div>
   );
 }

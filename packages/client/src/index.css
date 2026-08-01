@@ -26,6 +26,30 @@ body {
   cursor: pointer;
 }
 
+/* Widths as a custom property rather than a utility class, because a lapped run
+   has to scale the layout box down to the pitch while the art keeps the size the
+   call site asked for — and CSS can't scale a width it didn't set. Tiles that
+   fill their parent instead (the hand, the well) carry no size class. */
+.tile-sized {
+  width: var(--tile-w);
+}
+
+.tile-sm {
+  --tile-w: 2rem;
+}
+
+.tile-md {
+  --tile-w: 2.5rem;
+}
+
+.tile-lg {
+  --tile-w: 3.5rem;
+}
+
+.tile-xl {
+  --tile-w: 5rem;
+}
+
 .tile-face {
   width: 100%;
   height: 100%;
@@ -70,205 +94,98 @@ body {
     animation: none;
     filter: drop-shadow(0 0 4px rgba(251, 191, 36, 0.95)) drop-shadow(0 2px 2px rgba(0, 0, 0, 0.45));
   }
-
-  /* Same bargain for the flat cell's ring: the glow stays, the pulse stops. The
-     rules above collapse the animation to one near-instant iteration, and with
-     no fill-mode the cell would then revert to an unmarked box — so the resting
-     state has to be stated. */
-  .tile-last-discard.tile-cell {
-    animation: none;
-    box-shadow: inset 0 0 0 1px #0a2c10, 0 0 0 2px rgba(251, 191, 36, 0.95), 0 2px 4px
-      rgba(0, 0, 0, 0.5);
-  }
 }
 
 /* ---------------------------------------------------------------------------
-   Flush tiles — the density pass. The source SVGs are complete 3D tiles with
-   their own bevelled sides, so two of them edge to edge show two bevels where a
-   real run of tiles shows one shared edge. The variants in tiles/flat/ carry the
-   glyph alone (see scripts/tiles/flatten-tiles.mjs) and the cell draws the face,
-   which also hands the glyph the whole cell instead of the ~75% the 3D frame
-   left it — the readability win is bigger than the width increase alone.
+   Flush tiles. Each source SVG is a complete 3D tile with its own bevelled
+   sides, so two of them edge to edge show two bevels where a real run of tiles
+   shows one shared edge. A run hides the second one instead of removing it:
+   every tile is drawn wider than its layout box and anchored to the box's right,
+   so it bleeds left over the tile before it, and DOM order paints it on top.
 
-   Each cell keeps its OWN face rather than sharing one across the run: a hand
-   tile lifts when selected, and a lifted glyph over a shared surface reads as a
-   hole in the strip rather than as a tile in the air. The outline below is what
-   separates neighbours, so no divider rule is needed and nothing has to know
-   where in the run it sits.
+   The overlap is 22.5% of the art's width, which is exactly the part that is
+   body and never ink. Measured in from the right edge: outline to 5.5%, green to
+   15.4%, plate and white to 22.5%, face after that. The widest glyph (pin-3)
+   ends at 75.9%, so the neighbour covers the whole band and still clears the
+   symbol. A band drawn in CSS comes out of the face; this one comes out of the
+   neighbour, which is why the glyphs are bigger than the flush-flat pass got.
+
+   Percentages throughout, because the hand's tiles are flex-sized and no length
+   is known here. This replaced tiles/flat/ and a `.tile-cell` that rebuilt the
+   art's body out of six gradients; docs/handoff-tile-rendering.md has the
+   measurements both were derived from.
 --------------------------------------------------------------------------- */
-/* The tile's body, rebuilt in CSS from the source art's own layers.
-   `scripts/tiles/` measured them: the art nests outline -> #005f00 side ->
-   #cddacd plate -> white -> face gradient, each inset down-and-LEFT, which puts
-   the face 20.6% from the top and 22.5% from the right but only ~5% from the
-   bottom and left. That is a tile lit from the bottom-left, showing its top and
-   right sides — and it is why a bevel on those two sides can't double up between
-   neighbours the way left+right did: a tile's right shoulder meets the next
-   tile's bare face, which is the single shared edge a real run shows.
-
-   The specular is the art's too: a hard dot (path3932), a soft blob (path3882)
-   and a blurred diagonal streak (path3936), all of which the flatten script
-   strips. Measured at inset top 8.8% / right 8.2%, they sit on the tile's
-   top-right shoulder rather than on the face, which is what makes it read as a
-   glazed edge catching light instead of a stain on the ivory.
-
-   The art puts green on the top and right *only*: the side layer's insets are
-   top 5% and right 5.5%, but bottom 12.9% and left 20.6% — so it never reaches
-   either of those edges, which show the pale plate and the outline instead. The
-   bottom is therefore a thin plate-and-outline edge here too, not the deep green
-   front edge R7 gave it; that had the emphasis backwards.
-
-   **The bevel is the same on every tile** — hand, meld, tray, picker, well. An
-   earlier pass showed the full side only where nothing abutted the tile and a
-   hairline seam elsewhere, which is more literally correct but made the same tile
-   look like two different tiles depending on where it sat, and a wrapping tray
-   can't even express "last in a row" to opt in.
-
-   Bands are as wide as the glyphs allow rather than as wide as the art has them.
-   The art gives its body 20.6% of the height and 22.5% of the width, but the
-   glyphs' own margins inside their frames are 8.4% top and 16% a side
-   (scripts/tiles/glyph-boxes.json), so 9.5% and 14% is where a band stops being
-   free — past that the widest tiles (pin-3, sou-1, pin-9, pin-8) start losing ink,
-   and a smaller glyph is the one thing the density pass was for.
-
-   A back covers the whole cell (`.tile-glyph.is-back`) and paints its own edge,
-   which `flatten-tiles.mjs` splits at 243 to match the faces.
-
-   Six layers, topmost first: the specular's hard dot, its soft blob, its diagonal
-   streak; then the top band — before the side, so it runs unbroken from corner to
-   corner; then the side; then the face, ending in its edge. */
-.tile-cell {
-  --tile-face: linear-gradient(
-    #fbffec 0%,
-    #f4f9ea 70%,
-    #e4efdd 87%,
-    #d0e4cc 93%,
-    #cddacd 95.2%,
-    #8fa48c 96.6%,
-    #20401f 98.2%,
-    #0d1f0c 100%
-  );
-  --tile-top: linear-gradient(
-    to bottom,
-    #06340a 0 1.6%,
-    #004f00 1.6% 2.4%,
-    #005f00 2.4% 6.4%,
-    #3f7a3c 6.4% 7.1%,
-    #cddacd 7.1% 8.3%,
-    #f6faee 8.3% 9.5%,
-    rgba(0, 0, 0, 0) 9.5%
-  );
-  --tile-side: linear-gradient(
-    to right,
-    rgba(0, 0, 0, 0) 86%,
-    #f6faee 86% 87.4%,
-    #cddacd 87.4% 89%,
-    #3f7a3c 89% 89.8%,
-    #005f00 89.8% 96.6%,
-    #004f00 96.6% 98.4%,
-    #06340a 98.4% 100%
-  );
-  --tile-gloss-dot: radial-gradient(
-    circle at 88.5% 9%,
-    rgba(255, 255, 255, 0.98) 0 1.6%,
-    rgba(255, 255, 255, 0) 3.2%
-  );
-  --tile-gloss-blob: radial-gradient(
-    ellipse 12% 9% at 84% 14%,
-    rgba(255, 255, 255, 0.6),
-    rgba(255, 255, 255, 0) 72%
-  );
-  --tile-gloss-streak: linear-gradient(
-    41deg,
-    rgba(255, 255, 255, 0) 62%,
-    rgba(255, 255, 255, 0.26) 70%,
-    rgba(255, 255, 255, 0) 77%
-  );
-  /* `rect4031`, the art's outermost layer: an outline at inset 0 on every side.
-     It is what makes the silhouette legible — an ivory corner against green felt
-     is a low-contrast transition, so the corner read flat at any radius until this
-     traced it. It also separates flush neighbours, doing the job the hairline seam
-     used to. A single px rather than the art's 2.4%: box-shadow spread takes no
-     percentage, and 2.4% would be 0.6px in the hand and 2.3px at round end. */
-  --tile-outline: inset 0 0 0 1px #0a2c10;
-  background: var(--tile-gloss-dot), var(--tile-gloss-blob), var(--tile-gloss-streak),
-    var(--tile-top), var(--tile-side), var(--tile-face);
-  box-shadow: var(--tile-outline);
-  /* The art's own corner: its outline path turns on cubics spanning ~36-41 units
-     of a 210x255 box, so ~38 units. Proportional rather than a fixed rem, because
-     the corner has to be the same shape on a 64px round-end tile and a 23px hand
-     tile — a radius that reads as a tile at one size is a blob at the other. Two
-     values keep it circular: 18.1% of the width equals 14.9% of the height. */
-  border-radius: 18.1% / 14.9%;
+.tile-lap .tile {
+  /* 210 × 0.775: the box is the pitch, not the tile. */
+  aspect-ratio: 162.75 / 255;
 }
 
-/* The glyph belongs on the face, not across the bands, so its box is the face area
-   — up to where the front edge starts. The SVGs are framed on the glyph's own
-   centre (scripts/tiles/measure-glyphs.mjs), so centring the box centres the
-   symbol. 95%, up from 89%: the front edge is shallower than R7's, and the extra
-   height both re-centres the glyph in the taller face and pushes it down far
-   enough to clear the top band. */
-.tile-glyph {
-  width: 100%;
-  height: 95%;
-  object-fit: contain;
-}
-
-/* A back has no glyph to keep off the bevel — it *is* the whole tile, and paints
-   its own green front edge, so it fills the cell rather than sitting above an
-   ivory one. */
-.tile-glyph.is-back {
+/* In flow, and pulled left by the difference, rather than positioned: the art is
+   the only thing in the hand's chain with an intrinsic size, and `.tile-run` is
+   `inline-flex`, so taking it out of flow collapsed the whole hand to the width of
+   its own padding. `flex: none` because as a flex item a width over 100% is a base
+   size the container would otherwise shrink back to fit. */
+.tile-lap .tile-face {
+  flex: none;
+  /* Tailwind's preflight caps images at `max-width: 100%`, which silently clamps
+     the art back to its own box and undoes the lap. */
+  max-width: none;
+  width: 129.032%; /* 1 ÷ 0.775 */
   height: 100%;
+  margin-left: -29.032%;
+}
+
+/* A tile asked for at a fixed size keeps that size for the *art*, so the pitch
+   comes off the box instead. Without this a tray tile would draw 29% larger and
+   its rows 29% taller — the vertical budget R1–R7 spent itself on. The hand is
+   the other case: its tiles are `fill`, so the flex row sets the pitch directly
+   and the art grows into whatever width the row can afford. */
+.tile-lap .tile-sized {
+  width: calc(var(--tile-w) * 0.775);
 }
 
 /* A run held as one group — your hand, or a meld. One shadow for the strip
    instead of one per tile, which is what stops flush tiles reading as a stack of
    separately-lit objects. No overflow clipping: it would cut the lift off the
-   selected tile. */
+   selected tile.
+
+   The padding is the bleed: the run's first tile has no neighbour to lap over, so
+   it hangs 29% of a pitch off the left and would otherwise overlap whatever sits
+   beside it — visibly, between two melds. Every lapped run but the hand is `sm`,
+   where that is 0.58rem, and the hand's tiles are smaller still. It lives on the
+   containers rather than on `.tile-lap` because a lone lapped tile (the discard
+   in flight) has nothing to clear and would only be pushed off centre. */
 .tile-run {
   display: inline-flex;
+  padding-left: 0.58rem;
   filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.45));
 }
 
+/* Inside a run a tile's own shadow falls on the neighbour overlapping it, so the
+   strip carries the only one. A tray keeps its per-tile shadows — the tiles are
+   the only thing in that box, and one shadow around a wrapping pile is wrong.
+   The selected tile's glow is `.tile.is-selected .tile-face`, which outranks
+   this, so a lifted tile still lights up. */
+.tile-run .tile-face {
+  filter: none;
+}
+
 /* The ring marking a tile at the void declaration. It wraps the tile exactly, so
-   it has to share `.tile-cell`'s corner — at `rounded-sm` the ring squared off a
-   round tile and its corners stood proud of it. */
+   it has to share the art's own corner — at `rounded-sm` the ring squared off a
+   round tile and its corners stood proud of it. 18.1% of the width equals 14.9%
+   of the height on a 210×255 box, which is the ~38 units the outline path turns
+   on; two values because one percentage would give an elliptical corner. The
+   void screen spaces its tiles, so the box here is the whole tile, not a pitch. */
 .tile-mark {
   border-radius: 18.1% / 14.9%;
 }
 
-/* A flat cell standing on its own — the well's last discard, the long-press
-   preview — has no run to hang the strip shadow on, so it carries its own lift.
-   Scoped rather than living on `.tile-cell`, because inside a run every cell
-   would cast one and the strip would read as separately-lit objects again.
-   box-shadow, not filter: it follows the cell's rounded box, and unlike a
-   transform it changes no layout box the viewport guard measures.
-
-   Every rule that sets box-shadow on a cell has to re-list the outline, or it
-   erases the silhouette — box-shadow does not merge across rules. */
-.tile-solo.tile-cell {
-  box-shadow: var(--tile-outline), 0 2px 4px rgba(0, 0, 0, 0.5);
-}
-
-/* The last-discard marker, for a flat cell. `.tile-last-discard .tile-face`
-   above only ever matched the 3D art, so from the flush pass until now the
-   marker was silently dead everywhere it mattered most — every tray tile and
-   the well are flat, and the pulse had nothing to attach to. The ring is drawn
-   outside the cell (spread, no blur growth), so it marks the tile without
-   nudging any box. */
-.tile-last-discard.tile-cell {
-  animation: tile-cell-pulse 1.4s ease-in-out infinite;
-}
-
-@keyframes tile-cell-pulse {
-  0%,
-  100% {
-    box-shadow: inset 0 0 0 1px #0a2c10, 0 0 0 2px rgba(251, 191, 36, 0.95), 0 2px 4px
-      rgba(0, 0, 0, 0.5);
-  }
-  50% {
-    box-shadow: inset 0 0 0 1px #0a2c10, 0 0 0 2px rgba(251, 191, 36, 0.3), 0 2px 4px
-      rgba(0, 0, 0, 0.5);
-  }
+/* A tile that lifts has to break DOM order, or the neighbour overlapping it
+   paints across the lift and it reads as sliding behind the run rather than out
+   of it. Same for the pulsing last discard, whose glow would be half-covered. */
+.tile-lap .tile.is-selected,
+.tile-lap .tile-last-discard {
+  z-index: 2;
 }
 
 /* ---------------------------------------------------------------------------
@@ -299,12 +216,14 @@ body {
   opacity: 0;
 }
 
-/* Inset tray for discard pools */
+/* Inset tray for discard pools. The left padding is the tray's own 0.3rem plus
+   the 0.58rem a lapped run's first tile bleeds — and the first tile of *every*
+   wrapped row bleeds, so without it row two starts outside the tray. */
 .discard-tray {
   background: rgba(0, 0, 0, 0.18);
   border-radius: 0.6rem;
   box-shadow: inset 0 1px 5px rgba(0, 0, 0, 0.4);
-  padding: 0.3rem;
+  padding: 0.3rem 0.3rem 0.3rem 0.88rem;
 }
 
 /* ---------------------------------------------------------------------------

@@ -67,9 +67,9 @@ export function RoundEndRow({
               tiles and declared melds are separate groups, which is what keeps
               the two readable as different things now that nothing has a gap. */}
           <div className="flex flex-wrap items-start gap-2">
-            <div className="flex flex-wrap">
+            <div className="flex flex-wrap tile-lap pl-2">
               {player.hand.map(id => (
-                <Tile key={id} id={id} size="sm" flat />
+                <Tile key={id} id={id} size="sm" />
               ))}
             </div>
             {player.melds.length > 0 && (

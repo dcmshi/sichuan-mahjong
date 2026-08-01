@@ -2,24 +2,25 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Tile sandbox — CSS face vs the source art</title>
+<title>Tile sandbox — the art, lapped and solo</title>
 <!--
   Open this file directly in a browser. No build, no server, no game:
 
       start scripts/tiles/sandbox.html          (Windows)
       open  scripts/tiles/sandbox.html          (macOS)
 
-  The stylesheet below is the app's REAL index.css, by relative path, so editing
-  `.tile-cell` and refreshing is the whole loop. Its `@import "tailwindcss"` 404s
-  harmlessly — the tile rules are plain CSS and apply without it, and every layout
-  class on this page is defined locally so nothing here depends on Tailwind.
+  The stylesheet below is the app's REAL index.css, by relative path, and every
+  tile on this page carries the app's own classes — `.tile`, `.tile-face`,
+  `.tile-lap`, `.tile-run`, `.discard-tray`. So this draws what the app draws, and
+  editing the CSS and refreshing is the whole loop. Its `@import "tailwindcss"`
+  404s harmlessly: the tile rules are plain CSS, and the layout classes on this
+  page are all defined locally so nothing here depends on Tailwind.
 
   `node scripts/tiles/sandbox.mjs` renders the same page headless and writes
   sandbox.png next to it, for a shareable artifact or a before/after pair.
 -->
 <link rel="stylesheet" href="../../packages/client/src/index.css">
 <style>
-  :root { --orig: ../../packages/client/public/tiles; }
   body {
     margin: 0; padding: 20px 22px 40px;
     background: radial-gradient(125% 90% at 50% -10%, #16b8a6 0%, #0f8a7e 38%, #0c5f57 72%, #07433d 100%);
@@ -31,141 +32,77 @@
     font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase;
     opacity: .8; margin: 22px 0 8px; border-top: 1px solid rgba(255,255,255,.14); padding-top: 10px;
   }
-  .lbl { display: inline-block; width: 78px; font-size: 11px; opacity: .65; vertical-align: middle; }
-  .strip { display: inline-flex; vertical-align: middle; }
+  .lbl { display: inline-block; width: 96px; font-size: 11px; opacity: .65; vertical-align: middle; }
   .spaced { display: inline-flex; gap: 10px; vertical-align: middle; }
   .stack { display: flex; gap: 22px; align-items: flex-start; flex-wrap: wrap; }
-  .tray-demo {
-    display: flex; flex-wrap: wrap; width: 80px;
-    background: rgba(0,0,0,.18); border-radius: .6rem;
-    box-shadow: inset 0 1px 5px rgba(0,0,0,.4); padding: .3rem;
-  }
-  /* Overlapped originals. Each tile is pulled left over the one before it, and
-     since it comes later in the DOM it paints on top — so the tile behind loses
-     its right band and keeps its top one, which is what the art's own lighting
-     wants (green on top+right, nothing on bottom+left).
-
-     `padding-left` on the container is the other half of the trick: the negative
-     margin applies to the first tile of EVERY wrapped row, so without it row two
-     would start a fifth of a tile outside the tray. With it, item i's border box
-     runs [i·(w−o), (i+1)·(w−o)] from the content edge, so the run also ends exactly
-     on it — a wrapping tray needs no padding-right to hold the last tile. */
-  .olap { display: flex; flex-wrap: wrap; }
-  .olap .lifted { transform: translateY(-8px); }
-  .olap .above { z-index: 2; }
-  /* One shadow for the strip, the way `.tile-run` does it, instead of the
-     per-tile drop-shadow `.tile-face` carries. */
-  .olap-strip { filter: drop-shadow(0 3px 3px rgba(0,0,0,.45)); }
-  .olap-strip .tile-face { filter: none; }
-  /* The 3D art as the app draws it (`.tile-face` lives in index.css). */
-  .art { position: relative; display: inline-flex; aspect-ratio: 210/255; overflow: hidden; }
   figure { margin: 0; text-align: center; }
   figcaption { font-size: 10px; opacity: .6; margin-top: 4px; }
   code { background: rgba(0,0,0,.3); padding: 1px 4px; border-radius: 3px; font-size: 11px; }
+  /* The tray and the hand as their components build them — Tailwind's classes
+     aren't available here, so the few layout properties they contribute are. */
+  .demo-tray { display: flex; flex-wrap: wrap; align-content: flex-start; align-items: flex-start; }
+  .demo-hand { justify-content: center; }
+  .demo-hand > * { flex: 1; min-width: 0; max-width: 42px; }
+  .demo-hand .tile { width: 100%; }
   #measured { font-size: 11px; opacity: .8; }
   #measured td { padding: 1px 10px 1px 0; }
+  #measured td:first-child { white-space: nowrap; }
 </style>
 </head>
 <body>
-<h1>Tile sandbox — the CSS face against the source art</h1>
+<h1>Tile sandbox — the art, lapped and solo</h1>
 <p class="note">
-  Left of each pair is <code>.tile-cell</code> + <code>tiles/flat/*.svg</code> (what
-  the app draws). Right is the original <code>tiles/*.svg</code>, untouched. Sizes are
-  the ones the app actually uses: 23px hand on a 320px phone, 32px tray, 40px picker,
-  56px well, plus 96px to see what you are doing.
+  Every tile here is the untouched <code>tiles/*.svg</code> drawn through the app's
+  own classes. In a <code>.tile-lap</code> container each one is drawn 29% wider
+  than its layout box and anchored right, so it bleeds left over the tile before it
+  and hides that tile's right band — the 22.5% of the art that is body and never
+  ink. Sizes are the ones the app uses: 23px hand on a 320px phone, 32px tray, 40px
+  picker, 56px well, plus 96px to see what you are doing.
 </p>
 
-<h2>side by side, at every size the app uses</h2>
-<div class="stack" id="pairs"></div>
+<h2>solo — no neighbour to lap over</h2>
+<div class="stack" id="solo"></div>
 
-<h2>flush run — the case the whole flat-tile exercise exists for</h2>
-<div><span class="lbl">css, 23px</span><span class="strip" id="run23"></span></div>
-<div><span class="lbl">css, 32px</span><span class="strip" id="run32"></span></div>
-<div><span class="lbl">art, 32px</span><span class="strip" id="runart"></span></div>
-<div style="margin-top:8px"><span class="lbl">in a run</span>
-  <span class="tile-run" id="runwrapped"></span>
-  <span class="lbl" style="width:auto; margin-left:14px">← inside <code>.tile-run</code>, which carries the strip shadow</span>
-</div>
+<h2>lapped runs, at every size the app uses</h2>
+<div id="runs"></div>
 
-<h2>overlapping the originals — the doubled bevel hidden instead of removed</h2>
+<h2>the seam, at 96px</h2>
 <p class="note" style="margin-bottom:10px">
-  The other way to get one shared edge out of a run: keep the untouched 3D art and
-  slide each tile over its neighbour's right band. Measured insets from the right
-  edge — <code>5.5%</code> outline, green to <code>15.4%</code>, plate and white to
-  <code>22.5%</code>, face after that. So <b>22.5%</b> is the overlap that hides the
-  whole band; the tile on top then contributes its own <code>6.3%</code> left edge as
-  the seam. Nothing above the tiles, so every top band stays visible — which is what
-  a row of real tiles looks like.
+  The tile on top rounds its corners away from the one behind, so a wedge of the
+  band it hides reappears at each end of the join. Beside it, the same three tiles
+  spaced, which is what each one looks like whole.
 </p>
-<div id="sweep"></div>
-<div style="margin-top:14px" id="seam"></div>
+<div class="stack" id="seam"></div>
 
-<h2>same hand width, both ways</h2>
-<p class="note" style="margin-bottom:10px">
-  13 tiles across the same 299px a 320px phone gives the hand. Both draw the glyph at
-  <code>cell ÷ 210</code>, so the overlap buys glyph size directly — but the cell keeps
-  its 210:255 aspect, so it is bought in row height.
-</p>
-<div id="footprint"></div>
+<h2>tray (wraps, 80px column) · meld · selected · backs</h2>
+<div class="stack" id="cases"></div>
 
-<h2>overlap: wrapping tray, selected lift, the tight glyphs</h2>
-<div class="stack" id="olapcases"></div>
-
-<h2>tray (wraps, 80px column) · meld · solo · back</h2>
-<div class="stack">
-  <figure><div class="tray-demo" id="tray"></div><figcaption>tray, 32px</figcaption></figure>
-  <figure><span class="tile-run" id="meld"></span><figcaption>meld</figcaption></figure>
-  <figure><span id="solo"></span><figcaption>solo (well / picker)</figcaption></figure>
-  <figure><span class="strip" id="backs"></span><figcaption>flat backs — concealed kong</figcaption></figure>
-  <figure><span class="strip" id="mixed"></span><figcaption>back beside faces (first discard)</figcaption></figure>
-</div>
-
-<h2>the tightest glyphs — anything the bands or corners clip shows here first</h2>
+<h2>the tightest glyphs — the lap must never touch ink</h2>
 <p class="note" style="margin-bottom:8px">
-  Widest and tallest per <code>glyph-boxes.json</code>. If a band eats ink, it eats
-  it here before anywhere else.
+  Widest and tallest per <code>glyph-boxes.json</code>. <code>pin-3</code> is the
+  binding one: its ink ends at 75.9% of the tile, so the 22.5% lap clears it by
+  1.6%. Anything past ~24% starts eating it here first.
 </p>
-<div><span class="lbl">css</span><span class="strip" id="tight"></span></div>
-<div><span class="lbl">art</span><span class="spaced" id="tightart"></span></div>
+<div><span class="lbl">lapped</span><span id="tight"></span></div>
+<div style="margin-top:8px"><span class="lbl">spaced</span><span class="spaced" id="tightsolo"></span></div>
 
-<h2>marked (void declaration) and last-discard states</h2>
-<div class="stack">
-  <figure><span class="spaced" id="marked"></span><figcaption>ring per suit, <code>.tile-mark</code></figcaption></figure>
-  <figure><span id="lastdiscard"></span><figcaption>last discard (pulses)</figcaption></figure>
-</div>
+<h2>marked (void declaration) and last-discard</h2>
+<div class="stack" id="states"></div>
 
 <h2>what the CSS resolves to right now</h2>
 <table id="measured"></table>
 
 <script>
 const ART = '../../packages/client/public/tiles';
-const FLAT = ART + '/flat';
 const SIZES = [23, 32, 40, 56, 96];
+const HAND = ['man-1','man-3','man-9','pin-1','pin-3','pin-5','pin-8','sou-1','sou-4','sou-7','sou-9','man-5','man-7'];
+const TIGHT = ['pin-3','sou-1','pin-9','pin-7','pin-8','sou-9'];
 const el = (t, cls) => { const n = document.createElement(t); if (cls) n.className = cls; return n; };
 
-/** The app's flat cell: `.tile.tile-cell` wrapping a `.tile-glyph`. */
-function css(name, px, extra = '') {
-  const d = el('div', `tile tile-cell ${extra}`);
-  d.style.width = px + 'px';
-  const img = el('img', 'tile-glyph');
-  img.src = `${FLAT}/${name}.svg`;
-  img.alt = name;
-  d.append(img);
-  return d;
-}
-function cssBack(px, extra = '') {
-  const d = el('div', `tile tile-cell ${extra}`);
-  d.style.width = px + 'px';
-  const img = el('img', 'tile-glyph is-back');
-  img.src = `${FLAT}/back.svg`;
-  img.alt = 'back';
-  d.append(img);
-  return d;
-}
-/** The untouched 3D art, drawn the way the app draws a `.tile-face`. */
-function art(name, px) {
-  const d = el('div', 'art');
-  d.style.width = px + 'px';
+/** One tile, exactly as `Tile.tsx` renders it. */
+function tile(name, px, extra = '') {
+  const d = el('div', `tile ${extra}`);
+  if (px !== null) d.style.width = `${px}px`;
   const img = el('img', 'tile-face');
   img.src = `${ART}/${name}.svg`;
   img.alt = name;
@@ -173,187 +110,125 @@ function art(name, px) {
   return d;
 }
 
-// Pairs at every size.
-const pairs = document.getElementById('pairs');
-for (const px of SIZES) {
-  const fig = el('figure');
-  const row = el('div', 'spaced');
-  row.append(css('man-3', px), art('man-3', px), css('pin-9', px), art('pin-9', px));
-  fig.append(row);
-  const cap = el('figcaption');
-  cap.textContent = `${px}px — css, art, css, art`;
-  fig.append(cap);
-  pairs.append(fig);
-}
-
-const HAND = ['man-1','man-3','man-9','pin-1','pin-3','pin-5','pin-8','sou-1','sou-4','sou-7','sou-9','man-5','man-7'];
-// Tightest glyphs: widest side-margin first, then the shallowest top margin.
-const TIGHT = ['pin-3','sou-1','pin-9','pin-7','pin-8','sou-9'];
-for (const t of HAND) document.getElementById('run23').append(css(t, 23));
-for (const t of HAND.slice(0, 8)) document.getElementById('run32').append(css(t, 32));
-for (const t of HAND.slice(0, 8)) document.getElementById('runart').append(art(t, 32));
-for (const t of HAND.slice(0, 6)) document.getElementById('runwrapped').append(css(t, 32));
-
-/**
- * A run of untouched 3D tiles, each pulled `frac` of its width over the one
- * before it. See `.olap` for why the container gets the matching padding.
- */
-function artRun(names, px, frac, opts = {}) {
-  const { strip = false, width = null, lift = -1, above = true } = opts;
-  const over = px * frac;
-  const wrap = el('div', `olap${strip ? ' olap-strip' : ''}`);
-  wrap.style.paddingLeft = `${over}px`;
-  if (width !== null) wrap.style.width = `${width}px`;
-  names.forEach((n, i) => {
-    const t = art(n, px);
-    t.style.marginLeft = `-${over}px`;
-    if (i === lift) t.classList.add('lifted', ...(above ? ['above'] : []));
-    wrap.append(t);
-  });
+/** A lapped container. `cls` is whatever the app puts on it. */
+function lap(names, px, cls = '') {
+  const wrap = el('div', `tile-lap ${cls}`);
+  for (const n of names) wrap.append(tile(n, px));
   return wrap;
 }
 
-// Sweep: 0% is what the app drew before the flat faces — two bevels per seam.
-const sweep = document.getElementById('sweep');
-for (const frac of [0, 0.10, 0.154, 0.225, 0.28]) {
+function figure(node, caption) {
+  const f = el('figure');
+  f.append(node);
+  const c = el('figcaption');
+  c.textContent = caption;
+  f.append(c);
+  return f;
+}
+
+const solo = document.getElementById('solo');
+for (const px of SIZES) solo.append(figure(tile('man-3', px), `${px}px`));
+
+const runs = document.getElementById('runs');
+for (const [px, what] of [[23, 'hand'], [32, 'tray'], [40, 'picker'], [56, 'well'], [96, 'detail']]) {
   const row = el('div');
   row.style.marginBottom = '6px';
   const lbl = el('span', 'lbl');
-  lbl.style.width = '150px';
-  lbl.textContent = `${(frac * 100).toFixed(1)}% → pitch ${((1 - frac) * 32).toFixed(1)}px`;
-  row.append(lbl, artRun(HAND.slice(0, 8), 32, frac, { strip: true }));
-  sweep.append(row);
+  lbl.textContent = `${px}px · ${what}`;
+  const run = lap(HAND.slice(0, px > 40 ? 5 : 9), px, 'tile-run');
+  run.style.verticalAlign = 'middle';
+  row.append(lbl, run);
+  runs.append(row);
 }
-
-// 22.5% is the whole right band, and the most the art allows: the widest glyph
-// (pin-3) ends at 75.9% of the tile, so anything past ~24% starts eating ink.
-const OVERLAP = 0.225;
-
-// The seam at a size where you can judge it: the tile on top rounds its corners
-// away from the one behind, so the band it is meant to hide reappears as a wedge
-// at each end of the join.
+// The hand as OwnZone builds it: flex-sized items, so the pitch comes from the
+// row and the art grows into it. 299px is what a 320px phone gives.
 {
-  const seam = el('div', 'stack');
-  const a = el('figure');
-  a.append(artRun(['man-3','pin-5','sou-7'], 96, OVERLAP, { strip: true }));
-  const ac = el('figcaption');
-  ac.textContent = 'art, overlapped 22.5%';
-  a.append(ac);
-  const b = el('figure');
-  const run = el('span', 'strip tile-run');
-  for (const t of ['man-3','pin-5','sou-7']) run.append(css(t, 96));
-  b.append(run);
-  const bc = el('figcaption');
-  bc.textContent = 'flat cells, flush';
-  b.append(bc);
-  seam.append(a, b);
-  document.getElementById('seam').append(seam);
-}
-
-// Same total width, both ways: 13 flush flat cells against 13 overlapped originals.
-const HAND_PX = 299;
-const foot = document.getElementById('footprint');
-{
-  const flatW = HAND_PX / HAND.length;
-  const artW = HAND_PX / (1 + (HAND.length - 1) * (1 - OVERLAP));
-  const rows = [
-    ['flat, flush', (() => {
-      const r = el('span', 'strip tile-run');
-      for (const t of HAND) r.append(css(t, flatW));
-      return r;
-    })(), `cell ${flatW.toFixed(1)}px · row ${(flatW * 255 / 210).toFixed(1)}px tall`],
-    ['art, overlapped', artRun(HAND, artW, OVERLAP, { strip: true }),
-      `cell ${artW.toFixed(1)}px (+${((artW / flatW - 1) * 100).toFixed(0)}%) · row ${(artW * 255 / 210).toFixed(1)}px tall`],
-  ];
-  for (const [name, node, note] of rows) {
-    const fig = el('figure');
-    fig.style.textAlign = 'left';
-    fig.style.marginBottom = '10px';
-    fig.append(node);
-    const cap = el('figcaption');
-    cap.style.textAlign = 'left';
-    cap.textContent = `${name} — ${note}`;
-    fig.append(cap);
-    foot.append(fig);
+  const outer = el('div');
+  outer.style.width = '299px';
+  const run = el('div', 'tile-run tile-lap demo-hand');
+  for (const n of HAND) {
+    const item = el('div');
+    item.append(tile(n, null));
+    run.append(item);
   }
+  outer.append(run);
+  runs.append(el('div'), figure(outer, '13 flex-sized tiles across 299px — the hand on a 320px phone'));
 }
 
-const cases = document.getElementById('olapcases');
+const seam = document.getElementById('seam');
+seam.append(
+  figure(lap(['man-3', 'pin-5', 'sou-7'], 96, 'tile-run'), 'lapped'),
+  figure(
+    (() => {
+      const s = el('div', 'spaced');
+      for (const n of ['man-3', 'pin-5', 'sou-7']) s.append(tile(n, 96));
+      return s;
+    })(),
+    'spaced',
+  ),
+);
+
+const cases = document.getElementById('cases');
 {
-  const trayW = 80;
-  const fig = el('figure');
-  const tray = artRun(['man-1','pin-5','sou-7','man-9','pin-3','sou-2','man-8'], 32, OVERLAP, { width: trayW });
-  tray.style.background = 'rgba(0,0,0,.18)';
-  tray.style.borderRadius = '.6rem';
-  tray.style.boxShadow = 'inset 0 1px 5px rgba(0,0,0,.4)';
-  tray.style.paddingRight = '.3rem';
-  fig.append(tray);
-  const cap = el('figcaption');
-  cap.textContent = 'wraps — row 2 must not jut left';
-  fig.append(cap);
-  cases.append(fig);
+  const tray = lap(['man-1','pin-5','sou-7','man-9','pin-3','sou-2','man-8'], 32, 'discard-tray demo-tray');
+  tray.style.width = '80px';
+  cases.append(figure(tray, 'tray — row 2 must not jut left'));
 
-  for (const [above, label] of [[true, 'lifted, z-index'], [false, 'lifted, no z-index']]) {
-    const f = el('figure');
-    f.append(artRun(HAND.slice(0, 5), 40, OVERLAP, { strip: true, lift: 2, above }));
-    const c = el('figcaption');
-    c.textContent = label;
-    f.append(c);
-    cases.append(f);
+  cases.append(figure(lap(['man-5','man-5','man-5'], 32, 'tile-run'), 'meld'));
+
+  const sel = lap(['man-1','man-3','man-9','pin-1','pin-3'], 40, 'tile-run');
+  sel.children[2].classList.add('is-selected');
+  sel.children[2].style.transform = 'translateY(-8px)';
+  cases.append(figure(sel, 'selected — z-index, or the neighbour paints over it'));
+
+  const backs = el('div', 'tile-lap tile-run');
+  for (let i = 0; i < 5; i++) {
+    const d = el('div', 'tile');
+    d.style.width = '32px';
+    const img = el('img', 'tile-face');
+    img.src = `${ART}/back.svg`;
+    img.alt = 'back';
+    d.append(img);
+    backs.append(d);
   }
-
-  // Backs already overlap in the app — HandCountChip stacks the 3D ones, because
-  // flat backs flush merge into a single slab. Whether a whole concealed hand
-  // survives the same treatment is the question.
-  const backFig = el('figure');
-  const backs = artRun(['back','back','back','back','back'], 40, OVERLAP, { strip: true });
-  backFig.append(backs);
-  const backCap = el('figcaption');
-  backCap.textContent = 'concealed hand — 3D backs';
-  backFig.append(backCap);
-  cases.append(backFig);
-
-  const tightFig = el('figure');
-  tightFig.append(artRun(TIGHT, 40, OVERLAP, { strip: true }));
-  const tightCap = el('figcaption');
-  tightCap.textContent = 'the tight glyphs — the overlap never touches ink';
-  tightFig.append(tightCap);
-  cases.append(tightFig);
+  cases.append(figure(backs, 'concealed hand — backs'));
 }
 
-for (const t of ['man-1','pin-5','sou-7','man-9','pin-3']) document.getElementById('tray').append(css(t, 32));
-for (let i = 0; i < 3; i++) document.getElementById('meld').append(css('man-5', 32));
-document.getElementById('solo').append(css('man-3', 56, 'tile-solo'));
-for (let i = 0; i < 4; i++) document.getElementById('backs').append(cssBack(32));
-const mixed = document.getElementById('mixed');
-mixed.append(cssBack(32), css('man-2', 32), css('pin-4', 32));
+document.getElementById('tight').append(lap(TIGHT, 56, 'tile-run'));
+for (const t of TIGHT) document.getElementById('tightsolo').append(tile(t, 56));
 
-for (const t of TIGHT) document.getElementById('tight').append(css(t, 56));
-for (const t of TIGHT) document.getElementById('tightart').append(art(t, 56));
+const states = document.getElementById('states');
+{
+  const RINGS = { 'man-3': '#ef4444', 'pin-5': '#10b981', 'sou-7': '#3b82f6' };
+  const marked = el('div', 'spaced');
+  for (const [t, colour] of Object.entries(RINGS)) {
+    const wrap = el('div', 'tile-mark');
+    wrap.style.boxShadow = `0 0 0 3px ${colour}`;
+    wrap.append(tile(t, 40));
+    marked.append(wrap);
+  }
+  states.append(figure(marked, 'ring per suit, .tile-mark — spaced, so the box is the whole tile'));
+  states.append(figure(tile('man-3', 56, 'tile-last-discard'), 'last discard (pulses)'));
 
-// Marked, one per suit, mirroring the void screen's wrappers.
-const RINGS = { 'man-3': '#ef4444', 'pin-5': '#10b981', 'sou-7': '#3b82f6' };
-for (const [t, colour] of Object.entries(RINGS)) {
-  const wrap = el('div', 'tile-mark');
-  wrap.style.boxShadow = `0 0 0 3px ${colour}`;
-  wrap.append(css(t, 40));
-  document.getElementById('marked').append(wrap);
+  const trayPulse = lap(['man-1', 'pin-5', 'sou-7'], 32, 'discard-tray demo-tray');
+  trayPulse.children[1].classList.add('tile-last-discard');
+  states.append(figure(trayPulse, 'and in a tray, where it has to sit above its neighbour'));
 }
-document.getElementById('lastdiscard').append(css('man-3', 56, 'tile-solo tile-last-discard'));
 
 // Read the resolved values back out, so the page states its own numbers rather
 // than trusting a comment that may have drifted from the CSS.
-const probe = css('man-3', 210);
+const probe = lap(['man-3', 'pin-5'], 210, 'tile-run');
 probe.style.position = 'absolute';
 probe.style.left = '-9999px';
 document.body.append(probe);
-const s = getComputedStyle(probe);
+const box = probe.firstElementChild;
+const art = box.querySelector('.tile-face');
 const rows = [
-  ['border-radius', s.borderRadius],
-  ['box-shadow', s.boxShadow],
-  ['--tile-top', s.getPropertyValue('--tile-top').trim() || '(unset)'],
-  ['--tile-side', s.getPropertyValue('--tile-side').trim() || '(unset)'],
-  ['glyph height', getComputedStyle(probe.querySelector('img')).height + ' of 255px'],
+  ['pitch (box)', `${box.getBoundingClientRect().width.toFixed(1)}px of a 210px tile`],
+  ['art width', getComputedStyle(art).width],
+  ['aspect-ratio', getComputedStyle(box).aspectRatio],
+  ['.tile-run padding-left', getComputedStyle(probe).paddingLeft],
+  ['.tile-mark radius', getComputedStyle(document.querySelector('.tile-mark')).borderRadius],
 ];
 const table = document.getElementById('measured');
 for (const [k, v] of rows) {
@@ -361,15 +236,17 @@ for (const [k, v] of rows) {
   const th = el('td');
   th.innerHTML = `<code>${k}</code>`;
   const td = el('td');
-  td.textContent = v.length > 150 ? v.slice(0, 150) + '…' : v;
+  td.textContent = v;
   tr.append(th, td);
   table.append(tr);
 }
-if (s.borderRadius === '0px') {
+// The lap is the one thing that has to be true for this page to mean anything: if
+// index.css did not load, every tile is an unstyled image and the run looks fine.
+if (art.getBoundingClientRect().width <= box.getBoundingClientRect().width) {
   const warn = el('p', 'note');
   warn.style.color = '#fca5a5';
   warn.textContent =
-    'index.css did not load — the tile rules are missing. Check the <link> path is still ../../packages/client/src/index.css.';
+    'index.css did not load — tiles are not lapped. Check the <link> path is still ../../packages/client/src/index.css.';
   document.body.prepend(warn);
 }
 </script>

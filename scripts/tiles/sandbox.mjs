@@ -49,11 +49,16 @@ page.on('console', m => {
 await page.goto(pathToFileURL(PAGE).href);
 await page.waitForLoadState('networkidle');
 
-// A tile with no radius means index.css didn't load, which would otherwise be a
+// An unlapped tile means index.css didn't load, which would otherwise be a
 // silently wrong screenshot — the exact failure this script is meant to catch.
-const radius = await page.evaluate(() => {
-  const t = document.querySelector('.tile-cell');
-  return t ? getComputedStyle(t).borderRadius : null;
+// The art has to come out wider than the box it sits in; unstyled, they match.
+const lap = await page.evaluate(() => {
+  const box = document.querySelector('.tile-lap .tile');
+  const art = box?.querySelector('.tile-face');
+  if (!box || !art) return null;
+  const b = box.getBoundingClientRect().width;
+  const a = art.getBoundingClientRect().width;
+  return { ratio: a / b, box: b, art: a };
 });
 const broken = await page.evaluate(
   () => Array.from(document.images).filter(i => !i.naturalWidth).length,
@@ -63,12 +68,16 @@ await page.screenshot({ path: OUT, fullPage: true });
 await browser.close();
 
 console.log(`wrote ${OUT}`);
-console.log(`  border-radius: ${radius ?? '(no .tile-cell found)'}`);
+console.log(
+  lap
+    ? `  lap: art ${lap.art.toFixed(1)}px in a ${lap.box.toFixed(1)}px box (${lap.ratio.toFixed(3)}×)`
+    : '  lap: (no lapped tile found)',
+);
 console.log(`  broken images: ${broken}`);
 for (const p of problems.slice(0, 5)) console.log(`  console: ${p}`);
 
-if (!radius || radius === '0px') {
-  console.error('\nindex.css did not apply — the screenshot shows unstyled tiles.');
+if (!lap || lap.ratio < 1.28) {
+  console.error('\nindex.css did not apply — the tiles are not lapped, so the screenshot lies.');
   process.exit(1);
 }
 if (broken > 0) {

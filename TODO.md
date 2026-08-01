@@ -1,5 +1,61 @@
 # TODO
 
+## ✅ Tiles are the untouched art, and a run laps (2026-08-01)
+
+*"I think the art overlapped looks best, the css still looks kind of clunky"* —
+after the sandbox put the two side by side. The idea was the user's: rather than
+strip each tile's 3D body and rebuild it in CSS so tiles can sit flush, keep the
+art and **slide each tile over its neighbour's right band**, hiding the doubled
+bevel instead of removing it.
+
+It is a better trade than the reconstruction it replaces, and the reason is one
+measurement: the rightmost **22.5%** of the art is body and never ink — from the
+right edge, outline to 5.5%, green to 15.4%, plate and white to 22.5%, face after
+that. The widest glyph, `pin-3`, ends at 75.9%, clearing it by 1.6%. So the lap is
+free, where every band `.tile-cell` drew came out of the face. Same 299px hand:
+23.0px a tile flat, **29.0px lapped**.
+
+- [x] **The box is the pitch, not the tile.** `aspect-ratio: 162.75 / 255` (210 ×
+  0.775) with the art at `129.032%` (1 ÷ 0.775) and `margin-left: -29.032%`, so it
+  bleeds left and DOM order paints each tile over the one before it. Percentages
+  throughout: the hand's tiles are flex-sized, so no length is known in CSS.
+- [x] **The art has to stay in flow**, which cost an e2e run to learn. Positioning
+  it absolutely is the obvious way to overflow a box, and it collapsed the hand to
+  9.3px — the width of `.tile-run`'s own padding. The art is the only thing in that
+  chain with an intrinsic size, and `.tile-run` is `inline-flex`, so shrink-to-fit
+  had nothing left to measure. `flex: none` goes with it: as a flex item, a width
+  over 100% is a base size the container would otherwise shrink back to fit.
+- [x] **`max-width: none`.** Tailwind's preflight caps images at `max-width: 100%`,
+  which clamps the art back to its own box and undoes the lap while every other
+  computed value still reads correctly.
+- [x] **Sizes moved to `--tile-w`** on `.tile-sm/-md/-lg/-xl`, off Tailwind's
+  `w-*`. A lapped run has to scale a fixed width down to the pitch so the *art*
+  keeps the size the call site asked for, and CSS can't scale a width it didn't
+  set. Without it a `w-8` tray tile draws 29% larger and its rows 29% taller.
+- [x] **A lifted tile needs a `z-index`.** Rising isn't enough — the neighbour
+  still paints across it and the tile reads as sliding behind the hand. Same for
+  the pulsing last discard in a tray.
+- [x] **Containers hold the first tile's bleed.** It has no neighbour to lap over,
+  so it hangs 29% of a pitch off the left — and in a wrapping tray that is the
+  first tile of *every* row, which would start outside the tray. `.tile-run` takes
+  0.58rem, `.discard-tray` 0.3 + 0.58. Not on `.tile-lap` itself: the discard in
+  flight is a lone lapped tile and would only be pushed off centre.
+- [x] **The flight is lapped too.** It measures a hand tile's box and a tray tile's
+  box, both pitches, so an unlapped tile in flight would take off 22.5% smaller
+  than the tile it left.
+- [x] **`.tile-cell` and `tiles/flat/` are gone**, with `flatten-tiles.mjs` and its
+  drift test. `measure-glyphs.mjs` and `glyph-boxes.json` stay as the evidence for
+  the 22.5%. The `flat`/`solo` props are gone from `Tile`; every tile is the art,
+  and a container opts into lapping with `.tile-lap`.
+- [x] **The sandbox now mirrors the app** rather than comparing two designs: same
+  stylesheet, same classes, solo and lapped at every size, plus the four cases
+  above. Its self-check is that the art comes out wider than its box.
+
+Known and accepted: the seam is the art's own black left edge, 6.3% of the tile
+width. Heavier than the 1px outline the flat cell drew — at 96px it reads as a
+black gutter, at hand size as a firm separator. Looked at in the sandbox and
+chosen.
+
 ## ✅ The bevel goes as wide as the glyphs allow, uniformly (2026-08-01)
 
 Third pass, and the one that landed: *"still not as rounded and the bevel is not

@@ -97,7 +97,6 @@ sichuan-mahjong/
 │   ├── client/
 │   │   ├── public/
 │   │   │   └── tiles/            # 27 3D faces + back.svg + credits.json
-│   │   │       └── flat/         # 28 derived glyph-only faces (see scripts/tiles/)
 │   │   ├── src/
 │   │   │   ├── components/       # Tile, MeldDisplay, ClaimPanel, EventFeed, PlayHistory, ErrorToast, ConnectionLost
 │   │   │   ├── screens/          # Landing, HostSetup, JoinForm, Lobby, Game, RoundEnd, MatchEnd, Spectate, About
@@ -114,7 +113,7 @@ sichuan-mahjong/
 ├── scripts/
 │   ├── icons/                    # PWA PNG generation (no image dependency)
 │   ├── screenshots/              # docs/*.png capture — `pnpm shots`, not in `pnpm e2e`
-│   ├── tiles/                    # flat tile faces: measure-glyphs.mjs → flatten-tiles.mjs
+│   ├── tiles/                    # sandbox.html + glyph measurement (measure-glyphs.mjs)
 │   └── release/                  # Bun compile per OS
 ├── pnpm-workspace.yaml
 ├── biome.json
@@ -950,14 +949,13 @@ live.
 `scripts/release/gen-embedded-client.mjs` walks `packages/client/dist`
 recursively and base64-embeds every file into
 `packages/server/src/generated/embedded-client.ts`, which is then compiled into
-the Bun binary — 57 SVGs as of the flat-tile derivation. §13 states the CC-BY-SA
-boundary depends on the SVGs staying "standalone fetched assets" and says
-explicitly not to "bundle, inline, or otherwise merge the SVGs into compiled
-JavaScript output". The two cannot both be true. Predates the flat set (the embed
-is A20) but that set doubled the number of files involved. Needs a decision, not a
-patch: exclude `tiles/` from the embed and ship them beside the binary, or accept
-the merge and state the binary's licence accordingly. **The npm package and the
-from-source path are unaffected** — both serve `tiles/` from disk.
+the Bun binary — 28 SVGs, back down from 57 now that the flat derivatives are
+gone. §13 states the CC-BY-SA boundary depends on the SVGs staying "standalone
+fetched assets" and says explicitly not to "bundle, inline, or otherwise merge the
+SVGs into compiled JavaScript output". The two cannot both be true. Needs a
+decision, not a patch: exclude `tiles/` from the embed and ship them beside the
+binary, or accept the merge and state the binary's licence accordingly. **The npm
+package and the from-source path are unaffected** — both serve `tiles/` from disk.
 
 **O2. Bot pacing** — ✅ Done (2026-08-01), both halves. Bots pause
 `DEFAULT_BOT_PACE_MS` (700ms) a move instead of 150, retunable with
@@ -982,11 +980,12 @@ a fallback — the per-seat trays are staying.
 
 **O4. Discard tile styling** — ✅ Done (2026-08-01), and it wasn't the discard pile.
 The report was that the middle discard looked glossier than the hand and trays: the
-well's last discard was the last board tile still drawn from the 3D art. Every tile
-on the board is flat now, with a `solo` prop carrying the lift a tile with nothing
-flush beside it needs, and the long-press preview following whatever it magnifies.
-This also revived the last-discard marker, which had matched `.tile-face` only and
-so had been dead on every flat tile since R7.
+well's last discard was the last board tile still drawn from the 3D art. It was
+first closed by making every tile flat; it is now closed the other way round —
+every tile is the 3D art, and a run *laps* to hide the doubled bevel instead of
+removing it. The two tiles matched either way, but the lap is the art as drawn,
+costs no glyph width, and retired `.tile-cell` and the whole flatten pipeline. See
+[docs/handoff-tile-rendering.md](./docs/handoff-tile-rendering.md).
 
 ---
 

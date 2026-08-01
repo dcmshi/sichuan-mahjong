@@ -45,12 +45,15 @@ const boxOf = (el: Element): Flight['from'] => {
 function FlyingDiscard({ flight }: { flight: Flight }) {
   return (
     <motion.div
-      className="fixed left-0 top-0 z-30 pointer-events-none"
+      // tile-lap: both boxes it measures are pitches — a hand tile's and a tray
+      // tile's — so the tile in flight has to be drawn the same way or it takes
+      // off 22.5% smaller than the tile it left and lands smaller than the pile.
+      className="tile-lap fixed left-0 top-0 z-30 pointer-events-none"
       initial={{ x: flight.from.left, y: flight.from.top, width: flight.from.width }}
       animate={{ x: flight.to.left, y: flight.to.top, width: flight.to.width }}
       transition={{ duration: DISCARD_FLIGHT_MS / 1000, ease: [0.3, 0.7, 0.4, 1] }}
     >
-      <Tile id={flight.tile} interactive={false} fill flat solo />
+      <Tile id={flight.tile} interactive={false} fill />
     </motion.div>
   );
 }
@@ -273,9 +276,7 @@ export function OwnZone({ view }: { view: PlayerView }) {
       {/* First-discard flip — the one discard the player doesn't get to choose (A35) */}
       {canFlip && !inClaimWindow && (
         <div className="mx-3 my-1 p-2 rounded-xl bg-black/30 flex items-center gap-3">
-          {pendingFlipTile !== null && (
-            <Tile id={pendingFlipTile} size="md" interactive={false} flat solo />
-          )}
+          {pendingFlipTile !== null && <Tile id={pendingFlipTile} size="md" interactive={false} />}
           <div className="flex-1 min-w-0">
             <p className="text-[11px] text-green-300 leading-snug">{t('play.flipHint')}</p>
           </div>
@@ -311,18 +312,17 @@ export function OwnZone({ view }: { view: PlayerView }) {
               drawn in the pile and in the air at the same time. */}
           <div
             ref={trayRef}
-            className={`flex flex-wrap content-start items-start discard-tray mt-0.5 min-h-0 overflow-y-auto ${
+            className={`flex flex-wrap content-start items-start discard-tray tile-lap mt-0.5 min-h-0 overflow-y-auto ${
               flight ? 'discard-landing' : ''
             }`}
           >
             {/* Face down until you flip it on your first turn (A37) */}
-            {view.you.pendingFirstDiscard && <TileBack size="sm" flat />}
+            {view.you.pendingFirstDiscard && <TileBack size="sm" />}
             {view.you.discards.map(id => (
               <Tile
                 key={id}
                 id={id}
                 size="sm"
-                flat
                 lastDiscard={view.lastDiscard?.from === seat && id === lastDiscardTile}
               />
             ))}
@@ -353,8 +353,9 @@ export function OwnZone({ view }: { view: PlayerView }) {
           // 13 tiles were 48px of a 296px row — 16% spent on nothing — which held
           // each tile to 19.1px on a 320px phone, under the ~24px at which the
           // suit markings stop being readable. Flush at px-2 they reach 23.4px,
-          // and the flat faces hand the glyph the whole cell on top of that.
-          className="tile-run pb-1 list-none justify-center"
+          // and lapping each tile over the one before it (tile-lap) spends the
+          // hidden 22.5% on the art instead, which draws them at ~29px.
+          className="tile-run tile-lap pb-1 list-none justify-center"
         >
           {handOrder.map(id => (
             <Reorder.Item
@@ -387,7 +388,7 @@ export function OwnZone({ view }: { view: PlayerView }) {
                   handleTileTap(id, e.currentTarget);
                 }}
               >
-                <Tile id={id} selected={selectedTile === id} interactive={false} fill flat />
+                <Tile id={id} selected={selectedTile === id} interactive={false} fill />
               </button>
             </Reorder.Item>
           ))}

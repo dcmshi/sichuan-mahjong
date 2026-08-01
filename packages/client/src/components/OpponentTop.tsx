@@ -45,11 +45,11 @@ export function OpponentTop({ view, relSeat }: { view: PlayerView; relSeat: 0 | 
           column is full-width, so a row holds plenty — no scroll needed
           (contrast OpponentSide, whose 80px column can't fit one). (R2.3) */}
       {(opp.discards.length > 0 || opp.pendingFirstDiscard) && (
-        <div className="flex items-start max-w-full overflow-x-hidden discard-tray">
+        <div className="flex items-start max-w-full overflow-x-hidden discard-tray tile-lap">
           {/* Their void tile is face down until they flip it on their first turn (A37) */}
-          {opp.pendingFirstDiscard && <TileBack size="sm" flat />}
+          {opp.pendingFirstDiscard && <TileBack size="sm" />}
           {opp.discards.slice(-9).map(id => (
-            <Tile key={id} id={id} size="sm" flat lastDiscard={id === lastDiscardTile} />
+            <Tile key={id} id={id} size="sm" lastDiscard={id === lastDiscardTile} />
           ))}
         </div>
       )}

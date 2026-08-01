@@ -106,9 +106,7 @@ export function PlayHistory({
                     <span className="min-w-0 truncate">
                       {t(row.key, { name: nameOf(row.seat) })}
                     </span>
-                    {row.tile !== null && (
-                      <Tile id={row.tile} size="sm" interactive={false} flat solo />
-                    )}
+                    {row.tile !== null && <Tile id={row.tile} size="sm" interactive={false} />}
                   </li>
                 ))}
               </ol>

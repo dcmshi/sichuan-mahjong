@@ -65,9 +65,9 @@ export function MeldChip({ meld }: { meld: PublicMeld }) {
   return (
     <div className="relative flex-shrink-0">
       {ids === null || ids[0] === undefined ? (
-        <TileBack size="sm" flat solo />
+        <TileBack size="sm" />
       ) : (
-        <Tile id={ids[0]} size="sm" flat solo interactive={false} />
+        <Tile id={ids[0]} size="sm" interactive={false} />
       )}
       <span className="absolute -bottom-1 -right-1 px-0.5 rounded bg-amber-500 text-black text-[8px] font-bold leading-tight">
         {t(meld.kind === 'kong' ? 'claim.kong' : 'claim.pung')}
@@ -82,8 +82,8 @@ export function MeldDisplay({ meld }: { meld: PublicMeld }) {
 
   const tiles =
     ids === null
-      ? Array.from({ length: 4 }, (_, i) => <TileBack key={i} size="sm" flat />)
-      : ids.map(id => <Tile key={id} id={id} size="sm" flat />);
+      ? Array.from({ length: 4 }, (_, i) => <TileBack key={i} size="sm" />)
+      : ids.map(id => <Tile key={id} id={id} size="sm" />);
 
   // A meld is a declared group, so it is drawn as one flush run rather than
   // spaced tiles — which is also how it sits on a real table.

@@ -16,7 +16,7 @@ Keep this file short. New documentation goes in one of these instead:
 | **[README.md](./README.md)** | User-facing: install, host/join, CLI flags | …you change the CLI or the player-facing flow |
 | **[docs/viewport-audit.md](./docs/viewport-audit.md)** | Measured mobile viewport overflow + the open layout questions | …you change the play or round-end layout |
 | **[docs/handoff-2026-08-01.md](./docs/handoff-2026-08-01.md)** | Where the layout/density work stands, decisions already settled, the four open ones, and the traps that cost time | …you are picking this up cold, or before a compaction |
-| **[docs/handoff-tile-rendering.md](./docs/handoff-tile-rendering.md)** | How tiles are drawn (CSS body + glyph-only SVG), the art's measured layer geometry, every knob, what's been rejected and why | …you are changing how a tile looks |
+| **[docs/handoff-tile-rendering.md](./docs/handoff-tile-rendering.md)** | How tiles are drawn (the art, lapped), its measured layer geometry, every knob, the four things easy to get wrong | …you are changing how a tile looks |
 | `SBR_ENG_part_1.pdf` | Novikov, *Sichuan Mahjong? It's that simple!* — the canonical ruleset | (read-only; extract with `pdftotext` when a rule is in question) |
 
 ---
@@ -54,17 +54,17 @@ pnpm e2e
 # built server above; drives the real app and writes into the repo)
 pnpm shots
 
-# Tile sandbox — the CSS face beside the original art at every size the app uses.
+# Tile sandbox — every tile the app draws, solo and lapped, at every size it uses.
 # Open the file directly: no build, no server, no game. It links the real
-# index.css, so the loop is edit-and-refresh. See docs/handoff-tile-rendering.md.
+# index.css and uses the app's own classes, so the loop is edit-and-refresh.
+# See docs/handoff-tile-rendering.md.
 start scripts/tiles/sandbox.html     # macOS: open scripts/tiles/sandbox.html
 pnpm tiles:sandbox                   # same page, rendered headless to a PNG
 
-# Regenerate the flat tile faces (only if the source art in public/tiles/ changes).
-# Measure first — it needs the Playwright chromium — then flatten; a client test
-# fails if the committed output drifts from what these produce.
+# Re-measure where the ink sits inside each frame (needs the Playwright chromium).
+# Nothing generates assets from it any more — glyph-boxes.json is the evidence for
+# the 22.5% overlap, so rerun it only if the source art changes.
 node scripts/tiles/measure-glyphs.mjs
-node scripts/tiles/flatten-tiles.mjs
 
 # Release binaries (embed the client, no persistence): needs Bun
 bun run scripts/release/compile.ts
@@ -146,50 +146,37 @@ the lobby; the choice rides on `startGame.rules` and is narrowed by `houseRules(
 in `ws.ts`. Practice mode therefore never shows the huan phase, which is why
 `e2e/house-rules.spec.ts` exists — it is the only spec that reaches that screen.
 
-**Tiles are drawn flush**, from glyph-only faces derived out of the CC BY-SA art
-by `scripts/tiles/` (measure, then flatten — the frame is centred on each glyph's
-measured box). Everything on the board uses them — see "One tile face everywhere"
-below. Regenerate with `node scripts/tiles/measure-glyphs.mjs`
-then `node scripts/tiles/flatten-tiles.mjs`; a client test fails if the committed
-output drifts from what the scripts produce.
-
 **Bots pause 700ms a move** (2026-08-01), not the old 150 — a circuit used to
 resolve inside a second. `--bot-delay <ms>` retunes it; `SM_BOT_DELAY_MS` is the
 seam the vitest and Playwright configs use to pin the old pace, since whole-round
 suites assert nothing about timing. The 🗒 control in the play well opens the
 round's move history, which is what the transient event feed can't be.
 
-**One tile face everywhere** (2026-08-01). Every tile on the board is flat,
-including the well's last discard, which was the last one drawn from the 3D art
-and read as glossier beside the hand. `solo` gives a flat tile with nothing flush
-beside it the lift `.tile-run` would otherwise provide. Only the overlapped
-hand-count stack keeps 3D backs — flat backs overlapped merge into one slab.
+**Tiles are the untouched art, and a run laps** (2026-08-01). Each source SVG is a
+complete 3D tile, so two of them edge to edge show two bevels where a real run
+shows one shared edge. Rather than strip the body and rebuild it in CSS — which is
+what `tiles/flat/` and `.tile-cell` did until now — every tile in a `.tile-lap`
+container is drawn 29% wider than its layout box and anchored right, so it bleeds
+left over the tile before it and DOM order paints it on top. Full detail in
+[docs/handoff-tile-rendering.md](./docs/handoff-tile-rendering.md).
 
-**`.tile-cell` rebuilds the art's body in CSS** — the source layers' own order
-(outline → `#005f00` side → `#cddacd` plate → white → face) on the **top and
-right**, plus the art's top-right specular. Those are the two sides the art shows
-(it is lit from the bottom-left, so its green never reaches the bottom or left
-edge) and the two that *can't* double up between flush neighbours, unlike
-left+right. Compressed from the measured 20.6%/22.5% insets so it fits inside the
-glyphs' existing margins and no glyph shrinks; measurements in
-[TODO.md](./TODO.md).
-
-- **Every tile gets the same bevel** — hand, meld, tray, picker, well. Showing the
-  full side only where nothing abuts the tile was tried and reverted: it made one
-  tile look like two depending on where it sat, and a wrapping tray can't express
-  "last in a row" to opt in.
-- **Bands are as wide as the glyphs allow, not as wide as the art has them**: 9.5%
-  of the height and 14% of the width, against the art's 20.6%/22.5%. The glyphs'
-  margins inside their frames are 8.4% top and 16% a side, so that is where a band
-  stops being free — wider needs a smaller glyph, which is what R7 was for.
+- **The overlap is 22.5% of the art's width, which is exactly the body band** —
+  measured in from the right edge: outline to 5.5%, green to 15.4%, plate and
+  white to 22.5%, face after that. The widest glyph (`pin-3`) ends at 75.9%, so
+  the lap never touches ink. A band drawn in CSS came out of the face; this one
+  comes out of the neighbour, which is why the same 299px hand went 23.0px →
+  29.0px a tile.
+- **The box is the pitch, not the tile.** `aspect-ratio: 162.75 / 255` and an art
+  width of `129.032%`, both from the one constant 0.775. A fixed-size tile shrinks
+  its box so the art keeps its size (`--tile-w`, not Tailwind's `w-*`, because CSS
+  can't scale a width it didn't set); the hand's `fill` tiles do the opposite and
+  let the art grow into the row.
+- **A lifted tile needs a `z-index`**, or its neighbour paints across the lift, and
+  the **first tile of every wrapped row bleeds left**, which is what the trays'
+  asymmetric padding holds. Both are on the sandbox page.
 - The **corner radius is proportional** (`18.1% / 14.9%`, measured off the art's
-  outline cubics), because a fixed rem that reads as a tile at 64px is a blob at
-  the 23px hand size. `.tile-mark` shares it so the void screen's ring can't square
-  off a round tile.
-- Layers are **named custom properties**: Biome reflows a six-layer `background`
-  and drags inline comments into the middle of the declaration.
-- The flat back's front edge (`flatten-tiles.mjs`) splits at **243**, matching the
-  faces — a back covers the whole cell, so a mismatch shows in trays and kongs.
+  outline cubics). Only `.tile-mark` needs it now — the void screen spaces its
+  tiles, so the ring wraps a whole tile rather than a pitch.
 
 **Open** (see the last section of [TODO.md](./TODO.md)): a central discard pool is
 held as a fallback, and needs a deliberate reveal for opponents' void suits — A40

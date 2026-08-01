@@ -51,9 +51,9 @@ function SeatRow({ view, seat }: { view: SpectatorView; seat: number }) {
       {/* Flush, and grouped: a concealed hand is one run and each meld another,
           which is what separates them now that no tile carries its own bevel. */}
       <div className="flex flex-wrap items-start gap-2">
-        <div className="flex flex-wrap">
+        <div className="flex flex-wrap tile-lap pl-2">
           {Array.from({ length: p.handCount }, (_, i) => (
-            <TileBack key={i} size="sm" flat />
+            <TileBack key={i} size="sm" />
           ))}
         </div>
         {p.melds.length > 0 && (
@@ -66,11 +66,11 @@ function SeatRow({ view, seat }: { view: SpectatorView; seat: number }) {
       </div>
 
       {(p.discards.length > 0 || p.pendingFirstDiscard) && (
-        <div className="flex flex-wrap discard-tray">
+        <div className="flex flex-wrap discard-tray tile-lap">
           {/* Face down until its owner flips it on their first turn (A37) */}
-          {p.pendingFirstDiscard && <TileBack size="sm" flat />}
+          {p.pendingFirstDiscard && <TileBack size="sm" />}
           {p.discards.map(id => (
-            <Tile key={id} id={id} size="sm" flat lastDiscard={id === lastFromHere} />
+            <Tile key={id} id={id} size="sm" lastDiscard={id === lastFromHere} />
           ))}
         </div>
       )}
@@ -125,7 +125,7 @@ export function Spectate() {
             initial={{ scale: 1.3, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
           >
-            <Tile id={view.lastDiscard.tile} lastDiscard size="md" flat solo />
+            <Tile id={view.lastDiscard.tile} lastDiscard size="md" />
           </motion.div>
         </div>
       )}
