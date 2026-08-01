@@ -120,8 +120,7 @@ breakdown (2026-07-31) are complete. Per-item history is in
 [TODO.md](./TODO.md); the deferral record is
 [ARCHITECTURE.md §12](./ARCHITECTURE.md#12-open-questions--explicit-deferrals).
 
-**Open: three mobile layout questions awaiting design input** — landscape phone
-has no layout of its own, round end overflows on every device, and portrait play
-fits with nothing to spare. Measurements and the specific questions are in
-[docs/viewport-audit.md](./docs/viewport-audit.md). No code work until that comes
-back.
+**One open item:** a real landscape layout for phones (R4 Phase 2 in
+[docs/viewport-audit.md](./docs/viewport-audit.md)). Landscape currently shows a
+rotate-to-portrait prompt during play. Everything else from the viewport audit
+has shipped, and `e2e/viewport.spec.ts` guards it from regressing.

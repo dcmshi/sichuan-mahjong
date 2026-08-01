@@ -1,25 +1,37 @@
 # TODO
 
-## 🎨 Open — mobile layout, awaiting design input (2026-08-01)
+## ✅ Mobile viewport remediation — R1–R5 (2026-08-01)
 
-Full measurements and the questions: **[docs/viewport-audit.md](./docs/viewport-audit.md)**
-(and `viewport-audit.html` for the same thing drawn as bars).
+Design input came back as recommendations R1–R5 in
+**[docs/viewport-audit.md](./docs/viewport-audit.md)**; all five shipped.
 
-25 screen-and-device combinations measured, 10 overflow, none horizontally.
-iPad is clean in both orientations. Three decisions are design's, not
-engineering's:
+- [x] **R1 + R2.3 — play screen fits the viewport.** Root is `h-dvh` with
+  `overflow-y-auto` as the graceful fallback; the middle row flexes. R1 alone
+  would have done nothing: the middle row's height is set by the side opponent
+  columns, not the well, so the side discard trays had to shrink with it. They
+  became single-row horizontally scrollable rather than truncated to two tiles,
+  which keeps the pond readable for judging safety.
+- [x] **R2.1 — score strip folded into the top bar** as a chip with a dropdown.
+- [x] **R2.2 — across opponent's hand backs → stack + count**, as the side
+  opponents already had.
+- [x] **R3 — round-end controls pinned.** Sticky action bar, two-column rows
+  from `sm` up, trimmed ceremony on short viewports. Winners still arrive
+  expanded; collapsing them reverses a shipped decision and stays a separate
+  discussion.
+- [x] **R4 Phase 1 — rotate-to-portrait overlay** on landscape phones during
+  play, CSS-gated so tablets never see it.
+- [x] **R5 — vertical overflow guarded in CI** (`e2e/viewport.spec.ts`, iPhone
+  SE project), after correcting two flaws in the recommendation: measuring the
+  document would have been vacuous once R1 stopped the page scrolling, and
+  round end never promised to fit, only to keep its controls reachable.
 
-- [ ] **Landscape phone has no layout of its own.** Every screen overflows; play
-  needs ~2× the viewport height, round end 3.3×. Structural — the board is a
-  vertical stack, and 844×340 is the opposite shape. Support it with a real
-  landscape arrangement, or detect and prompt to rotate?
-- [ ] **Round end overflows on every device**, iPad landscape included. The
-  winner's row opens by default and pushes "Next Round" / "End Match" 416px below
-  the fold on an iPhone SE. Pin the actions? Collapse the winner by default?
-- [ ] **Portrait play fits with nothing spare** — +34px on iPhone 14, +129px on
-  SE. The remaining height is all real content; the next reduction costs
-  information. Which is least costly: denser discard tray, shorter
-  across-opponent zone, or score strip folded into the top bar?
+Measured on an iPhone SE: play overflows **0px at peak** across a round, down
+from +129px, over 209 samples spanning three rounds. Extracting the play-screen
+zones into components took `Game.tsx` from ~760 lines to ~250.
+
+**Still open:** R4 Phase 2, a real landscape layout. Deliberately out of this
+batch — its 324/340px budget is a paper estimate and needs validating against a
+real build before the layout is committed to.
 
 ## ✅ Play screen fits a phone again (2026-08-01)
 

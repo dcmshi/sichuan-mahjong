@@ -126,6 +126,24 @@ tile backs. That is the whole reason the board didn't fit.
 
 ---
 
+## Status
+
+**All of R1–R5 shipped on 2026-08-01** (branch `viewport-remediation`). Measured
+result on an iPhone SE, the tightest profile: the play screen's scroll container
+overflows by **0px at peak across a round**, down from +129px, verified over 209
+samples spanning three rounds including 41 with the melds row present. Round end
+still scrolls, by design, but its controls are pinned and reachable at every
+scroll position. Landscape phones get a rotate prompt rather than an unusable
+board; R4 Phase 2, a real landscape layout, remains deliberately out of scope and
+is the one open item from this audit.
+
+Two things the batch changed that are worth knowing: the landscape `ui-clicks`
+e2e run now asserts the rotate overlay instead of tapping a board that R4
+blocks, and `docs/round-end.png` is captured at the viewport rather than
+fullPage, because fullPage renders a sticky bar floating mid-image.
+
+---
+
 ## Recommendations
 
 **Added:** 2026-08-01; revised the same day after measurement feedback on the
@@ -260,12 +278,29 @@ Forking `PlayPhase` into two near-copies is the failure mode to avoid.
 
 ### R5. Guard vertical overflow in CI
 
-`e2e/ui-clicks.spec.ts` fails on sideways scroll but nothing watches vertical.
-Once R1–R3 land, add the symmetric assertion — play screen and round end,
-iPhone SE portrait, `scrollHeight ≤ innerHeight` at peak (both discard trays
-full, one expanded result row). Otherwise the next row added to the board
-quietly reopens this whole audit. Lands last in the batch, so it locks in
-whatever the earlier items actually ship.
+`e2e/ui-clicks.spec.ts` fails on sideways scroll but nothing watches vertical,
+so the next row added to the board would quietly reopen this audit. Lands last
+in the batch, so it locks in whatever the earlier items actually ship.
+
+The first draft of this item specified `scrollHeight ≤ innerHeight` on both the
+play screen and round end, on an iPhone SE. Implementation found that wrong in
+two ways, and the shipped guard differs:
+
+- **Play must fit — but not measured on the document.** R1 makes the root
+  `h-dvh` with `overflow-y-auto`, which moves overflow off the document and into
+  the element. `documentElement.scrollHeight` becomes a constant, so the printed
+  assertion would have passed no matter how badly the board overflowed. The
+  guard asserts on the scroll container: `el.scrollHeight <= el.clientHeight`
+  for `.board-felt`, peak-sampled across a full round.
+- **Round end does not promise to fit.** This document says plainly that
+  scrolling a results screen is acceptable; asserting it fits would fail by
+  design. What R3 promises is that the two controls stay reachable, so that is
+  what is checked — the "Next Round" button's box is inside the viewport both on
+  arrival and scrolled to the bottom.
+
+Shipped as `e2e/viewport.spec.ts` on an `se-portrait` project. Verified capable
+of failing: a 160px spacer injected into the play screen produces a 98px
+overflow and a named failure.
 
 ---
 
