@@ -610,6 +610,26 @@ function PlayPhase({ view }: { view: PlayerView }) {
         </div>
       )}
 
+      {/* Your discards — furiten is computed from these, and the badge above is
+          unreadable without them. (F3) */}
+      {(view.you.discards.length > 0 || view.you.pendingFirstDiscard) && (
+        <div className="px-3 pt-1">
+          <span className="text-[10px] text-green-300">{t('play.yourDiscards')}</span>
+          <div className="flex flex-wrap gap-0.5 discard-tray mt-0.5">
+            {/* Face down until you flip it on your first turn (A37) */}
+            {view.you.pendingFirstDiscard && <TileBack size="sm" />}
+            {view.you.discards.map(id => (
+              <Tile
+                key={id}
+                id={id}
+                size="sm"
+                lastDiscard={view.lastDiscard?.from === seat && id === lastDiscardTile}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Your hand — drag tiles to rearrange; Sort resets to the standard order */}
       <div className="px-3 py-2">
         <div className="flex items-center justify-between mb-1">
