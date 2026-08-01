@@ -7,23 +7,48 @@ type Props = {
   seat: Seat;
   legalActions: GameAction[];
   claimDeadline: number;
+  windowMs: number;
 };
 
-export function ClaimPanel({ seat, legalActions, claimDeadline }: Props) {
+/** Share of the claim window still to run, as a percentage. */
+export function claimProgress(remainingMs: number, windowMs: number): number {
+  if (windowMs <= 0) return 0;
+  return Math.max(0, Math.min(100, (remainingMs / windowMs) * 100));
+}
+
+/**
+ * Milliseconds left when the window is first seen.
+ *
+ * claimDeadline is a server timestamp, and the bar used to be driven by
+ * comparing it against Date.now(): negligible on a LAN, but any real clock skew
+ * over Tailscale either stretched the bar over minutes or pinned it at empty.
+ * Trust the deadline only while it lands inside a plausible range — which also
+ * lets a mid-window reconnect resume part-drained — and otherwise assume a
+ * fresh window and count down locally. (F25)
+ */
+export function initialRemaining(claimDeadline: number, windowMs: number, now: number): number {
+  const fromDeadline = claimDeadline - now;
+  return fromDeadline > 0 && fromDeadline <= windowMs ? fromDeadline : windowMs;
+}
+
+export function ClaimPanel({ seat, legalActions, claimDeadline, windowMs }: Props) {
   const [pct, setPct] = useState(100);
   const t = useT();
 
   useEffect(() => {
-    const total = claimDeadline - Date.now();
-    if (total <= 0) return;
+    const startRemaining = initialRemaining(claimDeadline, windowMs, Date.now());
+    // Elapsed time comes from the monotonic clock, so a system clock adjustment
+    // mid-window can't jump the bar.
+    const startedAt = performance.now();
+    setPct(claimProgress(startRemaining, windowMs));
 
     const id = setInterval(() => {
-      const remaining = claimDeadline - Date.now();
-      setPct(Math.max(0, (remaining / total) * 100));
+      const remaining = startRemaining - (performance.now() - startedAt);
+      setPct(claimProgress(remaining, windowMs));
       if (remaining <= 0) clearInterval(id);
     }, 50);
     return () => clearInterval(id);
-  }, [claimDeadline]);
+  }, [claimDeadline, windowMs]);
 
   const canHu = legalActions.some(a => a.t === 'claim' && a.claim.kind === 'hu');
   const canKong = legalActions.some(a => a.t === 'claim' && a.claim.kind === 'kong');

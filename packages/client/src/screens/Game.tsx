@@ -726,6 +726,7 @@ function PlayPhase({ view }: { view: PlayerView }) {
           seat={seat}
           legalActions={view.yourLegalActions}
           claimDeadline={view.claimDeadline}
+          windowMs={view.config.claimWindowMs}
         />
       )}
     </div>
