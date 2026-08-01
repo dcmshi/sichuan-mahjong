@@ -114,9 +114,12 @@ export function Tile({
   );
 }
 
-export function TileBack({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
+export function TileBack({
+  size = 'md',
+  fill = false,
+}: { size?: 'sm' | 'md' | 'lg'; fill?: boolean }) {
   return (
-    <div className={`tile ${SIZE_CLASSES[size]}`}>
+    <div className={`tile ${fill ? 'w-full' : SIZE_CLASSES[size]}`}>
       <img src="/tiles/back.svg" alt="" className="tile-face" draggable={false} />
     </div>
   );

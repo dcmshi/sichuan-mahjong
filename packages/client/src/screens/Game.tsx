@@ -204,7 +204,7 @@ function OpponentTop({ view, relSeat }: { view: PlayerView; relSeat: 0 | 1 | 2 }
   const opp = view.others[relSeat];
   const lastDiscardTile = view.lastDiscard?.from === opp.seat ? view.lastDiscard.tile : null;
   return (
-    <div className="flex flex-col items-center gap-1">
+    <div className="flex flex-col items-center gap-1 w-full min-w-0">
       <div
         className={[
           'text-xs font-semibold px-2 py-0.5 rounded-full',
@@ -216,13 +216,17 @@ function OpponentTop({ view, relSeat }: { view: PlayerView; relSeat: 0 | 1 | 2 }
         {opp.name}
         {opp.status === 'hu' ? ' 🏆' : ''}
       </div>
-      <div className="flex gap-0.5">
+      {/* Shrink-to-fit like the own-hand row: 14 fixed-width backs are wider
+          than a phone and used to clip off both screen edges. (F4) */}
+      <div className="flex gap-0.5 w-full justify-center">
         {Array.from({ length: opp.handCount }, (_, i) => (
-          <TileBack key={i} size="sm" />
+          <div key={i} className="flex-1 min-w-0 max-w-[2rem]">
+            <TileBack fill />
+          </div>
         ))}
       </div>
       {opp.melds.length > 0 && (
-        <div className="flex gap-1">
+        <div className="flex flex-wrap justify-center gap-1 max-w-full">
           {opp.melds.map((m, i) => (
             <MeldDisplay key={i} meld={m} />
           ))}
@@ -512,7 +516,7 @@ function PlayPhase({ view }: { view: PlayerView }) {
       </div>
 
       {/* Opponent across */}
-      <div className="flex justify-center py-2 px-3">
+      <div className="py-2 px-3">
         <OpponentTop view={view} relSeat={1} />
       </div>
 
