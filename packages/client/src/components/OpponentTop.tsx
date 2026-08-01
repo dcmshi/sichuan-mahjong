@@ -1,4 +1,5 @@
 import type { PlayerView } from '@sichuan-mahjong/engine';
+import { HandCountChip } from './HandCountChip.js';
 import { MeldDisplay } from './MeldDisplay.js';
 import { Tile, TileBack } from './Tile.js';
 
@@ -19,15 +20,10 @@ export function OpponentTop({ view, relSeat }: { view: PlayerView; relSeat: 0 | 
         {opp.name}
         {opp.status === 'hu' ? ' 🏆' : ''}
       </div>
-      {/* Shrink-to-fit like the own-hand row: 14 fixed-width backs are wider
-          than a phone and used to clip off both screen edges. (F4) */}
-      <div className="flex gap-0.5 w-full justify-center">
-        {Array.from({ length: opp.handCount }, (_, i) => (
-          <div key={i} className="flex-1 min-w-0 max-w-[2rem]">
-            <TileBack fill />
-          </div>
-        ))}
-      </div>
+      {/* Used to be 14 shrink-to-fit backs, one per tile — real information is
+          never in the backs (see HandCountChip), and the row was wide enough to
+          clip off both screen edges before it shrank. (F4, R2.2) */}
+      <HandCountChip count={opp.handCount} />
       {opp.melds.length > 0 && (
         <div className="flex flex-wrap justify-center gap-1 max-w-full">
           {opp.melds.map((m, i) => (
