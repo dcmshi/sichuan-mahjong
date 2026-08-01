@@ -7,7 +7,7 @@ export function About() {
   const goTo = useStore(s => s.goTo);
   const t = useT();
   return (
-    <div className="min-h-screen bg-green-900 flex flex-col p-6 text-white gap-6">
+    <div className="min-h-dvh bg-green-900 flex flex-col p-6 text-white gap-6">
       <div className="flex items-center gap-3 mt-2">
         <button
           type="button"

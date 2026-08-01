@@ -16,7 +16,7 @@ export function RoundEnd() {
   const sorted = [...result.players].sort((a, b) => b.scoreDelta - a.scoreDelta);
 
   return (
-    <div className="min-h-screen bg-green-900 flex flex-col items-center p-6 text-white gap-6">
+    <div className="min-h-dvh bg-green-900 flex flex-col items-center p-6 text-white gap-6">
       {/* Entrances animate scale/position only, never opacity: the rows used to
           mount at opacity 0 and rely on Framer to reveal them, so anywhere the
           animation didn't run the scoreboard simply never appeared. (F11) */}

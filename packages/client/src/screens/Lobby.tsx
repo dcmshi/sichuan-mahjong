@@ -10,7 +10,7 @@ export function Lobby() {
   const resetSession = useStore(s => s.resetSession);
 
   return (
-    <div className="min-h-screen bg-green-900 flex flex-col items-center justify-center gap-6 p-6 text-white">
+    <div className="min-h-dvh bg-green-900 flex flex-col items-center justify-center gap-6 p-6 text-white">
       <div className="text-4xl">🀄</div>
       <div className="text-center">
         <h2 className="text-2xl font-bold">{t('lobby.title')}</h2>

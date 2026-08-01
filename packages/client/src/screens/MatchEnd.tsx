@@ -26,7 +26,7 @@ export function MatchEnd() {
     .sort((a, b) => (matchScores[b] ?? 0) - (matchScores[a] ?? 0));
 
   return (
-    <div className="min-h-screen bg-green-900 flex flex-col items-center p-6 text-white gap-6">
+    <div className="min-h-dvh bg-green-900 flex flex-col items-center p-6 text-white gap-6">
       <motion.div
         className="text-5xl mt-4"
         initial={{ scale: 0.6, opacity: 0 }}

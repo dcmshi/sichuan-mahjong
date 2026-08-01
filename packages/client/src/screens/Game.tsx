@@ -51,7 +51,7 @@ function HuanPhase({ view }: { view: PlayerView }) {
 
   if (submitted) {
     return (
-      <div className="min-h-screen board-felt flex flex-col items-center justify-center gap-4 text-white p-6">
+      <div className="min-h-dvh board-felt flex flex-col items-center justify-center gap-4 text-white p-6">
         <p className="text-xl animate-pulse">{t('common.waitingPlayers')}</p>
       </div>
     );
@@ -60,7 +60,7 @@ function HuanPhase({ view }: { view: PlayerView }) {
   const selectedSuit = selected.length > 0 ? tileFromType(tileTypeOf(selected[0]!)).suit : null;
 
   return (
-    <div className="min-h-screen board-felt flex flex-col p-4 text-white gap-4">
+    <div className="min-h-dvh board-felt flex flex-col p-4 text-white gap-4">
       <div className="flex items-center justify-between mt-2 gap-2">
         <h2 className="text-xl font-bold">{t('huan.title')}</h2>
         <LangSwitch />
@@ -130,7 +130,7 @@ function VoidDeclarePhase({ view }: { view: PlayerView }) {
 
   if (submitted) {
     return (
-      <div className="min-h-screen board-felt flex flex-col items-center justify-center gap-4 text-white p-6">
+      <div className="min-h-dvh board-felt flex flex-col items-center justify-center gap-4 text-white p-6">
         <p className="text-xl animate-pulse">{t('common.waitingPlayers')}</p>
       </div>
     );
@@ -143,7 +143,7 @@ function VoidDeclarePhase({ view }: { view: PlayerView }) {
   };
 
   return (
-    <div className="min-h-screen board-felt flex flex-col p-4 text-white gap-4">
+    <div className="min-h-dvh board-felt flex flex-col p-4 text-white gap-4">
       <div className="flex items-center justify-between mt-2 gap-2">
         <h2 className="text-xl font-bold">{t('void.title')}</h2>
         <LangSwitch />
@@ -453,7 +453,7 @@ function PlayPhase({ view }: { view: PlayerView }) {
   return (
     // overflow-hidden clipped the lower half of the board on a landscape phone
     // (~390px tall) with no way to reach it. Vertical overflow now scrolls. (F13)
-    <div className="min-h-screen board-felt flex flex-col text-white overflow-y-auto overflow-x-hidden">
+    <div className="min-h-dvh board-felt flex flex-col text-white overflow-y-auto overflow-x-hidden">
       {/* Reconnecting toast */}
       <AnimatePresence>
         {reconnecting && (
@@ -741,7 +741,7 @@ export function Game() {
   const t = useT();
   if (!view)
     return (
-      <div className="min-h-screen board-felt flex items-center justify-center text-white">
+      <div className="min-h-dvh board-felt flex items-center justify-center text-white">
         <p className="animate-pulse">{t('play.loading')}</p>
       </div>
     );

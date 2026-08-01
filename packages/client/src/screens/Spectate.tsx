@@ -77,7 +77,7 @@ export function Spectate() {
 
   if (!view) {
     return (
-      <div className="min-h-screen board-felt flex items-center justify-center text-white">
+      <div className="min-h-dvh board-felt flex items-center justify-center text-white">
         <p className="animate-pulse">{t('spec.connectingGame')}</p>
       </div>
     );
@@ -86,7 +86,7 @@ export function Spectate() {
   const turnName = view.players[view.turn]?.name ?? '—';
 
   return (
-    <div className="min-h-screen board-felt flex flex-col text-white">
+    <div className="min-h-dvh board-felt flex flex-col text-white">
       <div className="flex items-center justify-between px-3 py-1.5 bg-black/30 text-xs">
         <span>{t('play.wall', { n: view.wallRemaining })}</span>
         <span className="text-amber-300 font-semibold">

@@ -86,7 +86,7 @@ export function Landing() {
   }
 
   return (
-    <div className="min-h-screen bg-green-900 flex flex-col items-center justify-center gap-8 p-6 text-white">
+    <div className="min-h-dvh bg-green-900 flex flex-col items-center justify-center gap-8 p-6 text-white">
       <div className="absolute top-4 right-4">
         <LangSwitch />
       </div>

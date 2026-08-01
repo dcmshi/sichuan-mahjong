@@ -35,7 +35,7 @@ export function SpectateForm() {
   }
 
   return (
-    <div className="min-h-screen board-felt flex flex-col items-center justify-center gap-6 p-6 text-white">
+    <div className="min-h-dvh board-felt flex flex-col items-center justify-center gap-6 p-6 text-white">
       <div className="text-4xl">👀</div>
       <h2 className="text-2xl font-bold">{t('spec.title')}</h2>
 
