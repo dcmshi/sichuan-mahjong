@@ -24,7 +24,7 @@ describe('ledger lines', () => {
   it('signs each amount from the seat’s own perspective', () => {
     expect(ledgerLines(ledger, 0)).toEqual([
       { key: 'ledger.hu', detail: null, other: 1, amount: -4 },
-      { key: 'ledger.kong', detail: 'concealed', other: 2, amount: 2 },
+      { key: 'ledger.kong', detail: 'ledgerDetail.concealed', other: 2, amount: 2 },
       { key: 'ledger.voidPenalty', detail: null, other: null, amount: -48 },
     ]);
   });
@@ -43,6 +43,28 @@ describe('ledger lines', () => {
   it('every key it can emit exists in the catalog', () => {
     for (const line of ledgerLines(ledger, 0)) {
       expect(catalog.en[line.key], line.key).toBeDefined();
+      if (line.detail) expect(catalog.en[line.detail], line.detail).toBeDefined();
+    }
+  });
+
+  it('localizes every qualifier the engine can attach', () => {
+    // kongPayment subtypes and kongRefund reasons — the full set of `detail`
+    // values, which used to render as raw English identifiers in all languages.
+    const details = [
+      'concealed',
+      'exposed',
+      'promoted',
+      'robbed',
+      'shootAfterKong',
+      'wallEnd',
+      'falseHu',
+    ];
+    for (const d of details) {
+      const [line] = ledgerLines([{ reason: 'kong', from: 0, to: 1, amount: 2, detail: d }], 0);
+      expect(line?.detail).toBe(`ledgerDetail.${d}`);
+      for (const lang of ['en', 'zh-Hans', 'zh-Hant'] as const) {
+        expect(catalog[lang][`ledgerDetail.${d}`], `${lang} ${d}`).toBeDefined();
+      }
     }
   });
 });

@@ -165,6 +165,15 @@ const en: Dict = {
   'ledger.voidPenalty': 'Void-suit penalty',
   'ledger.voidMeldPenalty': 'Void-suit meld penalty',
   'ledger.total': 'Total',
+  // Qualifiers the engine attaches to a ledger entry: kong subtypes and the
+  // reason a kong payment was refunded.
+  'ledgerDetail.concealed': 'concealed',
+  'ledgerDetail.exposed': 'exposed',
+  'ledgerDetail.promoted': 'promoted',
+  'ledgerDetail.robbed': 'robbed',
+  'ledgerDetail.shootAfterKong': 'shot after kong',
+  'ledgerDetail.wallEnd': 'wall end',
+  'ledgerDetail.falseHu': 'false Hu',
 
   'match.title': 'Match Over',
   'match.noScores': 'The match ended before any scores were recorded.',
@@ -344,6 +353,13 @@ const zhHans: Dict = {
   'ledger.voidPenalty': '缺门罚分',
   'ledger.voidMeldPenalty': '缺门碰杠罚分',
   'ledger.total': '合计',
+  'ledgerDetail.concealed': '暗',
+  'ledgerDetail.exposed': '明',
+  'ledgerDetail.promoted': '补',
+  'ledgerDetail.robbed': '被抢杠',
+  'ledgerDetail.shootAfterKong': '杠上炮',
+  'ledgerDetail.wallEnd': '流局',
+  'ledgerDetail.falseHu': '诈胡',
 
   'match.title': '对局结束',
   'match.noScores': '对局在计分前就结束了。',
@@ -521,6 +537,13 @@ const zhHant: Dict = {
   'ledger.voidPenalty': '缺門罰分',
   'ledger.voidMeldPenalty': '缺門碰槓罰分',
   'ledger.total': '合計',
+  'ledgerDetail.concealed': '暗',
+  'ledgerDetail.exposed': '明',
+  'ledgerDetail.promoted': '補',
+  'ledgerDetail.robbed': '被搶槓',
+  'ledgerDetail.shootAfterKong': '槓上炮',
+  'ledgerDetail.wallEnd': '流局',
+  'ledgerDetail.falseHu': '詐胡',
 
   'match.title': '對局結束',
   'match.noScores': '對局在計分前就結束了。',

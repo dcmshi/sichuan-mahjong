@@ -88,7 +88,7 @@ export function RoundEndRow({
                 <div key={i} className="flex items-baseline gap-2">
                   <span className="text-white/60 flex-1 min-w-0 truncate">
                     {t(l.key)}
-                    {l.detail ? ` (${l.detail})` : ''}
+                    {l.detail ? ` (${t(l.detail)})` : ''}
                     {l.other !== null ? ` · ${t(`wind.${l.other}`)}` : ''}
                   </span>
                   <span className={l.amount >= 0 ? 'text-green-400' : 'text-red-400'}>

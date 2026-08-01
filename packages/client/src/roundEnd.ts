@@ -7,7 +7,11 @@ type Translate = ReturnType<typeof useT>;
 export type LedgerLine = {
   /** Catalog key for the reason. */
   key: string;
-  /** Kong subtype or refund reason, for the qualifier; null when there is none. */
+  /**
+   * Catalog key for the qualifier (kong subtype, refund reason), or null when
+   * the entry has none. A key rather than the raw engine identifier, which
+   * would otherwise print as English in every language.
+   */
   detail: string | null;
   /** The seat on the other side, or null for a penalty paid to the pot. */
   other: Seat | null;
@@ -33,7 +37,7 @@ export function ledgerLines(ledger: LedgerEntry[], seat: Seat): LedgerLine[] {
     if (!paid && e.to !== seat) continue;
     lines.push({
       key: `ledger.${e.reason}`,
-      detail: e.detail,
+      detail: e.detail === null ? null : `ledgerDetail.${e.detail}`,
       other: paid ? e.to : e.from,
       amount: paid ? -e.amount : e.amount,
     });
