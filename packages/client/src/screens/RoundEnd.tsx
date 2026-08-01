@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import { RoundEndRow } from '../components/RoundEndRow.js';
 import { useT } from '../i18n/useT.js';
 import { useStore } from '../store/index.js';
 import { sendAction } from '../ws/client.js';
@@ -36,36 +37,13 @@ export function RoundEnd() {
           {t('end.thisRound')}
         </p>
         {sorted.map((p, rank) => (
-          <motion.div
+          <RoundEndRow
             key={p.seat}
-            initial={{ x: -20 }}
-            animate={{ x: 0 }}
-            transition={{ delay: rank * 0.1 }}
-            className={[
-              'flex items-center gap-3 rounded-xl px-4 py-3',
-              rank === 0 ? 'bg-amber-600/60 border border-amber-400' : 'bg-black/20',
-            ].join(' ')}
-          >
-            <span className="text-white/40 text-sm w-6">#{rank + 1}</span>
-            <span className="text-xs text-green-300 w-12">{t(`wind.${p.seat}`)}</span>
-            <span className="font-semibold flex-1">
-              {p.name}
-              {/* Practice mode names the player "You", so the tag would read
-                  "You (you)". (F23) */}
-              {p.seat === seat && p.name !== t('landing.practiceName') && (
-                <span className="ml-1 text-xs text-amber-400">{t('common.you')}</span>
-              )}
-            </span>
-            {p.hu && (
-              <span className="text-xs bg-red-700 px-1.5 py-0.5 rounded">{t('end.hu')}</span>
-            )}
-            <span
-              className={`font-bold text-lg ${p.scoreDelta >= 0 ? 'text-green-400' : 'text-red-400'}`}
-            >
-              {p.scoreDelta > 0 ? '+' : ''}
-              {p.scoreDelta}
-            </span>
-          </motion.div>
+            player={p}
+            rank={rank}
+            youSeat={seat}
+            defaultOpen={p.hu !== null}
+          />
         ))}
       </div>
 
