@@ -133,20 +133,29 @@ faces' treatment. That makes 28 derived assets, not 27.
 
 ---
 
-## Budget at 320×568
+## Result at 320×568
 
-Computed from the measured components above, for the full-round state that R6 had
-to absorb:
+**Measured after implementation**, replacing the estimates this section first
+carried — every estimate in this audit's history has come in worse than predicted,
+and two of these did:
 
-| | Change |
-|---|---|
-| Across zone — chip goes horizontal | **−22px** |
-| Own tray — 3 rows at 8/row → 2 rows at 9/row, gaps gone | **−53px** |
-| Hand row — taller tiles | **+5px** |
-| **Net** | **≈ −70px** |
+| | Before | After |
+|---|---|---|
+| Hand tile | 19.1 × 23.1px | **22.7 × 28px** |
+| Own tray tiles per row | 8 | **9** |
+| Side tray width | 211.6px in an 80px column | **80px**, 2 per row, nothing clipped |
+| Across zone, with a meld row | 217.8px | **189.9px** |
+| Peak fixed rows | — | **444px of 568, 0 overflow** |
 
-On top of R6's ~60px. To be re-measured after implementation rather than asserted;
-every estimate in this audit's history has come in worse than predicted.
+The hand landed at 22.7px rather than the predicted 23.4px, so it is still a
+whisker under the ~24px floor on the narrowest phone — but the flat faces hand the
+glyph the whole cell instead of the ~75% the 3D frame left it, which is the larger
+part of the readability win and isn't captured by the width figure. The across
+zone came in at −27.9px against a predicted −22px.
+
+A single net figure isn't quoted: the before-and-after peaks were sampled in
+different game states (one with the first-discard flip panel, one with melds), so
+the component deltas above are the apples-to-apples evidence.
 
 ---
 

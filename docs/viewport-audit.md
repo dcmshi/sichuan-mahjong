@@ -88,6 +88,14 @@ reduction that doesn't cost information.
 discard tray, a shorter across-opponent zone, or folding the score strip into the
 top bar. Which is least costly to the read of the board?
 
+**Answered by R7:** all three of those, and none of them cost information. The
+denser tray came from removing the gaps rather than truncating (9 tiles a row at
+320px instead of 8), the shorter across zone from overlapping its hand-count stack
+sideways (61px → 39px), and the score strip had already folded into the top bar in
+R2.1. What measuring found was that the question's premise was incomplete: the
+hand was 19.1px wide, under this document's own readability floor, so the gaps were
+costing legibility as well as height.
+
 ---
 
 ## Play screen row budget
@@ -135,12 +143,13 @@ tile backs. That is the whole reason the board didn't fit.
 
 ## Status
 
-**All of R1–R6 shipped on 2026-08-01** (R1–R5 on branch `viewport-remediation`;
-R6 after CI showed the R5 guard red). Measured result at 375×568: the play
-screen's scroll container overflows by **0px at peak across a round**, down from
-+129px, verified over 209 samples spanning three rounds including 41 with the
-melds row present. R6 makes that hold at 320×568 too, and bounds it by
-construction rather than by tuning. Round end
+**All of R1–R7 shipped on 2026-08-01** (R1–R5 on branch `viewport-remediation`;
+R6 after CI showed the R5 guard red; R7, the tile-density pass, answers question 3
+below). Measured result at 375×568: the play screen's scroll container overflows by
+**0px at peak across a round**, down from +129px, verified over 209 samples
+spanning three rounds including 41 with the melds row present. R6 makes that hold
+at 320×568 too, and bounds it by construction rather than by tuning; R7 then buys
+the height back at source and takes the hand from 19.1px to 22.7px wide. Round end
 still scrolls, by design, but its controls are pinned and reachable at every
 scroll position. Landscape phones get a rotate prompt rather than an unusable
 board. **R4 Phase 2, a real landscape layout, is shelved** — see the reasons
@@ -372,6 +381,24 @@ of injected spacer now produces 0px of overflow, with the tray shrinking 89px �
 10px to pay for it. Worst-case fixed rows — opponent melds, own melds, kong
 buttons, furiten badge and a full tray together — bound at ~506px against 568,
 where before they reached ~627px.
+
+### R7. Tile density — flush tiles, and stop trays drawing outside their column
+
+**Added and shipped 2026-08-01.** R6 made the board absorb pressure; R7 removes the
+pressure. Full design in
+[superpowers/specs/2026-08-01-play-screen-tile-density-design.md](./superpowers/specs/2026-08-01-play-screen-tile-density-design.md).
+
+Three changes: the across opponent's hand-count stack overlaps sideways so the chip
+is one tile tall rather than three (61px → 39px, and it is how that seat's hand
+actually faces you); the side trays grow downward two flush tiles wide with an
+internal scroll, which also fixes the right one rendering 211.6px wide inside an
+80px column; and tiles sit genuinely flush, via glyph-only faces derived from the
+existing CC BY-SA set so the cell draws the shared surface instead of every tile
+carrying its own bevelled sides.
+
+Measured at 320×568: hand tile 19.1 → 22.7px wide, own tray 8 → 9 tiles a row,
+side tray 211.6 → 80px with nothing clipped, across zone with melds 217.8 →
+189.9px, peak fixed rows 444px of 568 at 0 overflow.
 
 ---
 

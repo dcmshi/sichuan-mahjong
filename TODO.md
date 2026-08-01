@@ -1,5 +1,58 @@
 # TODO
 
+## ✅ R7 — tile density: flush tiles, north stack sideways, side trays vertical (2026-08-01)
+
+Spec: [docs/superpowers/specs/2026-08-01-play-screen-tile-density-design.md](./docs/superpowers/specs/2026-08-01-play-screen-tile-density-design.md).
+Answers the audit's open question 3 — where the smallest phones' ~130px comes
+from — and fixes a clipping bug measuring turned up.
+
+Measured at 320×568 first, which changed what the work was. The hand was **19.1px
+wide** against the audit's own ~24px readability floor, with 48px of a 296px row —
+16% — spent on gaps between 13 tiles. And the **right** side opponent's discard
+tray was **211.6px wide inside an 80px column**, spilling 132px leftward across
+the well: the left column is a plain block so `max-w-full` resolved to 80px, but
+the right was `flex justify-end`, so `OpponentSide` sized to min-content instead.
+That is why `docs/screenshot.png` has a row of tiles under "Last discard" that
+reads as part of the middle area — it is Bot 4's discards.
+
+- [x] **Hand-count stack overlaps sideways at north only.** That seat's hand faces
+  you as a row, so the chip becomes one tile tall rather than three overlapped —
+  61px → 39px in the zone with the tightest budget. East and west face you edge-on
+  and keep the vertical stack, which is also all an 80px column has room for.
+- [x] **Side discard trays grow downward**, two flush tiles wide, scrolling inside
+  the column. Two 32px tiles fit 80px exactly so nothing is cut mid-tile, and
+  `flex-1 min-h-0` means they can never set the middle row's height the way
+  thirteen tile backs once did. The right column drops `flex justify-end`.
+- [x] **Tiles sit flush, properly.** Removing the gap alone isn't flush: each
+  source SVG is a complete 3D tile with its own bevelled sides, so two edge to
+  edge show two bevels where a real run shows one shared edge.
+  `scripts/tiles/flatten-tiles.mjs` derives glyph-only faces from the CC BY-SA 4.0
+  Wikimedia set already in the repo and the cell draws the face in CSS. Removal is
+  by id, not by keeping one subtree: man and sou tiles draw the glyph as anonymous
+  siblings of the body group, but pin tiles draw their dots as id'd paths inside it
+  (pin-9 has 52). Each cell keeps its own face rather than sharing one across the
+  run, because a lifted glyph over a shared surface reads as a hole in the strip
+  rather than a tile in the air.
+
+Measured after: hand tile **19.1 → 22.7px** wide (23.1 → 28px tall), own tray
+**8 → 9 tiles a row** so a full round's discards land in two rows rather than the
+three R6 had to absorb, side tray **211.6 → 80px** with nothing clipped, across
+zone with melds **217.8 → 189.9px**, peak fixed rows **444px of 568 at 0 overflow**.
+The hand is still a whisker under the 24px floor at 320px, but the flat faces give
+the glyph the whole cell instead of the ~75% the 3D frame left it, which is the
+larger half of the readability win.
+
+The guard gained the tray assertions, and they are verified capable of failing:
+run against the pre-R7 client they report `tray 1: scrollWidth 110 > clientWidth
+80` and `tray 2: spans 100..312, over a well of 96..224`. Two faults needed two
+checks — a tray overflowing *itself*, and a tray whose own box fits its content
+perfectly while overflowing its *column*, visible only as overlap with the well.
+
+**Left deliberately:** the own melds row (`OwnZone`) is a non-wrapping `flex` of
+fixed-width tiles, so three or four melds overflow it horizontally and the root's
+`overflow-x-hidden` clips them. Pre-existing, and it wants the same scroller
+`OpponentTop` got. Side opponents still show no melds at all.
+
 ## ✅ R6 — the R5 guard was red in CI from the day it landed (2026-08-01)
 
 `e2e/viewport.spec.ts` failed on all three CI runs after R5 shipped (+42px, +42px,
