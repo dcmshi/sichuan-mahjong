@@ -50,7 +50,9 @@ export function RoundEnd() {
             <span className="text-xs text-green-300 w-12">{t(`wind.${p.seat}`)}</span>
             <span className="font-semibold flex-1">
               {p.name}
-              {p.seat === seat && (
+              {/* Practice mode names the player "You", so the tag would read
+                  "You (you)". (F23) */}
+              {p.seat === seat && p.name !== t('landing.practiceName') && (
                 <span className="ml-1 text-xs text-amber-400">{t('common.you')}</span>
               )}
             </span>

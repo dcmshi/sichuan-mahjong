@@ -173,7 +173,11 @@ export function HostSetup() {
                       {t('host.kick')}
                     </button>
                   )}
-                  {!p.isBot && p.connected && <span className="text-green-400 text-xs">●</span>}
+                  {!p.isBot && (
+                    <span className={`text-xs ${p.connected ? 'text-green-400' : 'text-white/40'}`}>
+                      {p.connected ? '●' : `○ ${t('lobby.disconnected')}`}
+                    </span>
+                  )}
                 </>
               ) : (
                 <>

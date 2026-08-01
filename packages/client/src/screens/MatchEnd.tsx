@@ -55,7 +55,7 @@ export function MatchEnd() {
                 <span className="text-xs text-green-300 w-12">{t(`wind.${s}`)}</span>
                 <span className="font-semibold flex-1">
                   {nameOf(s)}
-                  {s === seat && (
+                  {s === seat && nameOf(s) !== t('landing.practiceName') && (
                     <span className="ml-1 text-xs text-amber-400">{t('common.you')}</span>
                   )}
                 </span>

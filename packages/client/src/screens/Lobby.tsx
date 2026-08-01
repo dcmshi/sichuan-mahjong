@@ -33,7 +33,15 @@ export function Lobby() {
               ) : (
                 <span className="text-white/40 italic text-sm">{t('lobby.waiting')}</span>
               )}
-              {p?.connected && <span className="ml-auto text-green-400 text-xs">●</span>}
+              {/* A disconnected player used to render nothing at all, which
+                  read as "still connecting" next to the pulsing copy. (F23) */}
+              {p?.name && !p.isBot && (
+                <span
+                  className={`ml-auto text-xs ${p.connected ? 'text-green-400' : 'text-white/40'}`}
+                >
+                  {p.connected ? '●' : `○ ${t('lobby.disconnected')}`}
+                </span>
+              )}
             </div>
           );
         })}

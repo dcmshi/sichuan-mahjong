@@ -68,6 +68,7 @@ const en: Dict = {
   'lobby.title': 'Lobby',
   'lobby.waiting': 'waiting…',
   'lobby.waitingHost': 'Waiting for host to start…',
+  'lobby.disconnected': 'disconnected',
 
   'wind.0': 'East',
   'wind.1': 'South',
@@ -220,6 +221,7 @@ const zhHans: Dict = {
   'lobby.title': '房间',
   'lobby.waiting': '等待中…',
   'lobby.waitingHost': '等待房主开始…',
+  'lobby.disconnected': '已断线',
 
   'wind.0': '东',
   'wind.1': '南',
@@ -370,6 +372,7 @@ const zhHant: Dict = {
   'lobby.title': '房間',
   'lobby.waiting': '等待中…',
   'lobby.waitingHost': '等待房主開始…',
+  'lobby.disconnected': '已斷線',
 
   'wind.0': '東',
   'wind.1': '南',
