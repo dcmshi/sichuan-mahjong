@@ -438,7 +438,9 @@ function PlayPhase({ view }: { view: PlayerView }) {
   );
 
   return (
-    <div className="min-h-screen board-felt flex flex-col text-white overflow-hidden">
+    // overflow-hidden clipped the lower half of the board on a landscape phone
+    // (~390px tall) with no way to reach it. Vertical overflow now scrolls. (F13)
+    <div className="min-h-screen board-felt flex flex-col text-white overflow-y-auto overflow-x-hidden">
       {/* Reconnecting toast */}
       <AnimatePresence>
         {reconnecting && (
