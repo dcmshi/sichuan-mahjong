@@ -14,6 +14,7 @@ export function HostSetup() {
     () => useStore.getState().seat !== null && useStore.getState().code !== '',
   );
   const [botLevel, setBotLevel] = useState<'easy' | 'medium'>('easy');
+  const [huanSanZhang, setHuanSanZhang] = useState(false);
 
   const t = useT();
   const code = useStore(s => s.code);
@@ -151,6 +152,36 @@ export function HostSetup() {
         </div>
       </div>
 
+      {/* House rules. 換三張 is a Sichuan favourite but not part of SBR (see
+          GameConfig), so it is offered and starts off — the canonical ruleset is
+          what you get if you touch nothing. Only the host sees this, and the
+          choice rides along with startGame. */}
+      <div className="flex items-start gap-3 text-sm bg-black/20 rounded-xl px-3 py-2.5">
+        <button
+          type="button"
+          role="switch"
+          aria-checked={huanSanZhang}
+          onClick={() => setHuanSanZhang(v => !v)}
+          className={[
+            'relative w-11 min-h-6 h-6 flex-shrink-0 rounded-full transition-colors',
+            huanSanZhang ? 'bg-amber-400' : 'bg-black/40',
+          ].join(' ')}
+        >
+          <span
+            className={[
+              'absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all',
+              huanSanZhang ? 'left-[1.375rem]' : 'left-0.5',
+            ].join(' ')}
+          />
+        </button>
+        <span className="flex-1 min-w-0">
+          <span className="font-semibold">{t('host.huanSanZhang')}</span>
+          <span className="block text-xs text-green-300 leading-snug">
+            {t('host.huanSanZhangHint')}
+          </span>
+        </span>
+      </div>
+
       <div className="flex flex-col gap-2">
         {[0, 1, 2, 3].map(i => {
           const p = lobbyPlayers[i];
@@ -199,7 +230,7 @@ export function HostSetup() {
       <button
         type="button"
         className="w-full py-4 bg-amber-500 hover:bg-amber-400 active:bg-amber-600 rounded-xl font-bold text-lg mt-auto disabled:opacity-40"
-        onClick={() => sendAction({ t: 'startGame' })}
+        onClick={() => sendAction({ t: 'startGame', rules: { huanSanZhang } })}
         disabled={!canStart}
       >
         {canStart ? t('host.start') : t('host.waitingPlayers')}

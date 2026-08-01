@@ -6,13 +6,22 @@ import { createGame } from '../src/state.js';
 import type { GameState, Seat } from '../src/state.js';
 import { runFullGame } from './helpers/full-game.js';
 
+/**
+ * `enableHuanSanZhang` is explicit because one test below asserts the view's
+ * `hasSubmittedHuan` flag, which needs a huan phase to exist — and the swap is a
+ * house rule, so the shipped default deals straight into the void declaration.
+ */
 function fresh(): GameState {
-  return createGame('ledger-seed', [
-    { name: 'A', isBot: true },
-    { name: 'B', isBot: true },
-    { name: 'C', isBot: true },
-    { name: 'D', isBot: true },
-  ]);
+  return createGame(
+    'ledger-seed',
+    [
+      { name: 'A', isBot: true },
+      { name: 'B', isBot: true },
+      { name: 'C', isBot: true },
+      { name: 'D', isBot: true },
+    ],
+    { enableHuanSanZhang: true },
+  );
 }
 
 describe('payment ledger', () => {

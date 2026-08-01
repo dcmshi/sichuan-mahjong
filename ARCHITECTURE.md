@@ -96,7 +96,8 @@ sichuan-mahjong/
 │   │   └── tests/
 │   ├── client/
 │   │   ├── public/
-│   │   │   └── tiles/            # 27 tile faces + back.svg + credits.json
+│   │   │   └── tiles/            # 27 3D faces + back.svg + credits.json
+│   │   │       └── flat/         # 28 derived glyph-only faces (see scripts/tiles/)
 │   │   ├── src/
 │   │   │   ├── components/       # Tile, MeldDisplay, ClaimPanel, EventFeed, ErrorToast, ConnectionLost
 │   │   │   ├── screens/          # Landing, HostSetup, JoinForm, Lobby, Game, RoundEnd, MatchEnd, Spectate, About
@@ -112,6 +113,8 @@ sichuan-mahjong/
 │   │   └── vite.config.ts
 ├── scripts/
 │   ├── icons/                    # PWA PNG generation (no image dependency)
+│   ├── screenshots/              # docs/*.png capture — `pnpm shots`, not in `pnpm e2e`
+│   ├── tiles/                    # flat tile faces: measure-glyphs.mjs → flatten-tiles.mjs
 │   └── release/                  # Bun compile per OS
 ├── pnpm-workspace.yaml
 ├── biome.json
@@ -222,21 +225,23 @@ export type GameState = {
 };
 
 export type GameConfig = {
-  enableHuanSanZhang: boolean;       // default true (note: not in canonical PDF)
+  enableHuanSanZhang: boolean;       // default FALSE — house rule, not in the PDF; host opt-in
   huanDirection: 'cw' | 'ccw' | 'random';
   enableRobbingKong: boolean;        // default true
   enableHeavenlyEarthly: boolean;    // default true (HOUSE RULE — not in canonical PDF; see §5.8)
   voidDiscardRule: 'strict' | 'lenient';   // default 'strict'; lenient = Novikov canonical
+  enableFlowerPig: boolean;          // default false (HOUSE RULE — see §5.9)
   fanCap: number;                    // default 3 → max payment 2^3 = 8
   claimWindowMs: number;             // default 3000
 };
 
 export const DEFAULT_CONFIG: GameConfig = {
-  enableHuanSanZhang: true,
+  enableHuanSanZhang: false,
   huanDirection: 'random',
   enableRobbingKong: true,
   enableHeavenlyEarthly: true,
   voidDiscardRule: 'strict',
+  enableFlowerPig: false,
   fanCap: 3,
   claimWindowMs: 3000,
 };
@@ -318,9 +323,17 @@ Canonical source: Vitaly Novikov, *Sichuan Mahjong? It's that simple!* (PDF). Te
 2. Dealer for the first round = host = seat 0. After each round, dealer rotates per §5.10.
 3. Deal: 13 tiles to each player. Dealer (East) gets a 14th immediately and starts.
 
-### 5.3 Phase: Huan San Zhang (3-tile swap, optional, default on)
+### 5.3 Phase: Huan San Zhang (3-tile swap, optional, **default off**)
 
-Note: not in Novikov's canonical PDF; popular Sichuan house rule.
+**Not in Novikov's canonical PDF**, which gives the deal as *prepare wall → each
+player chooses a forbidden suit → East's initial turn*, with no swap anywhere in
+the text. It is a popular Sichuan house rule (Chengdu-style especially), so it is
+offered — but off by default, like `enableFlowerPig`, because the canonical
+ruleset is what you get by touching nothing. The host turns it on in the lobby;
+the choice travels as `startGame.rules.huanSanZhang` and is narrowed by
+`houseRules()` at the WS boundary. Practice mode therefore never shows the huan
+phase, which is why `e2e/house-rules.spec.ts` exists — it is the only spec that
+reaches the huan picker.
 
 - Each player privately submits 3 tiles of one suit (`huanSelect`).
 - A player whose hand cannot form 3-of-one-suit has their swap skipped.
@@ -612,11 +625,13 @@ Token is hostToken (issued at lobby create) or playerToken (issued on `join`). S
 
 ```ts
 export type ClientMsg =
+  // `startGame` carries the host's house-rule choices; `houseRules()` in ws.ts
+  // narrows them, and only a literal `true` may switch a rule on.
   | { t: 'join'; name: string }
   | { t: 'leave' }
   | { t: 'addBot'; difficulty: 'easy' | 'medium' }     // host only
   | { t: 'kickBot'; seat: Seat }                        // host only
-  | { t: 'startGame' }                                  // host only, requires 4 seats filled
+  | { t: 'startGame'; rules?: { huanSanZhang?: boolean } }  // host only, requires 4 seats filled
   | { t: 'nextRound' }                                  // host only, from the round-end screen
   | { t: 'endMatch' }                                   // host only, from the round-end screen
   | { t: 'action'; action: GameAction };
@@ -896,6 +911,8 @@ helpers behind the components rather than rendered output:
 
 - `e2e/game.spec.ts` — host + 3 bots, full round to round-end screen, replay 404, healthz.
 - `e2e/match.spec.ts` — two-round match with running totals, then "End match".
+- `e2e/house-rules.spec.ts` — hosts a lobby, turns on 換三張, asserts the deal then opens on `huan`, and taps through the picker. Chromium only: a rule path, not a layout. Since the swap is off by default, this is the **only** spec that reaches the huan screen — every other one drives practice mode, which now opens on the void declaration.
+- `e2e/viewport.spec.ts` — the vertical-overflow guard on an iPhone SE (320×568): the play screen's scroll container must not overflow at any point in a round, no discard tray may draw outside its column, and the round-end controls must stay reachable at every scroll position. See `docs/viewport-audit.md` R5–R7.
 - `e2e/ui-clicks.spec.ts` — the same opening driven entirely by **real clicks** (huan tile taps, void suit button, first-discard flip, tap-to-select/tap-to-discard), which is the only spec that exercises the interaction layer. Runs on 5 viewport projects (desktop, iPhone 14 portrait/landscape, iPad portrait/landscape), each asserting no horizontal overflow and attaching a screenshot.
 - The other specs poll phase from the Zustand store via `window.__e2e` (not the DOM) to avoid Framer Motion 12 pointer-event interception timing issues.
 
@@ -911,8 +928,9 @@ GitHub Actions: build engine → lint → typecheck → test (vitest) → build 
 
 ## 12. Open questions / explicit deferrals
 
-All items below have since been implemented (✅). Kept here as a record of the
-decisions and where each landed.
+Items 1–11 have since been implemented (✅) and are kept as a record of the
+decisions and where each landed. The **Open** list at the end of this section is
+live.
 
 1. **Reconnection > 60s** — ✅ Done: bot takeover holds for the rest of the round; a reconnected human reclaims their seat at the next round (`GameRoom.nextRound` recomputes `isBot` from `isHumanSeat` + connection state). See §6.5.
 2. **Host shutdown midgame** — ✅ Done: in-progress rooms are snapshotted to SQLite (`live_rooms` table) — debounced on every state change and flushed on graceful shutdown (SIGINT/SIGTERM). On boot, `restoreRoomsFromDisk()` rehydrates each room and re-registers its tokens, so players reconnect with their saved token and resume; unconnected human seats arm the normal 60s bot-takeover so play never stalls. Snapshots are deleted on `endMatch`. (A hard crash loses at most the last ~1s of actions.)
@@ -925,6 +943,38 @@ decisions and where each landed.
 9. **False-Hu detection** — ✅ Done: 8 pts/opponent redistributive penalty + kong refund on invalid draw-Hu or claim-window Hu.
 10. **Replay-test corpus** — ✅ Done: canned games per fan combination + penalty paths.
 11. **Round-end hand reveals and score breakdown** — ✅ Done (2026-07-31). Only the fan list was on the wire; hands and the payment breakdown both needed the server to send more. `GameState.ledger` accumulates a `LedgerEntry` per payment, derived from the events the engine already emits inside the single `ok()` constructor so the two cannot drift, and living on the state so it survives the snapshot/restore path. `RoundResult.players[]` carries `hand`, `melds`, `isReady` and that seat's slice of the ledger; `HuRecord.fans` became `FanEntry[]` so fan names are translatable. See §8.1, §6.4 and §11.3.
+
+### Open
+
+**O1. The release binary embeds the tile SVGs, which §13 says not to do.**
+`scripts/release/gen-embedded-client.mjs` walks `packages/client/dist`
+recursively and base64-embeds every file into
+`packages/server/src/generated/embedded-client.ts`, which is then compiled into
+the Bun binary — 57 SVGs as of the flat-tile derivation. §13 states the CC-BY-SA
+boundary depends on the SVGs staying "standalone fetched assets" and says
+explicitly not to "bundle, inline, or otherwise merge the SVGs into compiled
+JavaScript output". The two cannot both be true. Predates the flat set (the embed
+is A20) but that set doubled the number of files involved. Needs a decision, not a
+patch: exclude `tiles/` from the embed and ship them beside the binary, or accept
+the merge and state the binary's licence accordingly. **The npm package and the
+from-source path are unaffected** — both serve `tiles/` from disk.
+
+**O2. Bot pacing.** Bots resolve a full circuit faster than a player can watch.
+Either a per-move delay (server config, so it stays tunable) or a scrollable
+history panel, or both — the event feed keeps only the latest line and drops to
+one line on short viewports by design (R1), so nothing recovers a move you looked
+away for.
+
+**O3. Central discard pool.** Show every discard in the middle, mark the last one,
+and show each player's chosen void suit. The redaction decision it needs:
+`PublicPlayer` has no `voidedSuit` today — only `you` gets it, and the first
+discard sits face down precisely so the suit is not leaked early (A37) — so it
+should become public only once that player has flipped their first discard, which
+is when a real table learns it. Held as a fallback: the per-seat trays are staying,
+and the pool's appeal is that the middle of the board is mostly empty space.
+
+**O4. Discard tile styling.** The flush run reads as tiles held together, which
+suits a hand and a meld but not a pile of discards. Direction undecided.
 
 ---
 

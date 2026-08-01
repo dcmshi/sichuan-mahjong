@@ -16,8 +16,8 @@
 
 ## Features
 
-- Full Bloody Rules engine: huan san zhang, void declaration (定缺), bloody-to-end sit-out, all 10 fan combinations, payment matrix, kong refunds
-- Optional Flower Pig (花猪) house rule
+- Full Bloody Rules engine: void declaration (定缺), bloody-to-end sit-out, all 10 fan combinations, payment matrix, kong refunds
+- Optional house rules, off by default: 換三張 three-tile swap (host toggle in the lobby) and Flower Pig (花猪)
 - Heuristic bots (easy + medium) — practice solo or fill empty seats
 - Multi-round matches with running totals; host starts each round or ends the match
 - Spectator mode — watch any game read-only with a code (no hand exposed)
@@ -70,6 +70,11 @@ The server prints your share URLs on startup:
 ```
 
 Share the URL (or just the 4-letter code) with your friends. You can also add bots in the lobby to fill any empty seats.
+
+The lobby is also where the host picks house rules. **Swap three tiles** (換三張) is
+off by default: it's a Sichuan favourite but not part of the standard ruleset, which
+deals straight into the void declaration. Turn it on before starting and every
+player passes three same-suit tiles first.
 
 **CLI options**
 

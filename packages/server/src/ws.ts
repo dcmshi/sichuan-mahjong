@@ -1,5 +1,5 @@
 import type { WebSocket } from '@fastify/websocket';
-import type { ClientMsg, LobbyPlayer, Seat, ServerMsg } from '@sichuan-mahjong/engine';
+import type { ClientMsg, GameConfig, LobbyPlayer, Seat, ServerMsg } from '@sichuan-mahjong/engine';
 import type { FastifyInstance } from 'fastify';
 import { allLobbies, canStart, deleteLobby, findOpenSeat, getLobby } from './lobby.js';
 import { type GameRoom, createRoom, getRoom } from './room.js';
@@ -17,6 +17,17 @@ function parseClientMsg(raw: Buffer): ClientMsg | null {
   } catch {
     return null;
   }
+}
+
+/**
+ * The host's house-rule choices, narrowed to what the engine will accept. Only a
+ * literal `true` turns a rule on: anything else — absent, null, `"true"`, a
+ * number — falls back to the engine default, so a hand-rolled frame can't switch
+ * the ruleset by sending a truthy value of the wrong type. Exported for the test.
+ */
+export function houseRules(rules: unknown): Partial<GameConfig> {
+  const r = (rules ?? {}) as Record<string, unknown>;
+  return { enableHuanSanZhang: r.huanSanZhang === true };
 }
 
 /** Bind a socket to in-game message routing for `seat` (used on join, start, and reconnect). */
@@ -272,7 +283,7 @@ function handleLobbyMessage(
         difficulty: s?.difficulty ?? 'easy',
       }));
 
-      const room = createRoom(code, slots);
+      const room = createRoom(code, slots, houseRules(msg.rules));
 
       // Transfer lobby connections to the room, then start
       const conns = lobbyConnections.get(code);

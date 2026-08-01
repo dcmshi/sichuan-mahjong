@@ -43,7 +43,12 @@ export type ClientMsg =
   | { t: 'leave' }
   | { t: 'addBot'; difficulty: 'easy' | 'medium' }
   | { t: 'kickBot'; seat: Seat }
-  | { t: 'startGame' }
+  /**
+   * `rules` carries the host's house-rule choices for the match. Optional so an
+   * older client (or a rejoining one) still starts a game on the defaults, and
+   * every field is validated at the WS boundary — `ws.ts` trusts nothing.
+   */
+  | { t: 'startGame'; rules?: { huanSanZhang?: boolean } }
   | { t: 'nextRound' }
   | { t: 'endMatch' }
   | { t: 'action'; action: GameAction };

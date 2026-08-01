@@ -38,10 +38,18 @@ export function OpponentSide({
           the right the column is a flex parent, so `max-w-full` resolved against
           min-content instead of 80px and the tray rendered 211.6px wide, spilling
           132px across the well. Two 32px tiles fit 80px exactly, so nothing is
-          ever cut mid-tile, and flex-1 min-h-0 means this can never set the middle
-          row's height the way thirteen backs once did. */}
+          ever cut mid-tile.
+          `min-h-0` with no `flex-1`: shrink-and-scroll when the column is short,
+          but never *grow*. flex-1 here stretched the tray to the full column
+          height, so six discards drew a tray box running most of the way down a
+          tall viewport with nothing in the lower two-thirds of it.
+          `content-start items-start` is the other half, and the one that was
+          drawing elongated tiles: a wrapping flex container defaults to
+          `align-content: stretch`, so spare cross-axis space is handed to the
+          lines and the tiles grow *past* their aspect ratio. On a desktop-height
+          window six discards were drawn as six very long tiles. */}
       {(opp.discards.length > 0 || opp.pendingFirstDiscard) && (
-        <div className="flex flex-wrap w-20 flex-1 min-h-0 overflow-y-auto discard-tray">
+        <div className="flex flex-wrap content-start items-start w-20 min-h-0 overflow-y-auto discard-tray">
           {opp.pendingFirstDiscard && <TileBack size="sm" flat />}
           {opp.discards.slice(-6).map(id => (
             <Tile key={id} id={id} size="sm" flat lastDiscard={id === lastDiscardTile} />

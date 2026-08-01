@@ -20,9 +20,14 @@ function pick3SameSuit(hand: TileId[]): [TileId, TileId, TileId] {
   return [group[0]!, group[1]!, group[2]!];
 }
 
-/** Run the huan phase: every seat swaps 3 tiles. Returns {state, picks per seat}. */
+/**
+ * Run the huan phase: every seat swaps 3 tiles. Returns {state, picks per seat}.
+ *
+ * `enableHuanSanZhang` is passed explicitly because the swap is a house rule and
+ * the shipped default is the canonical deal, which has no huan phase at all.
+ */
 function runHuan(seed: string, huanDirection: 'cw' | 'ccw' | 'random') {
-  let state = createGame(seed, INITS, { huanDirection });
+  let state = createGame(seed, INITS, { enableHuanSanZhang: true, huanDirection });
   expect(state.phase).toBe('huan');
   const picks: TileId[][] = [];
   for (let i = 0; i < 4; i++) {

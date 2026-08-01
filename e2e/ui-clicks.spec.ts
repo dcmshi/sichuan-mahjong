@@ -40,24 +40,31 @@ test('opening played via real UI clicks (huan tiles, void suit, discard tap)', a
 
   // Practice mode auto-creates a lobby + 3 bots and starts the game.
   await page.getByRole('button', { name: /Practice/i }).click();
-  await expect.poll(() => getPhase(page), { timeout: 20_000 }).toBe('huan');
+  // Practice runs the canonical ruleset, where the deal opens on the void
+  // declaration — 換三張 is a house rule and off by default, so the huan screen
+  // only appears if a host turned it on. `house-rules.spec.ts` taps through it
+  // there; here it is skipped if absent rather than asserted, so this spec keeps
+  // covering the screens practice actually shows.
+  await expect.poll(() => getPhase(page), { timeout: 20_000 }).toMatch(/^(huan|voidDeclare)$/);
 
-  // ── Huan: click 3 same-suit tiles (identified by their alt="suit-rank"), Confirm ──
-  const handTiles = page.locator('div.flex.flex-wrap img[alt]');
-  await expect.poll(() => handTiles.count()).toBeGreaterThanOrEqual(13);
-  const alts = await handTiles.evaluateAll(els => els.map(e => e.getAttribute('alt') ?? ''));
-  const bySuit: Record<string, number[]> = {};
-  alts.forEach((a, i) => {
-    const s = a.split('-')[0]!;
-    if (!bySuit[s]) bySuit[s] = [];
-    bySuit[s]!.push(i);
-  });
-  const suit = Object.keys(bySuit).find(s => (bySuit[s]?.length ?? 0) >= 3);
-  expect(suit, 'hand should have ≥3 tiles of some suit').toBeTruthy();
-  await expectNoHorizontalOverflow(page, 'huan');
-  await snap('huan');
-  for (const i of bySuit[suit!]!.slice(0, 3)) await handTiles.nth(i).click();
-  await page.getByRole('button', { name: /Confirm Swap/i }).click();
+  if ((await getPhase(page)) === 'huan') {
+    // ── Huan: click 3 same-suit tiles (identified by their alt="suit-rank"), Confirm ──
+    const handTiles = page.locator('div.flex.flex-wrap img[alt]');
+    await expect.poll(() => handTiles.count()).toBeGreaterThanOrEqual(13);
+    const alts = await handTiles.evaluateAll(els => els.map(e => e.getAttribute('alt') ?? ''));
+    const bySuit: Record<string, number[]> = {};
+    alts.forEach((a, i) => {
+      const s = a.split('-')[0]!;
+      if (!bySuit[s]) bySuit[s] = [];
+      bySuit[s]!.push(i);
+    });
+    const suit = Object.keys(bySuit).find(s => (bySuit[s]?.length ?? 0) >= 3);
+    expect(suit, 'hand should have ≥3 tiles of some suit').toBeTruthy();
+    await expectNoHorizontalOverflow(page, 'huan');
+    await snap('huan');
+    for (const i of bySuit[suit!]!.slice(0, 3)) await handTiles.nth(i).click();
+    await page.getByRole('button', { name: /Confirm Swap/i }).click();
+  }
 
   // Bots submit automatically → void-declaration phase.
   await expect.poll(() => getPhase(page), { timeout: 15_000 }).toBe('voidDeclare');

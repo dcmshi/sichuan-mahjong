@@ -1,5 +1,34 @@
 # TODO
 
+## ✅ 換三張 is a house rule, so it is opt-in now (2026-08-01)
+
+Asked whether the opening three-tile pass is standard, and checked the PDF rather
+than answering from memory. It is **not** in Novikov: `SBR_ENG_part_1.pdf` gives
+the deal as *prepare wall → each player chooses a forbidden suit → East's initial
+turn*, and the words "swap" and "exchange" appear nowhere in the text. What it does
+describe is the void-suit mechanic already implemented — "each player separates a
+tile of a forbidden suit… the same tile is the first mandatory discard" (A35/A37).
+
+The engine already modelled it as a rule (`enableHuanSanZhang`) but defaulted it
+**on**, while the other house rule, `enableFlowerPig`, defaulted off. That was
+inconsistent, and it meant every game shipped a non-canonical opening.
+
+- [x] **`DEFAULT_CONFIG.enableHuanSanZhang` is now `false`.**
+- [x] **The host can turn it on** — a switch in the lobby, off on arrival, riding
+  along as `startGame.rules.huanSanZhang`. First user-facing house-rule control.
+- [x] **Narrowed at the WS boundary.** `houseRules()` accepts only a literal
+  `true`; `"true"`, `1`, `[]`, `{}` and a non-object payload all fall back to the
+  engine default, so a hand-rolled frame cannot switch the ruleset with a truthy
+  value of the wrong type. Unit-tested, including that the default tracks
+  `DEFAULT_CONFIG`.
+- [x] **Coverage moved rather than lost.** Practice mode now opens on the void
+  declaration, so the specs that drive it no longer see a huan phase; they skip it
+  when absent instead of asserting it. `e2e/house-rules.spec.ts` hosts a lobby,
+  flips the switch, asserts the deal opens on `huan`, and taps through the picker —
+  so the toggle *and* the huan UI are covered, on chromium only since it is a rule
+  path rather than a layout. The two engine tests and one server test that needed a
+  huan phase now ask for it explicitly.
+
 ## ✅ R7 — tile density: flush tiles, north stack sideways, side trays vertical (2026-08-01)
 
 Spec: [docs/superpowers/specs/2026-08-01-play-screen-tile-density-design.md](./docs/superpowers/specs/2026-08-01-play-screen-tile-density-design.md).
@@ -75,10 +104,52 @@ perfectly while overflowing its *column*, visible only as overlap with the well.
   spec fails rather than shipping the wrong screen. Expanding a round-end row also
   scrolls it into view, so that capture now returns to the top first.
 
+**Found on review, second pass:**
+
+- [x] **The side trays stretched their tiles.** A wrapping flex container defaults
+  to `align-content: stretch`, so spare cross-axis space is handed to the lines and
+  the tiles are drawn *past their aspect ratio* — on a desktop-height window six
+  discards rendered as six very long tiles running down the screen. `flex-1` made
+  it worse by giving the tray the whole column height to stretch into. Fixed with
+  `min-h-0` and no `flex-1` (shrink-and-scroll, never grow) plus
+  `content-start items-start` on all three trays. Measured at 1280×900: every tile
+  is exactly 1.21 (255/210), and the side trays are 80×126 rather than
+  column-height.
+
 **Left deliberately:** the own melds row (`OwnZone`) is a non-wrapping `flex` of
 fixed-width tiles, so three or four melds overflow it horizontally and the root's
 `overflow-x-hidden` clips them. Pre-existing, and it wants the same scroller
 `OpponentTop` got. Side opponents still show no melds at all.
+
+## 🔍 Open, from playing the app (2026-08-01)
+
+Raised while looking at the running build, plus one found in the docs pass. None
+of these are started. Also recorded as O1–O4 in
+[ARCHITECTURE.md §12](./ARCHITECTURE.md#12-open-questions--explicit-deferrals).
+
+- [ ] **The release binary embeds the tile SVGs, which the licence note forbids.**
+  `scripts/release/gen-embedded-client.mjs` walks `packages/client/dist` and
+  base64-embeds every file into `embedded-client.ts`, compiled into the Bun binary
+  — 57 SVGs now. ARCHITECTURE §13 says the CC-BY-SA boundary depends on the SVGs
+  staying "standalone fetched assets" and not being merged "into compiled
+  JavaScript output". Both cannot be true. Predates the flat set (the embed is A20)
+  but that set doubled the file count. Wants a decision, not a patch. The npm
+  package and from-source path are unaffected — both serve `tiles/` from disk.
+
+- [ ] **Bots play too fast to follow.** Either a per-move delay (a server config
+  value, so it stays tunable) or a scrollable play-history panel, or both — the
+  event feed keeps only the latest line and drops to one line on short viewports by
+  design, so nothing recovers a move you looked away for.
+- [ ] **A central discard pool.** Show every discard in the middle, mark the last
+  one, and show each player's chosen void suit. Note the redaction rule this needs:
+  `PublicPlayer` has no `voidedSuit` today — only `you` gets it, and the first
+  discard sits face down precisely so the suit isn't leaked (A37) — so it should
+  become public only once that player has flipped their first discard, which is when
+  a real table learns it. Held as a fallback for now: the per-seat trays are staying,
+  and the pool's appeal is that the middle of the board is mostly empty space.
+- [ ] **Discard tile styling.** The flush run reads as tiles held together, which
+  suits a hand and a meld but not a pile of thrown-away tiles. Needs a decision on
+  which way to take it.
 
 ## ✅ R6 — the R5 guard was red in CI from the day it landed (2026-08-01)
 

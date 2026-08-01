@@ -219,8 +219,11 @@ export function OwnZone({ view }: { view: PlayerView }) {
         <div className="px-2 pt-1 flex flex-col min-h-0">
           <span className="text-[10px] text-green-300 flex-shrink-0">{t('play.yourDiscards')}</span>
           {/* Flush, so a 320px phone fits 9 tiles a row instead of 8 and a full
-              round's discards land in two rows rather than three. */}
-          <div className="flex flex-wrap discard-tray mt-0.5 min-h-0 overflow-y-auto">
+              round's discards land in two rows rather than three.
+              `content-start items-start` because a wrapping flex container
+              defaults to `align-content: stretch` — any spare height goes into
+              the lines and the tiles are drawn past their aspect ratio. */}
+          <div className="flex flex-wrap content-start items-start discard-tray mt-0.5 min-h-0 overflow-y-auto">
             {/* Face down until you flip it on your first turn (A37) */}
             {view.you.pendingFirstDiscard && <TileBack size="sm" flat />}
             {view.you.discards.map(id => (

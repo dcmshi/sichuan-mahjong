@@ -621,8 +621,8 @@ describe('Live-room resume', () => {
         { name: 'B2', isBot: true, connected: false },
         { name: 'B3', isBot: true, connected: false },
       ]);
-      room.start(); // schedules bot "think" timers (huan phase)
-      const phaseBefore = room.getState().phase; // 'huan'
+      room.start(); // schedules bot "think" timers for the opening phase
+      const phaseBefore = room.getState().phase;
       room.endMatch(); // tears down → must cancel those timers
 
       // If the timers weren't cancelled they'd fire here and drive the game
@@ -647,6 +647,7 @@ describe('Live-room resume', () => {
       ]);
       room.connect(0, fakeWs());
       room.start();
+      const phaseAtTeardown = room.getState().phase;
       room.endMatch();
 
       vi.mocked(persistence.saveLiveRoom).mockClear();
@@ -657,7 +658,10 @@ describe('Live-room resume', () => {
       vi.advanceTimersByTime(120_000); // no debounced persist, no bot takeover
 
       expect(vi.mocked(persistence.saveLiveRoom)).not.toHaveBeenCalled();
-      expect(room.getState().phase).toBe('huan'); // state never advanced post-teardown
+      // Compared against the phase at teardown rather than a literal: the
+      // invariant is "nothing moved", which holds whichever phase the ruleset
+      // opens on.
+      expect(room.getState().phase).toBe(phaseAtTeardown);
     } finally {
       vi.useRealTimers();
     }
@@ -738,12 +742,19 @@ describe('Restore & reconnect grace', () => {
     const { GameRoom } = await import('../src/room.js');
     vi.useFakeTimers();
     try {
-      const room = new GameRoom('A10HN', [
-        { name: 'H0', isBot: false, connected: false },
-        { name: 'B1', isBot: true, connected: false },
-        { name: 'B2', isBot: true, connected: false },
-        { name: 'B3', isBot: true, connected: false },
-      ]);
+      // The swap is a house rule and off by default, but this test is about the
+      // reconnect grace *during huan* — `pendingHuan` only exists in that phase —
+      // so the rule is asked for explicitly.
+      const room = new GameRoom(
+        'A10HN',
+        [
+          { name: 'H0', isBot: false, connected: false },
+          { name: 'B1', isBot: true, connected: false },
+          { name: 'B2', isBot: true, connected: false },
+          { name: 'B3', isBot: true, connected: false },
+        ],
+        { enableHuanSanZhang: true },
+      );
       room.connect(0, fakeWs());
       room.start(); // huan phase; bots 1–3 scheduled to submit
       room.disconnect(0); // seat 0 drops before submitting → 60s grace armed

@@ -52,6 +52,12 @@ pnpm e2e
 # built server above; drives the real app and writes into the repo)
 pnpm shots
 
+# Regenerate the flat tile faces (only if the source art in public/tiles/ changes).
+# Measure first — it needs the Playwright chromium — then flatten; a client test
+# fails if the committed output drifts from what these produce.
+node scripts/tiles/measure-glyphs.mjs
+node scripts/tiles/flatten-tiles.mjs
+
 # Release binaries (embed the client, no persistence): needs Bun
 bun run scripts/release/compile.ts
 ```
@@ -83,10 +89,13 @@ packages/client/src/
 e2e/
   game.spec.ts   full bot round      } chromium only (drive the game via __e2e)
   match.spec.ts  2-round match       }
+  house-rules.spec.ts  the host's 換三張 toggle — the only spec that reaches huan
+  viewport.spec.ts     vertical-overflow + tray-clipping guard on a 320×568 phone
   ui-clicks.spec.ts  real UI taps — runs on 5 viewports (phone/tablet × orientation)
 scripts/
   icons/         PWA PNG generation (rerun if icon.svg changes)
   screenshots/   docs/*.png capture — `pnpm shots`, kept out of `pnpm e2e`
+  tiles/         flat tile faces: measure-glyphs.mjs (needs chromium) → flatten-tiles.mjs
 ```
 
 Full tree: [ARCHITECTURE.md §3](./ARCHITECTURE.md#3-repo-layout).
@@ -115,13 +124,32 @@ Full tree: [ARCHITECTURE.md §3](./ARCHITECTURE.md#3-repo-layout).
 ## Status
 
 All v1 work, six full-repo audit passes (A1–A39, through 2026-07-25), a
-frontend/design pass (F1–F25) and round-end hand reveals with a fan/penalty
-breakdown (2026-07-31) are complete. Per-item history is in
-[TODO.md](./TODO.md); the deferral record is
+frontend/design pass (F1–F25), round-end hand reveals with a fan/penalty
+breakdown (2026-07-31), and the mobile viewport work R1–R7 (2026-08-01) are
+complete. Per-item history is in [TODO.md](./TODO.md); the deferral record is
 [ARCHITECTURE.md §12](./ARCHITECTURE.md#12-open-questions--explicit-deferrals).
 
-**No scheduled work.** A real landscape layout for phones (R4 Phase 2 in
-[docs/viewport-audit.md](./docs/viewport-audit.md)) is shelved with its reasons
+**換三張 is opt-in, and off by default** (2026-08-01) — it is not in Novikov's
+ruleset, which deals straight into the void declaration. The host turns it on in
+the lobby; the choice rides on `startGame.rules` and is narrowed by `houseRules()`
+in `ws.ts`. Practice mode therefore never shows the huan phase, which is why
+`e2e/house-rules.spec.ts` exists — it is the only spec that reaches that screen.
+
+**Tiles are drawn flush**, from glyph-only faces derived out of the CC BY-SA art
+by `scripts/tiles/` (measure, then flatten — the frame is centred on each glyph's
+measured box). Hands, melds and trays use them; a singleton like the well's last
+discard keeps the 3D art. Regenerate with `node scripts/tiles/measure-glyphs.mjs`
+then `node scripts/tiles/flatten-tiles.mjs`; a client test fails if the committed
+output drifts from what the scripts produce.
+
+**Open, from playing the build** (see the last section of [TODO.md](./TODO.md)):
+bot pacing is too fast to follow, the discard tiles' styling doesn't suit a
+discard pile, and a central discard pool is held as a fallback — it needs a
+redaction decision for opponents' void suits, which are private today.
+
+A real landscape layout for phones (R4 Phase 2 in
+[docs/viewport-audit.md](./docs/viewport-audit.md)) stays shelved with its reasons
 recorded there; landscape shows a rotate-to-portrait prompt during play.
-Everything else from the viewport audit shipped, and `e2e/viewport.spec.ts`
-guards it from regressing.
+
+**Running it locally:** the server snapshots its static asset list at boot, so
+restart it after any client rebuild or the new bundle 404s into the SPA fallback.

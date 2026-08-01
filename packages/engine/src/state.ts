@@ -6,6 +6,13 @@ export type Seat = 0 | 1 | 2 | 3;
 export type Phase = 'huan' | 'voidDeclare' | 'play' | 'roundEnd';
 
 export type GameConfig = {
+  /**
+   * 換三張 — each player passes three same-suit tiles before the void declaration.
+   * A house rule, not part of SBR: Novikov gives the deal as prepare wall → choose
+   * a forbidden suit → East's initial turn, with no swap anywhere. Very common in
+   * Sichuan (especially Chengdu-style) play, so it is offered — but off by default,
+   * like `enableFlowerPig`, because the canonical ruleset is the default.
+   */
   enableHuanSanZhang: boolean;
   huanDirection: 'cw' | 'ccw' | 'random';
   enableRobbingKong: boolean;
@@ -17,7 +24,7 @@ export type GameConfig = {
 };
 
 export const DEFAULT_CONFIG: GameConfig = {
-  enableHuanSanZhang: true,
+  enableHuanSanZhang: false,
   huanDirection: 'random',
   enableRobbingKong: true,
   enableHeavenlyEarthly: true,

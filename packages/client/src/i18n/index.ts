@@ -64,6 +64,9 @@ const en: Dict = {
   'host.botLevel': 'Bot level',
   'host.easy': 'Easy',
   'host.hard': 'Hard',
+  'host.huanSanZhang': 'Swap three tiles',
+  'host.huanSanZhangHint':
+    'Chengdu house rule: before choosing your void suit, pass three tiles of one suit to a neighbour. Off by default — the standard rules have no swap.',
 
   'lobby.title': 'Lobby',
   'lobby.waiting': 'waiting…',
@@ -256,6 +259,9 @@ const zhHans: Dict = {
   'host.botLevel': '电脑难度',
   'host.easy': '简单',
   'host.hard': '高级',
+  'host.huanSanZhang': '换三张',
+  'host.huanSanZhangHint':
+    '成都玩法：定缺之前，把同一门的三张牌传给邻家。默认关闭 —— 标准规则没有换牌。',
 
   'lobby.title': '房间',
   'lobby.waiting': '等待中…',
@@ -443,6 +449,9 @@ const zhHant: Dict = {
   'host.botLevel': '電腦難度',
   'host.easy': '簡單',
   'host.hard': '高級',
+  'host.huanSanZhang': '換三張',
+  'host.huanSanZhangHint':
+    '成都玩法：定缺之前，把同一門的三張牌傳給鄰家。預設關閉 —— 標準規則沒有換牌。',
 
   'lobby.title': '房間',
   'lobby.waiting': '等待中…',

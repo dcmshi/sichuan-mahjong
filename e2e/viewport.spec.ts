@@ -111,8 +111,10 @@ test('play fits the viewport, and the round-end controls stay reachable', async 
 
   await page.goto(BASE);
   await page.click('text=Practice (vs Bots)');
-  await expect.poll(() => g.getPhase(), { timeout: 30_000 }).toBe('huan');
-  await g.huanSubmit();
+  // Practice runs the canonical ruleset, which opens on the void declaration.
+  // 換三張 is an opt-in house rule, so only submit through it if a host enabled it.
+  await expect.poll(() => g.getPhase(), { timeout: 30_000 }).toMatch(/^(huan|voidDeclare)$/);
+  if ((await g.getPhase()) === 'huan') await g.huanSubmit();
   await expect.poll(() => g.getPhase(), { timeout: 20_000 }).toBe('voidDeclare');
   await g.voidSubmit();
   await expect.poll(() => g.getPhase(), { timeout: 20_000 }).toBe('play');
