@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tile sandbox — CSS face vs the source art</title>
+<!--
+  Open this file directly in a browser. No build, no server, no game:
+
+      start scripts/tiles/sandbox.html          (Windows)
+      open  scripts/tiles/sandbox.html          (macOS)
+
+  The stylesheet below is the app's REAL index.css, by relative path, so editing
+  `.tile-cell` and refreshing is the whole loop. Its `@import "tailwindcss"` 404s
+  harmlessly — the tile rules are plain CSS and apply without it, and every layout
+  class on this page is defined locally so nothing here depends on Tailwind.
+
+  `node scripts/tiles/sandbox.mjs` renders the same page headless and writes
+  sandbox.png next to it, for a shareable artifact or a before/after pair.
+-->
+<link rel="stylesheet" href="../../packages/client/src/index.css">
+<style>
+  :root { --orig: ../../packages/client/public/tiles; }
+  body {
+    margin: 0; padding: 20px 22px 40px;
+    background: radial-gradient(125% 90% at 50% -10%, #16b8a6 0%, #0f8a7e 38%, #0c5f57 72%, #07433d 100%);
+    color: #fff; font: 13px/1.5 system-ui, sans-serif;
+  }
+  h1 { font-size: 15px; margin: 0 0 4px; }
+  p.note { margin: 0 0 18px; opacity: .75; max-width: 62ch; font-size: 12px; }
+  h2 {
+    font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase;
+    opacity: .8; margin: 22px 0 8px; border-top: 1px solid rgba(255,255,255,.14); padding-top: 10px;
+  }
+  .lbl { display: inline-block; width: 78px; font-size: 11px; opacity: .65; vertical-align: middle; }
+  .strip { display: inline-flex; vertical-align: middle; }
+  .spaced { display: inline-flex; gap: 10px; vertical-align: middle; }
+  .stack { display: flex; gap: 22px; align-items: flex-start; flex-wrap: wrap; }
+  .tray-demo {
+    display: flex; flex-wrap: wrap; width: 80px;
+    background: rgba(0,0,0,.18); border-radius: .6rem;
+    box-shadow: inset 0 1px 5px rgba(0,0,0,.4); padding: .3rem;
+  }
+  /* The 3D art as the app draws it (`.tile-face` lives in index.css). */
+  .art { position: relative; display: inline-flex; aspect-ratio: 210/255; overflow: hidden; }
+  figure { margin: 0; text-align: center; }
+  figcaption { font-size: 10px; opacity: .6; margin-top: 4px; }
+  code { background: rgba(0,0,0,.3); padding: 1px 4px; border-radius: 3px; font-size: 11px; }
+  #measured { font-size: 11px; opacity: .8; }
+  #measured td { padding: 1px 10px 1px 0; }
+</style>
+</head>
+<body>
+<h1>Tile sandbox — the CSS face against the source art</h1>
+<p class="note">
+  Left of each pair is <code>.tile-cell</code> + <code>tiles/flat/*.svg</code> (what
+  the app draws). Right is the original <code>tiles/*.svg</code>, untouched. Sizes are
+  the ones the app actually uses: 23px hand on a 320px phone, 32px tray, 40px picker,
+  56px well, plus 96px to see what you are doing.
+</p>
+
+<h2>side by side, at every size the app uses</h2>
+<div class="stack" id="pairs"></div>
+
+<h2>flush run — the case the whole flat-tile exercise exists for</h2>
+<div><span class="lbl">css, 23px</span><span class="strip" id="run23"></span></div>
+<div><span class="lbl">css, 32px</span><span class="strip" id="run32"></span></div>
+<div><span class="lbl">art, 32px</span><span class="strip" id="runart"></span></div>
+<div style="margin-top:8px"><span class="lbl">in a run</span>
+  <span class="tile-run" id="runwrapped"></span>
+  <span class="lbl" style="width:auto; margin-left:14px">← inside <code>.tile-run</code>, which carries the strip shadow</span>
+</div>
+
+<h2>tray (wraps, 80px column) · meld · solo · back</h2>
+<div class="stack">
+  <figure><div class="tray-demo" id="tray"></div><figcaption>tray, 32px</figcaption></figure>
+  <figure><span class="tile-run" id="meld"></span><figcaption>meld</figcaption></figure>
+  <figure><span id="solo"></span><figcaption>solo (well / picker)</figcaption></figure>
+  <figure><span class="strip" id="backs"></span><figcaption>flat backs — concealed kong</figcaption></figure>
+  <figure><span class="strip" id="mixed"></span><figcaption>back beside faces (first discard)</figcaption></figure>
+</div>
+
+<h2>the tightest glyphs — anything the bands or corners clip shows here first</h2>
+<p class="note" style="margin-bottom:8px">
+  Widest and tallest per <code>glyph-boxes.json</code>. If a band eats ink, it eats
+  it here before anywhere else.
+</p>
+<div><span class="lbl">css</span><span class="strip" id="tight"></span></div>
+<div><span class="lbl">art</span><span class="spaced" id="tightart"></span></div>
+
+<h2>marked (void declaration) and last-discard states</h2>
+<div class="stack">
+  <figure><span class="spaced" id="marked"></span><figcaption>ring per suit, <code>.tile-mark</code></figcaption></figure>
+  <figure><span id="lastdiscard"></span><figcaption>last discard (pulses)</figcaption></figure>
+</div>
+
+<h2>what the CSS resolves to right now</h2>
+<table id="measured"></table>
+
+<script>
+const ART = '../../packages/client/public/tiles';
+const FLAT = ART + '/flat';
+const SIZES = [23, 32, 40, 56, 96];
+const el = (t, cls) => { const n = document.createElement(t); if (cls) n.className = cls; return n; };
+
+/** The app's flat cell: `.tile.tile-cell` wrapping a `.tile-glyph`. */
+function css(name, px, extra = '') {
+  const d = el('div', `tile tile-cell ${extra}`);
+  d.style.width = px + 'px';
+  const img = el('img', 'tile-glyph');
+  img.src = `${FLAT}/${name}.svg`;
+  img.alt = name;
+  d.append(img);
+  return d;
+}
+function cssBack(px, extra = '') {
+  const d = el('div', `tile tile-cell ${extra}`);
+  d.style.width = px + 'px';
+  const img = el('img', 'tile-glyph is-back');
+  img.src = `${FLAT}/back.svg`;
+  img.alt = 'back';
+  d.append(img);
+  return d;
+}
+/** The untouched 3D art, drawn the way the app draws a `.tile-face`. */
+function art(name, px) {
+  const d = el('div', 'art');
+  d.style.width = px + 'px';
+  const img = el('img', 'tile-face');
+  img.src = `${ART}/${name}.svg`;
+  img.alt = name;
+  d.append(img);
+  return d;
+}
+
+// Pairs at every size.
+const pairs = document.getElementById('pairs');
+for (const px of SIZES) {
+  const fig = el('figure');
+  const row = el('div', 'spaced');
+  row.append(css('man-3', px), art('man-3', px), css('pin-9', px), art('pin-9', px));
+  fig.append(row);
+  const cap = el('figcaption');
+  cap.textContent = `${px}px — css, art, css, art`;
+  fig.append(cap);
+  pairs.append(fig);
+}
+
+const HAND = ['man-1','man-3','man-9','pin-1','pin-3','pin-5','pin-8','sou-1','sou-4','sou-7','sou-9','man-5','man-7'];
+for (const t of HAND) document.getElementById('run23').append(css(t, 23));
+for (const t of HAND.slice(0, 8)) document.getElementById('run32').append(css(t, 32));
+for (const t of HAND.slice(0, 8)) document.getElementById('runart').append(art(t, 32));
+for (const t of HAND.slice(0, 6)) document.getElementById('runwrapped').append(css(t, 32));
+
+for (const t of ['man-1','pin-5','sou-7','man-9','pin-3']) document.getElementById('tray').append(css(t, 32));
+for (let i = 0; i < 3; i++) document.getElementById('meld').append(css('man-5', 32));
+document.getElementById('solo').append(css('man-3', 56, 'tile-solo'));
+for (let i = 0; i < 4; i++) document.getElementById('backs').append(cssBack(32));
+const mixed = document.getElementById('mixed');
+mixed.append(cssBack(32), css('man-2', 32), css('pin-4', 32));
+
+// Tightest glyphs: widest side-margin first, then the shallowest top margin.
+const TIGHT = ['pin-3','sou-1','pin-9','pin-7','pin-8','sou-9'];
+for (const t of TIGHT) document.getElementById('tight').append(css(t, 56));
+for (const t of TIGHT) document.getElementById('tightart').append(art(t, 56));
+
+// Marked, one per suit, mirroring the void screen's wrappers.
+const RINGS = { 'man-3': '#ef4444', 'pin-5': '#10b981', 'sou-7': '#3b82f6' };
+for (const [t, colour] of Object.entries(RINGS)) {
+  const wrap = el('div', 'tile-mark');
+  wrap.style.boxShadow = `0 0 0 3px ${colour}`;
+  wrap.append(css(t, 40));
+  document.getElementById('marked').append(wrap);
+}
+document.getElementById('lastdiscard').append(css('man-3', 56, 'tile-solo tile-last-discard'));
+
+// Read the resolved values back out, so the page states its own numbers rather
+// than trusting a comment that may have drifted from the CSS.
+const probe = css('man-3', 210);
+probe.style.position = 'absolute';
+probe.style.left = '-9999px';
+document.body.append(probe);
+const s = getComputedStyle(probe);
+const rows = [
+  ['border-radius', s.borderRadius],
+  ['box-shadow', s.boxShadow],
+  ['--tile-top', s.getPropertyValue('--tile-top').trim() || '(unset)'],
+  ['--tile-side', s.getPropertyValue('--tile-side').trim() || '(unset)'],
+  ['glyph height', getComputedStyle(probe.querySelector('img')).height + ' of 255px'],
+];
+const table = document.getElementById('measured');
+for (const [k, v] of rows) {
+  const tr = el('tr');
+  const th = el('td');
+  th.innerHTML = `<code>${k}</code>`;
+  const td = el('td');
+  td.textContent = v.length > 150 ? v.slice(0, 150) + '…' : v;
+  tr.append(th, td);
+  table.append(tr);
+}
+if (s.borderRadius === '0px') {
+  const warn = el('p', 'note');
+  warn.style.color = '#fca5a5';
+  warn.textContent =
+    'index.css did not load — the tile rules are missing. Check the <link> path is still ../../packages/client/src/index.css.';
+  document.body.prepend(warn);
+}
+</script>
+</body>
+</html>

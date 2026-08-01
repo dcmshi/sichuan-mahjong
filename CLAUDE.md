@@ -16,6 +16,7 @@ Keep this file short. New documentation goes in one of these instead:
 | **[README.md](./README.md)** | User-facing: install, host/join, CLI flags | …you change the CLI or the player-facing flow |
 | **[docs/viewport-audit.md](./docs/viewport-audit.md)** | Measured mobile viewport overflow + the open layout questions | …you change the play or round-end layout |
 | **[docs/handoff-2026-08-01.md](./docs/handoff-2026-08-01.md)** | Where the layout/density work stands, decisions already settled, the four open ones, and the traps that cost time | …you are picking this up cold, or before a compaction |
+| **[docs/handoff-tile-rendering.md](./docs/handoff-tile-rendering.md)** | How tiles are drawn (CSS body + glyph-only SVG), the art's measured layer geometry, every knob, what's been rejected and why | …you are changing how a tile looks |
 | `SBR_ENG_part_1.pdf` | Novikov, *Sichuan Mahjong? It's that simple!* — the canonical ruleset | (read-only; extract with `pdftotext` when a rule is in question) |
 
 ---
@@ -52,6 +53,12 @@ pnpm e2e
 # Regenerate the README screenshots in docs/ (needs the VITE_E2E client +
 # built server above; drives the real app and writes into the repo)
 pnpm shots
+
+# Tile sandbox — the CSS face beside the original art at every size the app uses.
+# Open the file directly: no build, no server, no game. It links the real
+# index.css, so the loop is edit-and-refresh. See docs/handoff-tile-rendering.md.
+start scripts/tiles/sandbox.html     # macOS: open scripts/tiles/sandbox.html
+pnpm tiles:sandbox                   # same page, rendered headless to a PNG
 
 # Regenerate the flat tile faces (only if the source art in public/tiles/ changes).
 # Measure first — it needs the Playwright chromium — then flatten; a client test

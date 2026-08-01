@@ -13,3 +13,8 @@ dist-bin/
 
 # Subagent scratch (briefs, reports, ledgers) — never part of the source tree
 .superpowers/
+
+# Tile sandbox renders. The page is the tool (open it directly); the PNG is a
+# scratch artifact you regenerate, so it would only churn in review.
+scripts/tiles/sandbox.png
+scripts/tiles/*.local.png
