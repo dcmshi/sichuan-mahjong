@@ -77,7 +77,8 @@ body {
      state has to be stated. */
   .tile-last-discard.tile-cell {
     animation: none;
-    box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.95), 0 2px 4px rgba(0, 0, 0, 0.5);
+    box-shadow: inset 0 0 0 1px #0a2c10, 0 0 0 2px rgba(251, 191, 36, 0.95), 0 2px 4px
+      rgba(0, 0, 0, 0.5);
   }
 }
 
@@ -91,7 +92,7 @@ body {
 
    Each cell keeps its OWN face rather than sharing one across the run: a hand
    tile lifts when selected, and a lifted glyph over a shared surface reads as a
-   hole in the strip rather than as a tile in the air. The small radius is what
+   hole in the strip rather than as a tile in the air. The outline below is what
    separates neighbours, so no divider rule is needed and nothing has to know
    where in the run it sits.
 --------------------------------------------------------------------------- */
@@ -103,11 +104,6 @@ body {
    right sides — and it is why a bevel on those two sides can't double up between
    neighbours the way left+right did: a tile's right shoulder meets the next
    tile's bare face, which is the single shared edge a real run shows.
-
-   Reproducing 20.6%/22.5% literally would hand back the glyph width R7 won, so
-   the same layer *order* is compressed into 5.6% of the height and 7.5% of the
-   width. That fits inside the tightest glyph's own margin — 16% a side and 8.4%
-   top, per scripts/tiles/glyph-boxes.json — so no glyph shrinks to make room.
 
    The specular is the art's too: a hard dot (path3932), a soft blob (path3882)
    and a blurred diagonal streak (path3936), all of which the flatten script
@@ -187,8 +183,16 @@ body {
     rgba(255, 255, 255, 0.26) 70%,
     rgba(255, 255, 255, 0) 77%
   );
+  /* `rect4031`, the art's outermost layer: an outline at inset 0 on every side.
+     It is what makes the silhouette legible — an ivory corner against green felt
+     is a low-contrast transition, so the corner read flat at any radius until this
+     traced it. It also separates flush neighbours, doing the job the hairline seam
+     used to. A single px rather than the art's 2.4%: box-shadow spread takes no
+     percentage, and 2.4% would be 0.6px in the hand and 2.3px at round end. */
+  --tile-outline: inset 0 0 0 1px #0a2c10;
   background: var(--tile-gloss-dot), var(--tile-gloss-blob), var(--tile-gloss-streak),
     var(--tile-top), var(--tile-side), var(--tile-face);
+  box-shadow: var(--tile-outline);
   /* The art's own corner: its outline path turns on cubics spanning ~36-41 units
      of a 210x255 box, so ~38 units. Proportional rather than a fixed rem, because
      the corner has to be the same shape on a 64px round-end tile and a 23px hand
@@ -237,9 +241,12 @@ body {
    Scoped rather than living on `.tile-cell`, because inside a run every cell
    would cast one and the strip would read as separately-lit objects again.
    box-shadow, not filter: it follows the cell's rounded box, and unlike a
-   transform it changes no layout box the viewport guard measures. */
+   transform it changes no layout box the viewport guard measures.
+
+   Every rule that sets box-shadow on a cell has to re-list the outline, or it
+   erases the silhouette — box-shadow does not merge across rules. */
 .tile-solo.tile-cell {
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--tile-outline), 0 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 /* The last-discard marker, for a flat cell. `.tile-last-discard .tile-face`
@@ -255,10 +262,12 @@ body {
 @keyframes tile-cell-pulse {
   0%,
   100% {
-    box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.95), 0 2px 4px rgba(0, 0, 0, 0.5);
+    box-shadow: inset 0 0 0 1px #0a2c10, 0 0 0 2px rgba(251, 191, 36, 0.95), 0 2px 4px
+      rgba(0, 0, 0, 0.5);
   }
   50% {
-    box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.3), 0 2px 4px rgba(0, 0, 0, 0.5);
+    box-shadow: inset 0 0 0 1px #0a2c10, 0 0 0 2px rgba(251, 191, 36, 0.3), 0 2px 4px
+      rgba(0, 0, 0, 0.5);
   }
 }
 
