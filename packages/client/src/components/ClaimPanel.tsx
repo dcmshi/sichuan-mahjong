@@ -35,9 +35,11 @@ export function ClaimPanel({ seat, legalActions, claimDeadline }: Props) {
   }
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-gray-900/95 backdrop-blur text-white p-3 border-t border-gray-700 z-20">
+    // Felt palette, not the gray chrome it used to wear — the claim bar read as
+    // a foreign element against the jade-and-amber board. (F14)
+    <div className="fixed bottom-0 left-0 right-0 bg-green-950/95 backdrop-blur text-white p-3 border-t border-amber-400/30 z-20">
       {/* Countdown bar */}
-      <div className="w-full h-1.5 bg-gray-700 rounded-full mb-3 overflow-hidden">
+      <div className="w-full h-1.5 bg-black/40 rounded-full mb-3 overflow-hidden">
         <div
           className="h-full bg-amber-400 rounded-full transition-none"
           style={{ width: `${pct}%` }}
@@ -76,7 +78,7 @@ export function ClaimPanel({ seat, legalActions, claimDeadline }: Props) {
         {canPass && (
           <button
             type="button"
-            className="flex-1 py-3 bg-gray-600 hover:bg-gray-500 active:bg-gray-700 rounded-xl font-bold text-lg"
+            className="flex-1 py-3 bg-green-800 hover:bg-green-700 active:bg-green-900 rounded-xl font-bold text-lg"
             onClick={() => act({ t: 'pass', seat })}
           >
             {t('claim.pass')}
