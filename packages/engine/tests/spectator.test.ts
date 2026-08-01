@@ -86,6 +86,27 @@ describe('Spectator view', () => {
     });
   });
 
+  it('A40: redactEventsFor hides a void declaration from everyone but the declarer', () => {
+    const events: GameEvent[] = [
+      { e: 'voidDeclared', seat: 0, suit: 'man' },
+      { e: 'voidDeclared', seat: 1, suit: 'pin' },
+    ];
+
+    // Seat 1 learns its own suit and nothing about seat 0's — the void phase
+    // resolves every declaration in one batch, so this one event log carries
+    // all four secrets unless each viewer's copy is stripped.
+    const forSeat1 = redactEventsFor(1, events);
+    expect(forSeat1[0]).toEqual({ e: 'voidDeclared', seat: 0, suit: null });
+    expect(forSeat1[1]).toEqual({ e: 'voidDeclared', seat: 1, suit: 'pin' });
+
+    // A spectator sees no hands, so it sees no declarations either.
+    const forSpectator = redactEventsFor('spectator', events);
+    expect(forSpectator[0]).toEqual({ e: 'voidDeclared', seat: 0, suit: null });
+    expect(forSpectator[1]).toEqual({ e: 'voidDeclared', seat: 1, suit: null });
+
+    expect(events[0]).toEqual({ e: 'voidDeclared', seat: 0, suit: 'man' });
+  });
+
   it('A31: redactEventsFor hides drawn tiles from everyone but the drawer', () => {
     const events: GameEvent[] = [
       { e: 'drew', seat: 1, tile: 42 },

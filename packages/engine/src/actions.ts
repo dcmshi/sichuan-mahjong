@@ -86,7 +86,10 @@ export type RuleViolation =
 export type GameEvent =
   | { e: 'dealt' }
   | { e: 'huanComplete' }
-  | { e: 'voidDeclared'; seat: Seat; suit: Suit }
+  // The suit is redacted for every viewer but the declarer: all four
+  // declarations resolve in one batch, so an unredacted event handed each
+  // client the three suits their view withholds. (A40)
+  | { e: 'voidDeclared'; seat: Seat; suit: Suit | null }
   | { e: 'voidPhaseComplete' }
   // `drew` / `kongReplacement` carry a hand-bound tile: the engine emits the
   // real id, and redactEventsFor nulls it for every viewer except the drawer

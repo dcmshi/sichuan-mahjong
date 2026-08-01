@@ -306,13 +306,23 @@ export function projectView(state: GameState, seat: Seat): PlayerView {
  * (anyone else's client would be one dev-tools tab away from reading every
  * opponent draw). Pass 'spectator' for spectate streams: they see no drawn
  * tiles at all. (A31)
+ *
+ * `voidDeclared` carries the same kind of secret and was leaking it: the void
+ * phase resolves all four declarations at once, so every client received all
+ * four suits — the one fact `projectView` withholds (`voidedSuit` is on `you`
+ * alone) and that A37 put the declaration tile face down to protect. A table
+ * learns a player's void suit when they flip that tile, not before. (A40)
  */
 export function redactEventsFor(viewer: Seat | 'spectator', events: GameEvent[]): GameEvent[] {
-  return events.map(ev =>
-    (ev.e === 'drew' || ev.e === 'kongReplacement') && ev.seat !== viewer
-      ? { ...ev, tile: null }
-      : ev,
-  );
+  return events.map(ev => {
+    if (ev.e === 'drew' || ev.e === 'kongReplacement') {
+      return ev.seat === viewer ? ev : { ...ev, tile: null };
+    }
+    if (ev.e === 'voidDeclared') {
+      return ev.seat === viewer ? ev : { ...ev, suit: null };
+    }
+    return ev;
+  });
 }
 
 export function projectSpectatorView(state: GameState): SpectatorView {
