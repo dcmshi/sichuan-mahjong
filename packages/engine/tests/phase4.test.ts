@@ -82,6 +82,7 @@ function makeState(opts: {
     pendingHuan: [null, null, null, null],
     pendingVoid: [null, null, null, null],
     penaltyPot: 0,
+    ledger: [],
     kongPaymentLog: [],
     nextKongSeq: 0,
     huOrder: [],

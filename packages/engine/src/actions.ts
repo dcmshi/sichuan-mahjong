@@ -157,6 +157,7 @@ function clone(state: GameState): GameState {
     pendingHuan: [...state.pendingHuan],
     pendingVoid: [...state.pendingVoid],
     history: [...state.history],
+    ledger: [...state.ledger],
     pendingClaims:
       state.pendingClaims === null
         ? null

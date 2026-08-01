@@ -27,6 +27,30 @@ export const DEFAULT_CONFIG: GameConfig = {
   claimWindowMs: 3000,
 };
 
+/**
+ * One movement of points, derived from the payment events the engine emits.
+ * Accumulated on the state (not in the server room) so it survives the
+ * snapshot/restore path — a room-local accumulator would come back empty after
+ * a host restart and quietly produce a wrong round-end breakdown.
+ */
+export type LedgerEntry = {
+  reason:
+    | 'hu'
+    | 'kong'
+    | 'kongRefund'
+    | 'buTing'
+    | 'flowerPig'
+    | 'falseHu'
+    | 'voidPenalty'
+    | 'voidMeldPenalty';
+  from: Seat;
+  /** null for the non-redistributive penalties: they go to the pot, not a player. */
+  to: Seat | null;
+  amount: number;
+  /** Qualifier where the reason alone is ambiguous: kong subtype, refund reason. */
+  detail: string | null;
+};
+
 export type HuRecord = {
   seat: Seat;
   subtype:
@@ -132,6 +156,8 @@ export type GameState = {
   pendingHuan: (TileId[] | null)[];
   pendingVoid: (PendingVoid | null)[];
   penaltyPot: number;
+  /** Per-round payment log; see LedgerEntry. Reset by createGame. */
+  ledger: LedgerEntry[];
   kongPaymentLog: KongPaymentEntry[];
   nextKongSeq: number;
   huOrder: Seat[];
@@ -213,6 +239,7 @@ export function createGame(
     pendingHuan: [null, null, null, null],
     pendingVoid: [null, null, null, null],
     penaltyPot: 0,
+    ledger: [],
     kongPaymentLog: [],
     nextKongSeq: 0,
     huOrder: [],
