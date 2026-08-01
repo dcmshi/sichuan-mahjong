@@ -23,6 +23,7 @@ const en: Dict = {
   'common.waitingPlayers': 'Waiting for other players…',
   'common.connectionLost': 'Connection lost — could not reach the host.',
   'common.backToMenu': 'Back to menu',
+  'common.close': 'Close',
 
   'landing.host': 'Host a Game',
   'landing.join': 'Join a Game',
@@ -36,6 +37,7 @@ const en: Dict = {
   'landing.about': 'About & Credits',
   'landing.rejoin': 'Rejoin {code}',
   'landing.rejoining': 'Rejoining…',
+  'landing.practiceName': 'You',
 
   'join.title': 'Join a Game',
   'join.code': 'CODE',
@@ -113,6 +115,8 @@ const en: Dict = {
   'play.loading': 'Loading game…',
   'play.sort': 'Sort',
   'play.yourDiscards': 'Your discards',
+  'play.toggleSound': 'Toggle sound',
+  'play.howToPlay': 'How to play',
 
   'kong.concealed': 'concealed',
   'kong.promoted': 'promoted',
@@ -145,6 +149,7 @@ const en: Dict = {
   'spec.connectingGame': 'Connecting to game…',
   'spec.roundOver': 'Round over',
   'spec.spectating': 'Spectating · {code}',
+  'spec.dealer': 'Dealer',
 
   // Server `error` frame codes (F1). Unknown codes fall back to the server's
   // own message, so this list only needs the ones a player can actually hit.
@@ -171,6 +176,7 @@ const zhHans: Dict = {
   'common.waitingPlayers': '等待其他玩家…',
   'common.connectionLost': '连接已断开 — 无法连上房主。',
   'common.backToMenu': '返回主菜单',
+  'common.close': '关闭',
 
   'landing.host': '创建房间',
   'landing.join': '加入游戏',
@@ -183,6 +189,7 @@ const zhHans: Dict = {
   'landing.about': '关于与致谢',
   'landing.rejoin': '重新加入 {code}',
   'landing.rejoining': '重新加入中…',
+  'landing.practiceName': '你',
 
   'join.title': '加入游戏',
   'join.code': '房间码',
@@ -260,6 +267,8 @@ const zhHans: Dict = {
   'play.loading': '加载中…',
   'play.sort': '理牌',
   'play.yourDiscards': '你打出的牌',
+  'play.toggleSound': '开关音效',
+  'play.howToPlay': '玩法说明',
 
   'kong.concealed': '暗杠',
   'kong.promoted': '补杠',
@@ -292,6 +301,7 @@ const zhHans: Dict = {
   'spec.connectingGame': '连接对局中…',
   'spec.roundOver': '本局结束',
   'spec.spectating': '观战中 · {code}',
+  'spec.dealer': '庄',
 
   'err.lobby_not_found': '该房间已不存在',
   'err.lobby_full': '房间已满',
@@ -316,6 +326,7 @@ const zhHant: Dict = {
   'common.waitingPlayers': '等待其他玩家…',
   'common.connectionLost': '連線已中斷 — 無法連上房主。',
   'common.backToMenu': '返回主選單',
+  'common.close': '關閉',
 
   'landing.host': '建立房間',
   'landing.join': '加入遊戲',
@@ -328,6 +339,7 @@ const zhHant: Dict = {
   'landing.about': '關於與致謝',
   'landing.rejoin': '重新加入 {code}',
   'landing.rejoining': '重新加入中…',
+  'landing.practiceName': '你',
 
   'join.title': '加入遊戲',
   'join.code': '房間碼',
@@ -405,6 +417,8 @@ const zhHant: Dict = {
   'play.loading': '載入中…',
   'play.sort': '理牌',
   'play.yourDiscards': '你打出的牌',
+  'play.toggleSound': '開關音效',
+  'play.howToPlay': '玩法說明',
 
   'kong.concealed': '暗槓',
   'kong.promoted': '補槓',
@@ -437,6 +451,7 @@ const zhHant: Dict = {
   'spec.connectingGame': '連線對局中…',
   'spec.roundOver': '本局結束',
   'spec.spectating': '觀戰中 · {code}',
+  'spec.dealer': '莊',
 
   'err.lobby_not_found': '該房間已不存在',
   'err.lobby_full': '房間已滿',

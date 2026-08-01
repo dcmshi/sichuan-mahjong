@@ -37,7 +37,7 @@ export function HowToPlay({ onClose }: { onClose: () => void }) {
               type="button"
               className="text-white/60 hover:text-white text-xl px-2"
               onClick={onClose}
-              aria-label="Close"
+              aria-label={t('common.close')}
             >
               ✕
             </button>

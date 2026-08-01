@@ -485,8 +485,8 @@ function PlayPhase({ view }: { view: PlayerView }) {
             type="button"
             className="min-h-10 min-w-10 flex items-center justify-center text-white/50 hover:text-white"
             onClick={toggleSound}
-            title="Toggle sound"
-            aria-label="Toggle sound"
+            title={t('play.toggleSound')}
+            aria-label={t('play.toggleSound')}
           >
             {soundEnabled ? '🔊' : '🔇'}
           </button>
@@ -494,8 +494,8 @@ function PlayPhase({ view }: { view: PlayerView }) {
             type="button"
             className="min-h-10 min-w-10 flex items-center justify-center text-white/50 hover:text-white"
             onClick={() => setShowHowToPlay(true)}
-            title="How to play"
-            aria-label="How to play"
+            title={t('play.howToPlay')}
+            aria-label={t('play.howToPlay')}
           >
             ?
           </button>

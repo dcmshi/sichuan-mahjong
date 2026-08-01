@@ -114,7 +114,7 @@ export function HostSetup() {
     <div className="min-h-screen bg-green-900 flex flex-col p-4 text-white gap-4">
       <div className="flex items-center gap-3 mt-2">
         <span className="text-2xl font-mono font-bold text-amber-400 tracking-widest">{code}</span>
-        <span className="text-green-300 text-sm">← share code</span>
+        <span className="text-green-300 text-sm">{t('host.shareCode')}</span>
       </div>
 
       <div className="bg-black/30 rounded-xl p-3">

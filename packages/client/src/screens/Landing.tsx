@@ -58,7 +58,7 @@ export function Landing() {
   async function startPractice() {
     setPracticeLoading(true);
     setPracticeError('');
-    const name = 'You';
+    const name = t('landing.practiceName');
     try {
       const res = await fetch('/api/lobby', { method: 'POST' });
       if (!res.ok) throw new Error('server error');
@@ -79,7 +79,7 @@ export function Landing() {
       });
       ws.send({ t: 'join', name });
     } catch {
-      setPracticeError('Could not start practice — is the server running?');
+      setPracticeError('landing.practiceError');
     } finally {
       setPracticeLoading(false);
     }
@@ -129,9 +129,7 @@ export function Landing() {
         >
           {practiceLoading ? t('landing.starting') : t('landing.practice')}
         </button>
-        {practiceError && (
-          <p className="text-red-400 text-sm text-center">{t('landing.practiceError')}</p>
-        )}
+        {practiceError && <p className="text-red-400 text-sm text-center">{t(practiceError)}</p>}
         <button
           type="button"
           className="w-full py-3 text-white/70 hover:text-white text-sm"

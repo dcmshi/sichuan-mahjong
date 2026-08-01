@@ -30,7 +30,9 @@ function SeatRow({ view, seat }: { view: SpectatorView; seat: number }) {
           {p.name}
         </span>
         {isDealer && (
-          <span className="text-[10px] bg-red-700 text-white px-1.5 py-0.5 rounded">庄</span>
+          <span className="text-[10px] bg-red-700 text-white px-1.5 py-0.5 rounded">
+            {t('spec.dealer')}
+          </span>
         )}
         {p.status === 'hu' && (
           <span className="text-[10px] bg-red-600 text-white px-1.5 py-0.5 rounded">
