@@ -1,12 +1,20 @@
 import { useState } from 'react';
 import { LangSwitch } from '../components/LangSwitch.js';
 import { useT } from '../i18n/useT.js';
+import { clearSession, loadSession } from '../session.js';
 import { useStore } from '../store/index.js';
-import { connectGame, makeWsUrl, sendAction } from '../ws/client.js';
+import { closeConnection, connectGame, makeWsUrl, sendAction } from '../ws/client.js';
+
+/** How long to wait for the server to accept a stored token before giving up. */
+const REJOIN_TIMEOUT_MS = 6000;
 
 export function Landing() {
   const [practiceLoading, setPracticeLoading] = useState(false);
   const [practiceError, setPracticeError] = useState('');
+  const [rejoining, setRejoining] = useState(false);
+  // Read once on mount: resetSession() clears storage but shouldn't make the
+  // button vanish under the finger mid-render.
+  const [saved] = useState(loadSession);
   const t = useT();
   const goTo = useStore(s => s.goTo);
   const setCode = useStore(s => s.setCode);
@@ -18,6 +26,33 @@ export function Landing() {
   function handleJoin() {
     if (urlCode) setCode(urlCode.toUpperCase());
     goTo('joinForm');
+  }
+
+  function rejoin() {
+    if (!saved) return;
+    setRejoining(true);
+    useStore.setState({
+      code: saved.code,
+      playerName: saved.name,
+      token: saved.token,
+      isHost: saved.isHost,
+    });
+    // A token connect needs no `join` message — the server rebinds the seat and
+    // pushes the current view (or the lobby's `joined`) on its own.
+    connectGame(makeWsUrl(saved.code, saved.token), msg => {
+      if (msg.t === 'joined') goTo(saved.isHost ? 'hostSetup' : 'lobby');
+    });
+    // A stale token isn't rejected — the server just falls through to the
+    // lobby handler and waits — so failure looks like silence.
+    setTimeout(() => {
+      if (useStore.getState().screen !== 'landing') return;
+      closeConnection();
+      clearSession();
+      setRejoining(false);
+      useStore
+        .getState()
+        .handleServerMsg({ t: 'error', code: 'rejoin_failed', message: 'Could not rejoin.' });
+    }, REJOIN_TIMEOUT_MS);
   }
 
   async function startPractice() {
@@ -62,6 +97,16 @@ export function Landing() {
       </div>
 
       <div className="flex flex-col gap-4 w-full max-w-xs">
+        {saved && (
+          <button
+            type="button"
+            className="w-full py-4 bg-sky-600 hover:bg-sky-500 active:bg-sky-700 rounded-2xl font-bold text-xl text-white shadow-lg disabled:opacity-50"
+            onClick={rejoin}
+            disabled={rejoining}
+          >
+            {rejoining ? t('landing.rejoining') : t('landing.rejoin', { code: saved.code })}
+          </button>
+        )}
         <button
           type="button"
           className="w-full py-4 bg-amber-500 hover:bg-amber-400 active:bg-amber-600 rounded-2xl font-bold text-xl text-white shadow-lg"

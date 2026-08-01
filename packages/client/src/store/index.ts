@@ -9,6 +9,7 @@ import type {
 } from '@sichuan-mahjong/engine';
 import { create } from 'zustand';
 import { type Lang, loadLang, persistLang } from '../i18n/index.js';
+import { clearSession, persistSession } from '../session.js';
 import { closeConnection } from '../ws/client.js';
 
 export type Screen =
@@ -111,21 +112,26 @@ export const useStore = create<GameStore>((set, get) => ({
 
   handleServerMsg: msg => {
     switch (msg.t) {
-      case 'joined':
-        set({
-          token: msg.token,
-          seat: msg.seat,
-          isHost: msg.seat === 0 && get().isHost,
-        });
+      case 'joined': {
+        const isHost = msg.seat === 0 && get().isHost;
+        set({ token: msg.token, seat: msg.seat, isHost });
+        // Survive a refresh: the seat token is the only way back in. (F2)
+        persistSession({ code: get().code, token: msg.token, name: get().playerName, isHost });
         break;
+      }
 
-      case 'lobby':
+      case 'lobby': {
         set({
           lobbyPlayers: msg.players,
           canStart: msg.canStart,
           isHost: msg.isHost,
         });
+        // `joined` arrives before the host flag is known, so re-persist here —
+        // otherwise a refreshed host would come back as an ordinary player. (F2)
+        const { code, token, playerName } = get();
+        if (token) persistSession({ code, token, name: playerName, isHost: msg.isHost });
         break;
+      }
 
       case 'view':
         set({
@@ -182,6 +188,7 @@ export const useStore = create<GameStore>((set, get) => ({
 
   resetSession: () => {
     closeConnection(); // drop the live socket so it doesn't linger/reconnect
+    clearSession();
     set({
       screen: 'landing',
       code: '',

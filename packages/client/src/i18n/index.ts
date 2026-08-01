@@ -32,6 +32,8 @@ const en: Dict = {
   'landing.hostHint':
     'Host runs the server on their machine. Friends connect over LAN or Tailscale.',
   'landing.about': 'About & Credits',
+  'landing.rejoin': 'Rejoin {code}',
+  'landing.rejoining': 'Rejoining…',
 
   'join.title': 'Join a Game',
   'join.code': 'CODE',
@@ -141,6 +143,7 @@ const en: Dict = {
   'err.bad_action': 'That move was not understood',
   'err.forbidden_action': 'That move is not allowed',
   'err.wrong_seat': 'That move is for another seat',
+  'err.rejoin_failed': 'Could not rejoin — that game is over or the server restarted',
 };
 
 const zhHans: Dict = {
@@ -161,6 +164,8 @@ const zhHans: Dict = {
   'landing.watch': '👀 观战',
   'landing.hostHint': '房主在自己的电脑上运行服务器，好友通过局域网或 Tailscale 连接。',
   'landing.about': '关于与致谢',
+  'landing.rejoin': '重新加入 {code}',
+  'landing.rejoining': '重新加入中…',
 
   'join.title': '加入游戏',
   'join.code': '房间码',
@@ -268,6 +273,7 @@ const zhHans: Dict = {
   'err.bad_action': '无法识别该操作',
   'err.forbidden_action': '不允许该操作',
   'err.wrong_seat': '该操作属于其他座位',
+  'err.rejoin_failed': '无法重新加入 — 该对局已结束或服务器已重启',
 };
 
 const zhHant: Dict = {
@@ -288,6 +294,8 @@ const zhHant: Dict = {
   'landing.watch': '👀 觀戰',
   'landing.hostHint': '房主在自己的電腦上執行伺服器，好友透過區域網路或 Tailscale 連線。',
   'landing.about': '關於與致謝',
+  'landing.rejoin': '重新加入 {code}',
+  'landing.rejoining': '重新加入中…',
 
   'join.title': '加入遊戲',
   'join.code': '房間碼',
@@ -395,6 +403,7 @@ const zhHant: Dict = {
   'err.bad_action': '無法識別該操作',
   'err.forbidden_action': '不允許該操作',
   'err.wrong_seat': '該操作屬於其他座位',
+  'err.rejoin_failed': '無法重新加入 — 該對局已結束或伺服器已重啟',
 };
 
 // Exported so a test can assert key parity across languages (missing keys silently

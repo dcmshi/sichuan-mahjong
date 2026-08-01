@@ -8,7 +8,11 @@ export function HostSetup() {
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [inLobby, setInLobby] = useState(false);
+  // A rejoining host (F2) already holds a seat, so skip straight to the lobby
+  // view rather than offering to create a second one.
+  const [inLobby, setInLobby] = useState(
+    () => useStore.getState().seat !== null && useStore.getState().code !== '',
+  );
   const [botLevel, setBotLevel] = useState<'easy' | 'medium'>('easy');
 
   const t = useT();
