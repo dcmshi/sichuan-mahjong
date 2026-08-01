@@ -73,13 +73,17 @@ export function MatchEnd() {
         <p className="text-green-300 text-sm text-center">{t('match.noScores')}</p>
       )}
 
-      <button
-        type="button"
-        className="w-full max-w-sm py-4 min-h-11 bg-amber-500 hover:bg-amber-400 rounded-xl font-bold text-lg mt-auto"
-        onClick={() => resetSession()}
-      >
-        {t('common.backToMenu')}
-      </button>
+      {/* Sticky for the same reason as RoundEnd: a long standings list should
+          never be able to push the only exit off the bottom of the screen. */}
+      <div className="sticky bottom-0 w-full -mx-6 px-6 pt-6 pb-6 mt-auto bg-gradient-to-t from-green-900 via-green-900/90 to-transparent flex flex-col items-center">
+        <button
+          type="button"
+          className="w-full max-w-sm py-4 min-h-11 bg-amber-500 hover:bg-amber-400 rounded-xl font-bold text-lg"
+          onClick={() => resetSession()}
+        >
+          {t('common.backToMenu')}
+        </button>
+      </div>
     </div>
   );
 }
