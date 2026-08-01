@@ -4,7 +4,7 @@ import { homedir, platform } from 'node:os';
 import { join } from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
 import type { GameAction, GameConfig, GameState } from '@sichuan-mahjong/engine';
-import type { RoundResult } from '@sichuan-mahjong/engine';
+import type { FanEntry, RoundResult } from '@sichuan-mahjong/engine';
 
 // `node:sqlite` is loaded lazily (type-only import above; value via require below).
 // A static value import would be evaluated at module load, so a runtime that lacks
@@ -134,6 +134,30 @@ export function deleteLiveRoom(code: string): void {
   database.prepare('DELETE FROM live_rooms WHERE code = ?').run(code);
 }
 
+/**
+ * Replay rows written before `HuRecord.fans` became structured hold display
+ * strings like "AllPungs×2". Parse them back on read rather than migrating the
+ * table: the games table is read-only history, and a migration would rewrite a
+ * user's file to fix something only the replay endpoint ever looks at.
+ */
+export function normalizeFans(fans: unknown): FanEntry[] {
+  if (!Array.isArray(fans)) return [];
+  return fans.map(f => {
+    if (typeof f === 'object' && f !== null && 'fan' in f) return f as FanEntry;
+    const [name, mult] = String(f).split('×');
+    return { fan: name as FanEntry['fan'], count: mult ? Number(mult) : 1 };
+  });
+}
+
+function withNormalizedFans(results: RoundResult): RoundResult {
+  return {
+    ...results,
+    players: results.players.map(p =>
+      p.hu ? { ...p, hu: { ...p.hu, fans: normalizeFans(p.hu.fans) } } : p,
+    ),
+  };
+}
+
 export function getGame(id: number): GameRecord | null {
   const database = getDb();
   if (!database) return null;
@@ -159,6 +183,6 @@ export function getGame(id: number): GameRecord | null {
     startedAt: row.started_at,
     endedAt: row.ended_at,
     actionLog: JSON.parse(row.action_log) as GameAction[],
-    results: JSON.parse(row.results) as RoundResult,
+    results: withNormalizedFans(JSON.parse(row.results) as RoundResult),
   };
 }
