@@ -95,22 +95,77 @@ body {
    separates neighbours, so no divider rule is needed and nothing has to know
    where in the run it sits.
 --------------------------------------------------------------------------- */
-/* Face, then the tile's front edge. Flush tiles with no bevel at all read as a
-   printed sheet rather than as objects lying on a table, so the cell keeps the 3D
-   cue that matters most — the lit face ending in a shaded front edge — and drops
-   only the left/right/top bevels, which are the ones that doubled up when two
-   tiles met. Colours come from the source art: #cddacd is its inner plate,
-   #005f00 its side. */
+/* The tile's body, rebuilt in CSS from the source art's own layers.
+   `scripts/tiles/` measured them: the art nests outline -> #005f00 side ->
+   #cddacd plate -> white -> face gradient, each inset down-and-LEFT, which puts
+   the face 20.6% from the top and 22.5% from the right but only ~5% from the
+   bottom and left. That is a tile lit from the bottom-left, showing its top and
+   right sides — and it is why a bevel on those two sides can't double up between
+   neighbours the way left+right did: a tile's right shoulder meets the next
+   tile's bare face, which is the single shared edge a real run shows.
+
+   Reproducing 20.6%/22.5% literally would hand back the glyph width R7 won, so
+   the same layer *order* is compressed into 5.6% of the height and 7.5% of the
+   width. That fits inside the tightest glyph's own margin — 16% a side and 8.4%
+   top, per scripts/tiles/glyph-boxes.json — so no glyph shrinks to make room.
+
+   The specular is the art's too: a hard dot (path3932), a soft blob (path3882)
+   and a blurred diagonal streak (path3936), all of which the flatten script
+   strips. Measured at inset top 8.8% / right 8.2%, they sit on the tile's
+   top-right shoulder rather than on the face, which is what makes it read as a
+   glazed edge catching light instead of a stain on the ivory.
+
+   A back covers the whole cell (`.tile-glyph.is-back`), so it hides all of this
+   and keeps painting its own edge.
+
+   Six layers, topmost first: the specular's hard dot, its soft blob, its diagonal
+   streak; then the top shoulder — before the right one, so it runs unbroken from
+   corner to corner; then the right shoulder, face outwards through white, plate,
+   side, outline; then the face itself, ending in the front edge. */
 .tile-cell {
-  background: linear-gradient(
+  --tile-face: linear-gradient(
     #fbffec 0%,
-    #eef6e4 76%,
-    #d0e4cc 86%,
+    #eef6e4 74%,
+    #d0e4cc 85%,
     #cddacd 88.5%,
     #0b7a3f 89.5%,
     #06522a 97%,
     #033c1d 100%
   );
+  --tile-top: linear-gradient(
+    to bottom,
+    #06340a 0 1.2%,
+    #005f00 1.2% 3.4%,
+    #cddacd 3.4% 4.5%,
+    #f6faee 4.5% 5.6%,
+    rgba(0, 0, 0, 0) 5.6%
+  );
+  --tile-right: linear-gradient(
+    to right,
+    rgba(0, 0, 0, 0) 92.5%,
+    #f6faee 92.5% 94%,
+    #cddacd 94% 95.6%,
+    #005f00 95.6% 98.6%,
+    #06340a 98.6% 100%
+  );
+  --tile-gloss-dot: radial-gradient(
+    circle at 91.5% 6.5%,
+    rgba(255, 255, 255, 0.98) 0 1.5%,
+    rgba(255, 255, 255, 0) 3%
+  );
+  --tile-gloss-blob: radial-gradient(
+    ellipse 11% 8% at 87% 11%,
+    rgba(255, 255, 255, 0.66),
+    rgba(255, 255, 255, 0) 72%
+  );
+  --tile-gloss-streak: linear-gradient(
+    41deg,
+    rgba(255, 255, 255, 0) 63%,
+    rgba(255, 255, 255, 0.32) 71%,
+    rgba(255, 255, 255, 0) 78%
+  );
+  background: var(--tile-gloss-dot), var(--tile-gloss-blob), var(--tile-gloss-streak),
+    var(--tile-top), var(--tile-right), var(--tile-face);
   border-radius: 0.15rem;
 }
 

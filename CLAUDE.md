@@ -158,6 +158,15 @@ and read as glossier beside the hand. `solo` gives a flat tile with nothing flus
 beside it the lift `.tile-run` would otherwise provide. Only the overlapped
 hand-count stack keeps 3D backs — flat backs overlapped merge into one slab.
 
+**`.tile-cell` rebuilds the art's body in CSS** — the source layers' own order
+(outline → `#005f00` side → `#cddacd` plate → white → face) on the **top and
+right**, plus the art's top-right specular. Those are the two sides the art shows
+(it is lit from the bottom-left) and the two that *can't* double up between flush
+neighbours, unlike left+right. Compressed from the measured 20.6%/22.5% insets to
+5.6%/7.5% so it fits inside the glyphs' existing margins and no glyph shrinks; the
+measurements are in [TODO.md](./TODO.md). Layers are named custom properties
+because Biome reflows a six-layer `background` and eats inline comments.
+
 **Open** (see the last section of [TODO.md](./TODO.md)): a central discard pool is
 held as a fallback, and needs a deliberate reveal for opponents' void suits — A40
 just stopped those leaking through the event log, so they are genuinely private

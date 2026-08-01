@@ -1,5 +1,48 @@
 # TODO
 
+## ✅ The flat cell gets the art's shoulders and its gloss back (2026-08-01)
+
+The flat cell kept only a bottom front edge, so beside the original art it read
+matte and papery — the observation was that the derived bevel "doesn't quite
+match the original svgs", with a request for the gloss plus a 3D edge on the top
+and right.
+
+Measured the original's layers rather than guessing at them
+(`scripts/tiles/`-style, `getBoundingClientRect` through the `g4630` matrix, so
+the nested transform is accounted for):
+
+| Layer | Fill | Inset: top / right / bottom / left |
+|---|---|---|
+| `rect4031` outline | — | 0 / 0 / 0 / 0.1% |
+| `rect3767` side | `#005f00` | 5 / 5.5 / 12.9 / 20.6% |
+| `rect3861` plate | `#cddacd` | 10.8 / 15.4 / 7.1 / 13.4% |
+| `rect3765` | `#fff` | 16.7 / 17.8 / 5.1 / 8.7% |
+| `rect3008` face | `#d0e4cc`→`#fbffec` | 20.6 / 22.5 / 5.1 / 6.3% |
+
+- [x] **The art is lit from the bottom-left**, which is why the face sits 20.6%
+  from the top and 22.5% from the right but ~5% from the bottom and left. That
+  also explains why a bevel on *those two* sides is safe where left+right wasn't:
+  a tile's right shoulder meets its neighbour's bare face, so what shows between
+  them is one shared edge, which is what a real run looks like.
+- [x] **Compressed to 5.6% of the height and 7.5% of the width**, keeping the
+  layer order (outline → side → plate → white → face). Literal 20.6%/22.5% bands
+  would hand back the glyph width R7 won. The compressed bands fit inside the
+  tightest glyph's own margin — 16% a side, 8.4% top, per
+  `scripts/tiles/glyph-boxes.json` — so **no glyph shrank**; verified against the
+  six widest (`pin-3`, `sou-1`, `pin-9`, `pin-7`, `pin-8`, `sou-9`).
+- [x] **The gloss is the art's, restored.** `path3932` (hard dot), `path3882`
+  (soft blob) and `path3936` (blurred diagonal streak, `#fff` → transparent) are
+  all stripped by `flatten-tiles.mjs`. Measured at inset top 8.8% / right 8.2%,
+  they sit on the tile's top-right *shoulder*, not on the ivory — which is what
+  makes the highlight read as a glazed edge catching light rather than a stain.
+- [x] **Layers live in custom properties.** Biome's formatter reflows a six-layer
+  `background` shorthand and drags any inline comment into the middle of a
+  declaration; naming each layer keeps it readable and the comment attached.
+
+Nothing here moves a box, so the tray and overflow guards are unaffected —
+confirmed by the suite plus a settled capture of the well tile, the hand strip,
+and a meld run.
+
 ## ✅ The void declaration shows the whole hand (2026-08-01)
 
 Choosing a void suit is a comparison between three suits, and the screen listed
