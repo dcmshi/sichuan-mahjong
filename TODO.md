@@ -1,5 +1,24 @@
 # TODO
 
+## ✅ Play screen fits a phone again (2026-08-01)
+
+F13 stopped the play screen *clipping* by making it scroll, which is what the
+audit asked for, but it left the board far taller than a phone: measured at
+1098px against an iPhone 14's 664px viewport, so the player's own hand sat
+below the fold from the first turn. Three audit fixes each added height (F3's
+own-discard tray, F15's 40px tap targets, F4's wrapping meld row), but
+measuring the rows showed the dominant cost predated all of them — the middle
+row was 687px, exactly the height of a side opponent's hand rendered as
+thirteen separate tile backs.
+
+- [x] Side opponents now render a three-tile overlapped stack with the hand
+  count beside it (`×13`) instead of one back per tile. Middle row 687px →
+  237px; whole screen 1098px → 664px, measured as the peak across a full round
+  rather than at one moment. The count is also more legible than counting
+  stacked slivers.
+- [x] The event feed is capped at two lines. Anchored to the top of the play
+  well, a third line reached down into the centred "Last discard" label.
+
 ## ✅ Round-end follow-ups (2026-08-01)
 
 The three items left open by the round-end work.

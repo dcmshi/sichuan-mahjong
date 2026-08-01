@@ -268,10 +268,21 @@ function OpponentSide({
         {opp.name}
         {opp.status === 'hu' ? ' 🏆' : ''}
       </div>
-      <div className="flex flex-col gap-0.5">
-        {Array.from({ length: opp.handCount }, (_, i) => (
-          <TileBack key={i} size="sm" />
-        ))}
+      {/* A short overlapped stack plus the count, not one back per tile: thirteen
+          stacked backs stood ~500px tall, which set the height of the whole
+          middle row and pushed the player's own hand off a phone screen. The
+          number is also easier to read than counting slivers. */}
+      <div className="flex items-center gap-1">
+        <div className="flex flex-col">
+          {Array.from({ length: Math.min(opp.handCount, 3) }, (_, i) => (
+            <div key={i} className={i > 0 ? '-mt-7' : ''}>
+              <TileBack size="sm" />
+            </div>
+          ))}
+        </div>
+        {opp.handCount > 0 && (
+          <span className="text-[11px] font-semibold text-green-200">×{opp.handCount}</span>
+        )}
       </div>
       {(opp.discards.length > 0 || opp.pendingFirstDiscard) && (
         <div className="flex flex-wrap gap-0.5 discard-tray">

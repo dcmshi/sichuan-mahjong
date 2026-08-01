@@ -684,7 +684,7 @@ Heuristic, server-side. Each bot subscribes to its own `PlayerView` and emits `G
 
 ## 8. Client UI
 
-Mobile-first. Portrait phone is the design target; tablets and desktop scale up cleanly.
+Mobile-first. Portrait phone is the design target; tablets and desktop scale up cleanly. The play screen is budgeted to fit a phone viewport without scrolling — it renders at ~664px against an iPhone 14's 664px, worst case late in a round with full discard trays.
 
 ### 8.1 Screens
 
@@ -694,9 +694,9 @@ Mobile-first. Portrait phone is the design target; tablets and desktop scale up 
 4. **Lobby (joiner view)** — waiting state, list of players, "Leave" button.
 5. **Game** (the main screen):
    - **Top:** opponent across the table — back-of-tile hand strip, exposed melds, recent discards.
-   - **Left/right:** opponents to either side — vertical hand backs, melds, discards.
+   - **Left/right:** opponents to either side — a short overlapped stack of backs with the hand count beside it, plus melds and discards. One back per tile stood ~500px tall, which set the height of the whole middle row; the count is also easier to read than counting slivers.
    - **Bottom:** your hand (tappable, sorted), your melds, your discard row.
-   - **Center:** the play well — the last discard, highlighted, and the transient event feed (§8.5). Each seat's pond sits with that seat, not in the middle.
+   - **Center:** the play well — the last discard, highlighted, and the transient event feed (§8.5), capped at two lines so it cannot reach the centred label beneath it. Each seat's pond sits with that seat, not in the middle.
    - **Floating action panel:** appears during claim windows. Pung / Kong / Hu / Pass buttons + countdown bar. Big touch targets.
    - **Top bar:** wall-remaining counter, whose turn it is, language toggle, sound and help buttons.
    - **Score strip:** running score deltas per player, directly under the top bar.

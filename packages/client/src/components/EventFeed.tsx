@@ -6,7 +6,9 @@ import { useT } from '../i18n/useT.js';
 import { useStore } from '../store/index.js';
 
 const VISIBLE_MS = 3500;
-const MAX_LINES = 3;
+// Two, not three: the feed is anchored to the top of the play well and a third
+// line reached down into the well's centred "Last discard" label.
+const MAX_LINES = 2;
 
 export type FeedSound = 'discard' | 'claim' | 'kong' | 'hu' | null;
 
