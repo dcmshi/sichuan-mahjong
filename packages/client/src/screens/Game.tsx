@@ -327,14 +327,21 @@ function KongButtons({ view, seat }: { view: PlayerView; seat: number }) {
 // Hu celebration overlay
 // ---------------------------------------------------------------------------
 
-function HuCelebration({ onDone }: { onDone: () => void }) {
+/**
+ * Dismissal used to hang off onAnimationComplete of the *outer* fade-in
+ * (~0.3s), so the overlay started exiting a third of the way through the 0.8s
+ * emoji animation. The owner now times it out instead, which also survives
+ * reduced motion skipping the animation entirely. (F20)
+ */
+const HU_CELEBRATION_MS = 1200;
+
+function HuCelebration() {
   return (
     <motion.div
       className="fixed inset-0 z-30 flex items-center justify-center pointer-events-none"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      onAnimationComplete={onDone}
     >
       <motion.div
         initial={{ scale: 0.2, rotate: -20 }}
@@ -384,6 +391,12 @@ function PlayPhase({ view }: { view: PlayerView }) {
       return [...kept, ...added];
     });
   }, [handKey]);
+
+  useEffect(() => {
+    if (!showHuCelebration) return;
+    const id = setTimeout(() => setShowHuCelebration(false), HU_CELEBRATION_MS);
+    return () => clearTimeout(id);
+  }, [showHuCelebration]);
 
   const isMyTurn = view.turn === seat && view.phase === 'play' && view.claimDeadline === null;
   const canDiscard = isMyTurn && view.yourLegalActions.some(a => a.t === 'discard');
@@ -456,9 +469,7 @@ function PlayPhase({ view }: { view: PlayerView }) {
       </AnimatePresence>
 
       {/* Hu celebration */}
-      <AnimatePresence>
-        {showHuCelebration && <HuCelebration onDone={() => setShowHuCelebration(false)} />}
-      </AnimatePresence>
+      <AnimatePresence>{showHuCelebration && <HuCelebration />}</AnimatePresence>
 
       {/* How to Play overlay */}
       {showHowToPlay && <HowToPlay onClose={() => setShowHowToPlay(false)} />}
