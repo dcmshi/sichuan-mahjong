@@ -430,7 +430,10 @@ export class GameRoom {
       snap.slots.map(s => ({ ...s, connected: false })),
       snap.state.config,
     );
-    room.state = snap.state;
+    // Snapshots written before the payment ledger existed have no `ledger`;
+    // without this the first clone() spreads undefined. Same defence as
+    // `roundIndex` below.
+    room.state = { ...snap.state, ledger: snap.state.ledger ?? [] };
     room.isHumanSeat = [...snap.isHumanSeat];
     room.roundIndex = snap.roundIndex ?? 0;
     room.started = snap.state.phase !== undefined;

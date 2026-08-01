@@ -930,6 +930,23 @@ describe('Round-end reveals', () => {
     const roundEnd = socket.sent.find(m => m.t === 'roundEnd');
     expect(roundEnd, 'spectator should be handed the finished round').toBeDefined();
   });
+
+  it('restores a snapshot written before the ledger existed', async () => {
+    const { GameRoom } = await import('../src/room.js');
+    const room = new GameRoom('OLD1', [
+      { name: 'B0', isBot: true, connected: false },
+      { name: 'B1', isBot: true, connected: false },
+      { name: 'B2', isBot: true, connected: false },
+      { name: 'B3', isBot: true, connected: false },
+    ]);
+    room.start();
+    const snap = JSON.parse(JSON.stringify(room.serialize()));
+    snap.state.ledger = undefined;
+
+    const restored = GameRoom.restore(snap);
+    expect(Array.isArray(restored.getState().ledger)).toBe(true);
+    expect(() => restored.resumeAfterRestore()).not.toThrow();
+  });
 });
 
 // ---------------------------------------------------------------------------
