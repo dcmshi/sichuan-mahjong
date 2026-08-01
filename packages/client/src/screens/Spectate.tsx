@@ -1,6 +1,7 @@
 import type { SpectatorView } from '@sichuan-mahjong/engine';
 import { motion } from 'framer-motion';
 import { MeldDisplay } from '../components/MeldDisplay.js';
+import { RoundEndRow } from '../components/RoundEndRow.js';
 import { Tile, TileBack } from '../components/Tile.js';
 import { useT } from '../i18n/useT.js';
 import { useStore } from '../store/index.js';
@@ -73,6 +74,7 @@ export function Spectate() {
   const t = useT();
   const view = useStore(s => s.spectatorView);
   const code = useStore(s => s.code);
+  const roundResult = useStore(s => s.roundResult);
   const resetSession = useStore(s => s.resetSession);
 
   if (!view) {
@@ -117,6 +119,22 @@ export function Spectate() {
           >
             <Tile id={view.lastDiscard.tile} lastDiscard size="md" />
           </motion.div>
+        </div>
+      )}
+
+      {view.phase === 'roundEnd' && roundResult && (
+        <div className="flex flex-col gap-2 px-2 pb-2">
+          {[...roundResult.players]
+            .sort((a, b) => b.scoreDelta - a.scoreDelta)
+            .map((p, rank) => (
+              <RoundEndRow
+                key={p.seat}
+                player={p}
+                rank={rank}
+                youSeat={null}
+                defaultOpen={p.hu !== null}
+              />
+            ))}
         </div>
       )}
 
