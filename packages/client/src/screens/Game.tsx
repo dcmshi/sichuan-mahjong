@@ -499,18 +499,19 @@ function PlayPhase({ view }: { view: PlayerView }) {
         </div>
       </div>
 
-      {/* Score deltas */}
-      <div className="flex justify-around px-2 py-0.5 text-xs bg-black/20">
-        <span className="text-white/60">
-          {view.you.name}:{' '}
+      {/* Score deltas. Names are truncated by CSS, not sliced: slice(0, 4) turned
+          "Bot 2"/"Bot 3"/"Bot 4" into three identical "Bot" labels. (F8) */}
+      <div className="flex justify-around gap-2 px-2 py-0.5 text-xs bg-black/20">
+        <span className="text-white/60 flex gap-1 min-w-0">
+          <span className="truncate">{view.you.name}</span>
           <span className={view.you.scoreDelta >= 0 ? 'text-green-400' : 'text-red-400'}>
             {view.you.scoreDelta > 0 ? '+' : ''}
             {view.you.scoreDelta}
           </span>
         </span>
         {view.others.map(o => (
-          <span key={o.seat} className="text-white/60">
-            {o.name.slice(0, 4)}:{' '}
+          <span key={o.seat} className="text-white/60 flex gap-1 min-w-0">
+            <span className="truncate">{o.name}</span>
             <span className={o.scoreDelta >= 0 ? 'text-green-400' : 'text-red-400'}>
               {o.scoreDelta > 0 ? '+' : ''}
               {o.scoreDelta}
