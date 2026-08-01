@@ -91,8 +91,17 @@ test('two-round match vs bots, then end match', async ({ page }) => {
   await expect(page.locator('text=Match Total')).toBeVisible({ timeout: 5_000 });
   await page.screenshot({ path: 'test-results/match-round2-end.png' });
 
-  // ── End Match → back to landing ──
+  // ── End Match → final standings → back to landing (F9) ──
   await page.click('text=End Match');
+  await page.waitForFunction(
+    () => (window as unknown as { __e2e: E2E }).__e2e.getScreen() === 'matchEnd',
+    null,
+    { timeout: 10_000 },
+  );
+  await expect(page.locator('text=Match Over')).toBeVisible({ timeout: 5_000 });
+  await page.screenshot({ path: 'test-results/match-end.png' });
+
+  await page.click('text=Back to menu');
   await page.waitForFunction(
     () => (window as unknown as { __e2e: E2E }).__e2e.getScreen() === 'landing',
     null,
