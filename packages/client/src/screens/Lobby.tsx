@@ -7,6 +7,7 @@ export function Lobby() {
   const lobbyPlayers = useStore(s => s.lobbyPlayers);
   const seat = useStore(s => s.seat);
   const reconnecting = useStore(s => s.reconnecting);
+  const resetSession = useStore(s => s.resetSession);
 
   return (
     <div className="min-h-screen bg-green-900 flex flex-col items-center justify-center gap-6 p-6 text-white">
@@ -43,6 +44,15 @@ export function Lobby() {
       {reconnecting && (
         <p className="text-amber-400 text-sm animate-pulse">{t('common.reconnecting')}</p>
       )}
+
+      {/* Abandoning a lobby used to mean closing the tab. (F10) */}
+      <button
+        type="button"
+        className="py-2 px-4 min-h-11 text-white/60 hover:text-white"
+        onClick={() => resetSession()}
+      >
+        {t('nav.leave')}
+      </button>
     </div>
   );
 }

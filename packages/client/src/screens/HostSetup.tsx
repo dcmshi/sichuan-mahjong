@@ -22,6 +22,7 @@ export function HostSetup() {
   const canStart = useStore(s => s.canStart);
   const reconnecting = useStore(s => s.reconnecting);
   const goTo = useStore(s => s.goTo);
+  const resetSession = useStore(s => s.resetSession);
 
   async function createAndJoin() {
     if (!name.trim()) {
@@ -198,6 +199,16 @@ export function HostSetup() {
         disabled={!canStart}
       >
         {canStart ? t('host.start') : t('host.waitingPlayers')}
+      </button>
+
+      {/* Cancelling a hosted lobby used to require closing the tab, leaving the
+          host's socket open until then. (F10) */}
+      <button
+        type="button"
+        className="w-full py-2 min-h-11 text-white/60 hover:text-white"
+        onClick={() => resetSession()}
+      >
+        {t('nav.leave')}
       </button>
 
       {reconnecting && (
