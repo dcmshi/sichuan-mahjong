@@ -13,6 +13,7 @@ import type {
   GameState,
   HuRecord,
   KongPaymentEntry,
+  LedgerEntry,
   PendingVoid,
   Seat,
 } from './state.js';
@@ -140,7 +141,65 @@ function fail(reason: RuleViolation): ActionResult {
   return { ok: false, reason };
 }
 
+/**
+ * Ledger entries for one action's events. Derived from the events rather than
+ * pushed at each of the ~14 payment sites, so the two can never drift: if a
+ * payment is emitted, it is logged.
+ *
+ * Every payment event uses the same direction convention — `from` pays `to`.
+ * The two void penalties are pure deductions into `penaltyPot`, so they carry
+ * no payee.
+ */
+export function ledgerEntriesFor(events: GameEvent[]): LedgerEntry[] {
+  const out: LedgerEntry[] = [];
+  for (const e of events) {
+    switch (e.e) {
+      case 'huPayment':
+        out.push({ reason: 'hu', from: e.from, to: e.to, amount: e.amount, detail: null });
+        break;
+      case 'kongPayment':
+        out.push({ reason: 'kong', from: e.from, to: e.to, amount: e.amount, detail: e.subtype });
+        break;
+      case 'kongRefund':
+        out.push({
+          reason: 'kongRefund',
+          from: e.from,
+          to: e.to,
+          amount: e.amount,
+          detail: e.reason,
+        });
+        break;
+      case 'buTingPayout':
+        out.push({ reason: 'buTing', from: e.from, to: e.to, amount: e.amount, detail: null });
+        break;
+      case 'flowerPig':
+        out.push({ reason: 'flowerPig', from: e.from, to: e.to, amount: e.amount, detail: null });
+        break;
+      case 'falseHuPayment':
+        out.push({ reason: 'falseHu', from: e.from, to: e.to, amount: e.amount, detail: null });
+        break;
+      case 'voidPenalty':
+        out.push({ reason: 'voidPenalty', from: e.seat, to: null, amount: e.amount, detail: null });
+        break;
+      case 'voidMeldPenalty':
+        out.push({
+          reason: 'voidMeldPenalty',
+          from: e.seat,
+          to: null,
+          amount: e.amount,
+          detail: null,
+        });
+        break;
+      default:
+        break;
+    }
+  }
+  return out;
+}
+
 function ok(state: GameState, events: GameEvent[]): ActionResult {
+  const entries = ledgerEntriesFor(events);
+  if (entries.length > 0) state.ledger = [...state.ledger, ...entries];
   return { ok: true, state, events };
 }
 
