@@ -905,6 +905,31 @@ describe('Round-end reveals', () => {
     const all = new Set(room.getState().ledger.map(e => JSON.stringify(e)));
     for (const e of all) expect(seen.has(e)).toBe(true);
   });
+
+  /**
+   * No FakeSocket test double exists in this file either — the closest is the
+   * `recordingWs` factory scoped inside the "Malformed input" describe below,
+   * which records to an external sink array rather than exposing `.sent` on
+   * itself. This is that same shape (readyState/OPEN/send), just as a small
+   * class so callers can read `socket.sent` directly.
+   */
+  class FakeSocket {
+    readyState = 1;
+    readonly OPEN = 1;
+    readonly sent: ServerMsg[] = [];
+    send(data: string): void {
+      this.sent.push(JSON.parse(data) as ServerMsg);
+    }
+  }
+
+  it('a spectator joining at round end receives the round result', async () => {
+    const room = await playRoundToEnd();
+    const socket = new FakeSocket();
+    room.addSpectator(socket as unknown as WebSocket);
+
+    const roundEnd = socket.sent.find(m => m.t === 'roundEnd');
+    expect(roundEnd, 'spectator should be handed the finished round').toBeDefined();
+  });
 });
 
 // ---------------------------------------------------------------------------

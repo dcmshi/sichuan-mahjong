@@ -269,8 +269,12 @@ export class GameRoom {
   /** Attach a read-only spectator. They receive hand-hiding spectate views. */
   addSpectator(ws: WebSocket): void {
     this.spectators.add(ws);
-    if (this.started) {
-      this.send(ws, { t: 'spectate', view: projectSpectatorView(this.state), events: [] });
+    if (!this.started) return;
+    this.send(ws, { t: 'spectate', view: projectSpectatorView(this.state), events: [] });
+    // Mirrors the A9 player path: a client arriving at round end is handed the
+    // finished round directly rather than waiting for a broadcast that already happened.
+    if (this.state.phase === 'roundEnd') {
+      this.send(ws, { t: 'roundEnd', results: this.buildRoundResult() });
     }
   }
 
@@ -666,6 +670,9 @@ export class GameRoom {
   private broadcastRoundEnd(): void {
     const results = this.buildRoundResult();
     for (const [, ws] of this.connections) {
+      this.send(ws, { t: 'roundEnd', results });
+    }
+    for (const ws of this.spectators) {
       this.send(ws, { t: 'roundEnd', results });
     }
 
