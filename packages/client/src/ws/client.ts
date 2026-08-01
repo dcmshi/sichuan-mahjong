@@ -2,11 +2,18 @@ import type { ClientMsg, ServerMsg } from '@sichuan-mahjong/engine';
 import { useStore } from '../store/index.js';
 
 const BACKOFF_MS = [500, 1000, 2000, 4000, 10_000];
+/**
+ * Stop after this many consecutive failed reconnects (~47s of backoff). An
+ * expired or invalid token fails the same way every time, and retrying it
+ * forever left the UI on "Reconnecting…" with no way out. (F6)
+ */
+const MAX_RETRIES = 8;
 
 type Callbacks = {
   onMessage: (msg: ServerMsg) => void;
   onConnect: () => void;
   onDisconnect: () => void;
+  onGiveUp: () => void;
 };
 
 export class WsClient {
@@ -71,6 +78,12 @@ export class WsClient {
     ws.onclose = () => {
       if (this.closed) return;
       this.cbs.onDisconnect();
+      if (this.retries >= MAX_RETRIES) {
+        this.closed = true;
+        this.ws = null;
+        this.cbs.onGiveUp();
+        return;
+      }
       const delay = BACKOFF_MS[Math.min(this.retries, BACKOFF_MS.length - 1)] ?? 10_000;
       this.retries++;
       this.timer = setTimeout(() => this.connect(), delay);
@@ -128,6 +141,7 @@ export function connectGame(
     },
     onConnect: () => store.setConnected(true),
     onDisconnect: () => store.setReconnecting(true),
+    onGiveUp: () => store.setConnectionLost(),
   });
   setWsClient(client);
   return client;

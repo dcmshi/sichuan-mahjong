@@ -56,6 +56,8 @@ export interface GameStore {
   // Connection status
   connected: boolean;
   reconnecting: boolean;
+  /** Set once the socket has stopped retrying — the player needs a way out. (F6) */
+  connectionLost: boolean;
 
   // Last server rejection. `seq` increments on every arrival so an identical
   // error repeated back-to-back still re-triggers the toast. (F1)
@@ -73,6 +75,7 @@ export interface GameStore {
   setCode: (c: string) => void;
   setConnected: (v: boolean) => void;
   setReconnecting: (v: boolean) => void;
+  setConnectionLost: () => void;
   handleServerMsg: (msg: ServerMsg) => void;
   clearError: () => void;
   resetSession: () => void;
@@ -95,6 +98,7 @@ export const useStore = create<GameStore>((set, get) => ({
   countedRounds: [],
   connected: false,
   reconnecting: false,
+  connectionLost: false,
   lastError: null,
   soundEnabled: true,
   lang: loadLang(),
@@ -106,8 +110,9 @@ export const useStore = create<GameStore>((set, get) => ({
   goTo: screen => set({ screen }),
   setPlayerName: playerName => set({ playerName }),
   setCode: code => set({ code }),
-  setConnected: connected => set({ connected, reconnecting: false }),
+  setConnected: connected => set({ connected, reconnecting: false, connectionLost: false }),
   setReconnecting: reconnecting => set({ reconnecting }),
+  setConnectionLost: () => set({ connectionLost: true, reconnecting: false, connected: false }),
   toggleSound: () => set(s => ({ soundEnabled: !s.soundEnabled })),
 
   handleServerMsg: msg => {
@@ -205,6 +210,7 @@ export const useStore = create<GameStore>((set, get) => ({
       countedRounds: [],
       connected: false,
       reconnecting: false,
+      connectionLost: false,
       lastError: null,
     });
   },

@@ -21,6 +21,8 @@ const en: Dict = {
   'common.you': '(you)',
   'common.reconnecting': 'Reconnecting…',
   'common.waitingPlayers': 'Waiting for other players…',
+  'common.connectionLost': 'Connection lost — could not reach the host.',
+  'common.backToMenu': 'Back to menu',
 
   'landing.host': 'Host a Game',
   'landing.join': 'Join a Game',
@@ -155,6 +157,8 @@ const zhHans: Dict = {
   'common.you': '（你）',
   'common.reconnecting': '重新连接中…',
   'common.waitingPlayers': '等待其他玩家…',
+  'common.connectionLost': '连接已断开 — 无法连上房主。',
+  'common.backToMenu': '返回主菜单',
 
   'landing.host': '创建房间',
   'landing.join': '加入游戏',
@@ -286,6 +290,8 @@ const zhHant: Dict = {
   'common.you': '（你）',
   'common.reconnecting': '重新連線中…',
   'common.waitingPlayers': '等待其他玩家…',
+  'common.connectionLost': '連線已中斷 — 無法連上房主。',
+  'common.backToMenu': '返回主選單',
 
   'landing.host': '建立房間',
   'landing.join': '加入遊戲',

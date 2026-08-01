@@ -1,3 +1,4 @@
+import { ConnectionLost } from './components/ConnectionLost.js';
 import { ErrorToast } from './components/ErrorToast.js';
 import { About } from './screens/About.js';
 import { Game } from './screens/Game.js';
@@ -40,6 +41,7 @@ export function App() {
     <>
       <CurrentScreen />
       <ErrorToast />
+      <ConnectionLost />
     </>
   );
 }
