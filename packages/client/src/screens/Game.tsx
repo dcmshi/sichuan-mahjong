@@ -3,6 +3,7 @@ import type { PlayerView, Suit, TileId } from '@sichuan-mahjong/engine';
 import { AnimatePresence, Reorder, motion } from 'framer-motion';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ClaimPanel } from '../components/ClaimPanel.js';
+import { EventFeed } from '../components/EventFeed.js';
 import { HowToPlay } from '../components/HowToPlay.js';
 import { LangSwitch } from '../components/LangSwitch.js';
 import { MeldDisplay } from '../components/MeldDisplay.js';
@@ -459,6 +460,9 @@ function PlayPhase({ view }: { view: PlayerView }) {
 
       {/* How to Play overlay */}
       {showHowToPlay && <HowToPlay onClose={() => setShowHowToPlay(false)} />}
+
+      {/* What just happened, plus sound for opponents' moves */}
+      <EventFeed view={view} />
 
       {/* Top bar */}
       <div className="flex items-center justify-between px-3 py-1.5 bg-black/30 text-xs">

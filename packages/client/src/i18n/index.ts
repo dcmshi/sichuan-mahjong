@@ -118,6 +118,10 @@ const en: Dict = {
   'claim.pung': 'Pung',
   'claim.pass': 'Pass',
 
+  'event.pung': '{name} ponged',
+  'event.kong': '{name} konged',
+  'event.hu': '{name} declared Hu!',
+
   'end.title': 'Round End',
   'end.thisRound': 'This Round',
   'end.matchTotal': 'Match Total',
@@ -253,6 +257,10 @@ const zhHans: Dict = {
   'claim.pung': '碰',
   'claim.pass': '过',
 
+  'event.pung': '{name} 碰了',
+  'event.kong': '{name} 杠了',
+  'event.hu': '{name} 胡了！',
+
   'end.title': '本局结束',
   'end.thisRound': '本局',
   'end.matchTotal': '总分',
@@ -385,6 +393,10 @@ const zhHant: Dict = {
   'claim.kong': '槓',
   'claim.pung': '碰',
   'claim.pass': '過',
+
+  'event.pung': '{name} 碰了',
+  'event.kong': '{name} 槓了',
+  'event.hu': '{name} 胡了！',
 
   'end.title': '本局結束',
   'end.thisRound': '本局',
