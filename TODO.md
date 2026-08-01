@@ -1,5 +1,38 @@
 # TODO
 
+## ✅ Round-end follow-ups (2026-08-01)
+
+The three items left open by the round-end work.
+
+- [x] **Ledger qualifiers were untranslated.** A line's qualifier — the kong
+  subtype or the reason a kong payment was refunded — was interpolated straight
+  from the engine identifier, so a Chinese UI read `Kong (exposed)` and
+  `Kong refund (wallEnd)`. `ledgerLines` now emits a `ledgerDetail.*` key, with
+  all seven values defined in three languages and a test asserting each resolves.
+
+- [x] **Restore trusted the persisted shape (the real bug behind the `ledger`
+  fix).** `GameRoom.restore` assigned `snap.state` verbatim, so any field added
+  or renamed since a snapshot was written came back `undefined`. Probing every
+  field of a real snapshot: two throw on restore, seventeen silently corrupt the
+  projected view. Defaulting per field was the wrong shape of fix — a missing
+  `hand` or `turn` cannot be invented, and `pendingFirstDiscard` defaulting to
+  null would silently discard a real tile. Snapshots are now validated against
+  the keys of a freshly created game, so the required set cannot drift as
+  `GameState` grows, and a failing row is dropped rather than left to error on
+  every boot — which is what produced the repeating restore errors in the logs.
+  An empty `ledger` remains the one safe default. Tokens now import only after
+  the room is known good, instead of leaking for a room that never materialised.
+
+- [x] **A38 was flaky because it asserted a proxy.** It checked that seat 0's
+  pond was non-empty to mean "the takeover bot played the turn". Another seat
+  may legally pung that discard, which removes the tile from the pond, so the
+  assertion failed on ~5% of deals while the room behaved correctly every time.
+  Characterised over 300 seeded runs — 15 failures, every one with
+  `anyClaimsHappened` and a pung on another seat. It now asserts that seat 0's
+  hand shrank and the turn moved on: 0 failures in 300. The earlier guess that a
+  parallel test file caused it was wrong; every `GameRoom` seeds itself with a
+  `randomUUID`, so which deals hit it simply varied per run.
+
 ## ✅ Round-end hand reveals and score breakdown (2026-07-31)
 
 Closes the one open deferral, [ARCHITECTURE.md §12.11](./ARCHITECTURE.md#12-open-questions--explicit-deferrals).
@@ -53,15 +86,7 @@ breakdown both needed the server to send more.
   a stale `RoundResult` helper in `store.test.ts` produced no error. Now
   `["src", "tests"]`.
 
-**Noted, not filed:** `LedgerEntry.detail` (kong subtype, refund reason) renders
-as the raw English identifier — `Kong (exposed)`, `Kong refund (wallEnd)` — in
-all three languages. The reason itself is localized; only the qualifier is not.
-Also, two more instances of the same bug class as the ledger restore bug exist
-in the restore path and were left alone: `pendingFirstDiscard` (renamed in A35)
-is compared `!== null` at `actions.ts:1068` and `views.ts:116`/`243`, so a
-pre-A35 snapshot restores as `undefined`, reads as "has a pending tile", and
-`views.ts:116` then offers only `flipFirstDiscard` — a soft-locked seat; and
-`drewThisTurn` (added A7) restores falsy, which fails safe.
+**Follow-ups, all since resolved (2026-08-01) — see the section above.**
 
 ## 🔍 Frontend & design audit — seventh pass (2026-07-31)
 

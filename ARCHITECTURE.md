@@ -873,7 +873,8 @@ After step 4, every future game uses the same URL — no per-session re-sharing.
 - Integration tests with fake WebSocket clients.
 - **Bot-vs-bot smoke:** 100 full games with 4 easy bots (plus 30 with medium bots). Assert no crashes, no rule violations rejected mid-game, payment-matrix balance for every game, exposed pungs actually form (A13), and — crucially — that wins come from players who separated a face-down first discard, not only from the rare indicator user. A bare "some Hu happened" assertion is what let A35 hide behind indicator users through five audit passes.
 - Tailscale detection mock tests (unit-level): given mocked `tailscale status --json` outputs, verify URL generation.
-- Round-end reveals: `buildRoundResult` carries hands, melds, ready state and a per-seat ledger; a spectator joining at round end is handed the result; and a snapshot written before `GameState.ledger` existed restores with an empty ledger rather than an undefined one (the same defence as `roundIndex`).
+- Round-end reveals: `buildRoundResult` carries hands, melds, ready state and a per-seat ledger, and a spectator joining at round end is handed the result.
+- Snapshot validation: `validateRoomSnapshot` names every field a persisted snapshot is missing, checked against the keys of a freshly created game so the required set cannot drift. `restoreRoomsFromDisk` drops an incompatible row rather than half-restoring it — `restore` used to assign the persisted state verbatim, and of the fields that could go missing, two throw and seventeen silently corrupt the projected view.
 - Replay back-compat lives in its own file because `server.test.ts` mocks `src/persistence.js` wholesale.
 
 ### 11.3 Client
