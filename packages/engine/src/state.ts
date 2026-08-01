@@ -61,7 +61,7 @@ export type HuRecord = {
     | 'underTheSea'
     | 'robbingTheKong'
     | 'normal';
-  fans: string[];
+  fans: import('./scoring.js').FanEntry[];
   handValue: number;
   winningTile: TileId;
   byDiscard: boolean;

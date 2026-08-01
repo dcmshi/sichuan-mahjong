@@ -652,7 +652,7 @@ function applyHuResolution(
     const record: HuRecord = {
       seat: winner,
       subtype,
-      fans: score.fans.map(f => `${f.fan}${f.count > 1 ? `×${f.count}` : ''}`),
+      fans: score.fans,
       handValue: score.handValue,
       winningTile: actualWinTile,
       byDiscard: true,
@@ -1491,7 +1491,7 @@ function applyDeclareHuOnDraw(
   const record: HuRecord = {
     seat,
     subtype,
-    fans: score.fans.map(f => `${f.fan}${f.count > 1 ? `×${f.count}` : ''}`),
+    fans: score.fans,
     handValue: score.handValue,
     winningTile,
     byDiscard: false,
@@ -1537,7 +1537,7 @@ function applyDeclareHeavenly(
   const record: HuRecord = {
     seat,
     subtype: 'heavenly',
-    fans: score.fans.map(f => `${f.fan}${f.count > 1 ? `×${f.count}` : ''}`),
+    fans: score.fans,
     handValue: score.handValue,
     winningTile,
     byDiscard: false,

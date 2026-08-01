@@ -99,3 +99,20 @@ describe('ledger balance property', () => {
     );
   });
 });
+
+describe('HuRecord fans', () => {
+  it('carries structured entries, not pre-formatted English', () => {
+    // 'fans-structured' (the seed used in the brief) ends in a wall-exhaustion
+    // draw with this bot strategy — no player ever reaches `hu`. 'phase4-tiles'
+    // is confirmed (by phase4.test.ts's own 'tile conservation' test) to produce
+    // a winner, so it's used here instead.
+    const final = runFullGame('phase4-tiles');
+    const winner = final.players.find(p => p.hu !== null);
+    expect(winner, 'seeded game should produce a winner').toBeDefined();
+    for (const entry of winner!.hu!.fans) {
+      expect(typeof entry.fan).toBe('string');
+      expect(typeof entry.count).toBe('number');
+      expect(entry.count).toBeGreaterThanOrEqual(1);
+    }
+  });
+});

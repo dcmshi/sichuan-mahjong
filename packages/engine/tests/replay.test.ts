@@ -150,9 +150,9 @@ describe('Replay corpus — structural fans via declareHuOnDraw', () => {
     const { events, state: s } = huOk(state);
     const rec = huRecord(events);
 
-    expect(rec.fans).toContain('AllPungs');
-    expect(rec.fans).not.toContain('GoldenWait');
-    expect(rec.fans).not.toContain('FullFlush');
+    expect(rec.fans.some(f => f.fan === 'AllPungs')).toBe(true);
+    expect(rec.fans.some(f => f.fan === 'GoldenWait')).toBe(false);
+    expect(rec.fans.some(f => f.fan === 'FullFlush')).toBe(false);
     expect(rec.handValue).toBe(2); // 1 fan → 2^1
 
     // Self-draw: each of 3 opponents pays (handValue + 1) = 3
@@ -186,8 +186,8 @@ describe('Replay corpus — structural fans via declareHuOnDraw', () => {
     const { events, state: s } = huOk(state);
     const rec = huRecord(events);
 
-    expect(rec.fans).toContain('AllPungs');
-    expect(rec.fans).toContain('GoldenWait');
+    expect(rec.fans.some(f => f.fan === 'AllPungs')).toBe(true);
+    expect(rec.fans.some(f => f.fan === 'GoldenWait')).toBe(true);
     expect(rec.handValue).toBe(4); // 2 fan → 2^2
 
     const amounts = paymentAmounts(events, 0);
@@ -219,8 +219,8 @@ describe('Replay corpus — structural fans via declareHuOnDraw', () => {
     const { events, state: s } = huOk(state);
     const rec = huRecord(events);
 
-    expect(rec.fans).toContain('AllPungs');
-    expect(rec.fans).toContain('FullFlush');
+    expect(rec.fans.some(f => f.fan === 'AllPungs')).toBe(true);
+    expect(rec.fans.some(f => f.fan === 'FullFlush')).toBe(true);
     expect(rec.handValue).toBe(8); // capped at 3 fan → 2^3
 
     const amounts = paymentAmounts(events, 0);
@@ -252,8 +252,8 @@ describe('Replay corpus — structural fans via declareHuOnDraw', () => {
     const { events, state: s } = huOk(state);
     const rec = huRecord(events);
 
-    expect(rec.fans).toContain('SevenPairs');
-    expect(rec.fans).not.toContain('AllPungs');
+    expect(rec.fans.some(f => f.fan === 'SevenPairs')).toBe(true);
+    expect(rec.fans.some(f => f.fan === 'AllPungs')).toBe(false);
     expect(rec.handValue).toBe(4); // 2 fan
 
     const amounts = paymentAmounts(events, 0);
@@ -285,8 +285,8 @@ describe('Replay corpus — structural fans via declareHuOnDraw', () => {
     const { events } = huOk(state);
     const rec = huRecord(events);
 
-    expect(rec.fans).toContain('SevenPairs');
-    expect(rec.fans).toContain('FullFlush');
+    expect(rec.fans.some(f => f.fan === 'SevenPairs')).toBe(true);
+    expect(rec.fans.some(f => f.fan === 'FullFlush')).toBe(true);
     expect(rec.handValue).toBe(8); // 4 fan capped at 3 → 2^3
   });
 
@@ -314,8 +314,8 @@ describe('Replay corpus — structural fans via declareHuOnDraw', () => {
     const { events } = huOk(state);
     const rec = huRecord(events);
 
-    expect(rec.fans).toContain('SevenPairs');
-    expect(rec.fans).toContain('Root');
+    expect(rec.fans.some(f => f.fan === 'SevenPairs')).toBe(true);
+    expect(rec.fans.some(f => f.fan === 'Root')).toBe(true);
     expect(rec.handValue).toBe(8); // SevenPairs(2) + Root(1) = 3 fan → 2^3
   });
 
@@ -352,9 +352,9 @@ describe('Replay corpus — structural fans via declareHuOnDraw', () => {
     const { events } = huOk(state);
     const rec = huRecord(events);
 
-    expect(rec.fans).toContain('Kong');
-    expect(rec.fans).toContain('AllPungs');
-    expect(rec.fans).not.toContain('FullFlush');
+    expect(rec.fans.some(f => f.fan === 'Kong')).toBe(true);
+    expect(rec.fans.some(f => f.fan === 'AllPungs')).toBe(true);
+    expect(rec.fans.some(f => f.fan === 'FullFlush')).toBe(false);
     expect(rec.handValue).toBe(4); // Kong(1) + AllPungs(1) = 2 fan → 2^2
   });
 });
@@ -390,8 +390,8 @@ describe('Replay corpus — contextual fans', () => {
     const { events } = huOk(state);
     const rec = huRecord(events);
 
-    expect(rec.fans).toContain('WinAfterKong');
-    expect(rec.fans).toContain('AllPungs');
+    expect(rec.fans.some(f => f.fan === 'WinAfterKong')).toBe(true);
+    expect(rec.fans.some(f => f.fan === 'AllPungs')).toBe(true);
     expect(rec.handValue).toBe(4); // WinAfterKong(1) + AllPungs(1) = 2 fan
   });
 
@@ -423,8 +423,8 @@ describe('Replay corpus — contextual fans', () => {
     const { events } = huOk(state);
     const rec = huRecord(events);
 
-    expect(rec.fans).toContain('UnderTheSea');
-    expect(rec.fans).toContain('AllPungs');
+    expect(rec.fans.some(f => f.fan === 'UnderTheSea')).toBe(true);
+    expect(rec.fans.some(f => f.fan === 'AllPungs')).toBe(true);
     expect(rec.handValue).toBe(4); // UnderTheSea(1) + AllPungs(1) = 2 fan
   });
 
@@ -469,9 +469,9 @@ describe('Replay corpus — contextual fans', () => {
     const events = (r as { ok: true; events: GameEvent[] }).events;
 
     const rec = huRecord(events);
-    expect(rec.fans).toContain('ShootAfterKong');
-    expect(rec.fans).toContain('AllPungs');
-    expect(rec.fans).toContain('GoldenWait');
+    expect(rec.fans.some(f => f.fan === 'ShootAfterKong')).toBe(true);
+    expect(rec.fans.some(f => f.fan === 'AllPungs')).toBe(true);
+    expect(rec.fans.some(f => f.fan === 'GoldenWait')).toBe(true);
     expect(rec.handValue).toBe(8); // ShootAfterKong(1) + AllPungs(1) + GoldenWait(1) = 3 fan
 
     // Discard Hu: only discarder (P0) pays
@@ -544,8 +544,8 @@ describe('Replay corpus — contextual fans', () => {
     const events = (r as { ok: true; events: GameEvent[] }).events;
 
     const rec = huRecord(events);
-    expect(rec.fans).toContain('RobbingTheKong');
-    expect(rec.fans).not.toContain('AllPungs'); // incompatible with RobbingTheKong
+    expect(rec.fans.some(f => f.fan === 'RobbingTheKong')).toBe(true);
+    expect(rec.fans.some(f => f.fan === 'AllPungs')).toBe(false); // incompatible with RobbingTheKong
     expect(rec.handValue).toBe(2); // RobbingTheKong(1) = 1 fan = 2 pts
   });
 });

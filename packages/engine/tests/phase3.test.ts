@@ -1680,7 +1680,7 @@ describe('Phase 3 — dealer turn-1 declareHuOnDraw picks the best winning tile'
 
     const after = applyOk(s, { t: 'declareHuOnDraw', seat: 0 });
     const hu = after.players[0]!.hu!;
-    expect(hu.fans).toContain('GoldenWait');
+    expect(hu.fans.some(f => f.fan === 'GoldenWait')).toBe(true);
     expect(hu.handValue).toBe(16);
     expect(tileTypeOf(hu.winningTile)).toBe(M(1));
   });
