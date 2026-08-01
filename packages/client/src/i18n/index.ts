@@ -130,6 +130,9 @@ const en: Dict = {
   'end.waitingHost': 'Waiting for the host to start the next round…',
   'end.hu': 'Hu!',
 
+  'match.title': 'Match Over',
+  'match.noScores': 'The match ended before any scores were recorded.',
+
   'spec.title': 'Watch a Game',
   'spec.watch': 'Watch',
   'spec.connecting': 'Connecting…',
@@ -269,6 +272,9 @@ const zhHans: Dict = {
   'end.waitingHost': '等待房主开始下一局…',
   'end.hu': '胡！',
 
+  'match.title': '对局结束',
+  'match.noScores': '对局在计分前就结束了。',
+
   'spec.title': '观战',
   'spec.watch': '观战',
   'spec.connecting': '连接中…',
@@ -405,6 +411,9 @@ const zhHant: Dict = {
   'end.endMatch': '結束對局',
   'end.waitingHost': '等待房主開始下一局…',
   'end.hu': '胡！',
+
+  'match.title': '對局結束',
+  'match.noScores': '對局在計分前就結束了。',
 
   'spec.title': '觀戰',
   'spec.watch': '觀戰',

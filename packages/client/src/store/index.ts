@@ -19,6 +19,7 @@ export type Screen =
   | 'lobby'
   | 'game'
   | 'roundEnd'
+  | 'matchEnd'
   | 'about'
   | 'spectateForm'
   | 'spectate';
@@ -174,7 +175,20 @@ export const useStore = create<GameStore>((set, get) => ({
         break;
 
       case 'matchEnd':
-        get().resetSession();
+        // Used to call resetSession(), which dropped everyone straight back to
+        // the landing screen with no standings and no idea what happened. Keep
+        // matchScores and the last roundResult (for names) for the recap. (F9)
+        closeConnection();
+        clearSession();
+        set({
+          screen: 'matchEnd',
+          token: '',
+          view: null,
+          spectatorView: null,
+          connected: false,
+          reconnecting: false,
+          connectionLost: false,
+        });
         break;
 
       case 'error':

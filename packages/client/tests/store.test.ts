@@ -76,14 +76,26 @@ describe('client store (A30)', () => {
     expect(useStore.getState().lastError).toBeNull();
   });
 
-  it("'matchEnd' resets the session back to landing", () => {
+  it("F9: 'matchEnd' shows final standings instead of dumping you to landing", () => {
     useStore.setState({ screen: 'game', code: 'ABCD', token: 't', seat: 1, matchScores: { 0: 5 } });
     useStore.getState().handleServerMsg({ t: 'matchEnd' });
 
     const s = useStore.getState();
+    expect(s.screen).toBe('matchEnd');
+    // The recap needs the totals and the seat; the live session is over.
+    expect(s.matchScores).toEqual({ 0: 5 });
+    expect(s.seat).toBe(1);
+    expect(s.token).toBe('');
+    expect(s.view).toBeNull();
+  });
+
+  it('leaving the match-end screen clears the session', () => {
+    useStore.setState({ screen: 'matchEnd', code: 'ABCD', seat: 1, matchScores: { 0: 5 } });
+    useStore.getState().resetSession();
+
+    const s = useStore.getState();
     expect(s.screen).toBe('landing');
     expect(s.code).toBe('');
-    expect(s.token).toBe('');
     expect(s.seat).toBeNull();
     expect(s.matchScores).toEqual({});
   });

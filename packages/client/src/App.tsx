@@ -6,6 +6,7 @@ import { HostSetup } from './screens/HostSetup.js';
 import { JoinForm } from './screens/JoinForm.js';
 import { Landing } from './screens/Landing.js';
 import { Lobby } from './screens/Lobby.js';
+import { MatchEnd } from './screens/MatchEnd.js';
 import { RoundEnd } from './screens/RoundEnd.js';
 import { Spectate } from './screens/Spectate.js';
 import { SpectateForm } from './screens/SpectateForm.js';
@@ -27,6 +28,8 @@ function CurrentScreen() {
       return <Game />;
     case 'roundEnd':
       return <RoundEnd />;
+    case 'matchEnd':
+      return <MatchEnd />;
     case 'about':
       return <About />;
     case 'spectateForm':
