@@ -53,6 +53,25 @@ body {
   }
 }
 
+/* Vestibular-sensitive players opt out: the last-discard marker keeps its glow
+   but stops pulsing, and every other animation/transition collapses to a
+   single instant frame. Framer's own animations are handled by
+   MotionConfig reducedMotion="user" at the app root. (F12) */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .tile-last-discard .tile-face {
+    animation: none;
+    filter: drop-shadow(0 0 4px rgba(251, 191, 36, 0.95)) drop-shadow(0 2px 2px rgba(0, 0, 0, 0.45));
+  }
+}
+
 /* ---------------------------------------------------------------------------
    Board — vibrant jade felt table with recessed wells
 --------------------------------------------------------------------------- */

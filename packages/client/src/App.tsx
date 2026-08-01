@@ -1,3 +1,4 @@
+import { MotionConfig } from 'framer-motion';
 import { ConnectionLost } from './components/ConnectionLost.js';
 import { ErrorToast } from './components/ErrorToast.js';
 import { About } from './screens/About.js';
@@ -40,11 +41,13 @@ function CurrentScreen() {
 }
 
 export function App() {
+  // reducedMotion="user" drops Framer's transform/spring animations for anyone
+  // who asked the OS for less motion; the CSS counterpart lives in index.css. (F12)
   return (
-    <>
+    <MotionConfig reducedMotion="user">
       <CurrentScreen />
       <ErrorToast />
       <ConnectionLost />
-    </>
+    </MotionConfig>
   );
 }
