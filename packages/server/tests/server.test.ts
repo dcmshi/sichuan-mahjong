@@ -799,8 +799,13 @@ describe('Restore & reconnect grace', () => {
       expect(restored.getState().turn).toBe(0);
 
       // Once the grace lapses the takeover bot does play the turn, as before.
+      // Assert the turn was *played* rather than that a tile is sitting in seat
+      // 0's pond: another seat may legally pung that discard, which removes it
+      // from the pond again. A discards-length check failed on ~5% of deals for
+      // exactly that reason — the room was behaving correctly every time.
       vi.advanceTimersByTime(120_000);
-      expect(restored.getState().players[0]!.discards.length).toBeGreaterThan(0);
+      expect(restored.getState().players[0]!.hand.length).toBeLessThan(14);
+      expect(restored.getState().turn).not.toBe(0);
     } finally {
       vi.useRealTimers();
     }
