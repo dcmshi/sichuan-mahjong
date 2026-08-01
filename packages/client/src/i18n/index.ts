@@ -118,6 +118,7 @@ const en: Dict = {
   'play.yourDiscards': 'Your discards',
   'play.toggleSound': 'Toggle sound',
   'play.howToPlay': 'How to play',
+  'play.scores': 'Scores',
 
   'kong.concealed': 'concealed',
   'kong.promoted': 'promoted',
@@ -306,6 +307,7 @@ const zhHans: Dict = {
   'play.yourDiscards': '你打出的牌',
   'play.toggleSound': '开关音效',
   'play.howToPlay': '玩法说明',
+  'play.scores': '分数',
 
   'kong.concealed': '暗杠',
   'kong.promoted': '补杠',
@@ -490,6 +492,7 @@ const zhHant: Dict = {
   'play.yourDiscards': '你打出的牌',
   'play.toggleSound': '開關音效',
   'play.howToPlay': '玩法說明',
+  'play.scores': '分數',
 
   'kong.concealed': '暗槓',
   'kong.promoted': '補槓',
