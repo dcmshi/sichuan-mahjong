@@ -116,3 +116,28 @@ describe('HuRecord fans', () => {
     }
   });
 });
+
+// ─── View: own submitted state ───────────────────────────────────────────────
+// A reconnecting or refreshed client has no memory of having submitted; the
+// server is the only thing that knows, so the view has to say.
+describe('own huan/void submitted state in the view', () => {
+  it('flips once the seat has acted, and only for that seat', async () => {
+    const { projectView } = await import('../src/views.js');
+    const s = fresh();
+
+    expect(projectView(s, 0).you.hasSubmittedHuan).toBe(false);
+    expect(projectView(s, 1).you.hasSubmittedHuan).toBe(false);
+
+    const hand = s.players[0]!.hand;
+    const r = applyAction(s, {
+      t: 'huanSelect',
+      seat: 0,
+      tiles: [hand[0]!, hand[1]!, hand[2]!],
+    });
+    expect(r.ok, 'huanSelect on a freshly dealt game should be legal').toBe(true);
+    if (!r.ok) return;
+
+    expect(projectView(r.state, 0).you.hasSubmittedHuan).toBe(true);
+    expect(projectView(r.state, 1).you.hasSubmittedHuan).toBe(false);
+  });
+});

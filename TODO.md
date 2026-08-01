@@ -1,5 +1,35 @@
 # TODO
 
+## ✅ Two front-end defects found by sweep (2026-08-01)
+
+Both surfaced by asking "are the front-end items actually finished?" and
+checking rather than answering from memory. Both were introduced by work
+earlier in the same push.
+
+- [x] **The round-end reveal never revealed a concealed kong.** `buildRoundResult`
+  sends the real `Meld[]`, so the tile was on the wire, but `MeldDisplay`
+  branched on `kind === 'kong' && subtype === 'concealed'` and drew four backs
+  unconditionally. A hand won with a concealed kong showed ten faces and four
+  blanks, and the fan list said "Kong" without saying which — which defeats the
+  point of the reveal. `PublicMeld` already encodes the distinction: `tile: null`
+  is the live redacted case (A27) and the real tile is sent everywhere it is
+  revealed, so the branch is now on the tile. The decision is extracted as
+  `meldRender` and tested, since the client suite has no DOM; the test fails
+  against the old branch.
+- [x] **Rejoining mid-huan or mid-void re-showed the picker.** F2 made this
+  reachable — before it, a refresh lost the seat entirely. `computeLegalActions`
+  returns `[]` outside the play phase, so `PlayerView` carried no signal, and the
+  only record was component state that dies on remount. The player would re-pick
+  and eat an `already_submitted` rejection (visible since F1, but the wrong
+  message). `you.hasSubmittedHuan` / `you.hasDeclaredVoid` now come from the
+  server, which is the only thing that knows.
+
+**Left deliberately:** several entrance animations still fade in from
+`opacity: 0` (last-discard pop in Game and Spectate, and the transient overlays).
+They deviate from the rule F11 established, but F11's failure was only ever
+observed in fullPage screenshot capture, and a fade is the right treatment for
+something that lives 3.5 seconds. Fixing them would be churn.
+
 ## ✅ Mobile viewport remediation — R1–R5 (2026-08-01)
 
 Design input came back as recommendations R1–R5 in

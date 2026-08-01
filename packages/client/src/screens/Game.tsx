@@ -52,7 +52,10 @@ function HuanPhase({ view }: { view: PlayerView }) {
     setSubmitted(true);
   }
 
-  if (submitted) {
+  // The local flag gives instant feedback; the view is what survives a reconnect
+  // or a refresh-and-rejoin, which would otherwise redisplay the picker to a
+  // player who has already chosen.
+  if (submitted || view.you.hasSubmittedHuan) {
     return (
       <div className="min-h-dvh board-felt flex flex-col items-center justify-center gap-4 text-white p-6">
         <p className="text-xl animate-pulse">{t('common.waitingPlayers')}</p>
@@ -131,7 +134,8 @@ function VoidDeclarePhase({ view }: { view: PlayerView }) {
     setSubmitted(true);
   }
 
-  if (submitted) {
+  // As in HuanPhase: the view is the source of truth across a reconnect.
+  if (submitted || view.you.hasDeclaredVoid) {
     return (
       <div className="min-h-dvh board-felt flex flex-col items-center justify-center gap-4 text-white p-6">
         <p className="text-xl animate-pulse">{t('common.waitingPlayers')}</p>

@@ -47,6 +47,15 @@ export type PlayerView = {
     furiten: PlayerState['furiten'];
     /** Your own face-down first discard — you chose it, so you may see it. (A37) */
     pendingFirstDiscardTile: TileId | null;
+    /**
+     * Whether this seat has already submitted its huan selection / void
+     * declaration. The client used to track this only in component state, which
+     * a reconnect or a refresh-and-rejoin throws away — the player was then
+     * shown the selection UI again and could only discover the truth by
+     * resubmitting and being rejected. The server is the only thing that knows.
+     */
+    hasSubmittedHuan: boolean;
+    hasDeclaredVoid: boolean;
   };
   others: [PublicPlayer, PublicPlayer, PublicPlayer];
   wallRemaining: number;
@@ -270,6 +279,8 @@ export function projectView(state: GameState, seat: Seat): PlayerView {
       voidedSuit: you.voidedSuit,
       furiten: you.furiten,
       pendingFirstDiscardTile: you.pendingFirstDiscard,
+      hasSubmittedHuan: state.pendingHuan[seat] != null,
+      hasDeclaredVoid: state.pendingVoid[seat] != null,
     },
     others: otherSeats.map(s => toPublicPlayer(state.players[s]!, reveal)) as [
       PublicPlayer,

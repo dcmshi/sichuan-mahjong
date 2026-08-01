@@ -643,6 +643,8 @@ Both halves are per-viewer redacted before send: melds project as `PublicMeld` (
 
 `roundEnd` also goes to spectators — on broadcast and on a late join, mirroring the A9 player path — so the store keeps a spectating client on its own screen rather than navigating it to the player round-end screen. `RoundResult.players[]` carries each seat's revealed `hand` and `melds`, its `isReady` state, and its slice of the round's payment `ledger`; it is only ever built once the round has ended, which is what keeps the reveal out of `PlayerView` and out of the redaction rules above.
 
+`PlayerView.you` also carries `hasSubmittedHuan` / `hasDeclaredVoid`. A client that reconnects or refreshes has no memory of having acted, and legal actions are empty outside the play phase, so without these the declaration screens re-showed the picker to a player who had already chosen.
+
 `RoundResult` carries a `roundIndex`. A client that reconnects at round end is handed that round's result again (§6.5), so anything cumulative — the client's match-score totals — must be keyed on it rather than incremented on arrival (A39).
 
 ### 6.5 Reconnection
@@ -713,7 +715,7 @@ App-root overlays, mounted alongside whichever screen is active:
 
 ### 8.2 Tile rendering
 
-- `<Tile>` renders an SVG face from `public/tiles/{suit}-{rank}.svg`; `<TileBack>` renders `back.svg`. (Unicode mahjong glyphs were the original plan, but the SVGs carry their own bevelled 3D tile, so the container is a transparent holder — see the note atop `index.css`.)
+- `<Tile>` renders an SVG face from `public/tiles/{suit}-{rank}.svg`; `<TileBack>` renders `back.svg`. `MeldDisplay` decides between the two via `meldRender`, which branches on whether the meld carries a tile — a concealed kong is `tile: null` only while the round is live (A27), and must be drawn face-up once the round-end payload sends its real tile. (Unicode mahjong glyphs were the original plan, but the SVGs carry their own bevelled 3D tile, so the container is a transparent holder — see the note atop `index.css`.)
 - Both take a `fill` prop: the hand and the opponent-across strip size their tiles by flexing, so a 14-tile row fits any phone (F4).
 - Long-press tile: 2× preview modal.
 - Accessibility: clickable tiles are `role="button"` with `tabIndex`, Enter/Space and a localized `aria-label` ("3 of Characters"); the rest are `role="img"` with the same name. The `<img alt>` stays the internal `man-3` id — e2e selectors match on it and the wrapper's label is what gets announced. (F16)

@@ -14,33 +14,55 @@ function meldTileIds(meld: Meld): TileId[] {
   return Array.from({ length: count }, (_, i) => (base + i) as TileId);
 }
 
-// Views carry PublicMeld: a concealed kong arrives with tile: null (its rank is
-// secret until round end — A27), and renders as four backs either way.
+/**
+ * A group of tiles with a corner badge naming it. Four bare tiles are hard to
+ * tell from a fragment of a hand at a glance, and at round end melds render
+ * right beside the hand they belong to. (F23)
+ */
+function BadgedGroup({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="relative flex gap-0.5">
+      {children}
+      <span className="absolute -top-1 -right-1 px-1 rounded bg-amber-500 text-black text-[8px] font-bold leading-tight">
+        {label}
+      </span>
+    </div>
+  );
+}
+
+/**
+ * How a meld should be drawn.
+ *
+ * `ids: null` means draw four backs — the only case is a concealed kong while
+ * the round is live, whose rank is secret and arrives as `tile: null` (A27).
+ * Once the round settles the real tile is sent, in the round-end views and in
+ * RoundResult, and it must be shown: keying this off `subtype === 'concealed'`
+ * instead of off the tile drew backs in both cases, so the round-end hand
+ * reveal showed four blanks with the tile to reveal sitting in the payload.
+ *
+ * Exported so it can be tested — the client suite runs in Node with no DOM.
+ */
+export function meldRender(meld: PublicMeld): { ids: TileId[] | null; badged: boolean } {
+  if (meld.kind === 'kong' && meld.tile === null) return { ids: null, badged: true };
+  // A revealed concealed kong keeps the badge: it is a declared group rather
+  // than four loose tiles, which reads even less clearly once the faces show
+  // next to a hand.
+  const badged = meld.kind === 'kong' && meld.subtype === 'concealed';
+  return { ids: meldTileIds(meld), badged };
+}
+
 export function MeldDisplay({ meld }: { meld: PublicMeld }) {
   const t = useT();
+  const { ids, badged } = meldRender(meld);
 
-  if (meld.kind === 'kong' && meld.subtype === 'concealed') {
-    // Four bare backs were indistinguishable from a fragment of a concealed
-    // hand at a glance, so the badge says what this group is. (F23)
-    return (
-      <div className="relative flex gap-0.5">
-        <TileBack size="sm" />
-        <TileBack size="sm" />
-        <TileBack size="sm" />
-        <TileBack size="sm" />
-        <span className="absolute -top-1 -right-1 px-1 rounded bg-amber-500 text-black text-[8px] font-bold leading-tight">
-          {t('claim.kong')}
-        </span>
-      </div>
-    );
-  }
+  const tiles =
+    ids === null
+      ? Array.from({ length: 4 }, (_, i) => <TileBack key={i} size="sm" />)
+      : ids.map(id => <Tile key={id} id={id} size="sm" />);
 
-  const ids = meldTileIds(meld);
-  return (
-    <div className="flex gap-0.5">
-      {ids.map(id => (
-        <Tile key={id} id={id} size="sm" />
-      ))}
-    </div>
+  return badged ? (
+    <BadgedGroup label={t('claim.kong')}>{tiles}</BadgedGroup>
+  ) : (
+    <div className="flex gap-0.5">{tiles}</div>
   );
 }
