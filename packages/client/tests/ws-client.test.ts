@@ -76,6 +76,32 @@ describe('WsClient reconnect (F6)', () => {
     expect(sockets.length).toBe(settled);
   });
 
+  it('F21: queues the join handshake but drops actions sent while disconnected', () => {
+    const client = new WsClient('ws://host/ws/ABCD', callbacks());
+    const first = sockets[0]!;
+
+    // Both are sent before the socket opens, exactly as a screen would.
+    client.send({ t: 'join', name: 'Dave' });
+    client.send({ t: 'action', action: { t: 'discard', seat: 0, tile: 4 } });
+
+    first.open();
+    expect(first.sent).toEqual([JSON.stringify({ t: 'join', name: 'Dave' })]);
+  });
+
+  it('F21: nothing is replayed after a drop and reconnect', () => {
+    const client = new WsClient('ws://host/ws/ABCD', callbacks());
+    sockets[0]!.open();
+    sockets[0]!.drop();
+
+    client.send({ t: 'action', action: { t: 'discard', seat: 0, tile: 4 } });
+    client.send({ t: 'startGame' });
+
+    vi.advanceTimersByTime(1000);
+    const reconnected = sockets[sockets.length - 1]!;
+    reconnected.open();
+    expect(reconnected.sent).toEqual([]);
+  });
+
   it('a successful connect resets the retry budget', () => {
     const cbs = callbacks();
     new WsClient('ws://host/ws/ABCD', cbs);

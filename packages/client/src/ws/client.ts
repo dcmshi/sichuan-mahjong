@@ -40,9 +40,14 @@ export class WsClient {
     const data = JSON.stringify(msg);
     if (this.ws?.readyState === WebSocket.OPEN) {
       this.ws.send(data);
-    } else {
-      this.queue.push(data);
+      return;
     }
+    // Only `join` survives a closed socket: screens send it synchronously right
+    // after constructing the client, before the socket has opened. Everything
+    // else is a user action taken while visibly disconnected, and flushing the
+    // queue verbatim on reconnect delivered stale discards and lobby commands a
+    // round late. Dropping them is the honest outcome. (F21)
+    if (msg.t === 'join') this.queue.push(data);
   }
 
   close(): void {
