@@ -71,6 +71,21 @@ test('opening played via real UI clicks (huan tiles, void suit, discard tap)', a
 
   await expect.poll(() => getPhase(page), { timeout: 15_000 }).toBe('play');
 
+  // ── Landscape phones don't get a board to tap. R4 Phase 1 blocks play there
+  //    with a rotate-to-portrait overlay, because the board needs roughly twice
+  //    the viewport height and scrolling to it moves the hand off screen. On
+  //    those projects the correct assertion is that the overlay is up, not that
+  //    tiles are tappable underneath it. (viewport-audit.md R4) ──
+  const vp = page.viewportSize();
+  const isLandscapePhone = vp !== null && vp.height <= 480 && vp.width > vp.height;
+  if (isLandscapePhone) {
+    const overlay = page.locator('.rotate-overlay');
+    await expect(overlay).toBeVisible({ timeout: 10_000 });
+    await expectNoHorizontalOverflow(page, 'play (rotate prompt)');
+    await snap('play-rotate-prompt');
+    return;
+  }
+
   // ── Play: round-1 dealer is the host (us), so it's our turn first. ──
   const hand = page.locator('ul li img[alt]');
   await expect.poll(() => hand.count(), { timeout: 10_000 }).toBeGreaterThan(0);

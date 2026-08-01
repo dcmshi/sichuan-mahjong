@@ -44,6 +44,13 @@ export default defineConfig({
       use: { ...devices['iPad (gen 7) landscape'], browserName: 'chromium' },
       testMatch: /ui-clicks/,
     },
+    // The vertical-overflow guard runs on the smallest supported phone, which is
+    // where the height budget is tightest. (viewport-audit.md R5)
+    {
+      name: 'se-portrait',
+      use: { ...devices['iPhone SE'], browserName: 'chromium' },
+      testMatch: /viewport/,
+    },
   ],
   webServer: {
     command: 'node packages/server/dist/main.js --no-mdns --no-tailscale',

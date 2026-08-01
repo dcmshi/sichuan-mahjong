@@ -31,10 +31,18 @@ const e2e = (page: Page) => ({
   getScreen: () => page.evaluate(() => (window as unknown as { __e2e: E2E }).__e2e.getScreen()),
 });
 
-/** Let animations settle so a shot never catches a half-played entrance. */
-async function shot(page: Page, file: string) {
+/**
+ * Let animations settle so a shot never catches a half-played entrance.
+ *
+ * `fullPage` expands the viewport to the document height, which puts any
+ * `position: sticky` element at its sticky offset within that expanded page —
+ * so a bar pinned to the bottom of the screen renders floating in the middle
+ * of the image, on top of the content. Screens with a pinned bar therefore
+ * capture the viewport instead, which is also what the player actually sees.
+ */
+async function shot(page: Page, file: string, opts: { fullPage?: boolean } = {}) {
   await page.waitForTimeout(900);
-  await page.screenshot({ path: `${OUT}/${file}`, fullPage: true });
+  await page.screenshot({ path: `${OUT}/${file}`, fullPage: opts.fullPage ?? true });
 }
 
 test('regenerate docs screenshots', async ({ page, browser }) => {
@@ -124,5 +132,6 @@ test('regenerate docs screenshots', async ({ page, browser }) => {
   // no winner and every row starts collapsed — expand the top one so the shot
   // always shows the hand and the payment breakdown.
   await page.locator('[aria-expanded="false"]').first().click();
-  await shot(page, 'round-end.png');
+  // Viewport, not full page: the action bar is sticky (R3). See shot().
+  await shot(page, 'round-end.png', { fullPage: false });
 });
