@@ -12,7 +12,7 @@ Keep this file short. New documentation goes in one of these instead:
 | File | Holds | Write here when… |
 |---|---|---|
 | **[ARCHITECTURE.md](./ARCHITECTURE.md)** | Types, engine API, full ruleset, protocol, persistence, networking, testing strategy | …you change behavior, a type, or a rule |
-| **[TODO.md](./TODO.md)** | Phase history + audit backlog (A1–A39, F1–F25), each item with diagnosis and fix | …you fix a bug or close an audit item |
+| **[TODO.md](./TODO.md)** | Phase history + audit backlog (A1–A40, F1–F25), each item with diagnosis and fix | …you fix a bug or close an audit item |
 | **[README.md](./README.md)** | User-facing: install, host/join, CLI flags | …you change the CLI or the player-facing flow |
 | **[docs/viewport-audit.md](./docs/viewport-audit.md)** | Measured mobile viewport overflow + the open layout questions | …you change the play or round-end layout |
 | **[docs/handoff-2026-08-01.md](./docs/handoff-2026-08-01.md)** | Where the layout/density work stands, decisions already settled, the four open ones, and the traps that cost time | …you are picking this up cold, or before a compaction |
@@ -110,7 +110,10 @@ Full tree: [ARCHITECTURE.md §3](./ARCHITECTURE.md#3-repo-layout).
 - **Everything reaching a client goes through `views.ts`.** Any field added to
   `GameState` needs a redaction decision before it lands in `PlayerView` —
   concealed kongs, drawn tiles, and the face-down first discard are all redacted
-  today, each after an audit caught the leak.
+  today, each after an audit caught the leak. **`GameEvent` is the second channel
+  and needs the same decision:** events are produced once and broadcast to every
+  seat, so `redactEventsFor` has to strip them per viewer. Drawn tiles (A31) and
+  void declarations (A40) both leaked that way.
 - **The WS boundary trusts nothing.** Inbound frames are validated in `ws.ts`;
   server-only actions (e.g. `claimWindowExpire`) are never accepted from a client.
 - **Client tests run without a DOM.** There's no jsdom or testing-library, so
@@ -124,7 +127,7 @@ Full tree: [ARCHITECTURE.md §3](./ARCHITECTURE.md#3-repo-layout).
 
 ## Status
 
-All v1 work, six full-repo audit passes (A1–A39, through 2026-07-25), a
+All v1 work, six full-repo audit passes (A1–A40, the last found 2026-08-01), a
 frontend/design pass (F1–F25), round-end hand reveals with a fan/penalty
 breakdown (2026-07-31), and the mobile viewport work R1–R7 (2026-08-01) are
 complete. Per-item history is in [TODO.md](./TODO.md); the deferral record is
@@ -138,15 +141,28 @@ in `ws.ts`. Practice mode therefore never shows the huan phase, which is why
 
 **Tiles are drawn flush**, from glyph-only faces derived out of the CC BY-SA art
 by `scripts/tiles/` (measure, then flatten — the frame is centred on each glyph's
-measured box). Hands, melds and trays use them; a singleton like the well's last
-discard keeps the 3D art. Regenerate with `node scripts/tiles/measure-glyphs.mjs`
+measured box). Everything on the board uses them — see "One tile face everywhere"
+below. Regenerate with `node scripts/tiles/measure-glyphs.mjs`
 then `node scripts/tiles/flatten-tiles.mjs`; a client test fails if the committed
 output drifts from what the scripts produce.
 
-**Open, from playing the build** (see the last section of [TODO.md](./TODO.md)):
-bot pacing is too fast to follow, the discard tiles' styling doesn't suit a
-discard pile, and a central discard pool is held as a fallback — it needs a
-redaction decision for opponents' void suits, which are private today.
+**Bots pause 700ms a move** (2026-08-01), not the old 150 — a circuit used to
+resolve inside a second. `--bot-delay <ms>` retunes it; `SM_BOT_DELAY_MS` is the
+seam the vitest and Playwright configs use to pin the old pace, since whole-round
+suites assert nothing about timing. The 🗒 control in the play well opens the
+round's move history, which is what the transient event feed can't be.
+
+**One tile face everywhere** (2026-08-01). Every tile on the board is flat,
+including the well's last discard, which was the last one drawn from the 3D art
+and read as glossier beside the hand. `solo` gives a flat tile with nothing flush
+beside it the lift `.tile-run` would otherwise provide. Only the overlapped
+hand-count stack keeps 3D backs — flat backs overlapped merge into one slab.
+
+**Open** (see the last section of [TODO.md](./TODO.md)): a central discard pool is
+held as a fallback, and needs a deliberate reveal for opponents' void suits — A40
+just stopped those leaking through the event log, so they are genuinely private
+now. The release binary embedding the tile SVGs still contradicts the licence note
+in [ARCHITECTURE.md §13](./ARCHITECTURE.md#13-license--credits).
 
 A real landscape layout for phones (R4 Phase 2 in
 [docs/viewport-audit.md](./docs/viewport-audit.md)) stays shelved with its reasons

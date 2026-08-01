@@ -1,5 +1,106 @@
 # TODO
 
+## ✅ A40 — a void declaration leaked to every client (2026-08-01)
+
+Found while reading `redactEventsFor` for the history panel. It nulled `drew` and
+`kongReplacement` (A31) and passed everything else through, but the void phase
+resolves all four declarations in one batch and emits
+`voidDeclared { seat, suit }` for each — so **every client received all four
+forbidden suits**, the one fact `projectView` withholds (`voidedSuit` is on `you`
+alone) and the reason A37 puts the declaration tile face down. Nothing in the UI
+read it, so it never showed; it was one dev-tools tab from being read off the
+wire, which is exactly the A31/A27 failure mode.
+
+- [x] **`voidDeclared.suit` is `Suit | null`, nulled for every viewer but the
+  declarer** — mirroring `drew.tile`. A spectator sees no suits at all, like it
+  sees no draws. Unit-tested, including that the engine's own event array keeps
+  the real suits.
+
+Fifth leak of this class the audits have caught, and the second to reach a client
+through the event log rather than the view — worth remembering that `views.ts` has
+two channels to redact, not one.
+
+## ✅ O2 — bots played faster than a player could follow (2026-08-01)
+
+Both halves of the fix, since they answer different questions: the pace makes a
+circuit followable while you're watching, the history covers the case where you
+weren't.
+
+- [x] **Bots pause 700ms a move, not 150ms.** At 150ms a circuit — discard, claim
+  window, discard, discard — resolved inside a second, so the tile you might have
+  ponged was four discards back before you looked up. It's a pace, not a rule: it
+  lives in `room.ts` rather than `GameConfig`, because a replay of the same seed is
+  identical at any value. `--bot-delay <ms>` retunes it (0 = instant, max 5000),
+  and `SM_BOT_DELAY_MS` is the harness seam — the vitest and Playwright configs
+  both pin 150 so suites that play whole rounds don't pay four seconds a circuit
+  for a pace no assertion looks at.
+- [x] **A history panel for the round.** The event feed can't serve this: it holds
+  two lines for 3.5s and drops to one on a short viewport *by design* (R1). The
+  panel keeps every event of the round in the store — raw events with ids, not
+  formatted lines, so switching language re-renders the whole list and two
+  identical discards stay distinguishable — and `historyRowFor` maps them to rows.
+  Discards are the bulk of it, which is the exact inversion of `feedLineFor`, where
+  they're dropped so they can't drown two lines. Cleared when a round ends.
+- [x] **The control is in the well, not the top bar.** A fourth icon up there
+  truncated the turn indicator to "Y..." — the bar had no width left. In the well
+  it's absolutely positioned, so it costs no height either, and the middle of the
+  board was empty space anyway.
+
+## ✅ O4 — one tile face everywhere (2026-08-01)
+
+The answer to "the tile styling doesn't fit": *"the middle discard looks more
+glossy compared to the discard and hand tiles"*. Not a discard-pile question at
+all — the well's last discard was the last board tile still drawn from the 3D art,
+and beside a flat hand and flat trays it read as a second tile design.
+
+- [x] **Every tile on the board is flat now** — the well's last discard, the
+  first-discard flip panel, the void and huan pickers, the spectator's last
+  discard. The "a singleton should look like a singleton" rule is dropped; the
+  long-press preview follows whatever the tile it magnifies uses, so it can't
+  disagree with it either.
+- [x] **`solo` carries the lift a lone flat tile needs.** `.tile-run`'s strip
+  shadow only exists around a run; a flat tile with nothing flush beside it gets
+  its own `box-shadow`. Not on `.tile-cell` itself — inside a run every cell would
+  cast one and the strip would read as separately-lit objects again.
+- [x] **The last-discard marker works again.** `.tile-last-discard .tile-face` only
+  ever matched the 3D art, so from R7 until now the marker was silently dead
+  everywhere it mattered — every tray tile and the well are flat, and the pulse had
+  nothing to attach to. The flat cell pulses a ring instead, drawn outside the box
+  so it marks the tile without moving anything the viewport guard measures.
+
+Only the overlapped hand-count stack keeps the 3D backs, and deliberately: flat
+backs overlapped merge into one green slab, which is the bug the flat back's own
+front edge was added to fix.
+
+## ✅ Discards fly from your hand to your tray (2026-08-01)
+
+- [x] The source box is captured at the tap — by the time the server's view comes
+  back the hand has re-laid out without that tile — and the destination is measured
+  once the tray tile exists, in a layout effect so the flight starts before the
+  browser paints the tile sitting there. A fixed-position overlay, deliberately,
+  *not* a transform on the tray tile: `viewport.spec.ts` asserts no tile's box
+  escapes its tray and samples every ~130ms across a round, so an animating tray
+  tile would fail that guard the moment a sample caught it mid-flight. Cleared on a
+  timer rather than `onAnimationComplete`, because reduced motion skips the
+  animation and a callback that never fires would leave the landed tile invisible
+  for the rest of the round.
+
+Opponents' discards don't fly — their hands are a count chip, so there's no source
+box to fly from.
+
+## ✅ The two melds gaps R7 left (2026-08-01)
+
+- [x] **Your melds row scrolls** instead of being clipped. It was a non-wrapping
+  flex of fixed-width tiles, so a third or fourth meld ran past the screen edge and
+  the root's `overflow-x-hidden` cut it off with nothing to say it was there — the
+  same scroller `OpponentTop` got in R6.
+- [x] **Side opponents show their melds.** They showed none at all, so a player who
+  had ponged just had a smaller hand for no visible reason. Three flush `sm` tiles
+  are ~96px and would spill an 80px column the way their tray did before R6, so
+  `MeldChip` draws one tile with the meld's name — which is what a player reads off
+  an opponent's melds anyway: the tile they've locked away. The kind implies the
+  count. Verified with a chip on screen: no vertical or horizontal overflow.
+
 ## ✅ 換三張 is a house rule, so it is opt-in now (2026-08-01)
 
 Asked whether the opening three-tile pass is standard, and checked the PDF rather
@@ -116,10 +217,10 @@ perfectly while overflowing its *column*, visible only as overlap with the well.
   is exactly 1.21 (255/210), and the side trays are 80×126 rather than
   column-height.
 
-**Left deliberately:** the own melds row (`OwnZone`) is a non-wrapping `flex` of
-fixed-width tiles, so three or four melds overflow it horizontally and the root's
-`overflow-x-hidden` clips them. Pre-existing, and it wants the same scroller
-`OpponentTop` got. Side opponents still show no melds at all.
+**Left deliberately at the time:** the own melds row (`OwnZone`) is a non-wrapping
+`flex` of fixed-width tiles, so three or four melds overflow it horizontally and
+the root's `overflow-x-hidden` clips them. Side opponents show no melds at all.
+Both fixed later the same day — see "The two melds gaps R7 left" above.
 
 ## 🔍 Open, from playing the app (2026-08-01)
 
@@ -136,20 +237,23 @@ of these are started. Also recorded as O1–O4 in
   but that set doubled the file count. Wants a decision, not a patch. The npm
   package and from-source path are unaffected — both serve `tiles/` from disk.
 
-- [ ] **Bots play too fast to follow.** Either a per-move delay (a server config
-  value, so it stays tunable) or a scrollable play-history panel, or both — the
-  event feed keeps only the latest line and drops to one line on short viewports by
-  design, so nothing recovers a move you looked away for.
+- [x] ~~**Bots play too fast to follow.**~~ Done — the 700ms pace *and* the history
+  panel, see O2 above.
 - [ ] **A central discard pool.** Show every discard in the middle, mark the last
   one, and show each player's chosen void suit. Note the redaction rule this needs:
   `PublicPlayer` has no `voidedSuit` today — only `you` gets it, and the first
   discard sits face down precisely so the suit isn't leaked (A37) — so it should
   become public only once that player has flipped their first discard, which is when
-  a real table learns it. Held as a fallback for now: the per-seat trays are staying,
-  and the pool's appeal is that the middle of the board is mostly empty space.
-- [ ] **Discard tile styling.** The flush run reads as tiles held together, which
-  suits a hand and a meld but not a pile of thrown-away tiles. Needs a decision on
-  which way to take it.
+  a real table learns it. **A40 makes this harder, not easier:** the suit used to
+  reach the client anyway through the event log, and now it correctly doesn't, so
+  the pool needs the deliberate reveal rather than a field that happens to be there.
+  Still held as a fallback — the per-seat trays are staying, and the pool's appeal
+  is that the middle of the board is mostly empty space (now slightly less so: the
+  history control sits in the corner of it).
+- [x] ~~**Discard tile styling.**~~ Answered and done — the complaint was the well's
+  glossy 3D tile against flat neighbours, not the flush run. See O4 above. The
+  flush-run-reads-as-held question was my reading of it and turned out not to be
+  what was meant.
 
 ## ✅ R6 — the R5 guard was red in CI from the day it landed (2026-08-01)
 

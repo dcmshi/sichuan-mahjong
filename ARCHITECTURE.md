@@ -99,7 +99,7 @@ sichuan-mahjong/
 │   │   │   └── tiles/            # 27 3D faces + back.svg + credits.json
 │   │   │       └── flat/         # 28 derived glyph-only faces (see scripts/tiles/)
 │   │   ├── src/
-│   │   │   ├── components/       # Tile, MeldDisplay, ClaimPanel, EventFeed, ErrorToast, ConnectionLost
+│   │   │   ├── components/       # Tile, MeldDisplay, ClaimPanel, EventFeed, PlayHistory, ErrorToast, ConnectionLost
 │   │   │   ├── screens/          # Landing, HostSetup, JoinForm, Lobby, Game, RoundEnd, MatchEnd, Spectate, About
 │   │   │   ├── store/
 │   │   │   ├── ws/
@@ -654,7 +654,7 @@ export type ServerMsg =
 
 Server pushes `view` to each player after every state-changing action (filtered through `projectView`). `events` is a delta log so the client can animate ("seat 2 claimed pung", "kong on 3-pin from seat 1").
 
-Both halves are per-viewer redacted before send: melds project as `PublicMeld` (a concealed kong's tile is `null` for everyone but its owner until round end — A27), the unflipped first discard projects as a bare `pendingFirstDiscard: boolean` (its owner alone gets the id, in `you.pendingFirstDiscardTile` — A37), and `redactEventsFor` nulls the tile on `drew`/`kongReplacement` events for everyone but the drawer; spectators never see drawn tiles (A31).
+Both halves are per-viewer redacted before send: melds project as `PublicMeld` (a concealed kong's tile is `null` for everyone but its owner until round end — A27), the unflipped first discard projects as a bare `pendingFirstDiscard: boolean` (its owner alone gets the id, in `you.pendingFirstDiscardTile` — A37), and `redactEventsFor` nulls the tile on `drew`/`kongReplacement` events for everyone but the drawer; spectators never see drawn tiles (A31). It also nulls `voidDeclared.suit` for everyone but the declarer (A40) — the void phase resolves all four declarations in one batch, so an unredacted event handed each client the three suits its own view withholds. Anything added to `GameEvent` needs a redaction decision as much as anything added to `GameState` does: the event log is the second channel to a client, and two leaks have now reached it.
 
 `roundEnd` also goes to spectators — on broadcast and on a late join, mirroring the A9 player path — so the store keeps a spectating client on its own screen rather than navigating it to the player round-end screen. `RoundResult.players[]` carries each seat's revealed `hand` and `melds`, its `isReady` state, and its slice of the round's payment `ledger`; it is only ever built once the round has ended, which is what keeps the reveal out of `PlayerView` and out of the redaction rules above.
 
@@ -864,7 +864,7 @@ After step 4, every future game uses the same URL — no per-session re-sharing.
 - **Primary:** self-contained npm package `sichuan-mahjong`, run via `npx sichuan-mahjong` (Node 22+). `prepack` bundles the server and **inlines the zero-dep engine** into `dist/main.js` (esbuild) and copies the built client into `dist/client`; the engine is a `devDependency` so consumers never try to fetch the private workspace package. Ships only `dist/main.js` + `dist/client`.
 - **Secondary:** precompiled single binaries via `bun build --compile` (`scripts/release/compile.ts`) for macOS arm64/x64, Linux x64/arm64, Windows x64. The client SPA is **embedded** in the binary: `gen-embedded-client.mjs` writes `src/generated/embedded-client.ts` (URL → base64), the Bun-only entry `src/binary.ts` hands it to the server, and `http.ts` serves from the embedded map (else from disk). Persistence is disabled in the binary (no `node:sqlite`). No Node install required.
 - **Entries:** startup lives in `server.ts`; `main.ts` (Node/npm bin) and `binary.ts` (Bun) are thin wrappers that each call `run()` once.
-- **Config:** CLI flags `--port`, `--https-port`, `--no-mdns`, `--no-tailscale`, `--share`, `--data-dir`. All optional with sensible defaults.
+- **Config:** CLI flags `--port`, `--https-port`, `--no-mdns`, `--no-tailscale`, `--share`, `--data-dir`, `--bot-delay`. All optional with sensible defaults.
 
 ---
 
@@ -959,22 +959,34 @@ patch: exclude `tiles/` from the embed and ship them beside the binary, or accep
 the merge and state the binary's licence accordingly. **The npm package and the
 from-source path are unaffected** — both serve `tiles/` from disk.
 
-**O2. Bot pacing.** Bots resolve a full circuit faster than a player can watch.
-Either a per-move delay (server config, so it stays tunable) or a scrollable
-history panel, or both — the event feed keeps only the latest line and drops to
-one line on short viewports by design (R1), so nothing recovers a move you looked
-away for.
+**O2. Bot pacing** — ✅ Done (2026-08-01), both halves. Bots pause
+`DEFAULT_BOT_PACE_MS` (700ms) a move instead of 150, retunable with
+`--bot-delay <ms>`; the pace lives in `room.ts` rather than `GameConfig` because
+it changes no rule and a replay of the same seed is identical at any value, and
+`SM_BOT_DELAY_MS` lets the vitest and Playwright configs pin the old 150 so
+whole-round suites don't pay for it. The history panel (`PlayHistory`) keeps the
+round's events in the store — raw, with ids, so a language switch re-renders them
+and identical discards stay distinct — and `historyRowFor` is the inverse of
+`feedLineFor`: discards are the bulk of the list rather than dropped. Its control
+sits in the play well, because a fourth top-bar icon truncated the turn indicator.
 
 **O3. Central discard pool.** Show every discard in the middle, mark the last one,
 and show each player's chosen void suit. The redaction decision it needs:
-`PublicPlayer` has no `voidedSuit` today — only `you` gets it, and the first
-discard sits face down precisely so the suit is not leaked early (A37) — so it
-should become public only once that player has flipped their first discard, which
-is when a real table learns it. Held as a fallback: the per-seat trays are staying,
-and the pool's appeal is that the middle of the board is mostly empty space.
+`PublicPlayer` has no `voidedSuit` — only `you` gets it, and the first discard sits
+face down precisely so the suit is not leaked early (A37) — so it should become
+public only once that player has flipped their first discard, which is when a real
+table learns it. A40 raises the bar rather than lowering it: the suit *did* reach
+every client through the event log, and now correctly doesn't, so the pool needs a
+deliberate reveal instead of a field that happened to be on the wire. Still held as
+a fallback — the per-seat trays are staying.
 
-**O4. Discard tile styling.** The flush run reads as tiles held together, which
-suits a hand and a meld but not a pile of discards. Direction undecided.
+**O4. Discard tile styling** — ✅ Done (2026-08-01), and it wasn't the discard pile.
+The report was that the middle discard looked glossier than the hand and trays: the
+well's last discard was the last board tile still drawn from the 3D art. Every tile
+on the board is flat now, with a `solo` prop carrying the lift a tile with nothing
+flush beside it needs, and the long-press preview following whatever it magnifies.
+This also revived the last-discard marker, which had matched `.tile-face` only and
+so had been dead on every flat tile since R7.
 
 ---
 
