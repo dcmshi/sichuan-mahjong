@@ -152,8 +152,20 @@ function VoidDeclarePhase({ view }: { view: PlayerView }) {
     sou: 'bg-blue-700 hover:bg-blue-600 border-blue-500',
   };
 
+  // The ring takes each suit's *button* colour, so the marked tiles and the
+  // button you pressed are visibly the same choice. Written out rather than
+  // built from the suit name because Tailwind only ships classes it can see.
+  const SUIT_RINGS: Record<Suit, string> = {
+    man: 'ring-red-500',
+    pin: 'ring-emerald-500',
+    sou: 'ring-blue-500',
+  };
+
   return (
-    <div className="min-h-dvh board-felt flex flex-col p-4 text-white gap-4">
+    // h-dvh with the hand scrolling inside it, not min-h-dvh: showing the whole
+    // hand costs a third row of tiles at 320px, and Confirm must not be the thing
+    // that goes off the bottom to make room for them. (R3's lesson)
+    <div className="h-dvh board-felt flex flex-col p-4 text-white gap-4 overflow-y-auto">
       <div className="flex items-center justify-between mt-2 gap-2">
         <h2 className="text-xl font-bold">{t('void.title')}</h2>
         <LangSwitch />
@@ -178,22 +190,40 @@ function VoidDeclarePhase({ view }: { view: PlayerView }) {
           </button>
         ))}
       </div>
-      {chosenSuit && (
-        <div>
-          <p className="text-sm text-green-300 mb-2">
-            {t('void.yourTiles', { suit: t(`suit.${chosenSuit}`) })}
-          </p>
-          <div className="flex flex-wrap gap-1">
-            {counts[chosenSuit].map(id => (
-              <Tile key={id} id={id} size="md" flat solo />
-            ))}
-            {counts[chosenSuit].length === 0 && (
-              <span className="text-white/60 italic text-sm">{t('void.none')}</span>
-            )}
-          </div>
+      {/* The whole hand, always — this used to list only the chosen suit, which
+          meant deciding blind: the choice is a comparison between three suits, and
+          you can't compare what isn't on screen. The suit you pick is marked in
+          its button's colour instead of being the only thing shown. */}
+      <div className="min-h-0 overflow-y-auto">
+        <p className="text-sm text-green-300 mb-2">{t('void.yourHand')}</p>
+        <div className="flex flex-wrap gap-1">
+          {view.you.hand.map(id => {
+            const { suit } = tileFromType(tileTypeOf(id));
+            const marked = suit === chosenSuit;
+            return (
+              <div
+                key={id}
+                // The e2e spec reads this to know whether a tile gets separated
+                // face down, which is what turn 1 has to flip (A35). It used to
+                // count the tiles in this container — fine when only the chosen
+                // suit was rendered, wrong now that the whole hand is.
+                data-void-tile={marked ? 'true' : undefined}
+                // ring, so the mark is drawn outside the tile and moves no box.
+                // 3px rather than 2: pin's emerald is the one ring sitting on a
+                // green felt, and it needs the extra pixel to read as clearly as
+                // the red and the blue do.
+                className={marked ? `rounded-sm ring-[3px] ${SUIT_RINGS[suit]}` : ''}
+              >
+                <Tile id={id} size="md" flat solo />
+              </div>
+            );
+          })}
         </div>
-      )}
-      <div className="mt-auto">
+        {chosenSuit && counts[chosenSuit].length === 0 && (
+          <p className="text-white/60 italic text-sm mt-2">{t('void.none')}</p>
+        )}
+      </div>
+      <div className="mt-auto pt-2">
         <button
           type="button"
           className="w-full py-4 bg-amber-500 hover:bg-amber-400 rounded-xl font-bold text-lg disabled:opacity-40"

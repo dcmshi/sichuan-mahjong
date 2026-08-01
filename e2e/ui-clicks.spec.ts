@@ -71,9 +71,12 @@ test('opening played via real UI clicks (huan tiles, void suit, discard tap)', a
 
   // ── Void: click the first suit button, then the confirm ("Void <suit>") ──
   await page.locator('div.flex.gap-3 > button').first().click();
-  // The screen lists the tiles of the chosen suit; holding ≥1 means one gets
-  // separated face down, which is what turn 1 must then flip (A35).
-  const voidSuitTiles = await page.locator('div.flex.flex-wrap.gap-1 img[alt]').count();
+  // The screen shows the whole hand and marks the chosen suit's tiles, so count
+  // the marked ones — holding ≥1 means one gets separated face down, which is
+  // what turn 1 must then flip (A35). Counting every tile in the container was
+  // right when only the chosen suit was rendered; now it would always be 13 and
+  // would demand a flip button in the indicator case, which has nothing to flip.
+  const voidSuitTiles = await page.locator('[data-void-tile] img[alt]').count();
   await page.getByRole('button', { name: /Void /i }).click();
 
   await expect.poll(() => getPhase(page), { timeout: 15_000 }).toBe('play');

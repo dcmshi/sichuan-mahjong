@@ -1,5 +1,28 @@
 # TODO
 
+## ✅ The void declaration shows the whole hand (2026-08-01)
+
+Choosing a void suit is a comparison between three suits, and the screen listed
+only the tiles of the suit already chosen — so you compared them by picking one,
+looking, picking another, looking again. The counts on the buttons were the only
+thing you could see all three of at once.
+
+- [x] **The whole hand is always on screen**, in the engine's canonical order so
+  the suits group. The chosen suit's tiles are ringed in that suit's *button*
+  colour — red for man, emerald for pin, blue for sou — rather than being the only
+  ones rendered. A `ring` draws outside the tile, so marking one moves no box.
+- [x] **3px, not 2.** Pin's emerald is the one ring sitting on a green felt; the
+  extra pixel is what makes it read as clearly as the red and the blue.
+- [x] **The screen is `h-dvh` with the hand scrolling inside it.** The full hand
+  costs a third row of tiles at 320px, and Confirm must not be what goes off the
+  bottom to make room (R3's lesson). Measured on both phones: Confirm's bottom is
+  552 of 568 and 648 of 664, with no horizontal overflow.
+- [x] **`ui-clicks.spec.ts` no longer infers the void-suit count from "how many
+  tiles are in that container".** That was right when only the chosen suit was
+  rendered and would now always be 13 — which would demand the first-discard flip
+  button even in the indicator case, where a player holds none of their void suit
+  and has nothing to flip (A35). It counts `[data-void-tile]` instead.
+
 ## ✅ A40 — a void declaration leaked to every client (2026-08-01)
 
 Found while reading `redactEventsFor` for the history panel. It nulled `drew` and
