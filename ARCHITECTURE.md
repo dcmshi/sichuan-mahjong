@@ -617,16 +617,23 @@ export type ClientMsg =
   | { t: 'addBot'; difficulty: 'easy' | 'medium' }     // host only
   | { t: 'kickBot'; seat: Seat }                        // host only
   | { t: 'startGame' }                                  // host only, requires 4 seats filled
+  | { t: 'nextRound' }                                  // host only, from the round-end screen
+  | { t: 'endMatch' }                                   // host only, from the round-end screen
   | { t: 'action'; action: GameAction };
 ```
+
+Only `join` is queued client-side while the socket is down; see §8.4. (F21)
 
 ### 6.4 Server → Client messages
 
 ```ts
 export type ServerMsg =
+  | { t: 'joined'; seat: Seat; token: string }              // seat assigned (or re-bound)
   | { t: 'lobby'; players: LobbyPlayer[]; canStart: boolean; isHost: boolean }
   | { t: 'view'; view: PlayerView; events: GameEvent[] }    // sent after each state change
+  | { t: 'spectate'; view: SpectatorView; events: GameEvent[] }
   | { t: 'roundEnd'; results: RoundResult }
+  | { t: 'matchEnd' }                                       // room torn down; sockets closed
   | { t: 'error'; code: string; message: string };
 ```
 
@@ -642,6 +649,7 @@ Both halves are per-viewer redacted before send: melds project as `PublicMeld` (
 - On disconnect, server holds the seat for 60s. Reconnect with same token resumes.
 - After 60s: bot takes over the seat for the rest of the round. Original player can reclaim seat at the next round.
 - Host disconnect = server keeps running. Host reconnection re-binds host token. If host loses their token (cleared cookies), no recovery — they need to restart the server.
+- Client side (§8.4): the seat token is kept in `localStorage`, so a page refresh can rejoin rather than losing the seat (F2), and the socket stops retrying after 8 consecutive failures instead of looping on a token the server will never accept (F6).
 
 ---
 
@@ -678,21 +686,22 @@ Mobile-first. Portrait phone is the design target; tablets and desktop scale up 
 
 ### 8.1 Screens
 
-1. **Landing** — "Host" and "Join" buttons. Host info text: "runs the server on this machine; share the URL with friends." Join flow accepts a URL or a code if already on the host's network.
-2. **Host setup** — show share URLs (LAN + Tailscale if available) as text + tap-to-copy + QR code, list joined seats, "Add bot" / "Remove bot" controls, "Start" button (disabled until 4 seats filled).
+1. **Landing** — Host / Join / Practice-vs-bots / Watch, plus "Rejoin" when a stored seat is present (§8.4). Host info text: "runs the server on this machine; share the URL with friends." Join flow accepts a URL or a code if already on the host's network.
+2. **Host setup** — share URL as text + tap-to-copy (the QR code is printed by the CLI, §10.4, not rendered here), the lobby code, a difficulty toggle for newly added bots, the four seats with "+ Bot" / "Kick" controls, "Start" (disabled until 4 seats filled) and "Leave".
 3. **Join** — code input (auto-uppercased, 4 chars) + name input. Pre-filled if URL was `/j/CODE`.
 4. **Lobby (joiner view)** — waiting state, list of players, "Leave" button.
 5. **Game** (the main screen):
    - **Top:** opponent across the table — back-of-tile hand strip, exposed melds, recent discards.
    - **Left/right:** opponents to either side — vertical hand backs, melds, discards.
    - **Bottom:** your hand (tappable, sorted), your melds, your discard row.
-   - **Center:** shared discard pool with last-discard highlighted. Wall-remaining counter. Current-turn arrow.
+   - **Center:** the play well — the last discard, highlighted, and the transient event feed (§8.5). Each seat's pond sits with that seat, not in the middle.
    - **Floating action panel:** appears during claim windows. Pung / Kong / Hu / Pass buttons + countdown bar. Big touch targets.
-   - **Top-right:** running score deltas per player.
-   - **Top-left:** round phase indicator (huan / void / playing).
+   - **Top bar:** wall-remaining counter, whose turn it is, language toggle, sound and help buttons.
+   - **Score strip:** running score deltas per player, directly under the top bar.
+   - Huan and void declaration are whole screens of their own rather than states of this one, so there is no phase indicator here.
    - **Furiten badge:** visible to your own seat if you're in furiten state (skip-Hu locked until next self-draw). Tooltip explains the rule.
    - **First-discard flip panel:** on your first turn, if you separated a tile at void declaration (§5.4), the hand is not discardable and this panel shows that tile plus a "Flip your first discard" button — the one discard you don't get to choose. Opponents' unflipped tiles render as a tile back at the head of their pond.
-6. **Round end** — score breakdown table, hand reveals, penalty annotations (false Hu / void-at-end / kong refund), "Next round" button.
+6. **Round end** — per-seat rank, wind, name, a Hu badge and this round's score delta, then match totals, then "Next round" / "End match" (host) or "Leave". It does *not* reveal hands or break the score down into fans and penalties, though `RoundResult` carries what that would need — see §12.11.
 7. **Match end** — final standings from the accumulated `matchScores`, then back to the menu. Reached on the server's `matchEnd` frame, which used to reset straight to Landing with no result shown. (F9)
 
 App-root overlays, mounted alongside whichever screen is active:
@@ -702,13 +711,15 @@ App-root overlays, mounted alongside whichever screen is active:
 
 ### 8.2 Tile rendering
 
-- Unicode mahjong glyphs (🀇–🀡) rendered in `<Tile>` component. `<TileBack>` for hidden tiles.
+- `<Tile>` renders an SVG face from `public/tiles/{suit}-{rank}.svg`; `<TileBack>` renders `back.svg`. (Unicode mahjong glyphs were the original plan, but the SVGs carry their own bevelled 3D tile, so the container is a transparent holder — see the note atop `index.css`.)
+- Both take a `fill` prop: the hand and the opponent-across strip size their tiles by flexing, so a 14-tile row fits any phone (F4).
 - Long-press tile: 2× preview modal.
 - Accessibility: clickable tiles are `role="button"` with `tabIndex`, Enter/Space and a localized `aria-label` ("3 of Characters"); the rest are `role="img"` with the same name. The `<img alt>` stays the internal `man-3` id — e2e selectors match on it and the wrapper's label is what gets announced. (F16)
 
 ### 8.3 Interactions
 
-- Tap a hand tile: select (visual lift). Tap again to discard.
+- Tap a hand tile: select (visual lift). Tap again to discard. Keyboard: Enter/Space on the focused tile does the same (§8.2).
+- Drag a hand tile to rearrange; "Sort" restores the server's order. The list item owns both gestures — a tap is distinguished from a drag by pointer travel, because Framer's `Reorder.Item` preventDefaults pointerdown and swallows `onClick`.
 - Long-press tile: 2x preview.
 - Claim buttons: single tap commits. Pass is single tap; engine applies to all simultaneous claims.
 
@@ -891,19 +902,20 @@ GitHub Actions: build engine → lint → typecheck → test (vitest) → build 
 
 ## 12. Open questions / explicit deferrals
 
-All originally-deferred items below have since been implemented (✅). Kept here
-as a record of the decisions and where each landed.
+Items 1–10 were deferred at v1 and have since been implemented (✅); they are
+kept as a record of the decisions and where each landed. Item 11 is open.
 
 1. **Reconnection > 60s** — ✅ Done: bot takeover holds for the rest of the round; a reconnected human reclaims their seat at the next round (`GameRoom.nextRound` recomputes `isBot` from `isHumanSeat` + connection state). See §6.5.
 2. **Host shutdown midgame** — ✅ Done: in-progress rooms are snapshotted to SQLite (`live_rooms` table) — debounced on every state change and flushed on graceful shutdown (SIGINT/SIGTERM). On boot, `restoreRoomsFromDisk()` rehydrates each room and re-registers its tokens, so players reconnect with their saved token and resume; unconnected human seats arm the normal 60s bot-takeover so play never stalls. Snapshots are deleted on `endMatch`. (A hard crash loses at most the last ~1s of actions.)
 3. **Match length** — ✅ Done: host starts each next round (`nextRound`; dealer rotates to `nextDealer` via `startNextRound`) or ends the match (`endMatch` → `matchEnd`). Running totals accumulate client-side across rounds.
-4. **i18n** — ✅ Done: UI strings externalized to a dependency-free catalog (`client/src/i18n/`) in English, Simplified Chinese (zh-Hans), and Traditional Chinese (zh-Hant), with an EN/简/繁 toggle persisted to `localStorage`. Tile faces stay glyph-based (language-neutral).
+4. **i18n** — ✅ Done: UI strings externalized to a dependency-free catalog (`client/src/i18n/`) in English, Simplified Chinese (zh-Hans), and Traditional Chinese (zh-Hant), with an EN/简/繁 toggle persisted to `localStorage` and mirrored onto `<html lang>` (F19). Tile faces are art, not text, so they stay language-neutral — only their screen-reader labels are translated (F16).
 5. **Spectators** — ✅ Done: connect to `/ws/:code?spectate=1` (no token/seat) to receive hand-hiding `spectate` views (`projectSpectatorView`); client has a read-only "Watch a Game" board.
 6. **Flower Pig house rule** — ✅ Done: opt-in `enableFlowerPig` config (default off); a non-Hu player ending with all 3 suits pays each opponent `2^fanCap`. See §5.9.
 7. **Tailscale node-sharing automation** — ✅ Done: `--share` (with `TAILSCALE_API_KEY`, optional `TAILSCALE_TAILNET`) resolves the host device via the Tailscale v2 API and auto-creates a reusable device-invite, printing the share URL in the startup banner. Without credentials it falls back to manual admin-console instructions (`tailscaleShare.ts`).
 8. **Set-with-void-suit meld penalty** — ✅ Done: 48-point deduction enforced on pung/kong/concealed-kong of voided suit (`voidMeldPenalty` event).
 9. **False-Hu detection** — ✅ Done: 8 pts/opponent redistributive penalty + kong refund on invalid draw-Hu or claim-window Hu.
 10. **Replay-test corpus** — ✅ Done: canned games per fan combination + penalty paths.
+11. **Round-end hand reveals and score breakdown** — ⏳ Open. §8.1 promised them from v1 and the screen never had them: it shows a score delta per seat and nothing about *why*. The data is already on the wire — `RoundResult.players[].hu` is a full `HuRecord` with `fans`, `handValue` and `winningTile` — so this is presentation work, not protocol work. Note that concealed kongs would need a deliberate decision: they render as four backs even to their owner (A27), so a reveal has to opt them in explicitly.
 
 ---
 

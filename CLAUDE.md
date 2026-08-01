@@ -47,6 +47,10 @@ pnpm --filter sichuan-mahjong start          # run server (serves built client)
 VITE_E2E=1 pnpm --filter @sichuan-mahjong/client build   # PowerShell: $env:VITE_E2E=1
 pnpm e2e
 
+# Regenerate the README screenshots in docs/ (needs the VITE_E2E client +
+# built server above; drives the real app and writes into the repo)
+pnpm shots
+
 # Release binaries (embed the client, no persistence): needs Bun
 bun run scripts/release/compile.ts
 ```
@@ -73,11 +77,15 @@ packages/server/src/
 packages/client/src/
   main.tsx       window.__e2e test helpers (VITE_E2E builds only)
   store/         Zustand store (mirrors PlayerView)
+  session.ts     seat token in localStorage — what makes "Rejoin" work
   ws/client.ts   WsClient singleton + sendAction
 e2e/
   game.spec.ts   full bot round      } chromium only (drive the game via __e2e)
   match.spec.ts  2-round match       }
   ui-clicks.spec.ts  real UI taps — runs on 5 viewports (phone/tablet × orientation)
+scripts/
+  icons/         PWA PNG generation (rerun if icon.svg changes)
+  screenshots/   docs/*.png capture — `pnpm shots`, kept out of `pnpm e2e`
 ```
 
 Full tree: [ARCHITECTURE.md §3](./ARCHITECTURE.md#3-repo-layout).
@@ -94,13 +102,21 @@ Full tree: [ARCHITECTURE.md §3](./ARCHITECTURE.md#3-repo-layout).
   today, each after an audit caught the leak.
 - **The WS boundary trusts nothing.** Inbound frames are validated in `ws.ts`;
   server-only actions (e.g. `claimWindowExpire`) are never accepted from a client.
+- **Client tests run without a DOM.** There's no jsdom or testing-library, so
+  anything worth asserting lives in the store, the transport, or a pure helper
+  the component calls — that's why `tileLabel`, `feedLineFor`, `joinErrorForStatus`
+  and the claim-countdown maths are exported. Add UI logic the same way.
+- **Screenshots are generated, not taken.** `docs/*.png` come from `pnpm shots`;
+  regenerate them rather than hand-capturing, or they drift out of date again.
 
 ---
 
 ## Status
 
-All v1 work, every originally-deferred feature, six full-repo audit passes
-(A1–A39, through 2026-07-25) and a frontend/design pass (F1–F25, 2026-07-31)
-are complete. **No open items.** Per-item history in [TODO.md](./TODO.md); the
-deferral record is
-[ARCHITECTURE.md §12](./ARCHITECTURE.md#12-open-questions--explicit-deferrals).
+All v1 work, six full-repo audit passes (A1–A39, through 2026-07-25) and a
+frontend/design pass (F1–F25, 2026-07-31) are complete. Per-item history is in
+[TODO.md](./TODO.md).
+
+**One open item:** round-end hand reveals and a fan/penalty breakdown —
+documented since v1, never built, and the data is already on the wire. See
+[ARCHITECTURE.md §12.11](./ARCHITECTURE.md#12-open-questions--explicit-deferrals).

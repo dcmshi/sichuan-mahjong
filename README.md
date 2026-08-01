@@ -22,10 +22,12 @@
 - Multi-round matches with running totals; host starts each round or ends the match
 - Spectator mode — watch any game read-only with a code (no hand exposed)
 - Trilingual UI — English / 简体中文 / 繁體中文
-- Mobile-first PWA (installs to home screen over HTTPS/Tailscale)
+- Mobile-first PWA (installs to home screen over HTTPS/Tailscale, with an offline app shell)
+- Keyboard-operable and screen-reader-labelled tiles; honours `prefers-reduced-motion`
 - LAN play out of the box — no setup beyond running the server
 - Cross-network play via [Tailscale](https://tailscale.com), with `--share` to auto-create a share invite
 - Reconnect within 60 s of disconnect; bot takes over after that, and you reclaim your seat next round
+- Refresh-safe: your seat is remembered, so a reload drops you back into the same game
 - Crash-safe: in-progress games are snapshotted and resume after a server restart (npx / Node build; the standalone binaries run without persistence)
 
 ---
@@ -77,7 +79,9 @@ Share the URL (or just the 4-letter code) with your friends. You can also add bo
 | `--https-port` | `8443` | HTTPS port (Tailscale only) |
 | `--no-mdns` | — | Disable mDNS broadcast |
 | `--no-tailscale` | — | Disable Tailscale detection |
+| `--share` | — | Auto-create a Tailscale share invite (needs `TAILSCALE_API_KEY`, optionally `TAILSCALE_TAILNET`) |
 | `--data-dir` | OS user data dir | Where to store the SQLite database |
+| `--help` | — | Show usage and exit |
 
 ### As a joiner (connecting to someone else's game)
 
@@ -131,6 +135,11 @@ pnpm e2e         # Playwright end-to-end (bot round, 2-round match, real-UI-clic
 pnpm typecheck
 pnpm lint
 ```
+
+`pnpm e2e` needs the client built with `VITE_E2E=1` (it exposes the
+`window.__e2e` drive helpers) and the server built; Playwright starts the
+server itself. The same build feeds `pnpm shots`, which regenerates the
+screenshots in `docs/` by driving the real app.
 
 Client hot-reload during development:
 
