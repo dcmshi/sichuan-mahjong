@@ -2,7 +2,9 @@
 
 > Web-based 4-player Sichuan ("Bloody Rules") mahjong. Mobile-first PWA. Host runs the server on their own machine; friends connect over LAN or Tailscale. Bots fill empty seats and power a single-player practice mode.
 
-## Status: v2.2 — audit-hardened
+## Status: v2.3 — frontend-audited
+
+Changelog from v2.2 (2026-07-31): client-only audit + fixes (F1–F25 in [TODO.md](./TODO.md)). Highlights: server `error` frames now reach the UI instead of being dropped (F1); a refreshed player can rejoin their seat (F2); the match ends on a standings screen rather than a silent bounce to the menu (F9); the service worker actually caches — it precached a dev-only path and so installed nothing in production (F5); reconnects give up instead of looping forever, and no longer replay stale actions (F6/F21); tiles are keyboard- and screen-reader-operable (F16); reduced motion is honored (F12); the claim countdown no longer depends on the client clock (F25).
 
 Changelog from v2.1 (2026-07): full repo audit + fixes (tracked as A1–A20 in [TODO.md](./TODO.md)). Highlights: hardened the WS boundary (malformed frames can no longer crash the server; `claimWindowExpire` is server-only); fixed a furiten bypass (pung → self-draw), the furiten override threshold (max-skipped, §5.5.5), host-seat reservation, reconnect/restore grace during huan/void/claim, once-per-round persistence, and `endMatch` teardown; bots now pung; mDNS/QR fixed (ESM `createRequire`); `node:sqlite` loads lazily so it degrades instead of crashing. **Distribution:** the npm package is now self-contained (engine inlined, client bundled) and the Bun binaries embed the client SPA. Biome adopted + enforced in CI.
 
@@ -56,7 +58,7 @@ Both server and client import from engine. Protocol message types live in `engin
 
 **Runtime:** Node 22 LTS, single process, runs on the host's own machine.
 **Tooling:** Biome (lint+format, enforced in CI), Vitest, fast-check (engine property tests), Playwright (e2e: full 3-bot round, 2-round match, and a real-UI-click opening).
-**Distribution:** self-contained npm package `sichuan-mahjong` (esbuild inlines the private engine; the built client SPA ships in `dist/client`) invokable via `npx sichuan-mahjong`. Optional precompiled single binaries (Bun compile) per OS for hosts without Node — these embed the client SPA too, but run with persistence disabled (Bun has no `node:sqlite`; see §9/§10.4).
+**Distribution:** self-contained npm package `sichuan-mahjong` (esbuild inlines the private engine; the built client SPA ships in `dist/client`) invokable via `npx sichuan-mahjong`. Optional precompiled single binaries (Bun compile) per OS for hosts without Node — these embed the client SPA too, but run with persistence disabled (Bun has no `node:sqlite`; see §9/§10.5).
 
 ---
 
@@ -96,18 +98,20 @@ sichuan-mahjong/
 │   │   ├── public/
 │   │   │   └── tiles/            # 27 tile faces + back.svg + credits.json
 │   │   ├── src/
-│   │   │   ├── components/       # Tile, Hand, Meld, DiscardPool, ClaimPanel, ScoreBoard
-│   │   │   ├── screens/          # Landing, HostSetup, JoinForm, Lobby, Game, RoundEnd
+│   │   │   ├── components/       # Tile, MeldDisplay, ClaimPanel, EventFeed, ErrorToast, ConnectionLost
+│   │   │   ├── screens/          # Landing, HostSetup, JoinForm, Lobby, Game, RoundEnd, MatchEnd, Spectate, About
 │   │   │   ├── store/
 │   │   │   ├── ws/
 │   │   │   ├── hooks/
 │   │   │   ├── i18n/            # EN / zh-Hans / zh-Hant string catalogs
+│   │   │   ├── session.ts       # seat token in localStorage — survives a refresh
 │   │   │   ├── index.css        # Tailwind entry
 │   │   │   ├── App.tsx
 │   │   │   └── main.tsx
 │   │   ├── index.html
 │   │   └── vite.config.ts
 ├── scripts/
+│   ├── icons/                    # PWA PNG generation (no image dependency)
 │   └── release/                  # Bun compile per OS
 ├── pnpm-workspace.yaml
 ├── biome.json
@@ -689,11 +693,18 @@ Mobile-first. Portrait phone is the design target; tablets and desktop scale up 
    - **Furiten badge:** visible to your own seat if you're in furiten state (skip-Hu locked until next self-draw). Tooltip explains the rule.
    - **First-discard flip panel:** on your first turn, if you separated a tile at void declaration (§5.4), the hand is not discardable and this panel shows that tile plus a "Flip your first discard" button — the one discard you don't get to choose. Opponents' unflipped tiles render as a tile back at the head of their pond.
 6. **Round end** — score breakdown table, hand reveals, penalty annotations (false Hu / void-at-end / kong refund), "Next round" button.
+7. **Match end** — final standings from the accumulated `matchScores`, then back to the menu. Reached on the server's `matchEnd` frame, which used to reset straight to Landing with no result shown. (F9)
+
+App-root overlays, mounted alongside whichever screen is active:
+
+- **Error toast** — the server's `error` frames. They were logged and dropped before, so every rejection was invisible; known codes map to `err.<code>` catalog strings and anything else falls back to the server's message. (F1)
+- **Connection lost** — shown once the socket stops retrying (§8.4), with a way back to the menu. (F6)
 
 ### 8.2 Tile rendering
 
 - Unicode mahjong glyphs (🀇–🀡) rendered in `<Tile>` component. `<TileBack>` for hidden tiles.
 - Long-press tile: 2× preview modal.
+- Accessibility: clickable tiles are `role="button"` with `tabIndex`, Enter/Space and a localized `aria-label` ("3 of Characters"); the rest are `role="img"` with the same name. The `<img alt>` stays the internal `man-3` id — e2e selectors match on it and the wrapper's label is what gets announced. (F16)
 
 ### 8.3 Interactions
 
@@ -705,7 +716,9 @@ Mobile-first. Portrait phone is the design target; tablets and desktop scale up 
 
 - Zustand store mirrors latest `PlayerView` from server. UI reads `view.yourLegalActions` to enable/disable buttons — no client-side rule logic.
 - Optimistic local state only for tile selection / drag preview. Committed actions wait for server `view` confirmation.
-- WebSocket reconnect with exponential backoff; "reconnecting…" toast.
+- WebSocket reconnect with exponential backoff; "reconnecting…" toast. It gives up after 8 consecutive failures — an invalid token fails identically every time, so retrying forever just hid the problem. (F6)
+- Only the `join` handshake survives a closed socket. Screens send it before the socket opens; everything else is a user action taken while visibly disconnected, and flushing the queue on reconnect delivered stale discards and lobby commands a round late. (F21)
+- **Seat session** (`src/session.ts`) — `{ code, token, name, isHost }` in `localStorage`, written on `joined`/`lobby` and cleared by `resetSession`. It is what makes "Rejoin" on Landing possible after a refresh; the host flag is re-persisted from the `lobby` frame because `joined` arrives before it is known. A stale token is ignored rather than rejected by the server, so the rejoin attempt times out after 6s. (F2)
 
 ### 8.5 Animations (Framer Motion 12)
 
@@ -713,7 +726,9 @@ Mobile-first. Portrait phone is the design target; tablets and desktop scale up 
 - Last-discard: pop highlight.
 - Hu: celebration burst overlay.
 - Reconnect toast: slide-in/out.
-- Round-end: staggered score reveal.
+- Round-end: staggered score reveal — position and scale only. Rows used to mount at `opacity: 0`, so anywhere the animation didn't run the scoreboard never appeared. (F11)
+- **Reduced motion:** `MotionConfig reducedMotion="user"` at the root, plus a `prefers-reduced-motion` block in `index.css` that collapses CSS animations and freezes the last-discard pulse into a static glow. (F12)
+- **Event feed** — pungs, kongs and wins from the `view` frame's `events`, with sound for other seats' discards and claims. Before this, `lastEvents` was stored and read by nothing. (F7)
 
 ---
 
@@ -771,6 +786,23 @@ If detected:
 - Bind an HTTPS listener on `:8443` using the cert. PWA install works on the Tailscale URL.
 - Generate share URL `https://<hostname>:8443/j/<CODE>`.
 
+### 10.3 PWA install & offline shell
+
+`public/sw.js` registers only over HTTPS (so, the Tailscale path). It precaches
+`/` on install and runtime-caches the content-hashed `/assets`, the tile art and
+the icons on first request; navigations are network-first with the cached shell
+as the offline fallback. It used to precache `/src/main.tsx` as well — a dev-only
+path — and since `cache.addAll` is atomic, that 404 rejected every production
+install and left the cache empty, making the worker dead code. Bump the cache
+name on any change to what is precached. (F5)
+
+`manifest.webmanifest` ships 192/512 PNGs plus a maskable 512 and an
+`apple-touch-icon`; an SVG alone is ignored by iOS home-screen and several
+Android launchers. They are generated by `scripts/icons/generate-icons.mjs`,
+which draws the same primitives as `icon.svg` with no image dependency — rerun it
+if the icon changes. `#0c5f57` is the single brand color across the icon,
+`theme-color` and the manifest. (F18)
+
 Documentation surfaced on the Host setup screen explains how to share the host machine with friends:
 1. Friend installs Tailscale (5-min setup; iOS/Android/macOS/Windows/Linux clients).
 2. Host opens Tailscale admin console → Machines → mahjong-laptop → Share. Sends the share invite link.
@@ -780,7 +812,7 @@ Documentation surfaced on the Host setup screen explains how to share the host m
 
 After step 4, every future game uses the same URL — no per-session re-sharing.
 
-### 10.3 Startup output
+### 10.4 Startup output
 
 ```
 🀄  Sichuan Mahjong — running on this machine
@@ -797,7 +829,7 @@ After step 4, every future game uses the same URL — no per-session re-sharing.
    Server keeps running until you Ctrl-C.
 ```
 
-### 10.4 Distribution
+### 10.5 Distribution
 
 - **Primary:** self-contained npm package `sichuan-mahjong`, run via `npx sichuan-mahjong` (Node 22+). `prepack` bundles the server and **inlines the zero-dep engine** into `dist/main.js` (esbuild) and copies the built client into `dist/client`; the engine is a `devDependency` so consumers never try to fetch the private workspace package. Ships only `dist/main.js` + `dist/client`.
 - **Secondary:** precompiled single binaries via `bun build --compile` (`scripts/release/compile.ts`) for macOS arm64/x64, Linux x64/arm64, Windows x64. The client SPA is **embedded** in the binary: `gen-embedded-client.mjs` writes `src/generated/embedded-client.ts` (URL → base64), the Bun-only entry `src/binary.ts` hands it to the server, and `http.ts` serves from the embedded map (else from disk). Persistence is disabled in the binary (no `node:sqlite`). No Node install required.
@@ -828,18 +860,30 @@ After step 4, every future game uses the same URL — no per-session re-sharing.
 - **Bot-vs-bot smoke:** 100 full games with 4 easy bots (plus 30 with medium bots). Assert no crashes, no rule violations rejected mid-game, payment-matrix balance for every game, exposed pungs actually form (A13), and — crucially — that wins come from players who separated a face-down first discard, not only from the rare indicator user. A bare "some Hu happened" assertion is what let A35 hide behind indicator users through five audit passes.
 - Tailscale detection mock tests (unit-level): given mocked `tailscale status --json` outputs, verify URL generation.
 
-### 11.3 E2E
+### 11.3 Client
+
+Node environment, no DOM — so tests target the store, the transport and the pure
+helpers behind the components rather than rendered output:
+
+- Store reducers: match-score accumulation and replay guard (A30/A39), `error` surfacing (F1), the match-end transition (F9).
+- `session.ts` round-trip and rejection of unusable stored values (F2).
+- `WsClient`: the retry cap and budget reset (F6), and that only the `join` handshake survives a closed socket (F21).
+- Pure helpers extracted for exactly this reason — `tileLabel` (F16), the event-feed sound/announcement mapping (F7), `joinErrorForStatus` (F22), the claim countdown's skew handling (F25) — each also asserted against the catalog so a rendered key can't go missing.
+- i18n catalog parity across the three languages (A18).
+- `tests/sw.test.ts` runs the real `public/sw.js` in a stubbed worker global. Three of its four cases fail against the pre-F5 file, which is the point: the worker ships as a plain asset and nothing else type-checks or exercises it.
+
+### 11.4 E2E
 
 - `e2e/game.spec.ts` — host + 3 bots, full round to round-end screen, replay 404, healthz.
 - `e2e/match.spec.ts` — two-round match with running totals, then "End match".
 - `e2e/ui-clicks.spec.ts` — the same opening driven entirely by **real clicks** (huan tile taps, void suit button, first-discard flip, tap-to-select/tap-to-discard), which is the only spec that exercises the interaction layer. Runs on 5 viewport projects (desktop, iPhone 14 portrait/landscape, iPad portrait/landscape), each asserting no horizontal overflow and attaching a screenshot.
 - The other specs poll phase from the Zustand store via `window.__e2e` (not the DOM) to avoid Framer Motion 12 pointer-event interception timing issues.
 
-### 11.4 Packaging
+### 11.5 Packaging
 
 - Smoke test: `node packages/server/dist/main.js --help` runs in CI.
 
-### 11.5 CI
+### 11.6 CI
 
 GitHub Actions: build engine → lint → typecheck → test (vitest) → build server + client → e2e (playwright) → package smoke.
 

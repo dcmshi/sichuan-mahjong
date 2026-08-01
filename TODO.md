@@ -1,5 +1,143 @@
 # TODO
 
+## 🔍 Frontend & design audit — seventh pass (2026-07-31)
+
+Audit of `packages/client` only (React 18 + Tailwind + Zustand + Framer Motion
+PWA): code review plus visual review of `docs/*.png` and `test-results/*.png`.
+Prefix **F**, one commit per item. **Status: all 25 resolved** — lint clean,
+typecheck clean, 163 engine + 49 server + 34 client tests and 9 Playwright e2e
+(5 viewports) green.
+
+### High
+
+- [x] **F1 · Server errors never reached the UI.** `handleServerMsg` logged
+  `error` frames with `console.warn` and dropped them, so a full lobby, an
+  already-started game or a rejected action produced no feedback at all — and
+  the huan/void screens sat on "Waiting…" forever after one. The store now keeps
+  `lastError` (with a `seq` so an identical repeat re-triggers), an `ErrorToast`
+  mounted at the app root renders it against `err.<code>` catalog strings
+  (falling back to the server's message), and both declaration phases clear
+  their `submitted` state when one arrives.
+- [x] **F2 · No rejoin after a page refresh.** The seat token and room code
+  lived only in memory, so a mid-game refresh — routine on a phone — lost the
+  seat permanently even though the server reconnects a token happily. New
+  `src/session.ts` persists `{ code, token, name, isHost }` on `joined`/`lobby`
+  (the host flag is only known once the `lobby` frame lands) and clears it in
+  `resetSession`; Landing offers "Rejoin". A stale token isn't rejected by the
+  server, only ignored, so the attempt gives up after 6s and reports through F1.
+- [x] **F3 · Your own discard pool was never rendered.** All three opponents had
+  discard trays; `view.you.discards` appeared nowhere, so the furiten badge sat
+  above a board that never showed the discards causing it. Now rendered in a
+  tray above the hand, face-down placeholder included.
+- [x] **F4 · The opponent-across hand overflowed the viewport.** 14 backs at a
+  fixed `w-8` came to ~460px, wider than a 390px phone, and clipped off both
+  screen edges. Each back now flexes (`flex-1 min-w-0`, 2rem cap) like the
+  player's own hand — `TileBack` gained a `fill` prop for it — and the meld row
+  wraps.
+- [x] **F5 · The service worker cached nothing in production.** `SHELL` listed
+  `/src/main.tsx`, which exists only in dev; `cache.addAll` is atomic, so its
+  404 rejected every production install, the `.catch` swallowed it, and the
+  offline fallback always resolved to the bare 503. Precache `/` only,
+  runtime-cache the hashed `/assets` and `/tiles` on first use, cache name
+  bumped to v2. `tests/sw.test.ts` drives the real `public/sw.js` in a stubbed
+  worker global (3 of its 4 cases fail against the old file).
+
+### Medium
+
+- [x] **F6 · The reconnect loop never gave up.** Backoff capped at 10s but
+  retried forever, so an invalid token spun silently behind a permanent
+  "Reconnecting…". Stops after 8 consecutive failures (~47s) via a new
+  `onGiveUp` callback and shows a "Back to menu" overlay; a successful connect
+  resets the budget.
+- [x] **F7 · `lastEvents` was collected and never displayed.** Nothing read it,
+  so claims were only inferable from board diffs and sound fired only for the
+  local player's own taps. New `EventFeed` announces pungs, kongs and wins and
+  plays the matching sound for other seats. A won claim emits both `hu` and
+  `claimed{kind:'hu'}`, so it is announced once.
+- [x] **F8 · The score row made every bot identical.** `o.name.slice(0, 4)`
+  rendered "Bot 2"/"Bot 3"/"Bot 4" as three "Bot:" labels. CSS truncation
+  instead.
+- [x] **F9 · Match end dumped everyone to the landing screen.** `matchEnd`
+  called `resetSession()` immediately — no winner, no totals. New `matchEnd`
+  screen ranks the accumulated `matchScores` (falling back to lobby names when
+  the idle sweep ends a match mid-round) and returns to the menu on demand.
+- [x] **F10 · No way to leave a lobby.** Neither lobby view had an exit, so
+  abandoning one meant closing the tab and the host's socket lingered until
+  then. Leave button on both.
+- [x] **F11 · Round-end rows needed the animation to become visible.** Rows
+  mounted at `opacity: 0` and relied on staggered Framer animations, so any
+  environment where the animation didn't run got a blank scoreboard — as both
+  match-round-end screenshots show. Entrances now animate position and scale
+  only; opacity rests at 1.
+- [x] **F12 · No reduced-motion support.** The last-discard tile pulsed forever
+  and every overlay sprang in. `MotionConfig reducedMotion="user"` at the root
+  plus a `prefers-reduced-motion` block that collapses CSS animations and keeps
+  the last-discard glow static.
+- [x] **F13 · The play screen clipped on short/landscape viewports.**
+  `overflow-hidden` cut off the lower board on a ~390px-tall landscape phone
+  with no way to reach it; vertical overflow now scrolls.
+- [x] **F14 · The claim panel was off-theme.** Gray-900/700 chrome against a
+  jade-and-amber board. Restyled to the felt palette; the Hu/Kong/Pung buttons
+  keep their action-semantic colors.
+- [x] **F15 · Touch targets below 40px.** The language toggle was ~24px tall and
+  the sound/help buttons were bare text with no padding. `min-h-10 min-w-10` on
+  all of them (Sort included), with the turn indicator truncating so the wider
+  bar still fits a phone.
+- [x] **F16 · Tiles were not keyboard- or screen-reader-accessible.** Bare
+  `motion.div`s with `onClick`: no role, no `tabIndex`, no key handler, and the
+  only name was the untranslated id "man-3". Clickable tiles get
+  `role="button"`, `tabIndex`, Enter/Space and a localized `aria-label` ("3 of
+  Characters"); non-interactive tiles get `role="img"` with the same name; hand
+  tiles, whose gestures belong to the `Reorder.Item`, get a real button wrapper.
+  The `img` `alt` keeps the internal id — e2e selectors match on it and it is
+  never announced.
+
+### Low
+
+- [x] **F17 · Hardcoded strings bypassed i18n.** A literal "← share code" while
+  `host.shareCode` sat unused; the spectator dealer badge 庄 in every language;
+  English-only titles/aria-labels on the sound, help and How-to-Play close
+  buttons; practice mode naming the player a hardcoded "You". All routed through
+  the catalog in three languages. The practice error now carries a catalog key
+  rather than an English literal the UI never rendered.
+- [x] **F18 · PWA metadata mismatch and missing icons.** Only an SVG icon, which
+  iOS home-screen and several Android launchers ignore (closes the
+  apple-touch-icon nice-to-have left open by A34), and `theme-color` was
+  green-900 while the board and `body` are felt `#0c5f57`. Added 192/512 PNGs, a
+  maskable 512 with the tile inside the safe zone, and an apple-touch-icon,
+  produced by `scripts/icons/generate-icons.mjs` — dependency-free, drawing the
+  same five primitives as `icon.svg` and encoding via `node:zlib`. One brand
+  color everywhere.
+- [x] **F19 · `<html lang>` never updated.** Pinned to `en`, so screen readers
+  read the Chinese UI with English rules. `applyDocumentLang` runs from `setLang`
+  and once at startup.
+- [x] **F20 · The Hu celebration ended itself early.** `onAnimationComplete` sat
+  on the outer ~0.3s fade, so the overlay exited a third of the way into the
+  0.8s emoji animation. Dismissed on a 1.2s timer owned by the play screen,
+  which also survives reduced motion skipping the animation.
+- [x] **F21 · Queued actions flushed after reconnect.** Everything sent while
+  disconnected was replayed verbatim, so a discard or lobby command could land a
+  round late. Only the `join` handshake — the one message screens send before
+  the socket opens — is queued now.
+- [x] **F22 · The join form conflated all HTTP failures.** Any non-OK status
+  showed "Lobby not found", sending players hunting for a typo in a correct code
+  when the server 500'd. Branches on status.
+- [x] **F23 · Presentation nits.** Round-end and match-end rows read "You (you)"
+  in practice mode; the tag is dropped when redundant. Lobby rows showed nothing
+  for a disconnected player, which read as "still connecting"; they say so now.
+  A concealed kong rendered as four bare backs, indistinguishable from a hand
+  fragment; it carries a Kong badge.
+- [x] **F24 · `min-h-screen` used `vh` on mobile.** The 100vh baseline jumps on
+  iOS as the URL bar shows/hides, shifting the layout mid-game. All screens use
+  `min-h-dvh`.
+- [x] **F25 · The claim countdown trusted the client clock.** The bar compared
+  the server's `claimDeadline` against `Date.now()`, so a client 30s behind
+  drained a 3s window over 33 seconds and one ahead saw it pinned at empty —
+  negligible on a LAN, real over Tailscale. Takes the length from
+  `view.config.claimWindowMs`, trusts the deadline only inside a plausible range
+  (so a mid-window reconnect still resumes part-drained), and ticks on the
+  monotonic clock.
+
 ## 🔍 Audit backlog — sixth pass (2026-07-26)
 
 Full-repo inline re-audit (engine, server, client, cross-checked against

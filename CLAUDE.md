@@ -12,7 +12,7 @@ Keep this file short. New documentation goes in one of these instead:
 | File | Holds | Write here when… |
 |---|---|---|
 | **[ARCHITECTURE.md](./ARCHITECTURE.md)** | Types, engine API, full ruleset, protocol, persistence, networking, testing strategy | …you change behavior, a type, or a rule |
-| **[TODO.md](./TODO.md)** | Phase history + audit backlog (A1–A39), each item with diagnosis and fix | …you fix a bug or close an audit item |
+| **[TODO.md](./TODO.md)** | Phase history + audit backlog (A1–A39, F1–F25), each item with diagnosis and fix | …you fix a bug or close an audit item |
 | **[README.md](./README.md)** | User-facing: install, host/join, CLI flags | …you change the CLI or the player-facing flow |
 | `SBR_ENG_part_1.pdf` | Novikov, *Sichuan Mahjong? It's that simple!* — the canonical ruleset | (read-only; extract with `pdftotext` when a rule is in question) |
 
@@ -99,7 +99,8 @@ Full tree: [ARCHITECTURE.md §3](./ARCHITECTURE.md#3-repo-layout).
 
 ## Status
 
-All v1 work, every originally-deferred feature, and six audit passes (A1–A39,
-through 2026-07-25) are complete. **No open items.** Per-item history in
-[TODO.md](./TODO.md); the deferral record is
+All v1 work, every originally-deferred feature, six full-repo audit passes
+(A1–A39, through 2026-07-25) and a frontend/design pass (F1–F25, 2026-07-31)
+are complete. **No open items.** Per-item history in [TODO.md](./TODO.md); the
+deferral record is
 [ARCHITECTURE.md §12](./ARCHITECTURE.md#12-open-questions--explicit-deferrals).
