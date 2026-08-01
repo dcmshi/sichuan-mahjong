@@ -128,6 +128,19 @@ const en: Dict = {
   'spec.connectingGame': 'Connecting to game…',
   'spec.roundOver': 'Round over',
   'spec.spectating': 'Spectating · {code}',
+
+  // Server `error` frame codes (F1). Unknown codes fall back to the server's
+  // own message, so this list only needs the ones a player can actually hit.
+  'err.lobby_not_found': 'That lobby no longer exists',
+  'err.lobby_full': 'That lobby is full',
+  'err.game_started': 'That game has already started',
+  'err.already_joined': 'You have already joined',
+  'err.not_host': 'Only the host can do that',
+  'err.not_ready': 'The lobby is not full yet',
+  'err.no_game': 'No game found for that code',
+  'err.bad_action': 'That move was not understood',
+  'err.forbidden_action': 'That move is not allowed',
+  'err.wrong_seat': 'That move is for another seat',
 };
 
 const zhHans: Dict = {
@@ -244,6 +257,17 @@ const zhHans: Dict = {
   'spec.connectingGame': '连接对局中…',
   'spec.roundOver': '本局结束',
   'spec.spectating': '观战中 · {code}',
+
+  'err.lobby_not_found': '该房间已不存在',
+  'err.lobby_full': '房间已满',
+  'err.game_started': '该对局已经开始',
+  'err.already_joined': '你已经加入了',
+  'err.not_host': '只有房主可以这样做',
+  'err.not_ready': '房间还没满员',
+  'err.no_game': '找不到该房间的对局',
+  'err.bad_action': '无法识别该操作',
+  'err.forbidden_action': '不允许该操作',
+  'err.wrong_seat': '该操作属于其他座位',
 };
 
 const zhHant: Dict = {
@@ -360,6 +384,17 @@ const zhHant: Dict = {
   'spec.connectingGame': '連線對局中…',
   'spec.roundOver': '本局結束',
   'spec.spectating': '觀戰中 · {code}',
+
+  'err.lobby_not_found': '該房間已不存在',
+  'err.lobby_full': '房間已滿',
+  'err.game_started': '該對局已經開始',
+  'err.already_joined': '你已經加入了',
+  'err.not_host': '只有房主可以這樣做',
+  'err.not_ready': '房間還沒滿員',
+  'err.no_game': '找不到該房間的對局',
+  'err.bad_action': '無法識別該操作',
+  'err.forbidden_action': '不允許該操作',
+  'err.wrong_seat': '該操作屬於其他座位',
 };
 
 // Exported so a test can assert key parity across languages (missing keys silently

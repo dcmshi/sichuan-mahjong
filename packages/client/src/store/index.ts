@@ -56,6 +56,10 @@ export interface GameStore {
   connected: boolean;
   reconnecting: boolean;
 
+  // Last server rejection. `seq` increments on every arrival so an identical
+  // error repeated back-to-back still re-triggers the toast. (F1)
+  lastError: { code: string; message: string; seq: number } | null;
+
   // Settings
   soundEnabled: boolean;
   toggleSound: () => void;
@@ -69,6 +73,7 @@ export interface GameStore {
   setConnected: (v: boolean) => void;
   setReconnecting: (v: boolean) => void;
   handleServerMsg: (msg: ServerMsg) => void;
+  clearError: () => void;
   resetSession: () => void;
 }
 
@@ -89,6 +94,7 @@ export const useStore = create<GameStore>((set, get) => ({
   countedRounds: [],
   connected: false,
   reconnecting: false,
+  lastError: null,
   soundEnabled: true,
   lang: loadLang(),
   setLang: lang => {
@@ -161,10 +167,18 @@ export const useStore = create<GameStore>((set, get) => ({
         break;
 
       case 'error':
-        console.warn('[server error]', msg.code, msg.message);
+        set({
+          lastError: {
+            code: msg.code,
+            message: msg.message,
+            seq: (get().lastError?.seq ?? 0) + 1,
+          },
+        });
         break;
     }
   },
+
+  clearError: () => set({ lastError: null }),
 
   resetSession: () => {
     closeConnection(); // drop the live socket so it doesn't linger/reconnect
@@ -184,6 +198,7 @@ export const useStore = create<GameStore>((set, get) => ({
       countedRounds: [],
       connected: false,
       reconnecting: false,
+      lastError: null,
     });
   },
 }));

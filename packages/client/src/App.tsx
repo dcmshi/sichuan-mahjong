@@ -1,3 +1,4 @@
+import { ErrorToast } from './components/ErrorToast.js';
 import { About } from './screens/About.js';
 import { Game } from './screens/Game.js';
 import { HostSetup } from './screens/HostSetup.js';
@@ -9,7 +10,7 @@ import { Spectate } from './screens/Spectate.js';
 import { SpectateForm } from './screens/SpectateForm.js';
 import { useStore } from './store/index.js';
 
-export function App() {
+function CurrentScreen() {
   const screen = useStore(s => s.screen);
 
   switch (screen) {
@@ -32,4 +33,13 @@ export function App() {
     case 'spectate':
       return <Spectate />;
   }
+}
+
+export function App() {
+  return (
+    <>
+      <CurrentScreen />
+      <ErrorToast />
+    </>
+  );
 }

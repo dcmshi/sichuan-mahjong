@@ -57,6 +57,25 @@ describe('client store (A30)', () => {
     expect(useStore.getState().isHost).toBe(false);
   });
 
+  it("F1: 'error' is surfaced on the store instead of being dropped", () => {
+    const { handleServerMsg } = useStore.getState();
+    expect(useStore.getState().lastError).toBeNull();
+
+    handleServerMsg({ t: 'error', code: 'lobby_full', message: 'Lobby is full.' });
+    expect(useStore.getState().lastError).toEqual({
+      code: 'lobby_full',
+      message: 'Lobby is full.',
+      seq: 1,
+    });
+
+    // The same error twice in a row must still re-trigger the toast.
+    handleServerMsg({ t: 'error', code: 'lobby_full', message: 'Lobby is full.' });
+    expect(useStore.getState().lastError?.seq).toBe(2);
+
+    useStore.getState().clearError();
+    expect(useStore.getState().lastError).toBeNull();
+  });
+
   it("'matchEnd' resets the session back to landing", () => {
     useStore.setState({ screen: 'game', code: 'ABCD', token: 't', seat: 1, matchScores: { 0: 5 } });
     useStore.getState().handleServerMsg({ t: 'matchEnd' });

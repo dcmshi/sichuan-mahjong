@@ -22,6 +22,11 @@ function HuanPhase({ view }: { view: PlayerView }) {
   const seat = view.you.seat;
   const play = useSound();
   const t = useT();
+  // A rejected submit would otherwise strand the player on "Waiting…" forever. (F1)
+  const errorSeq = useStore(s => s.lastError?.seq);
+  useEffect(() => {
+    if (errorSeq !== undefined) setSubmitted(false);
+  }, [errorSeq]);
 
   function toggle(id: TileId) {
     play('tile');
@@ -103,6 +108,11 @@ function VoidDeclarePhase({ view }: { view: PlayerView }) {
   const [submitted, setSubmitted] = useState(false);
   const seat = view.you.seat;
   const t = useT();
+  // As in HuanPhase: don't leave a rejected submit stuck on "Waiting…". (F1)
+  const errorSeq = useStore(s => s.lastError?.seq);
+  useEffect(() => {
+    if (errorSeq !== undefined) setSubmitted(false);
+  }, [errorSeq]);
 
   const counts: Record<Suit, TileId[]> = { man: [], pin: [], sou: [] };
   for (const id of view.you.hand) {
