@@ -1,6 +1,34 @@
 # TODO
 
-## ✅ Rounded corners, and the side shows only when it's exposed (2026-08-01)
+## ✅ The bevel goes as wide as the glyphs allow, uniformly (2026-08-01)
+
+Third pass, and the one that landed: *"still not as rounded and the bevel is not
+as large as the original svgs, also have to make it consistent with the discard
+page"*. All three were right.
+
+- [x] **The corner is the art's own.** Its outline path turns on cubics spanning
+  36–41 units of a 210×255 box, so ~38 — `18.1% / 14.9%`, up from the 10.5%/8.6% I
+  had guessed at. Still two values, so it stays circular at any tile size.
+- [x] **The bands go to 9.5% (top) and 14% (right)**, from 6.8%/7.5%. That is
+  where they stop being free: the glyphs' own margins inside their frames are 8.4%
+  top and 16% a side, so past that the widest tiles start losing ink. Verified
+  against `pin-3`, `sou-1`, `pin-9`, `pin-7`, `pin-8`, `sou-9`.
+- [x] **Same bevel on every tile.** The previous pass showed the full side only
+  where nothing abutted the tile and a hairline seam elsewhere — more literally
+  correct, but it made one tile look like two different tiles depending on where it
+  sat, and the spaced tiles on the void screen couldn't match the trays at all. A
+  wrapping tray can't even express "last in a row" to opt in.
+- [x] **The glyph box grew again, 93% → 95%**, which pushes the glyph down clear of
+  the wider top band. The glyphs are still no smaller than before any of this.
+- [x] **The void screen's marker ring shares the tile's corner** (`.tile-mark`).
+  At `rounded-sm` it squared off a round tile and its corners stood proud.
+
+I did build the art's literal proportions (top 20.6%, right 22.5%) to compare, and
+did not ship them: they need the glyph inset, which takes it back to roughly the
+size the 3D art gave it before R7 — visibly worse at the 23px hand size. 9.5%/14%
+is the most bevel available for free.
+
+## ✅ Superseded: the side shows only when it's exposed (2026-08-01)
 
 Follow-up to the shoulders work below: round the corners, and show the sides the
 art shows — the right one "unless it's stacked against another tile", and the top.
@@ -12,21 +40,16 @@ emphasis rather than the art's.
   and left 20.6%** — it never reaches those edges, which show the pale plate and
   the outline instead. R7's thick green front edge was its own invention, and
   keeping it while adding thin top/right shoulders had the emphasis backwards.
-- [x] **The right shoulder shows only where nothing abuts the tile** — the end of
-  a run, or a lone tile. Elsewhere it is the art's outline as a hairline seam,
-  which is what two flush tiles really show between them: one shared edge, not two
-  sides. Driven by `--tile-side` swapped in `.tile-solo` and on a run's last child.
-- [x] **Trays keep the seam throughout, deliberately.** A wrapping tray's
-  `:last-child` is the end of its *last row*, which sits mid-block whenever that
-  row is partial — so the one tile with a green side would be a stray in the middle
-  of the pile. "Last in a wrapped row" isn't expressible in CSS, and a gap to make
-  every tile's side legitimately exposed would cost the density R7 bought.
-- [x] **A proportional radius, `10.5% / 8.6%`.** A fixed rem that reads as a tile
-  at 64px is a blob at the 23px hand size; two values keep the corner circular on a
-  210×255 box. Checked at 64/40/28/23px.
-- [x] **The glyph box grew 89% → 93%**, which the shallower front edge freed. It
-  re-centres the glyph in the taller face and buys clearance under the wider top
-  shoulder — so the glyphs got slightly *larger*, not smaller.
+- [x] ~~**The right shoulder shows only where nothing abuts the tile**~~ — reverted
+  in the pass above. It was the literally-correct model (a right shoulder meets its
+  neighbour's bare face, so what shows between them is one shared edge) but it made
+  the same tile look different depending on where it sat, and trays and the void
+  screen could never agree. Every tile carries the full bevel now.
+- [x] ~~**A proportional radius, `10.5% / 8.6%`**~~ — right idea, wrong number:
+  measuring the art's outline gave ~38 units, i.e. `18.1% / 14.9%`.
+- [x] **The glyph box grew 89% → 93%** (and later to 95%), which the shallower front
+  edge freed. It re-centres the glyph in the taller face and buys clearance under
+  the top band — so the glyphs got *larger*, not smaller.
 - [x] **The flat back's own edge moved with them**, 227 → 243 in
   `flatten-tiles.mjs`, or a back would have drawn a visibly deeper edge than the
   faces beside it in a tray or a concealed kong. Regenerated; the committed-output

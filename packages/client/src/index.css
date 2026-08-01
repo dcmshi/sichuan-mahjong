@@ -121,98 +121,91 @@ body {
    bottom is therefore a thin plate-and-outline edge here too, not the deep green
    front edge R7 gave it; that had the emphasis backwards.
 
-   The right SHOULDER only shows where nothing abuts the tile — the end of a run,
-   or a lone tile. Elsewhere it is the art's outline as a hairline seam, which is
-   what two flush tiles actually show between them: one shared edge, not two
-   sides. Trays are deliberately left on the seam throughout; see below.
+   **The bevel is the same on every tile** — hand, meld, tray, picker, well. An
+   earlier pass showed the full side only where nothing abutted the tile and a
+   hairline seam elsewhere, which is more literally correct but made the same tile
+   look like two different tiles depending on where it sat, and a wrapping tray
+   can't even express "last in a row" to opt in.
+
+   Bands are as wide as the glyphs allow rather than as wide as the art has them.
+   The art gives its body 20.6% of the height and 22.5% of the width, but the
+   glyphs' own margins inside their frames are 8.4% top and 16% a side
+   (scripts/tiles/glyph-boxes.json), so 9.5% and 14% is where a band stops being
+   free — past that the widest tiles (pin-3, sou-1, pin-9, pin-8) start losing ink,
+   and a smaller glyph is the one thing the density pass was for.
 
    A back covers the whole cell (`.tile-glyph.is-back`) and paints its own edge,
-   which `flatten-tiles.mjs` splits at 243 to match the faces' 95.4%.
+   which `flatten-tiles.mjs` splits at 243 to match the faces.
 
    Six layers, topmost first: the specular's hard dot, its soft blob, its diagonal
-   streak; then the top shoulder — before the side, so it runs unbroken from corner
-   to corner; then the side; then the face, ending in its edge. */
+   streak; then the top band — before the side, so it runs unbroken from corner to
+   corner; then the side; then the face, ending in its edge. */
 .tile-cell {
   --tile-face: linear-gradient(
     #fbffec 0%,
-    #f2f8e8 72%,
-    #e2eedb 88%,
-    #d0e4cc 93.5%,
-    #cddacd 95.4%,
+    #f4f9ea 70%,
+    #e4efdd 87%,
+    #d0e4cc 93%,
+    #cddacd 95.2%,
     #8fa48c 96.6%,
     #20401f 98.2%,
     #0d1f0c 100%
   );
   --tile-top: linear-gradient(
     to bottom,
-    #06340a 0 1.3%,
-    #005f00 1.3% 4.1%,
-    #cddacd 4.1% 5.4%,
-    #f6faee 5.4% 6.8%,
-    rgba(0, 0, 0, 0) 6.8%
+    #06340a 0 1.6%,
+    #004f00 1.6% 2.4%,
+    #005f00 2.4% 6.4%,
+    #3f7a3c 6.4% 7.1%,
+    #cddacd 7.1% 8.3%,
+    #f6faee 8.3% 9.5%,
+    rgba(0, 0, 0, 0) 9.5%
   );
-  /* Flush against a neighbour: the shared edge only, as the art's outline. */
-  --tile-seam: linear-gradient(
+  --tile-side: linear-gradient(
     to right,
-    rgba(0, 0, 0, 0) 98.4%,
-    #2c4a2b 98.4% 99.2%,
-    #0d1f0c 99.2% 100%
+    rgba(0, 0, 0, 0) 86%,
+    #f6faee 86% 87.4%,
+    #cddacd 87.4% 89%,
+    #3f7a3c 89% 89.8%,
+    #005f00 89.8% 96.6%,
+    #004f00 96.6% 98.4%,
+    #06340a 98.4% 100%
   );
-  /* Nothing to the right of it: the whole side, face outwards. */
-  --tile-shoulder: linear-gradient(
-    to right,
-    rgba(0, 0, 0, 0) 92.5%,
-    #f6faee 92.5% 94%,
-    #cddacd 94% 95.6%,
-    #005f00 95.6% 98.6%,
-    #06340a 98.6% 100%
-  );
-  --tile-side: var(--tile-seam);
   --tile-gloss-dot: radial-gradient(
-    circle at 91% 7.5%,
-    rgba(255, 255, 255, 0.98) 0 1.5%,
-    rgba(255, 255, 255, 0) 3%
+    circle at 88.5% 9%,
+    rgba(255, 255, 255, 0.98) 0 1.6%,
+    rgba(255, 255, 255, 0) 3.2%
   );
   --tile-gloss-blob: radial-gradient(
-    ellipse 11% 8% at 86.5% 12%,
-    rgba(255, 255, 255, 0.66),
+    ellipse 12% 9% at 84% 14%,
+    rgba(255, 255, 255, 0.6),
     rgba(255, 255, 255, 0) 72%
   );
   --tile-gloss-streak: linear-gradient(
     41deg,
-    rgba(255, 255, 255, 0) 63%,
-    rgba(255, 255, 255, 0.32) 71%,
-    rgba(255, 255, 255, 0) 78%
+    rgba(255, 255, 255, 0) 62%,
+    rgba(255, 255, 255, 0.26) 70%,
+    rgba(255, 255, 255, 0) 77%
   );
   background: var(--tile-gloss-dot), var(--tile-gloss-blob), var(--tile-gloss-streak),
     var(--tile-top), var(--tile-side), var(--tile-face);
-  /* Proportional, not a fixed rem: the corner has to stay the same shape on a 64px
-     round-end tile and a 23px hand tile, and a radius that reads as a tile at one
-     size is a blob at the other. Two values so the corner stays circular on a
-     210x255 box — 10.5% of the width equals 8.6% of the height. */
-  border-radius: 10.5% / 8.6%;
+  /* The art's own corner: its outline path turns on cubics spanning ~36-41 units
+     of a 210x255 box, so ~38 units. Proportional rather than a fixed rem, because
+     the corner has to be the same shape on a 64px round-end tile and a 23px hand
+     tile — a radius that reads as a tile at one size is a blob at the other. Two
+     values keep it circular: 18.1% of the width equals 14.9% of the height. */
+  border-radius: 18.1% / 14.9%;
 }
 
-/* The tiles whose right side is exposed, and so show the whole thing rather than
-   the seam: a lone tile, and the last of a run. Runs only — a wrapping tray's
-   `:last-child` is the end of its *last row*, which sits mid-block whenever that
-   row is partial, so the one tile with a green side would be a stray in the middle
-   of the pile. Every tray tile keeps the seam. */
-.tile-solo,
-.tile-run > .tile-cell:last-child,
-.tile-run > *:last-child .tile-cell {
-  --tile-side: var(--tile-shoulder);
-}
-
-/* The glyph belongs on the face, not across the shoulders, so its box is the face
-   area — up to where the front edge starts. The SVGs are framed on the glyph's own
+/* The glyph belongs on the face, not across the bands, so its box is the face area
+   — up to where the front edge starts. The SVGs are framed on the glyph's own
    centre (scripts/tiles/measure-glyphs.mjs), so centring the box centres the
-   symbol. 93%, up from 89%: the front edge is shallower now, and the extra height
-   both re-centres the glyph in the taller face and buys clearance under the wider
-   top shoulder. */
+   symbol. 95%, up from 89%: the front edge is shallower than R7's, and the extra
+   height both re-centres the glyph in the taller face and pushes it down far
+   enough to clear the top band. */
 .tile-glyph {
   width: 100%;
-  height: 93%;
+  height: 95%;
   object-fit: contain;
 }
 
@@ -230,6 +223,13 @@ body {
 .tile-run {
   display: inline-flex;
   filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.45));
+}
+
+/* The ring marking a tile at the void declaration. It wraps the tile exactly, so
+   it has to share `.tile-cell`'s corner — at `rounded-sm` the ring squared off a
+   round tile and its corners stood proud of it. */
+.tile-mark {
+  border-radius: 18.1% / 14.9%;
 }
 
 /* A flat cell standing on its own — the well's last discard, the long-press

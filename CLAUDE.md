@@ -167,12 +167,18 @@ left+right. Compressed from the measured 20.6%/22.5% insets so it fits inside th
 glyphs' existing margins and no glyph shrinks; measurements in
 [TODO.md](./TODO.md).
 
-- The **right side shows only when exposed** — `.tile-solo`, or a `.tile-run`'s
-  last child, via `--tile-side`. Everything else gets a hairline seam, the one
-  shared edge two flush tiles show. Trays keep the seam throughout on purpose: a
-  wrapping tray's `:last-child` sits mid-block when the last row is partial.
-- The **corner radius is proportional** (`10.5% / 8.6%`), because a fixed rem that
-  reads as a tile at 64px is a blob at the 23px hand size.
+- **Every tile gets the same bevel** — hand, meld, tray, picker, well. Showing the
+  full side only where nothing abuts the tile was tried and reverted: it made one
+  tile look like two depending on where it sat, and a wrapping tray can't express
+  "last in a row" to opt in.
+- **Bands are as wide as the glyphs allow, not as wide as the art has them**: 9.5%
+  of the height and 14% of the width, against the art's 20.6%/22.5%. The glyphs'
+  margins inside their frames are 8.4% top and 16% a side, so that is where a band
+  stops being free — wider needs a smaller glyph, which is what R7 was for.
+- The **corner radius is proportional** (`18.1% / 14.9%`, measured off the art's
+  outline cubics), because a fixed rem that reads as a tile at 64px is a blob at
+  the 23px hand size. `.tile-mark` shares it so the void screen's ring can't square
+  off a round tile.
 - Layers are **named custom properties**: Biome reflows a six-layer `background`
   and drags inline comments into the middle of the declaration.
 - The flat back's front edge (`flatten-tiles.mjs`) splits at **243**, matching the

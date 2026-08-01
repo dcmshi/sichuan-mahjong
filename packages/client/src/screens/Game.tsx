@@ -211,8 +211,8 @@ function VoidDeclarePhase({ view }: { view: PlayerView }) {
                 // ring, so the mark is drawn outside the tile and moves no box.
                 // 3px rather than 2: pin's emerald is the one ring sitting on a
                 // green felt, and it needs the extra pixel to read as clearly as
-                // the red and the blue do.
-                className={marked ? `rounded-sm ring-[3px] ${SUIT_RINGS[suit]}` : ''}
+                // the red and the blue do. `tile-mark` matches the tile's corner.
+                className={marked ? `tile-mark ring-[3px] ${SUIT_RINGS[suit]}` : ''}
               >
                 <Tile id={id} size="md" flat solo />
               </div>
