@@ -34,6 +34,9 @@ comfortably. Don't over-correct for the tab figures.
 
 ## What needs a decision
 
+*Answers proposed in [Recommendations](#recommendations) below — R1/R2 for
+question 3, R3 for question 2, R4 for question 1.*
+
 ### 1. Landscape phone has no layout of its own — *highest severity*
 
 Every screen overflows in landscape; play needs ~2× the viewport height and
@@ -120,6 +123,149 @@ tile backs. That is the whole reason the board didn't fit.
 - **`prefers-reduced-motion` is honoured** (F12) — any new motion needs the same.
 - **The app installs as a PWA**, so the installed viewport is taller than the
   figures above.
+
+---
+
+## Recommendations
+
+**Added:** 2026-08-01; revised the same day after measurement feedback on the
+first draft. The agreed batch: **R1 paired with the extended R2.3, R3 with
+winners left open, R4 Phase 1 only, R5 last** so the CI guard locks in
+whatever the earlier items ship. R4 Phase 2 is explicitly out of this batch.
+
+### R1. Play screen: fit the board to the viewport, let the well flex
+
+The first draft of this item had the mechanism wrong, and measurement caught
+it. The middle row is a horizontal flex row of three siblings — left side
+column, well, right side column — so the row's height is the *max* of the
+three, and the side columns set it every time: 687/687 before the
+side-opponent change, 293/293 after, 281/281 on an SE (row height vs side
+column, identical to the pixel). The well's own content needed 16px at the
+sample caught. So flexing the middle row squeezes the well — which already
+has room — and the row bottoms out at the side column regardless. **R1 only
+delivers once the side columns shrink, which is R2.3's job; the two land
+together or not at all.**
+
+With that correction:
+
+- Root becomes `h-dvh` with `overflow-y-auto` kept as a fallback, so anything
+  genuinely impossible degrades to today's scrolling instead of clipping (the
+  F13 fix stays honoured).
+- The root stays flexbox: the middle row gets `flex-1 min-h-0`. (The first
+  draft specified `minmax(0, 1fr)` — grid syntax on a flex root.)
+- Inside a compressed well, the event feed drops to a single line under a
+  short-viewport media query. The first draft said the feed would "scroll
+  internally"; it is `pointer-events-none`, so internal scroll would be
+  unreachable — one line is the honest squeeze. The last-discard tile drops
+  `lg` → `md` under the same query.
+- The guarantee is unchanged — hand, own discard tray, and action buttons
+  unconditionally visible without scrolling — but it is R1 + R2.3 together
+  that delivers it, not R1 alone.
+
+### R2. Portrait height reclamation, cheapest first
+
+1. **Fold the score strip into the top bar (−20px).** Replace the four-name
+   strip with a single `You +12` chip in the top bar; tapping it opens the full
+   four-player table as a dropdown overlay. The strip is glanceable-but-rarely-
+   glanced information and the overlay keeps it one tap away. No information is
+   lost and the top bar has room: the turn indicator already truncates.
+2. **Across-opponent hand backs → stack + ×N chip (−~35px at full hand).** The
+   side opponents already proved this: thirteen shrink-to-fit backs draw a
+   number the server gives us directly (`PublicPlayer.handCount`). Use the same
+   overlapped-stack-plus-count as `OpponentSide`. The F4 clipping concern
+   disappears with the backs.
+3. **Cap opponents' discard trays at one row — all three opponents.** The
+   first draft's heading said "opponents' discard trays" but its parenthetical
+   said "across opponent only"; the sides are the higher-value half and are
+   included. The side trays wrap inside their 80px columns — `slice(-6)` at
+   two `sm` tiles per row is three rows, ~120px — and with melds they account
+   for roughly 200px of the 281px side column on an SE. That column is what
+   pins the middle row's height (see R1), so capping the side trays is where
+   the portrait overflow actually gets spent. All three opponent trays show
+   the most recent discards in a single non-wrapping row; on a side column a
+   row is two tiles, which is acceptable because the discard that drives
+   claims is also rendered large in the well. Your own tray stays full and
+   wrapping — furiten depends on it. If the tray cap alone doesn't shrink the
+   side column enough, melds are the remaining contributor and a compact
+   side-column meld display is the next lever — measure after the cap before
+   reaching for it.
+
+R2.1 and R2.2 shrink fixed rows by ~55px; R2.3 is what lets the middle row
+fall. On the SE measurements the middle row carries ~265px of side-column
+height above what the well needs (281 vs 16) — that is where the 129px
+overflow actually lives, and the flexible well then buffers the rest.
+
+### R3. Round end: pin the actions, trim the chrome — winners stay open
+
+The measured worst case (SE, buttons 416px below the fold) is not a content
+problem — it is that the two primary controls sit at the end of a long scroll.
+
+- **Pin the action bar.** `sticky bottom-0` on the button block with a felt
+  gradient backdrop. Reachable from any scroll position, zero content changed.
+  This alone resolves question 2's first half.
+- **Winners stay open.** The first draft of this item proposed arriving with
+  all rows collapsed, flagged as a taste call. That reverses a deliberate,
+  already-shipped decision — expandable rows with the winner open by default —
+  and a reversal like that deserves its own discussion, not a ride-along in a
+  viewport fix. Rejected for this batch: the pinned bar fixes reachability on
+  its own, so the two were always separable.
+- **Two columns from `sm` up.** The four result rows form a `grid-cols-2`;
+  iPad landscape's +210 mostly disappears. Match totals likewise.
+- **Trim ceremony on short viewports:** trophy `text-5xl` → `text-3xl`,
+  `gap-6` → `gap-3` under a `max-height: 480px` query.
+
+Scrolling a results screen is acceptable, per the audit — the goal here is
+only that the *controls* never scroll.
+
+### R4. Landscape phone: Phase 1 now, Phase 2 later and measured
+
+Recommendation on question 1: **yes, support it, but in two phases.** The app
+installs as a PWA where landscape is a first-class orientation, and iPad
+landscape already has its own overflow above — "prompt to rotate" is a
+stopping point, not an answer.
+
+**Phase 1 — rotate prompt (tiny; in this batch).** Under
+`@media (orientation: landscape) and (max-height: 480px)`, show a full-screen
+"rotate to portrait" overlay during play. Honest, cheap, ends the
+scroll-away-hand trap today.
+
+**Phase 2 — a real landscape layout (larger; NOT in this batch).** Do not
+compress the portrait stack; rearrange it. Sketch for 844×340:
+
+- **Top bar (40px)** absorbs the score chip from R2.1 — it is the only chrome
+  row.
+- **Opponent strip (~64px):** all three opponents in one row across the top as
+  compact chips — name, turn glow, ×N count, melds inline. No tile backs
+  anywhere; this is the R2.2 trick applied to all three, and it is what makes
+  the height budget close at all.
+- **Well (~110px, flexes):** last discard + event feed centre, with the three
+  opponents' single-row discard trays fanned around it — discards sit in front
+  of each seat, like the real table.
+- **Your zone, pinned bottom (~110px):** your melds, then your discard tray as
+  one horizontally scrolling row (full history preserved; sideways scroll
+  inside a tray is fine — it is not page scroll), then the hand with Sort
+  inline. Hand tiles stay ≥ 40px wide, inside the F15 tap-target rule.
+
+Budget: 40 + 64 + 110 + 110 ≈ 324 ≤ 340. That is a paper estimate with ~5%
+headroom — too tight to build on assumption. Phase 2 gets built behind
+measurement (the audit harness, extended with landscape device profiles), as
+its own piece of work, and the budget gets validated on a real build before
+the layout is committed to.
+
+**Implementation note for R1, and for Phase 2 when its turn comes:** extract
+the play-screen zones into components (top bar, opponent chip, well, own
+zone) and compose layouts from them. The game logic, gestures, and
+legal-action wiring live in the shared components; only arrangement differs.
+Forking `PlayPhase` into two near-copies is the failure mode to avoid.
+
+### R5. Guard vertical overflow in CI
+
+`e2e/ui-clicks.spec.ts` fails on sideways scroll but nothing watches vertical.
+Once R1–R3 land, add the symmetric assertion — play screen and round end,
+iPhone SE portrait, `scrollHeight ≤ innerHeight` at peak (both discard trays
+full, one expanded result row). Otherwise the next row added to the board
+quietly reopens this whole audit. Lands last in the batch, so it locks in
+whatever the earlier items actually ship.
 
 ---
 
