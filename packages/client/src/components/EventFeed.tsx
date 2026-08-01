@@ -85,8 +85,10 @@ export function EventFeed({ view }: { view: PlayerView }) {
     return () => clearTimeout(timer);
   }, [lastEvents, you]);
 
+  // Positioned inside the play well by its parent: as a viewport-fixed overlay
+  // it sat on top of the opponent-across name and hand.
   return (
-    <div className="fixed top-16 left-2 z-20 flex flex-col gap-1 pointer-events-none">
+    <div className="absolute top-2 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-1 pointer-events-none max-w-full">
       <AnimatePresence>
         {lines.map(l => (
           <motion.div

@@ -474,9 +474,6 @@ function PlayPhase({ view }: { view: PlayerView }) {
       {/* How to Play overlay */}
       {showHowToPlay && <HowToPlay onClose={() => setShowHowToPlay(false)} />}
 
-      {/* What just happened, plus sound for opponents' moves */}
-      <EventFeed view={view} />
-
       {/* Top bar */}
       <div className="flex items-center justify-between gap-2 px-3 bg-black/30 text-xs">
         <span className="flex-shrink-0">{t('play.wall', { n: view.wallRemaining })}</span>
@@ -544,7 +541,10 @@ function PlayPhase({ view }: { view: PlayerView }) {
         <div className="w-20 flex-shrink-0">
           <OpponentSide view={view} relSeat={2} side="left" />
         </div>
-        <div className="flex-1 flex flex-col items-center justify-center gap-1 play-well p-2">
+        <div className="relative flex-1 flex flex-col items-center justify-center gap-1 play-well p-2">
+          {/* What just happened, plus sound for opponents' moves — inside the
+              well so it can never cover a hand or a control. */}
+          <EventFeed view={view} />
           {lastDiscardTile !== null && (
             <div className="flex flex-col items-center gap-1">
               <span className="text-xs text-green-300">{t('play.lastDiscard')}</span>
