@@ -90,6 +90,14 @@ tile with its own bevelled sides, so two touching tiles show two adjacent bevels
 rather than one shared edge. The tile chrome therefore moves out of the asset and
 onto the run.
 
+**Revised after review.** Two things this section got wrong, both fixed:
+*the glyphs are re-framed on their own centres*, because stripping the body left a
+frame built around the inset face and pushed every symbol left and low; and
+*the cell keeps a bottom bevel*, because a fully flat tile reads as a printed
+sheet rather than an object on a table. Only the left/right/top bevels — the ones
+that doubled up where two tiles met — are gone. See R7 in
+[TODO.md](../../../TODO.md) for the measurements.
+
 **Asset derivation.** `public/tiles/*.svg` are Wikimedia Commons, **CC BY-SA 4.0**
 (Cangjie6; Jerry Crimson Mann; Dewclouds), recorded in `credits.json` and shown in
 `/about`. Deriving is permitted with attribution and share-alike, and is preferred

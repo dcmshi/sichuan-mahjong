@@ -86,15 +86,40 @@ body {
    separates neighbours, so no divider rule is needed and nothing has to know
    where in the run it sits.
 --------------------------------------------------------------------------- */
+/* Face, then the tile's front edge. Flush tiles with no bevel at all read as a
+   printed sheet rather than as objects lying on a table, so the cell keeps the 3D
+   cue that matters most — the lit face ending in a shaded front edge — and drops
+   only the left/right/top bevels, which are the ones that doubled up when two
+   tiles met. Colours come from the source art: #cddacd is its inner plate,
+   #005f00 its side. */
 .tile-cell {
-  background: linear-gradient(#fbffec, #d0e4cc);
+  background: linear-gradient(
+    #fbffec 0%,
+    #eef6e4 76%,
+    #d0e4cc 86%,
+    #cddacd 88.5%,
+    #0b7a3f 89.5%,
+    #06522a 97%,
+    #033c1d 100%
+  );
   border-radius: 0.15rem;
 }
 
+/* The glyph belongs on the face, not across the bevel, so its box is the face
+   area only — the 89% above where the front edge starts. The SVGs are framed on
+   the glyph's own centre (scripts/tiles/measure-glyphs.mjs), so centring the box
+   centres the symbol. */
 .tile-glyph {
   width: 100%;
-  height: 100%;
+  height: 89%;
   object-fit: contain;
+}
+
+/* A back has no glyph to keep off the bevel — it *is* the whole tile, and paints
+   its own green front edge, so it fills the cell rather than sitting above an
+   ivory one. */
+.tile-glyph.is-back {
+  height: 100%;
 }
 
 /* A run held as one group — your hand, or a meld. One shadow for the strip

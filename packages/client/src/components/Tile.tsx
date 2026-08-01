@@ -184,7 +184,7 @@ export function TileBack({
       <img
         src={flat ? '/tiles/flat/back.svg' : '/tiles/back.svg'}
         alt=""
-        className={flat ? 'tile-glyph' : 'tile-face'}
+        className={flat ? 'tile-glyph is-back' : 'tile-face'}
         draggable={false}
       />
     </div>

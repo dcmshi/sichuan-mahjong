@@ -74,12 +74,26 @@ test('regenerate docs screenshots', async ({ page, browser }) => {
 
   // ── Play into the middle of the round, so the pools and melds have
   //    something in them, then wait for our own turn. ────────────────────────
+  //
+  //    The shot is taken *inside* the loop, on the frame that satisfies the
+  //    condition. Taking it after the loop meant any exit produced an image —
+  //    and a bot winning inside 14 moves exits to round end, so screenshot.png
+  //    silently shipped the round-end screen instead of the board. A round that
+  //    ends early now just starts the next one and tries again.
   let huanDone = false;
   let voidDone = false;
   let moves = 0;
+  let captured = false;
   const deadline = Date.now() + 90_000;
-  while (Date.now() < deadline) {
-    if ((await g.getScreen()) === 'roundEnd') break;
+  while (Date.now() < deadline && !captured) {
+    if ((await g.getScreen()) === 'roundEnd') {
+      await page.getByRole('button', { name: /Next Round/ }).click();
+      await page.waitForTimeout(900);
+      huanDone = false;
+      voidDone = false;
+      moves = 0;
+      continue;
+    }
     const phase = await g.getPhase();
     if (phase === null) {
       await page.waitForTimeout(200);
@@ -101,13 +115,15 @@ test('regenerate docs screenshots', async ({ page, browser }) => {
         .locator('text=Your turn')
         .isVisible()
         .catch(() => false))
-    )
+    ) {
+      await shot(page, 'screenshot.png');
+      captured = true;
       break;
+    }
     if (await g.autoPlay()) moves++;
     await page.waitForTimeout(180);
   }
-
-  await shot(page, 'screenshot.png');
+  expect(captured, 'screenshot.png must be the play screen, mid-round').toBe(true);
 
   // ── Spectator view of that same live game, from a clean context so it has
   //    no stored seat of its own. ───────────────────────────────────────────

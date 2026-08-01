@@ -48,6 +48,33 @@ run against the pre-R7 client they report `tray 1: scrollWidth 110 > clientWidth
 checks — a tray overflowing *itself*, and a tray whose own box fits its content
 perfectly while overflowing its *column*, visible only as overlap with the well.
 
+**Found on review, fixed the same day:**
+
+- [x] **The symbols were off-centre.** Stripping the 3D body left a frame built
+  around a tile no longer drawn: the glyphs were authored against the *face*,
+  which is 149.4×189.3 inset inside a 210×255 viewBox and sitting low, so keeping
+  the source viewBox pushed every glyph left and down. Measured, the glyph union
+  centre is (-103.8, 441.3) against a face centre of (-104.0, 441.2) — on the
+  face, nowhere near the viewBox centre of (-87, 421.4).
+  `scripts/tiles/measure-glyphs.mjs` measures each glyph's box in a browser
+  (`svg.getBBox()` on the *root* — per-element bboxes are in that element's own
+  space, and the pin dots sit inside nested transformed groups, which put pin-1's
+  box 1300 units from everyone else's), and `flatten-tiles.mjs` reframes on it.
+  The frame is 210×227 for every face, so relative glyph sizes survive — 一 stays
+  shorter than 九萬 — and 227 is the face area `.tile-glyph` gets, so nothing
+  letterboxes. Two new tests assert the centring and the uniform frame.
+- [x] **The bottom bevel is back.** Fully flat tiles read as a printed sheet
+  rather than objects on a table. The cell keeps the one 3D cue that matters, a
+  lit face ending in a shaded front edge, and drops only the left/right/top
+  bevels — the ones that doubled up where two tiles met. Backs paint their own
+  front edge, since covering the cell means covering the cell's bevel.
+- [x] **`screenshot.png` was the wrong screen.** `capture.spec.ts` took it after
+  its play loop, so any exit produced an image — and a bot winning inside 14 moves
+  exits to round end. The shot is taken inside the loop now, on the frame that
+  satisfies the condition, a round that ends early starts the next one, and the
+  spec fails rather than shipping the wrong screen. Expanding a round-end row also
+  scrolls it into view, so that capture now returns to the top first.
+
 **Left deliberately:** the own melds row (`OwnZone`) is a non-wrapping `flex` of
 fixed-width tiles, so three or four melds overflow it horizontally and the root's
 `overflow-x-hidden` clips them. Pre-existing, and it wants the same scroller
