@@ -4,7 +4,7 @@ import { applyAction, ledgerEntriesFor } from '../src/actions.js';
 import type { GameEvent } from '../src/actions.js';
 import { createGame } from '../src/state.js';
 import type { GameState, Seat } from '../src/state.js';
-import { runFullGame } from './phase4.test.js';
+import { runFullGame } from './helpers/full-game.js';
 
 function fresh(): GameState {
   return createGame('ledger-seed', [
