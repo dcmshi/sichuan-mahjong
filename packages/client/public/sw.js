@@ -17,7 +17,8 @@ function isCacheableAsset(url) {
   return (
     url.pathname.startsWith('/assets/') ||
     url.pathname.startsWith('/tiles/') ||
-    url.pathname === '/icon.svg' ||
+    url.pathname.startsWith('/icon') ||
+    url.pathname === '/apple-touch-icon.png' ||
     url.pathname === '/manifest.webmanifest'
   );
 }
