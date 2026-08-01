@@ -98,7 +98,10 @@ export function EventFeed({ view }: { view: PlayerView }) {
             initial={{ opacity: 0, x: -12 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0 }}
-            className="px-2 py-1 rounded-lg bg-black/55 text-[11px] font-semibold text-green-100"
+            // event-feed-line: on a short viewport (index.css) only the last
+            // of these stays visible — the well has no room to spare for a
+            // second line once the side columns stop setting its height. (R1)
+            className="event-feed-line px-2 py-1 rounded-lg bg-black/55 text-[11px] font-semibold text-green-100"
           >
             {l.text}
           </motion.div>

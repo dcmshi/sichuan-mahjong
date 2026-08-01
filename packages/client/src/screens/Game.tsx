@@ -212,9 +212,13 @@ function PlayPhase({ view }: { view: PlayerView }) {
   const lastDiscardTile = view.lastDiscard?.tile ?? null;
 
   return (
-    // overflow-hidden clipped the lower half of the board on a landscape phone
-    // (~390px tall) with no way to reach it. Vertical overflow now scrolls. (F13)
-    <div className="min-h-dvh board-felt flex flex-col text-white overflow-y-auto overflow-x-hidden">
+    // h-dvh (not min-h-dvh): the middle row's flex-1 min-h-0 below only has
+    // slack to give up if the root is capped to the viewport instead of free
+    // to grow past it. overflow-y-auto stays as a fallback — anything that
+    // still doesn't fit degrades to today's scrolling instead of clipping,
+    // honouring the overflow-hidden fix that let landscape reach its lower
+    // half in the first place. (F13, R1)
+    <div className="h-dvh board-felt flex flex-col text-white overflow-y-auto overflow-x-hidden">
       {/* Reconnecting toast */}
       <AnimatePresence>
         {reconnecting && (
@@ -236,14 +240,20 @@ function PlayPhase({ view }: { view: PlayerView }) {
         <OpponentTop view={view} relSeat={1} />
       </div>
 
-      {/* Middle row */}
-      <div className="flex flex-1 gap-2 px-2">
+      {/* Middle row — the row's height used to be set entirely by the side
+          columns (687px before the side-opponent hand-back shrink, still
+          281px on an iPhone SE after it), so flex-1 min-h-0 only pays off
+          once OpponentSide's tray stops wrapping (R2.3): that's what lets
+          this row fall to what the well actually needs. */}
+      <div className="flex flex-1 min-h-0 gap-2 px-2">
         <div className="w-20 flex-shrink-0">
           <OpponentSide view={view} relSeat={2} side="left" />
         </div>
-        <div className="relative flex-1 flex flex-col items-center justify-center gap-1 play-well p-2">
+        <div className="relative flex-1 flex flex-col items-center justify-center gap-1 play-well p-2 min-h-0">
           {/* What just happened, plus sound for opponents' moves — inside the
-              well so it can never cover a hand or a control. */}
+              well so it can never cover a hand or a control. Drops to one
+              line on a short viewport (index.css): it's pointer-events-none,
+              so it can't scroll internally to make room for more. */}
           <EventFeed view={view} />
           {lastDiscardTile !== null && (
             <div className="flex flex-col items-center gap-1">
@@ -253,7 +263,12 @@ function PlayPhase({ view }: { view: PlayerView }) {
                 initial={{ scale: 1.4, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
               >
-                <Tile id={lastDiscardTile} lastDiscard size="lg" />
+                {/* lg on a tall viewport, md on a short one (index.css) — once
+                    the side columns stop setting the row's height, the well's
+                    own minimum content is what it bottoms out at instead. */}
+                <div className="last-discard-tile">
+                  <Tile id={lastDiscardTile} lastDiscard fill />
+                </div>
               </motion.div>
             </div>
           )}

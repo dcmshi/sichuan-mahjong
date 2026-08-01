@@ -99,3 +99,27 @@ body {
   box-shadow: inset 0 1px 5px rgba(0, 0, 0, 0.4);
   padding: 0.3rem;
 }
+
+/* ---------------------------------------------------------------------------
+   Play well, short viewport (R1) — once the side columns stop setting the
+   middle row's height (R2.3), the well's own minimum content is what the row
+   bottoms out at instead. On a short viewport that content still needs to
+   shrink a little further: the last-discard tile drops from "lg" to "md"
+   tile width, and the event feed (below) drops to one line.
+--------------------------------------------------------------------------- */
+.last-discard-tile {
+  width: 3.5rem; /* Tile's "lg" width */
+}
+
+@media (max-height: 700px) {
+  .last-discard-tile {
+    width: 2.5rem; /* Tile's "md" width */
+  }
+
+  /* The feed can't scroll internally to make room for a second line — it's
+     pointer-events-none, sitting over the board — so showing only the most
+     recent line is the honest squeeze. */
+  .event-feed-line:not(:last-child) {
+    display: none;
+  }
+}

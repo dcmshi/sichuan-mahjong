@@ -30,11 +30,23 @@ export function OpponentSide({
           middle row and pushed the player's own hand off a phone screen. The
           number is also easier to read than counting slivers. */}
       <HandCountChip count={opp.handCount} />
+      {/* Single row, horizontally scrollable — not a capped non-wrapping row
+          like the across opponent's: this column is only 80px wide (two `sm`
+          tiles), so a non-scrolling row would throw away real information a
+          player uses to judge safety. Scrolling keeps the same slice(-6)
+          history reachable at the same fixed height — the mechanism a later
+          phase applies to the player's own tray too. (R2.3, amended) */}
       {(opp.discards.length > 0 || opp.pendingFirstDiscard) && (
-        <div className="flex flex-wrap gap-0.5 discard-tray">
-          {opp.pendingFirstDiscard && <TileBack size="sm" />}
+        <div className="flex flex-nowrap items-center gap-0.5 overflow-x-auto max-w-full discard-tray">
+          {opp.pendingFirstDiscard && (
+            <div className="flex-shrink-0">
+              <TileBack size="sm" />
+            </div>
+          )}
           {opp.discards.slice(-6).map(id => (
-            <Tile key={id} id={id} size="sm" lastDiscard={id === lastDiscardTile} />
+            <div key={id} className="flex-shrink-0">
+              <Tile id={id} size="sm" lastDiscard={id === lastDiscardTile} />
+            </div>
           ))}
         </div>
       )}

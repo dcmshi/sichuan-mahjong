@@ -31,8 +31,12 @@ export function OpponentTop({ view, relSeat }: { view: PlayerView; relSeat: 0 | 
           ))}
         </div>
       )}
+      {/* A single non-wrapping row, not the full wrapping history: the discard
+          that drives claims is also rendered large in the well, and this
+          column is full-width, so a row holds plenty — no scroll needed
+          (contrast OpponentSide, whose 80px column can't fit one). (R2.3) */}
       {(opp.discards.length > 0 || opp.pendingFirstDiscard) && (
-        <div className="flex flex-wrap gap-0.5 max-w-full discard-tray">
+        <div className="flex gap-0.5 max-w-full overflow-x-hidden discard-tray">
           {/* Their void tile is face down until they flip it on their first turn (A37) */}
           {opp.pendingFirstDiscard && <TileBack size="sm" />}
           {opp.discards.slice(-8).map(id => (
