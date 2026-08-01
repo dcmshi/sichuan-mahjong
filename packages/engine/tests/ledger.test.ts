@@ -1,8 +1,10 @@
+import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { applyAction, ledgerEntriesFor } from '../src/actions.js';
 import type { GameEvent } from '../src/actions.js';
 import { createGame } from '../src/state.js';
-import type { GameState } from '../src/state.js';
+import type { GameState, Seat } from '../src/state.js';
+import { runFullGame } from './phase4.test.js';
 
 function fresh(): GameState {
   return createGame('ledger-seed', [
@@ -61,5 +63,39 @@ describe('ledgerEntriesFor', () => {
       { e: 'roundEnd', reason: 'threeHu' },
     ];
     expect(ledgerEntriesFor(events)).toEqual([]);
+  });
+});
+
+/** Signed total for one seat: it loses what it pays and gains what it receives. */
+function ledgerTotalFor(state: GameState, seat: Seat): number {
+  return state.ledger.reduce((sum, e) => {
+    if (e.from === seat) return sum - e.amount;
+    if (e.to === seat) return sum + e.amount;
+    return sum;
+  }, 0);
+}
+
+describe('ledger balance property', () => {
+  it('a real game produces entries', () => {
+    // Guards the tests below from passing vacuously on an always-empty ledger.
+    expect(runFullGame('ledger-populated').ledger.length).toBeGreaterThan(0);
+  });
+
+  it('every seat total matches its scoreDelta, and pot entries match penaltyPot', () => {
+    fc.assert(
+      fc.property(fc.string({ minLength: 4, maxLength: 12 }), seed => {
+        const final = runFullGame(seed);
+
+        for (const p of final.players) {
+          expect(ledgerTotalFor(final, p.seat)).toBe(p.scoreDelta);
+        }
+
+        const potTotal = final.ledger
+          .filter(e => e.to === null)
+          .reduce((sum, e) => sum + e.amount, 0);
+        expect(potTotal).toBe(final.penaltyPot);
+      }),
+      { numRuns: 25 },
+    );
   });
 });
