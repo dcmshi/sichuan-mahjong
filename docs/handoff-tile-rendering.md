@@ -137,9 +137,66 @@ Two traps in that file:
 
 ---
 
+## The live alternative: overlap the originals instead of rebuilding them
+
+Prototyped in the sandbox (the three "overlap" sections), not adopted. **Keep the
+untouched 3D art and slide each tile over its neighbour's right band**, so the
+doubled bevel is hidden rather than removed. Since a tile paints over the sibling
+before it, the tile behind loses its right side and keeps its top one — which is
+what the art's own lighting already wants.
+
+The numbers work out better than they have any right to:
+
+| | flat cells, flush | art, overlapped 22.5% |
+|---|---|---|
+| 13 tiles across 299px | cell 23.0px | cell **29.0px (+26%)** |
+| row height at that cell | 27.9px | 35.2px |
+| same row height instead | 299px wide | **237px (−21%)** |
+
+Both draw the glyph at `cell ÷ 210`, so cell width *is* glyph size. The overlap is
+free because it only ever covers body: measured from the right edge, `5.5%` outline,
+green to `15.4%`, plate and white to `22.5%`, face after that. **22.5% is therefore
+both the overlap that hides the whole band and about the largest the art allows** —
+the widest glyph (`pin-3`) ends at 75.9% of the tile, so past ~24% it starts eating
+ink. Every band the CSS cell draws, by contrast, is paid for out of the face.
+
+Mechanics, all verified in the sandbox:
+
+- `margin-left: -22.5%` on every tile **plus `padding-left` of the same on the
+  container**. The padding is not cosmetic: the negative margin lands on the first
+  tile of every *wrapped* row, so without it a tray's second row juts out to the
+  left. With it, item *i*'s border box runs `[i·(w−o), (i+1)·(w−o)]` from the content
+  edge, so the run also ends exactly on it and no padding-right is needed.
+- **The selected tile needs a `z-index`.** Lifting it is not enough — its right
+  neighbour still paints over it, and the tile reads as sliding *behind* the hand.
+- Move the per-tile `drop-shadow` off `.tile-face` and onto the run, as `.tile-run`
+  already does, or every tile shadows the one beside it.
+- Backs survive it. Five overlapped 3D backs read as five tiles, which is the case
+  flat backs fail (they merge into a slab, hence `HandCountChip` keeping the art).
+
+What it costs:
+
+- **The seam is the art's own black left edge** — 6.3% of the tile width, so 1.5–1.8px
+  at hand size. Heavier than the flat cell's 1px outline; at 96px it reads as a black
+  gutter between tiles. This is the one thing to judge before committing to it, and
+  the reason the sandbox has a 96px seam row.
+- The +26% is bought in **row height**, which is the budget R1–R7 spent months
+  defending. Spending the win on width instead (−21%) is free vertically.
+- Spaced contexts — the void screen, meld chips, the well — go back to showing a full
+  bevel. Consistent again, but glossy-everywhere rather than flat-everywhere.
+
+If it is adopted, `.tile-cell` and the whole `scripts/tiles/` pipeline
+(`measure-glyphs` → `flatten-tiles` → `glyph-boxes.json` → the drift test) become
+dead code, and every gap in the next section closes by construction. That is the
+real argument for it.
+
+---
+
 ## Known gaps, if you want somewhere to start
 
-Visible in the sandbox at 96px, comparing the CSS face with the art:
+Visible in the sandbox at 96px, comparing the CSS face with the art. All four are
+gaps between a reconstruction and its source, so all four close for free if the
+overlap above is taken instead:
 
 - **The art's body is chunkier.** Its green side and outline are both wider than
   ours, so the art reads as a heavier object. Closing that means either eating glyph

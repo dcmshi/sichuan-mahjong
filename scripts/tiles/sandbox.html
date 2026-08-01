@@ -40,6 +40,23 @@
     background: rgba(0,0,0,.18); border-radius: .6rem;
     box-shadow: inset 0 1px 5px rgba(0,0,0,.4); padding: .3rem;
   }
+  /* Overlapped originals. Each tile is pulled left over the one before it, and
+     since it comes later in the DOM it paints on top — so the tile behind loses
+     its right band and keeps its top one, which is what the art's own lighting
+     wants (green on top+right, nothing on bottom+left).
+
+     `padding-left` on the container is the other half of the trick: the negative
+     margin applies to the first tile of EVERY wrapped row, so without it row two
+     would start a fifth of a tile outside the tray. With it, item i's border box
+     runs [i·(w−o), (i+1)·(w−o)] from the content edge, so the run also ends exactly
+     on it — a wrapping tray needs no padding-right to hold the last tile. */
+  .olap { display: flex; flex-wrap: wrap; }
+  .olap .lifted { transform: translateY(-8px); }
+  .olap .above { z-index: 2; }
+  /* One shadow for the strip, the way `.tile-run` does it, instead of the
+     per-tile drop-shadow `.tile-face` carries. */
+  .olap-strip { filter: drop-shadow(0 3px 3px rgba(0,0,0,.45)); }
+  .olap-strip .tile-face { filter: none; }
   /* The 3D art as the app draws it (`.tile-face` lives in index.css). */
   .art { position: relative; display: inline-flex; aspect-ratio: 210/255; overflow: hidden; }
   figure { margin: 0; text-align: center; }
@@ -69,6 +86,30 @@
   <span class="tile-run" id="runwrapped"></span>
   <span class="lbl" style="width:auto; margin-left:14px">← inside <code>.tile-run</code>, which carries the strip shadow</span>
 </div>
+
+<h2>overlapping the originals — the doubled bevel hidden instead of removed</h2>
+<p class="note" style="margin-bottom:10px">
+  The other way to get one shared edge out of a run: keep the untouched 3D art and
+  slide each tile over its neighbour's right band. Measured insets from the right
+  edge — <code>5.5%</code> outline, green to <code>15.4%</code>, plate and white to
+  <code>22.5%</code>, face after that. So <b>22.5%</b> is the overlap that hides the
+  whole band; the tile on top then contributes its own <code>6.3%</code> left edge as
+  the seam. Nothing above the tiles, so every top band stays visible — which is what
+  a row of real tiles looks like.
+</p>
+<div id="sweep"></div>
+<div style="margin-top:14px" id="seam"></div>
+
+<h2>same hand width, both ways</h2>
+<p class="note" style="margin-bottom:10px">
+  13 tiles across the same 299px a 320px phone gives the hand. Both draw the glyph at
+  <code>cell ÷ 210</code>, so the overlap buys glyph size directly — but the cell keeps
+  its 210:255 aspect, so it is bought in row height.
+</p>
+<div id="footprint"></div>
+
+<h2>overlap: wrapping tray, selected lift, the tight glyphs</h2>
+<div class="stack" id="olapcases"></div>
 
 <h2>tray (wraps, 80px column) · meld · solo · back</h2>
 <div class="stack">
@@ -146,10 +187,139 @@ for (const px of SIZES) {
 }
 
 const HAND = ['man-1','man-3','man-9','pin-1','pin-3','pin-5','pin-8','sou-1','sou-4','sou-7','sou-9','man-5','man-7'];
+// Tightest glyphs: widest side-margin first, then the shallowest top margin.
+const TIGHT = ['pin-3','sou-1','pin-9','pin-7','pin-8','sou-9'];
 for (const t of HAND) document.getElementById('run23').append(css(t, 23));
 for (const t of HAND.slice(0, 8)) document.getElementById('run32').append(css(t, 32));
 for (const t of HAND.slice(0, 8)) document.getElementById('runart').append(art(t, 32));
 for (const t of HAND.slice(0, 6)) document.getElementById('runwrapped').append(css(t, 32));
+
+/**
+ * A run of untouched 3D tiles, each pulled `frac` of its width over the one
+ * before it. See `.olap` for why the container gets the matching padding.
+ */
+function artRun(names, px, frac, opts = {}) {
+  const { strip = false, width = null, lift = -1, above = true } = opts;
+  const over = px * frac;
+  const wrap = el('div', `olap${strip ? ' olap-strip' : ''}`);
+  wrap.style.paddingLeft = `${over}px`;
+  if (width !== null) wrap.style.width = `${width}px`;
+  names.forEach((n, i) => {
+    const t = art(n, px);
+    t.style.marginLeft = `-${over}px`;
+    if (i === lift) t.classList.add('lifted', ...(above ? ['above'] : []));
+    wrap.append(t);
+  });
+  return wrap;
+}
+
+// Sweep: 0% is what the app drew before the flat faces — two bevels per seam.
+const sweep = document.getElementById('sweep');
+for (const frac of [0, 0.10, 0.154, 0.225, 0.28]) {
+  const row = el('div');
+  row.style.marginBottom = '6px';
+  const lbl = el('span', 'lbl');
+  lbl.style.width = '150px';
+  lbl.textContent = `${(frac * 100).toFixed(1)}% → pitch ${((1 - frac) * 32).toFixed(1)}px`;
+  row.append(lbl, artRun(HAND.slice(0, 8), 32, frac, { strip: true }));
+  sweep.append(row);
+}
+
+// 22.5% is the whole right band, and the most the art allows: the widest glyph
+// (pin-3) ends at 75.9% of the tile, so anything past ~24% starts eating ink.
+const OVERLAP = 0.225;
+
+// The seam at a size where you can judge it: the tile on top rounds its corners
+// away from the one behind, so the band it is meant to hide reappears as a wedge
+// at each end of the join.
+{
+  const seam = el('div', 'stack');
+  const a = el('figure');
+  a.append(artRun(['man-3','pin-5','sou-7'], 96, OVERLAP, { strip: true }));
+  const ac = el('figcaption');
+  ac.textContent = 'art, overlapped 22.5%';
+  a.append(ac);
+  const b = el('figure');
+  const run = el('span', 'strip tile-run');
+  for (const t of ['man-3','pin-5','sou-7']) run.append(css(t, 96));
+  b.append(run);
+  const bc = el('figcaption');
+  bc.textContent = 'flat cells, flush';
+  b.append(bc);
+  seam.append(a, b);
+  document.getElementById('seam').append(seam);
+}
+
+// Same total width, both ways: 13 flush flat cells against 13 overlapped originals.
+const HAND_PX = 299;
+const foot = document.getElementById('footprint');
+{
+  const flatW = HAND_PX / HAND.length;
+  const artW = HAND_PX / (1 + (HAND.length - 1) * (1 - OVERLAP));
+  const rows = [
+    ['flat, flush', (() => {
+      const r = el('span', 'strip tile-run');
+      for (const t of HAND) r.append(css(t, flatW));
+      return r;
+    })(), `cell ${flatW.toFixed(1)}px · row ${(flatW * 255 / 210).toFixed(1)}px tall`],
+    ['art, overlapped', artRun(HAND, artW, OVERLAP, { strip: true }),
+      `cell ${artW.toFixed(1)}px (+${((artW / flatW - 1) * 100).toFixed(0)}%) · row ${(artW * 255 / 210).toFixed(1)}px tall`],
+  ];
+  for (const [name, node, note] of rows) {
+    const fig = el('figure');
+    fig.style.textAlign = 'left';
+    fig.style.marginBottom = '10px';
+    fig.append(node);
+    const cap = el('figcaption');
+    cap.style.textAlign = 'left';
+    cap.textContent = `${name} — ${note}`;
+    fig.append(cap);
+    foot.append(fig);
+  }
+}
+
+const cases = document.getElementById('olapcases');
+{
+  const trayW = 80;
+  const fig = el('figure');
+  const tray = artRun(['man-1','pin-5','sou-7','man-9','pin-3','sou-2','man-8'], 32, OVERLAP, { width: trayW });
+  tray.style.background = 'rgba(0,0,0,.18)';
+  tray.style.borderRadius = '.6rem';
+  tray.style.boxShadow = 'inset 0 1px 5px rgba(0,0,0,.4)';
+  tray.style.paddingRight = '.3rem';
+  fig.append(tray);
+  const cap = el('figcaption');
+  cap.textContent = 'wraps — row 2 must not jut left';
+  fig.append(cap);
+  cases.append(fig);
+
+  for (const [above, label] of [[true, 'lifted, z-index'], [false, 'lifted, no z-index']]) {
+    const f = el('figure');
+    f.append(artRun(HAND.slice(0, 5), 40, OVERLAP, { strip: true, lift: 2, above }));
+    const c = el('figcaption');
+    c.textContent = label;
+    f.append(c);
+    cases.append(f);
+  }
+
+  // Backs already overlap in the app — HandCountChip stacks the 3D ones, because
+  // flat backs flush merge into a single slab. Whether a whole concealed hand
+  // survives the same treatment is the question.
+  const backFig = el('figure');
+  const backs = artRun(['back','back','back','back','back'], 40, OVERLAP, { strip: true });
+  backFig.append(backs);
+  const backCap = el('figcaption');
+  backCap.textContent = 'concealed hand — 3D backs';
+  backFig.append(backCap);
+  cases.append(backFig);
+
+  const tightFig = el('figure');
+  tightFig.append(artRun(TIGHT, 40, OVERLAP, { strip: true }));
+  const tightCap = el('figcaption');
+  tightCap.textContent = 'the tight glyphs — the overlap never touches ink';
+  tightFig.append(tightCap);
+  cases.append(tightFig);
+}
 
 for (const t of ['man-1','pin-5','sou-7','man-9','pin-3']) document.getElementById('tray').append(css(t, 32));
 for (let i = 0; i < 3; i++) document.getElementById('meld').append(css('man-5', 32));
@@ -158,8 +328,6 @@ for (let i = 0; i < 4; i++) document.getElementById('backs').append(cssBack(32))
 const mixed = document.getElementById('mixed');
 mixed.append(cssBack(32), css('man-2', 32), css('pin-4', 32));
 
-// Tightest glyphs: widest side-margin first, then the shallowest top margin.
-const TIGHT = ['pin-3','sou-1','pin-9','pin-7','pin-8','sou-9'];
 for (const t of TIGHT) document.getElementById('tight').append(css(t, 56));
 for (const t of TIGHT) document.getElementById('tightart').append(art(t, 56));
 
