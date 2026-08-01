@@ -3,6 +3,14 @@ import { useT } from '../i18n/useT.js';
 import { useStore } from '../store/index.js';
 import { connectGame, makeWsUrl } from '../ws/client.js';
 
+/**
+ * 404 means the code is wrong; anything else means the server is unhealthy.
+ * Every non-OK status used to read "Lobby not found", including 500s. (F22)
+ */
+export function joinErrorForStatus(status: number): string {
+  return status === 404 ? 'join.errNotFound' : 'join.errConn';
+}
+
 export function JoinForm() {
   const t = useT();
   const goTo = useStore(s => s.goTo);
@@ -30,7 +38,7 @@ export function JoinForm() {
     try {
       const res = await fetch(`/api/lobby/${trimCode}`);
       if (!res.ok) {
-        setError('join.errNotFound');
+        setError(joinErrorForStatus(res.status));
         return;
       }
 
