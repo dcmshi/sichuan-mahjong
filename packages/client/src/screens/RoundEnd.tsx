@@ -17,9 +17,12 @@ export function RoundEnd() {
 
   return (
     <div className="min-h-screen bg-green-900 flex flex-col items-center p-6 text-white gap-6">
+      {/* Entrances animate scale/position only, never opacity: the rows used to
+          mount at opacity 0 and rely on Framer to reveal them, so anywhere the
+          animation didn't run the scoreboard simply never appeared. (F11) */}
       <motion.div
         className="text-5xl mt-4"
-        initial={{ scale: 0 }}
+        initial={{ scale: 0.6 }}
         animate={{ scale: 1, rotate: [0, -10, 10, -10, 0] }}
         transition={{ duration: 0.6 }}
       >
@@ -35,8 +38,8 @@ export function RoundEnd() {
         {sorted.map((p, rank) => (
           <motion.div
             key={p.seat}
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
+            initial={{ x: -20 }}
+            animate={{ x: 0 }}
             transition={{ delay: rank * 0.1 }}
             className={[
               'flex items-center gap-3 rounded-xl px-4 py-3',
