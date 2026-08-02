@@ -80,13 +80,20 @@ function HuanPhase({ view }: { view: PlayerView }) {
           const { suit } = tileFromType(tileTypeOf(id));
           const disabled = !isSelected && selected.length >= 3;
           const wrongSuit = !isSelected && selectedSuit !== null && suit !== selectedSuit;
+          // Dimmed tiles used to keep their handler: `toggle` played the tap
+          // sound and *then* returned the selection unchanged, so a tile you
+          // cannot pick answered a tap with a confirming click and no movement.
+          // Withholding onClick makes Tile non-interactive outright.
+          const inert = disabled || wrongSuit;
           return (
-            <div key={id} className={wrongSuit || disabled ? 'opacity-30' : ''}>
+            <div key={id} className={inert ? 'opacity-30' : ''}>
+              {/* Spread rather than `onClick={inert ? undefined : toggle}`:
+                  exactOptionalPropertyTypes rejects an explicit undefined. */}
               <Tile
                 id={id}
                 selected={isSelected}
                 size="lg"
-                onClick={() => !disabled && toggle(id)}
+                {...(inert ? {} : { onClick: toggle })}
               />
             </div>
           );
