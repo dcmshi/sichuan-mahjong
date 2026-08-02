@@ -6,6 +6,7 @@ import type { FastifyInstance } from 'fastify';
 import { allowCreate, allowJoin, atGameCapacity, clientKey } from './limits.js';
 import { canStart, createLobby, getLobby } from './lobby.js';
 import { getGame } from './persistence.js';
+import { registerSecurityHeaders } from './security.js';
 import { originFor, robotsTxt, sitemapXml } from './seo.js';
 import { issueToken, issueWatchToken, resolveToken } from './tokens.js';
 
@@ -54,6 +55,9 @@ export async function registerHttpRoutes(
   app: FastifyInstance,
   embeddedClient?: EmbeddedClient,
 ): Promise<void> {
+  // Before any route, so it covers static assets and the SPA fallback too. (M1)
+  registerSecurityHeaders(app);
+
   if (embeddedClient && Object.keys(embeddedClient).length > 0) {
     // Serve the client embedded in the compiled (Bun) binary — a standalone
     // binary has no client dir on disk. (A20)
