@@ -12,6 +12,7 @@ export function LangSwitch({ className = '' }: { className?: string }) {
           type="button"
           key={code}
           onClick={() => setLang(code)}
+          aria-pressed={lang === code}
           className={[
             // 40px minimum: px-2 py-0.5 gave a ~24px-tall tap target. (F15)
             'px-2 min-h-10 min-w-10 flex items-center justify-center text-xs font-semibold transition-colors',

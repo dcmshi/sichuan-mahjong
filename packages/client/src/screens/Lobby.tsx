@@ -18,7 +18,9 @@ export function Lobby() {
       <div className="absolute top-4 right-4">
         <LangSwitch />
       </div>
-      <div className="text-4xl">🀄</div>
+      <div className="text-4xl" aria-hidden="true">
+        🀄
+      </div>
       <div className="text-center">
         <h2 className="text-2xl font-bold">{t('lobby.title')}</h2>
         <p className="text-green-300 text-lg font-mono tracking-widest mt-1">{code}</p>

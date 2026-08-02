@@ -31,6 +31,7 @@ export function RoundEnd() {
         initial={{ scale: 0.6 }}
         animate={{ scale: 1, rotate: [0, -10, 10, -10, 0] }}
         transition={{ duration: 0.6 }}
+        aria-hidden="true"
       >
         🏆
       </motion.div>

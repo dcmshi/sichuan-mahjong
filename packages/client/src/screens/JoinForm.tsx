@@ -63,7 +63,9 @@ export function JoinForm() {
 
   return (
     <div className="min-h-dvh bg-green-900 flex flex-col items-center justify-center gap-6 p-6 text-white">
-      <div className="text-4xl">🀄</div>
+      <div className="text-4xl" aria-hidden="true">
+        🀄
+      </div>
       <h2 className="text-2xl font-bold">{t('join.title')}</h2>
 
       <div className="flex flex-col gap-3 w-full max-w-xs">

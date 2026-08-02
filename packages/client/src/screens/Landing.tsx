@@ -129,7 +129,9 @@ export function Landing() {
         <LangSwitch />
       </div>
       <div className="text-center">
-        <div className="text-6xl mb-2">🀄</div>
+        <div className="text-6xl mb-2" aria-hidden="true">
+          🀄
+        </div>
         <h1 className="text-3xl font-bold">{t('app.title')}</h1>
         <p className="text-green-300 mt-1 text-sm">{t('app.subtitle')}</p>
       </div>
