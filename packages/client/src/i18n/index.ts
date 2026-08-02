@@ -23,6 +23,7 @@ const en: Dict = {
   'common.waitingPlayers': 'Waiting for other players…',
   'common.connectionLost': 'Connection lost — could not reach the host.',
   'common.backToMenu': 'Back to menu',
+  'common.tryAgain': 'Try again',
   'common.close': 'Close',
 
   'landing.host': 'Host a Game',
@@ -237,6 +238,7 @@ const zhHans: Dict = {
   'common.waitingPlayers': '等待其他玩家…',
   'common.connectionLost': '连接已断开 — 无法连上房主。',
   'common.backToMenu': '返回主菜单',
+  'common.tryAgain': '重试',
   'common.close': '关闭',
 
   'landing.host': '创建房间',
@@ -445,6 +447,7 @@ const zhHant: Dict = {
   'common.waitingPlayers': '等待其他玩家…',
   'common.connectionLost': '連線已中斷 — 無法連上房主。',
   'common.backToMenu': '返回主選單',
+  'common.tryAgain': '重試',
   'common.close': '關閉',
 
   'landing.host': '建立房間',
