@@ -10,7 +10,7 @@ audit log, not a commitment — triage before picking up. Already-tracked items
 
 ## High — user-facing broken or misleading behaviour
 
-- [ ] **Practice button re-enables before the game starts.**
+- [x] **Practice button re-enables before the game starts.**
   `screens/Landing.tsx:100` — `setPracticeLoading(false)` runs in `finally`
   immediately after `connectGame` returns, i.e. before the socket opens or
   `joined` arrives. The button is live again while the lobby is still being

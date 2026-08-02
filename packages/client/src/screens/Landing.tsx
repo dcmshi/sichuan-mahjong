@@ -14,6 +14,8 @@ import {
 
 /** How long to wait for the server to accept a stored token before giving up. */
 const REJOIN_TIMEOUT_MS = 6000;
+/** Backstop for a practice socket that opens and then says nothing. */
+const PRACTICE_TIMEOUT_MS = 8000;
 
 export function Landing() {
   const [practiceLoading, setPracticeLoading] = useState(false);
@@ -95,11 +97,22 @@ export function Landing() {
         if (msg.t === 'lobby' && msg.canStart) {
           sendAction({ t: 'startGame' });
         }
+        // Only now is the lobby real. Releasing the button when the POST
+        // resolved re-armed it while the socket was still opening, and a second
+        // tap created a second lobby and a second game.
+        if (msg.t === 'joined' || msg.t === 'error') setPracticeLoading(false);
       });
       ws.send({ t: 'join', name });
+
+      // The socket can also fail by going quiet — the same shape the rejoin path
+      // guards. Without this the button would stay disabled for good.
+      setTimeout(() => {
+        if (useStore.getState().screen !== 'landing') return;
+        setPracticeLoading(false);
+        setPracticeError('landing.practiceError');
+      }, PRACTICE_TIMEOUT_MS);
     } catch {
       setPracticeError('landing.practiceError');
-    } finally {
       setPracticeLoading(false);
     }
   }
