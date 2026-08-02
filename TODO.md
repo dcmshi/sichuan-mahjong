@@ -52,7 +52,8 @@ so it isn't rediscovered as a bug.
   `OpponentTop`, which cap at 6 and 9 tiles) and lands in that seat's meld row.
   Both need to report their geometry to a shared overlay. **Medium.**
 
-- [ ] **N2 — roll the dice, and mean it.** Novikov specifies this precisely
+- [x] **N2 — roll the dice, and mean it.** *(Done — `dice.ts` in the engine, the
+  ⚀ overlay in the client; see [docs/history.md](./docs/history.md).)* Novikov specifies this precisely
   (PDF §"Before the deal starts"): East rolls two dice, the **sum** picks whose
   wall is dismantled — counted counterclockwise from East, so 5/9 → East,
   2/6/10 → South, 3/7/11 → West, 4/8/12 → North — and the **lower die** is the

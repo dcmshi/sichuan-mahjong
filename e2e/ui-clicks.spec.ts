@@ -96,19 +96,25 @@ test('opening played via real UI clicks (huan tiles, void suit, discard tap)', a
     return;
   }
 
-  // ── Play: round-1 dealer is the host (us), so it's our turn first. ──
+  // ── Play. The dealer used to be the host, so this was always our turn first.
+  //    N2's seating throw makes East whoever rolled highest, so three times in
+  //    four we now wait for one to three bot turns — and each of those can open
+  //    a 10s claim window — before we act. Every wait below is sized for that
+  //    rather than for turn 1. ──
   const hand = page.locator('ul li img[alt]');
   await expect.poll(() => hand.count(), { timeout: 10_000 }).toBeGreaterThan(0);
   await expectNoHorizontalOverflow(page, 'play');
   await snap('play');
 
   // The tile set aside at void declaration is the mandatory first discard, so
-  // turn 1 offers exactly one action: flip it. No hand tile is discardable yet.
-  // (Unless we were an indicator user — a hand missing a whole suit — in which
-  // case there's nothing to flip and we discard normally.) (A35)
+  // our first turn offers exactly one action: flip it. No hand tile is
+  // discardable yet. (Unless we were an indicator user — a hand missing a whole
+  // suit — in which case there's nothing to flip and we discard normally.) (A35)
   const flipButton = page.getByRole('button', { name: /Flip your first discard/i });
   if (voidSuitTiles > 0) {
-    await expect(flipButton).toBeVisible({ timeout: 10_000 });
+    // 60s, not 10: this appears on *our* first turn, which is only the game's
+    // first turn when the dice seated us East.
+    await expect(flipButton).toBeVisible({ timeout: 60_000 });
     await expect(page.locator('ul li[data-discardable]')).toHaveCount(0);
     await flipButton.click();
     await expect(flipButton).toBeHidden({ timeout: 10_000 });

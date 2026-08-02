@@ -11,6 +11,70 @@ file had reached 1,566 lines of which two were actually open.
 
 ---
 
+## ✅ N2 — the dice are real now (2026-08-02)
+
+Two throws, both with two dice, both from `rng.ts` on a stream of their own
+(`seed + ':dice'`) so they neither consume from nor perturb the shuffle. Engine
+in `dice.ts`; the client shows them in a two-stage overlay at the deal.
+
+**Seating is on by default, unlike every other addition to Novikov.** 換三張 is
+off because it changes the hand you play; the seating throw only changes which
+seat deals, and the engine already rotates the dealer every round. More to the
+point, the wall throw Novikov *does* specify is meaningless without an East to
+throw it, and every outside source seats players by dice. Ties re-throw among
+the tied only, capped at four rounds, then the lowest tied seat takes it — a
+tiebreak that can loop against a seeded PRNG is a hang, not a long wait.
+Measured over 20,000 games: **19.25% of deals hit a tie**, and East lands
+25.4 / 25.2 / 24.8 / 24.7% across the four seats.
+
+**The wall throw implements Novikov's examples, not his prose.** The prose says
+"5 or 9 indicate East as the second player to throw dice", which is almost
+certainly Chinese Classical's two-thrower version — East throws to name a
+player, that player throws again, the sums add. All three of his worked examples
+derive both the wall and the indent from one roll and never mention a second.
+The examples are unambiguous and the prose is not, so the examples won and the
+discrepancy is recorded in `dice.ts` rather than split down the middle.
+
+**The break is a wall rotation, which is all it ever was.** A rotation of a
+uniform shuffle is still uniform, so no distribution and no fairness changed —
+only which tiles a given seed deals.
+
+**Two engine tests broke on exactly that, and both were pinned too tightly
+rather than wrong.** `phase1`'s deal test asserted seat 0 holds 14 tiles; it now
+asserts the *dealer* does, which is the actual invariant. `ledger`'s non-vacuity
+guard rode on one seed producing entries; it now takes the first of several,
+since a single seed pins it to whatever that deal happens to produce.
+
+**No physics library.** The result is decided by `rng.ts` before anything is
+drawn — it has to be, or replays stop reproducing — so a physics engine would
+have to be *rigged* to land on a predetermined face, which is harder than
+animating to it. `Die.tsx` is a CSS 3D cube: six faces, opposite ones summing to
+7, rotated to bring the drawn value forward. Roughly 600KB of three.js +
+cannon-es avoided on a mobile-first PWA.
+
+**The bug worth remembering is a dependency array.** The overlay's stage timers
+lived in an effect that depended on `view.dice`. The server pushes a fresh view
+many times a round, so that object is a new reference every time — the effect
+re-ran, its cleanup cancelled the timers, and the `shown.current` guard then
+returned early *without rescheduling them*, parking the overlay on its first
+stage for the rest of the round. Every dependency there is now a primitive, and
+that is load-bearing rather than tidy.
+
+`ui-clicks.spec.ts` assumed "round-1 dealer is the host (us), so it's our turn
+first" and waited 10s for the flip button. Three times in four that is now false
+and one to three bot turns intervene, each able to open a 10s claim window — an
+**intermittent** failure, which is the worst kind. The waits are sized for our
+first turn rather than the game's, and the previously flaky projects were run
+four consecutive times clean.
+
+Verified by driving the real app: the seating stage agrees with the engine in
+6/6 runs, tie rounds render only the tied seats and are labelled, the wall stage
+reports the right wall and indent, the overlay clears itself, and with
+animations skipped it never appears at all. 19 new engine tests + 8 client;
+193 / 130 / 95 unit tests and 12/12 e2e green.
+
+---
+
 ## ✅ N4 — animation pace is the player's, not the table's (2026-08-02)
 
 Two settings behind a new ⚙ menu in the play top bar: **animation speed**

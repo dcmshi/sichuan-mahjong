@@ -112,6 +112,12 @@ const en: Dict = {
   'void.confirm': 'Void {suit}',
   'void.choose': 'Choose a suit',
 
+  'dice.seatingTitle': 'Rolling for seats — highest is East',
+  'dice.isEast': '{name} is East',
+  'dice.afterTie': 'after a tie',
+  'dice.wallTitle': '{name} rolls for the wall break',
+  'dice.wallResult': '{wind} wall, {n} stacks in',
+
   'play.wall': 'Wall: {n}',
   'play.yourTurn': 'Your turn',
   'play.othersTurn': "{name}'s turn",
@@ -334,6 +340,12 @@ const zhHans: Dict = {
   'void.confirm': '定缺 {suit}',
   'void.choose': '选择花色',
 
+  'dice.seatingTitle': '掷骰定位 — 点数最大者为庄',
+  'dice.isEast': '{name} 为庄家',
+  'dice.afterTie': '平局重掷后',
+  'dice.wallTitle': '{name} 掷骰决定从哪里开牌',
+  'dice.wallResult': '{wind}家牌墙，第 {n} 墩',
+
   'play.wall': '牌墙：{n}',
   'play.yourTurn': '该你了',
   'play.othersTurn': '{name} 的回合',
@@ -549,6 +561,12 @@ const zhHant: Dict = {
   'void.none': '（沒有 — 將使用指示牌）',
   'void.confirm': '定缺 {suit}',
   'void.choose': '選擇花色',
+
+  'dice.seatingTitle': '擲骰定位 — 點數最大者為莊',
+  'dice.isEast': '{name} 為莊家',
+  'dice.afterTie': '平局重擲後',
+  'dice.wallTitle': '{name} 擲骰決定從哪裡開牌',
+  'dice.wallResult': '{wind}家牌牆，第 {n} 墩',
 
   'play.wall': '牌牆：{n}',
   'play.yourTurn': '輪到你',

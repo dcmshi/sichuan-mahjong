@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import { ClaimFlight } from '../components/ClaimFlight.js';
 import { ClaimPanel } from '../components/ClaimPanel.js';
+import { DiceOverlay } from '../components/DiceOverlay.js';
 import { EventFeed } from '../components/EventFeed.js';
 import { LangSwitch } from '../components/LangSwitch.js';
 import { OpponentSide } from '../components/OpponentSide.js';
@@ -398,7 +399,23 @@ export function Game() {
         <p className="animate-pulse">{t('play.loading')}</p>
       </div>
     );
-  if (view.phase === 'huan') return <HuanPhase view={view} />;
-  if (view.phase === 'voidDeclare') return <VoidDeclarePhase view={view} />;
-  return <PlayPhase view={view} />;
+
+  // Above the phase branch, because the throws happen before the deal is played
+  // and the deal opens on huan or voidDeclare depending on a house rule. The
+  // overlay decides for itself when it has something to show. (N2)
+  const nameOf = (s: Seat) =>
+    s === view.you.seat ? t('history.you') : (view.others.find(o => o.seat === s)?.name ?? '');
+
+  return (
+    <>
+      <DiceOverlay view={view} nameOf={nameOf} />
+      {view.phase === 'huan' ? (
+        <HuanPhase view={view} />
+      ) : view.phase === 'voidDeclare' ? (
+        <VoidDeclarePhase view={view} />
+      ) : (
+        <PlayPhase view={view} />
+      )}
+    </>
+  );
 }
