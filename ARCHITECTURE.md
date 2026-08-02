@@ -233,6 +233,7 @@ export type GameConfig = {
   enableFlowerPig: boolean;          // default false (HOUSE RULE — see §5.9)
   fanCap: number;                    // default 3 → max payment 2^3 = 8
   claimWindowMs: number;             // default 10000
+  enableSeatingThrow: boolean;       // default TRUE — everyone throws, highest is East (§4.3.1)
 };
 
 export const DEFAULT_CONFIG: GameConfig = {
@@ -244,8 +245,57 @@ export const DEFAULT_CONFIG: GameConfig = {
   enableFlowerPig: false,
   fanCap: 3,
   claimWindowMs: 10000,
+  enableSeatingThrow: true,
 };
 ```
+
+#### 4.3.1 The dice (`dice.ts`)
+
+Two throws, both with two dice, both from `rng.ts` on a stream of its own
+(`createRng(`${seed}:dice`)`) so they neither consume from nor perturb the
+shuffle. Recorded on `GameState.dice` rather than recomputed, so a restored
+snapshot still shows the table what it saw.
+
+```ts
+type DiePair    = { a: number; b: number };
+type DiceRecord = {
+  seating: SeatingRound[] | null;  // null when off, or on any round after the first
+  wall: DiePair;                   // East's throw for the break
+  wallSeat: Seat;                  // the wall its sum selected
+  indent: number;                  // stacks in from that wall's right end (the lower die)
+  breakOffset: number;             // what the break actually is: the wall rotation
+};
+```
+
+**Seating.** Everyone throws; highest sum is East. Ties re-throw among the tied
+only; after `MAX_SEATING_ROUNDS` (4) the lowest tied seat takes it, because a
+tiebreak against a seeded PRNG that can loop is a hang, not a long wait. Runs
+only at match start — `createGame`'s `dealer` parameter is now `Seat | null`,
+and `startNextRound` passes the rotated dealer, which skips it.
+
+Not in Novikov: his §"preparatory phase" opens with East already established and
+never says how. It is the modern simplified convention and every outside source
+seats by dice, so it is on by default rather than an opt-in like 換三張 — the
+wall throw he *does* specify is meaningless without an East to throw it.
+
+**The wall break.** East throws; the sum picks whose wall, counted
+counterclockwise from East (5/9 → East, 2/6/10 → South, 3/7/11 → West,
+4/8/12 → North, i.e. `(sum - 1) % 4` seats along), and the lower die is the
+indent in stacks from that wall's right end. This is Novikov's, read as his
+three worked examples read it. His prose says "5 or 9 indicate East as the
+second player to throw dice", which is probably Chinese Classical's two-thrower
+version — but the examples derive both answers from one roll and never mention a
+second, so the examples win and the discrepancy is recorded rather than split.
+
+**The break is a rotation.** `rotateWall(buildWall(seed), breakOffset)`, and the
+deal proceeds from index 0 as before. A rotation of a uniform shuffle is still
+uniform, so this changes no distribution and no fairness — it changes only which
+tiles a given seed deals, which is why it landed with the replay corpus in one
+go rather than twice.
+
+Pre-N2 snapshots are **refused** on restore, not half-restored: `requiredShape()`
+derives its key list from a live `createGame`, so `dice` became required the
+moment it existed.
 
 ### 4.4 Actions
 

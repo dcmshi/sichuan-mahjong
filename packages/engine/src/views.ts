@@ -1,5 +1,6 @@
 import type { GameAction, GameEvent } from './actions.js';
 import { canHuConsideringFuriten, canKongOnTile, canPungOnTile } from './claims.js';
+import type { DiceRecord } from './dice.js';
 import { isWinningHand } from './hand.js';
 import type { Meld } from './melds.js';
 import type { GameConfig, GameState, HuRecord, PlayerState, Seat } from './state.js';
@@ -74,6 +75,18 @@ export type PlayerView = {
   yourLegalActions: GameAction[];
   claimDeadline: number | null;
   config: GameConfig;
+  /**
+   * Who the seating throw made East. The client needs it to say so, and it was
+   * only ever absent here because it was always seat 0. (N2)
+   */
+  dealer: Seat;
+  /**
+   * The dice, unredacted on purpose. Every other addition to this type needed a
+   * redaction decision; this one's is that dice are thrown face-up on a table
+   * in front of four people, so there is nothing here a seat should not see.
+   * The seating throw is null after the round that ran it. (N2)
+   */
+  dice: DiceRecord;
 };
 
 /** Read-only, hand-hiding view for spectators. Exposes no concealed hands. */
@@ -85,6 +98,8 @@ export type SpectatorView = {
   dealer: Seat;
   lastDiscard: { tile: TileId; from: Seat } | null;
   config: GameConfig;
+  /** Same reasoning as `PlayerView.dice`: public at the table, public here. */
+  dice: DiceRecord;
 };
 
 // ---------------------------------------------------------------------------
@@ -308,6 +323,8 @@ export function projectView(state: GameState, seat: Seat): PlayerView {
     yourLegalActions: computeLegalActions(state, seat),
     claimDeadline: state.pendingClaims?.deadline ?? null,
     config: state.config,
+    dealer: state.dealer,
+    dice: state.dice,
   };
 }
 
@@ -354,5 +371,6 @@ export function projectSpectatorView(state: GameState): SpectatorView {
       ? { tile: state.lastDiscard.tile, from: state.lastDiscard.from }
       : null,
     config: state.config,
+    dice: state.dice,
   };
 }

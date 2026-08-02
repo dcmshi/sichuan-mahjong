@@ -87,7 +87,12 @@ function ledgerTotalFor(state: GameState, seat: Seat): number {
 describe('ledger balance property', () => {
   it('a real game produces entries', () => {
     // Guards the tests below from passing vacuously on an always-empty ledger.
-    expect(runFullGame('ledger-populated').ledger.length).toBeGreaterThan(0);
+    // Across seeds rather than one: a single seed pins this to whatever that
+    // deal happens to produce, and N2's wall break changed what every seed
+    // deals — which is exactly how this failed rather than the property below.
+    const seeds = ['ledger-populated', 'ledger-b', 'ledger-c', 'ledger-d', 'ledger-e'];
+    const populated = seeds.filter(s => runFullGame(s).ledger.length > 0);
+    expect(populated.length).toBeGreaterThan(0);
   });
 
   it('every seat total matches its scoreDelta, and pot entries match penaltyPot', () => {

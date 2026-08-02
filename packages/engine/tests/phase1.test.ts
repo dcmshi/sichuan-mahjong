@@ -190,10 +190,28 @@ describe('Phase 1 — basic round (no claims, no Hu)', () => {
       ],
       { enableHuanSanZhang: false },
     );
+    // Relative to whoever the seating throw made East, not to seat 0 — that is
+    // the invariant, and it was only ever seat 0 because the dealer was pinned.
+    expect(state.players[state.dealer]!.hand).toHaveLength(14);
+    for (const p of state.players) {
+      if (p.seat !== state.dealer) expect(p.hand).toHaveLength(13);
+    }
+  });
+
+  it('with the seating throw off, East is seat 0', () => {
+    const state = createGame(
+      'deal',
+      [
+        { name: 'A', isBot: false },
+        { name: 'B', isBot: false },
+        { name: 'C', isBot: false },
+        { name: 'D', isBot: false },
+      ],
+      { enableHuanSanZhang: false, enableSeatingThrow: false },
+    );
+    expect(state.dealer).toBe(0);
+    expect(state.dice.seating).toBeNull();
     expect(state.players[0]!.hand).toHaveLength(14);
-    expect(state.players[1]!.hand).toHaveLength(13);
-    expect(state.players[2]!.hand).toHaveLength(13);
-    expect(state.players[3]!.hand).toHaveLength(13);
   });
 
   it('A23: rejects declareVoid with a suit that is not man/pin/sou', () => {

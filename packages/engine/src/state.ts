@@ -1,4 +1,12 @@
+import {
+  type DiceRecord,
+  type SeatingRound,
+  rotateWall,
+  throwForSeats,
+  throwForWall,
+} from './dice.js';
 import type { Meld } from './melds.js';
+import { createRng } from './rng.js';
 import type { Suit, TileId } from './tiles.js';
 import { buildWall, sortTiles, suitOf } from './tiles.js';
 
@@ -21,6 +29,14 @@ export type GameConfig = {
   enableFlowerPig: boolean;
   fanCap: number;
   claimWindowMs: number;
+  /**
+   * Everyone throws two dice before the first deal and the highest becomes
+   * East. On by default, unlike the other additions to Novikov: the wall throw
+   * he *does* specify is meaningless without an East to throw it, and every
+   * outside source seats players by dice. Off leaves seat 0 as East, which is
+   * what every test that pins a dealer relies on.
+   */
+  enableSeatingThrow: boolean;
 };
 
 export const DEFAULT_CONFIG: GameConfig = {
@@ -31,6 +47,7 @@ export const DEFAULT_CONFIG: GameConfig = {
   voidDiscardRule: 'strict',
   enableFlowerPig: false,
   fanCap: 3,
+  enableSeatingThrow: true,
   // 10s. This shipped at 3, went to 6, and was still hurrying people: a claim is
   // three decisions inside one window — notice the discard, see that it fits your
   // hand, and pick between Hu, Pung and Kong — and you are usually looking at
@@ -139,6 +156,12 @@ export type GameState = {
   config: GameConfig;
   phase: Phase;
   seed: string;
+  /**
+   * What the dice decided this round: the seating throw (only on the round that
+   * ran it) and East's throw for the break. Kept on the state rather than
+   * recomputed, so a restored snapshot still shows the table what it saw.
+   */
+  dice: DiceRecord;
   wall: TileId[];
   drawIndex: number;
   kongDrawIndex: number;
@@ -206,10 +229,36 @@ export function createGame(
   seed: string,
   playerInits: [PlayerInit, PlayerInit, PlayerInit, PlayerInit],
   config: Partial<GameConfig> = {},
-  dealer: Seat = 0,
+  /**
+   * Null asks for the seating throw; a seat pins East and skips it. That is the
+   * difference between starting a match and starting a round — `startNextRound`
+   * passes the rotated dealer, because a seat once won is not re-contested.
+   */
+  dealer: Seat | null = null,
 ): GameState {
   const cfg: GameConfig = { ...DEFAULT_CONFIG, ...config };
-  const wall = buildWall(seed);
+
+  // A stream of its own, so the dice neither consume from nor perturb the
+  // shuffle. Same seed still means the same throws.
+  const diceRng = createRng(`${seed}:dice`);
+
+  let seating: SeatingRound[] | null = null;
+  let east: Seat;
+  if (dealer !== null) {
+    east = dealer;
+  } else if (cfg.enableSeatingThrow) {
+    const thrown = throwForSeats(diceRng);
+    seating = thrown.rounds;
+    east = thrown.east;
+  } else {
+    east = 0;
+  }
+
+  const breakThrow = throwForWall(diceRng, east);
+  const dice: DiceRecord = { seating, ...breakThrow };
+  // The break, applied. A rotation of a uniform shuffle is still uniform, so
+  // this changes which tiles a seed deals and nothing else.
+  const wall = rotateWall(buildWall(seed), breakThrow.breakOffset);
 
   const players = playerInits.map((p, i) => makePlayer(i as Seat, p.name, p.isBot)) as [
     PlayerState,
@@ -224,7 +273,7 @@ export function createGame(
     players[i]!.hand = sortTiles(wall.slice(idx, idx + 13));
     idx += 13;
   }
-  players[dealer]!.hand = sortTiles([...players[dealer]!.hand, wall[idx]!]);
+  players[east]!.hand = sortTiles([...players[east]!.hand, wall[idx]!]);
   idx += 1;
 
   const phase: Phase = cfg.enableHuanSanZhang ? 'huan' : 'voidDeclare';
@@ -233,12 +282,13 @@ export function createGame(
     config: cfg,
     phase,
     seed,
+    dice,
     wall,
     drawIndex: idx,
     kongDrawIndex: 107,
     players,
-    dealer,
-    turn: dealer,
+    dealer: east,
+    turn: east,
     turnNumber: 0,
     firstTurnDone: [false, false, false, false],
     lastDiscard: null,
