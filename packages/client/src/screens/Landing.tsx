@@ -57,6 +57,7 @@ export function Landing() {
       playerName: saved.name,
       token: saved.token,
       isHost: saved.isHost,
+      isPractice: saved.isPractice ?? false,
     });
     // A token connect needs no `join` message — the server rebinds the seat and
     // pushes the current view (or the lobby's `joined`) on its own.
@@ -79,6 +80,7 @@ export function Landing() {
   async function startPractice() {
     setPracticeLoading(true);
     setPracticeError('');
+    useStore.getState().setIsPractice(true);
     const name = t('landing.practiceName');
     try {
       const res = await fetch('/api/lobby', { method: 'POST' });

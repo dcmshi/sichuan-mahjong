@@ -10,6 +10,9 @@ export type StoredSession = {
   name: string;
   /** Persisted too: a mid-game reconnect gets no `lobby` frame to re-derive it. */
   isHost: boolean;
+  /** Practice games suppress the (you) badge. Optional: sessions stored before
+   *  this field existed must still parse. */
+  isPractice?: boolean;
 };
 
 export function loadSession(): StoredSession | null {

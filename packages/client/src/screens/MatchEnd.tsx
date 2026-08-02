@@ -12,6 +12,11 @@ export function MatchEnd() {
   const roundResult = useStore(s => s.roundResult);
   const lobbyPlayers = useStore(s => s.lobbyPlayers);
   const seat = useStore(s => s.seat);
+  // Practice games hide the badge: labelling the only human "(you)" among three
+  // bots is noise. Keyed on the flag rather than on the name matching the
+  // localized practice name, which stole the badge from a real player called
+  // "You" or 你.
+  const isPractice = useStore(s => s.isPractice);
   const resetSession = useStore(s => s.resetSession);
 
   // The idle sweep can end a match mid-round, so there isn't always a round
@@ -53,7 +58,7 @@ export function MatchEnd() {
                 <span className="text-xs text-green-300 w-12">{t(`wind.${s}`)}</span>
                 <span className="font-semibold flex-1">
                   {nameOf(s)}
-                  {s === seat && nameOf(s) !== t('landing.practiceName') && (
+                  {s === seat && !isPractice && (
                     <span className="ml-1 text-xs text-amber-400">{t('common.you')}</span>
                   )}
                 </span>

@@ -89,6 +89,8 @@ export interface GameStore {
   reconnecting: boolean;
   /** Set once the socket has stopped retrying — the player needs a way out. (F6) */
   connectionLost: boolean;
+  /** Solo-vs-bots game started from the landing screen. */
+  isPractice: boolean;
 
   // Last server rejection. `seq` increments on every arrival so an identical
   // error repeated back-to-back still re-triggers the toast. (F1)
@@ -107,6 +109,7 @@ export interface GameStore {
   setWatchToken: (t: string) => void;
   setConnected: (v: boolean) => void;
   setReconnecting: (v: boolean) => void;
+  setIsPractice: (v: boolean) => void;
   setConnectionLost: () => void;
   handleServerMsg: (msg: ServerMsg) => void;
   clearError: () => void;
@@ -133,6 +136,7 @@ export const useStore = create<GameStore>((set, get) => ({
   connected: false,
   reconnecting: false,
   connectionLost: false,
+  isPractice: false,
   lastError: null,
   soundEnabled: true,
   lang: loadLang(),
@@ -148,6 +152,7 @@ export const useStore = create<GameStore>((set, get) => ({
   setWatchToken: watchToken => set({ watchToken }),
   setConnected: connected => set({ connected, reconnecting: false, connectionLost: false }),
   setReconnecting: reconnecting => set({ reconnecting }),
+  setIsPractice: v => set({ isPractice: v }),
   setConnectionLost: () => set({ connectionLost: true, reconnecting: false, connected: false }),
   toggleSound: () => set(s => ({ soundEnabled: !s.soundEnabled })),
 
@@ -157,7 +162,13 @@ export const useStore = create<GameStore>((set, get) => ({
         const isHost = msg.seat === 0 && get().isHost;
         set({ token: msg.token, seat: msg.seat, isHost });
         // Survive a refresh: the seat token is the only way back in. (F2)
-        persistSession({ code: get().code, token: msg.token, name: get().playerName, isHost });
+        persistSession({
+          code: get().code,
+          token: msg.token,
+          name: get().playerName,
+          isHost,
+          isPractice: get().isPractice,
+        });
         break;
       }
 
@@ -170,7 +181,14 @@ export const useStore = create<GameStore>((set, get) => ({
         // `joined` arrives before the host flag is known, so re-persist here —
         // otherwise a refreshed host would come back as an ordinary player. (F2)
         const { code, token, playerName } = get();
-        if (token) persistSession({ code, token, name: playerName, isHost: msg.isHost });
+        if (token)
+          persistSession({
+            code,
+            token,
+            name: playerName,
+            isHost: msg.isHost,
+            isPractice: get().isPractice,
+          });
         break;
       }
 
@@ -276,6 +294,7 @@ export const useStore = create<GameStore>((set, get) => ({
       connected: false,
       reconnecting: false,
       connectionLost: false,
+      isPractice: false,
       lastError: null,
     });
   },

@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { useState } from 'react';
 import { useT } from '../i18n/useT.js';
 import { formatFan, ledgerLines } from '../roundEnd.js';
+import { useStore } from '../store/index.js';
 import { MeldDisplay } from './MeldDisplay.js';
 import { Tile } from './Tile.js';
 
@@ -21,6 +22,11 @@ export function RoundEndRow({
 }: { player: Player; rank: number; youSeat: Seat | null; defaultOpen: boolean }) {
   const [open, setOpen] = useState(defaultOpen);
   const t = useT();
+  // Practice games hide the badge — labelling the only human "(you)" among three
+  // bots is noise. Keyed on the flag rather than on the name matching the
+  // localized practice name, which stole the badge from a real player called
+  // "You" or 你.
+  const isPractice = useStore(s => s.isPractice);
   const lines = ledgerLines(player.ledger, player.seat);
 
   return (
@@ -43,7 +49,7 @@ export function RoundEndRow({
         <span className="text-xs text-green-300 w-12">{t(`wind.${player.seat}`)}</span>
         <span className="font-semibold flex-1 min-w-0 truncate">
           {player.name}
-          {player.seat === youSeat && player.name !== t('landing.practiceName') && (
+          {player.seat === youSeat && !isPractice && (
             <span className="ml-1 text-xs text-amber-400">{t('common.you')}</span>
           )}
         </span>
