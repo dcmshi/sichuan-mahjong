@@ -144,6 +144,7 @@ const en: Dict = {
   'claim.kong': 'Kong',
   'claim.pung': 'Pung',
   'claim.pass': 'Pass',
+  'claim.secondsLeft': '{n} seconds left',
 
   'event.pung': '{name} ponged',
   'event.kong': '{name} konged',
@@ -356,6 +357,7 @@ const zhHans: Dict = {
   'claim.kong': '杠',
   'claim.pung': '碰',
   'claim.pass': '过',
+  'claim.secondsLeft': '还剩 {n} 秒',
 
   'event.pung': '{name} 碰了',
   'event.kong': '{name} 杠了',
@@ -564,6 +566,7 @@ const zhHant: Dict = {
   'claim.kong': '槓',
   'claim.pung': '碰',
   'claim.pass': '過',
+  'claim.secondsLeft': '還剩 {n} 秒',
 
   'event.pung': '{name} 碰了',
   'event.kong': '{name} 槓了',

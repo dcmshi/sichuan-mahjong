@@ -61,6 +61,7 @@ export function ClaimPanel({ seat, legalActions, claimDeadline, windowMs }: Prop
   const canKong = legalActions.some(a => a.t === 'claim' && a.claim.kind === 'kong');
   const canPung = legalActions.some(a => a.t === 'claim' && a.claim.kind === 'pung');
   const canPass = legalActions.some(a => a.t === 'pass');
+  const secondsLeft = Math.ceil((pct / 100) * (windowMs / 1000));
 
   function act(action: GameAction) {
     if (sent) return;
@@ -75,13 +76,24 @@ export function ClaimPanel({ seat, legalActions, claimDeadline, windowMs }: Prop
     // Felt palette, not the gray chrome it used to wear — the claim bar read as
     // a foreign element against the jade-and-amber board. (F14)
     <div className="fixed bottom-0 left-0 right-0 bg-green-950/95 backdrop-blur text-white p-3 border-t border-amber-400/30 z-20">
-      {/* Countdown bar */}
-      <div className="w-full h-1.5 bg-black/40 rounded-full mb-3 overflow-hidden">
+      {/* The bar is decorative: a progressbar role would have to be focusable to
+          be valid, and a tab stop in front of the claim buttons is the last thing
+          you want in a timed decision. The countdown is spoken instead, below. */}
+      <div
+        className="w-full h-1.5 bg-black/40 rounded-full mb-3 overflow-hidden"
+        aria-hidden="true"
+      >
         <div
           className="h-full bg-amber-400 rounded-full transition-none"
           style={{ width: `${pct}%` }}
         />
       </div>
+
+      {/* Announced only over the last few seconds. A live region ticking every
+          second for the whole window would bury the buttons it is warning about. */}
+      <output className="sr-only" aria-live="polite">
+        {secondsLeft <= 3 ? t('claim.secondsLeft', { n: secondsLeft }) : ''}
+      </output>
 
       {/* Action buttons */}
       <div className="flex gap-2 justify-center">
