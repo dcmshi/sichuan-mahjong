@@ -37,7 +37,7 @@ export function OpponentTop({ view, relSeat }: { view: PlayerView; relSeat: 0 | 
           that comes with overflow-x. (R6) */}
       {opp.melds.length > 0 && (
         <div className="max-w-full overflow-x-auto pt-1">
-          <div className="flex flex-nowrap gap-1 w-max mx-auto">
+          <div className="flex flex-nowrap gap-1 w-max mx-auto" data-meld-zone={opp.seat}>
             {opp.melds.map((m, i) => (
               <MeldDisplay key={i} meld={m} />
             ))}

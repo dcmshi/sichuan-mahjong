@@ -46,6 +46,7 @@ export function OpponentSide({
           className={`flex flex-wrap gap-1 w-20 flex-shrink-0 ${
             side === 'right' ? 'justify-end' : ''
           }`}
+          data-meld-zone={opp.seat}
         >
           {opp.melds.map((m, i) => (
             <MeldChip key={i} meld={m} />

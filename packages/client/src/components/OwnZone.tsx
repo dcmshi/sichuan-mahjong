@@ -241,7 +241,7 @@ export function OwnZone({ view }: { view: PlayerView }) {
           {/* mx-auto, as across the table: `w-max` centres while the melds fit,
               and once they don't the scroller takes over — centring the scroller
               itself would put the leftmost meld out of reach. */}
-          <div className="flex flex-nowrap gap-1 w-max mx-auto">
+          <div className="flex flex-nowrap gap-1 w-max mx-auto" data-meld-zone={seat}>
             {view.you.melds.map((m, i) => (
               <MeldDisplay key={i} meld={m} />
             ))}

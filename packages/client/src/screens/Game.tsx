@@ -2,6 +2,7 @@ import { tileFromType, tileTypeOf } from '@sichuan-mahjong/engine';
 import type { PlayerView, Seat, Suit, TileId } from '@sichuan-mahjong/engine';
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
+import { ClaimFlight } from '../components/ClaimFlight.js';
 import { ClaimPanel } from '../components/ClaimPanel.js';
 import { EventFeed } from '../components/EventFeed.js';
 import { LangSwitch } from '../components/LangSwitch.js';
@@ -284,6 +285,7 @@ function PlayPhase({ view }: { view: PlayerView }) {
     // half in the first place. (F13, R1)
     <div className="h-dvh board-felt flex flex-col text-white overflow-y-auto overflow-x-hidden">
       <ReconnectingBanner />
+      <ClaimFlight />
 
       <PlayTopBar view={view} />
 

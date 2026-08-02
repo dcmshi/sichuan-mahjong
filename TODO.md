@@ -33,7 +33,7 @@ so it isn't rediscovered as a bug.
   declaration is already drawn above their own pile. **Still a fallback; the
   per-seat trays are staying.**
 
-- [ ] **N1 — animate a claimed tile from the discard to the meld.** A pung or
+- [x] **N1 — animate a claimed tile from the discard to the meld.** *(Done — ClaimFlight, an overlay; see the commit for why it cannot be the tray tile.)* A pung or
   kong currently happens by the board simply being different on the next view:
   the tile leaves someone's tray and appears in a meld with nothing connecting
   the two. The discard path already does this well (`takeoff` in `OwnZone`), so
