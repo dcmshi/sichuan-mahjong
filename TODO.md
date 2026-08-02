@@ -73,6 +73,17 @@ so it isn't rediscovered as a bug.
   Dice must come from `rng.ts` like all engine randomness, or replays stop
   reproducing.
 
+  **Decided (2026-08-02): the modern convention — everyone rolls, highest is
+  East; then East rolls again to pick the wall.** Two throws, both with two
+  dice. The second throw is Novikov's, read as his worked examples read it: sum
+  picks whose wall, lower die is the indent. The first throw is the part that is
+  not in his text, and is what the sources below call standard practice.
+
+  Still to decide when it is built: **what a tie does** (re-roll among the tied
+  players is the usual answer, and it has to terminate — cap it and fall back to
+  seat order), and whether the seating throw is **on by default or a host toggle**.
+  The wall throw is the ruleset and should just be on.
+
   **Fact-checked: there is no seating roll in this ruleset.** The PDF describes
   exactly one throw — East's two dice for the wall break — and never says how
   East is chosen; §"preparatory phase" starts with East already established.
