@@ -234,6 +234,15 @@ forgets the flag on a deploy. What that buys, in order of sharpness:
 [docs/design-hosted-server.md](./docs/design-hosted-server.md). Free tier, so
 persistence stays off — `getDb()` already returns null and every caller handles it.
 
+**It is deployed** (2026-08-02) at `https://sichuan-mahjong.onrender.com`.
+Two things the deploy taught, both recorded in
+[docs/history.md](./docs/history.md): **pnpm no longer reads the `pnpm` field in
+`package.json`**, so the security overrides live in `pnpm-workspace.yaml` and
+`packageManager` pins the toolchain — and the fix the error message suggests
+(`--no-frozen-lockfile`) would have dropped those pins rather than restored them.
+**Render fronts the service with Cloudflare**, so `trustProxy: 1` resolves to an
+edge address instead of the player; that is the open item in TODO.md.
+
 **Open** (see [TODO.md](./TODO.md), which is now only the open list): a central discard pool is
 still held as a fallback. Its redaction question is answered — `firstDiscardIsVoid`
 is the deliberate reveal it needed — but the middle is no longer the empty space

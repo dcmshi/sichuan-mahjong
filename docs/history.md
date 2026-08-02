@@ -11,6 +11,46 @@ file had reached 1,566 lines of which two were actually open.
 
 ---
 
+## ✅ It is deployed, and the build fought back first (2026-08-02)
+
+Live at `https://sichuan-mahjong.onrender.com`. Post-deploy observations are in
+[design-hosted-server.md](./design-hosted-server.md#what-the-first-deploy-actually-showed-2026-08-02).
+
+- [x] **The first build failed on `ERR_PNPM_LOCKFILE_CONFIG_MISMATCH`**, and the
+  diagnosis is that **pnpm stopped reading the `pnpm` field in `package.json`**.
+  Render's pnpm 11 therefore computed an *empty* override set, compared it to a
+  lockfile recording two, and `--frozen-lockfile` refused. The overrides moved to
+  `pnpm-workspace.yaml`, which 10.x and 11.x both read.
+- [x] **The error's own advice was the trap.** It suggests reinstalling with
+  `--no-frozen-lockfile`, which resolves against the empty config and rewrites the
+  lockfile to match — quietly dropping the `vite@<6.4.2` and `esbuild@<0.25.0` CVE
+  floors. The frozen check was the thing that *caught* this, not the thing that
+  broke. Worth remembering the next time a tool suggests unfreezing to get green.
+- [x] **`packageManager` pins the toolchain**, because version drift is what
+  caused this: the lockfile was written by 10.33.3 and the host ran whatever it
+  shipped. pnpm self-switches on the field, and corepack provisions it on Node 22.
+  `pnpm/action-setup` then broke CI by refusing to see both its own `version:`
+  input and the pin — the input went, since the pin is the one that also reaches
+  Render.
+- [x] **CI installs frozen now, like the deploy does.** A plain `pnpm install`
+  rewrites the lockfile to match whatever config it can see, which is precisely
+  how a mismatch stayed green in CI and failed on Render. The two commands should
+  not disagree about what a passing install means.
+- [x] **`--hosted` verified from outside**, by measuring the join limiter: it cuts
+  in near 60/minute, the hosted number, where the local profile allows 600.
+- [x] **The spectator secret holds in production.** Against a running game the play
+  code alone is refused, a wrong watch token is refused, and only the real one is
+  admitted — both refusals returning the same `no_game`, so the two cases stay
+  indistinguishable.
+- [x] **C7's keepalive survives the proxy, but is invisible from the client.** The
+  ping frames are answered at the edge and never reach the browser, so counting
+  client-side ping events proves nothing. The observable is the socket outliving
+  the 60s at which a missed pong would have terminated it — measured at 300s open.
+
+One thing came *out* of the deploy rather than into it: the `trustProxy` hop count
+is wrong for a Cloudflare-fronted Render service, and is now the open item in
+[TODO.md](../TODO.md).
+
 ## ✅ It runs on a public URL — C1–C7, C9 (2026-08-02)
 
 Design and rationale: [design-hosted-server.md](./design-hosted-server.md).

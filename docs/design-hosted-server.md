@@ -152,6 +152,36 @@ Render terminates TLS and forwards. Without `trustProxy`, `req.ip` is the
 proxy's address for every request, so every per-IP limit in C3 becomes a single
 shared global limit and the first busy player locks everyone out.
 
+**Measured against the live service (2026-08-02): one hop is not enough.**
+Render fronts the service with Cloudflare — responses carry `server: cloudflare`
+— so there are at least two proxies in the chain, and trusting one lands on an
+edge address rather than on the player.
+
+The test that shows it: the hosted join budget is 60/minute, so 60 is the most
+any single key may spend. Driven over **one pinned TCP connection** the limiter
+cut in at request 71, near enough to 60 for one key. Driven over **~120 parallel
+connections** it allowed about 145 before the first 429. If `req.ip` were the
+client's address both runs would stop at 60, because both come from one machine.
+They don't, so the key varies with the connection — it is the edge node, not the
+caller.
+
+Two consequences, neither of them a spoofing hole:
+
+- **Unrelated players behind one edge node share a 60/minute budget.** That is a
+  weaker form of exactly what this item exists to prevent.
+- **A caller can multiply their own budget** by spreading requests across edge
+  nodes. Getting 145 out of a 60 budget took no more than opening more sockets.
+
+What is *not* broken is the property C4 is really about: because this is a hop
+count rather than `true`, `req.ip` still comes from infrastructure, and no
+header a client writes can move it.
+
+**The fix is `SM_TRUST_PROXY`, and it must be verified rather than guessed** —
+over-trusting by one hop starts reading an entry the client controls, which is
+the failure `true` would have handed us. The acceptance test is the asymmetry
+above collapsing: with the right count, one machine cannot exceed 60 no matter
+how many connections it opens.
+
 ### C5. Spectating is unauthenticated, and that was fine until now
 
 `/ws/:code?spectate=1` needs no token by design (§12 item 5). On a tailnet,
@@ -333,6 +363,39 @@ SQLite would be writing to a filesystem that vanishes on the next deploy.
   the thing most likely to behave differently there than locally.
 - Copy the watch link and open it in a private window.
 - Confirm the play code alone does **not** admit a spectator.
+
+### What the first deploy actually showed (2026-08-02)
+
+Live at `https://sichuan-mahjong.onrender.com`. The build failed first time on
+`ERR_PNPM_LOCKFILE_CONFIG_MISMATCH`: pnpm 11 has stopped reading the `pnpm` field
+in `package.json`, so it computed an empty override set against a lockfile that
+records two, and `--frozen-lockfile` refused. **The error's own advice — reinstall
+with `--no-frozen-lockfile` — would have dropped the vite/esbuild CVE pins**; the
+overrides moved to `pnpm-workspace.yaml` instead, and `packageManager` now pins
+the toolchain so the deploy resolves the pnpm that generated the lockfile. CI
+installs frozen too now, since a plain install is what let the mismatch pass here
+and fail there.
+
+Confirmed against the running service:
+
+- **`--hosted` took.** The join limiter cuts in around 60/minute, which is the
+  hosted number; the local profile's is 600.
+- **The spectator door is locked.** With a game actually running, the play code
+  alone is refused, a wrong watch token is refused, and only the real one is
+  admitted — and both refusals return the same `no_game`, so a bad token cannot
+  be told apart from a room that isn't there.
+- **The watch secret stays with the host.** `POST /api/lobby` returns it;
+  `GET /api/lobby/:code` does not.
+- **The client is served whole** — hashed bundle, tile SVGs, manifest and icons
+  all with correct MIME types, and deep links like `/j/CODE` falling back to the
+  SPA rather than 404ing.
+- **C7 holds through the proxy.** A game socket held idle for **300s stayed
+  open** — well past the 60s at which a missed pong terminates it, so the
+  ping/pong round trip is completing. Note the ping frames are answered at the
+  edge and **never reach the browser**, so a client-side "did I see a ping" check
+  reads as silence and proves nothing; the socket staying open is the observable.
+
+Open: the `trustProxy` hop count, per [C4](#c4-fastify-has-to-be-told-it-is-behind-a-proxy).
 
 ### Still true after deploying
 
