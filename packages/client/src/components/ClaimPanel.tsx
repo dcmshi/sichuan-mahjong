@@ -75,7 +75,14 @@ export function ClaimPanel({ seat, legalActions, claimDeadline, windowMs }: Prop
   return (
     // Felt palette, not the gray chrome it used to wear — the claim bar read as
     // a foreign element against the jade-and-amber board. (F14)
-    <div className="fixed bottom-0 left-0 right-0 bg-green-950/95 backdrop-blur text-white p-3 border-t border-amber-400/30 z-20">
+    //
+    // `sticky`, not `fixed`. Fixed took the bar out of flow, so the board
+    // reserved nothing for it and it covered the hand for the whole window —
+    // and whether to pung is a judgement about the hand it was covering. In
+    // flow the board's `flex-1 min-h-0` middle row yields the height instead;
+    // `sticky bottom-0` keeps it pinned to the bottom of the visible area if the
+    // board ever does scroll, which is R3's round-end pattern. (N8)
+    <div className="claim-panel sticky bottom-0 flex-shrink-0 bg-green-950/95 backdrop-blur text-white p-3 border-t border-amber-400/30 z-20">
       {/* The bar is decorative: a progressbar role would have to be focusable to
           be valid, and a tab stop in front of the claim buttons is the last thing
           you want in a timed decision. The countdown is spoken instead, below. */}

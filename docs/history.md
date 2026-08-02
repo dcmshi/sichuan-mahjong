@@ -11,6 +11,51 @@ file had reached 1,566 lines of which two were actually open.
 
 ---
 
+## ✅ N8 — the claim bar covered the hand, and my first diagnosis was wrong (2026-08-02)
+
+The Pung / Kong / Hu / Pass bar was `fixed bottom-0`, and your hand is the
+bottom-most row, so for the whole 10-second window the bar sat on the tiles the
+decision is about. Fixed with `sticky bottom-0 flex-shrink-0` — in flow, so the
+board's `flex-1 min-h-0` middle row yields the height, and sticky keeps the bar
+pinned if the board ever scrolls. R3's round-end pattern.
+
+**The wrong turn is the useful part.** I first measured the hand's layout box
+ending exactly where the bar began, saw hand tiles reported 21px lower than that,
+and concluded the tiles must *paint* outside their box because of `.tile-lap` —
+recording in TODO that the cause was tile geometry rather than bar position, and
+telling the next person to read the tile-rendering handoff first. That was wrong
+twice over:
+
+- **The lap has no vertical component.** `.tile-lap .tile-face` is
+  `width: 129.032%` but `height: 100%`, and against the art's 210:255 ratio that
+  fits the box exactly. Measured, the face box and the tile box are the same
+  rectangle (514..550). The lap bleeds sideways only.
+- **The 21px was an animation frame.** `Reorder.Item` animates the hand on any
+  layout change, so sampling as the bar appears catches an `li` at 513..555 while
+  its own `ul` sits at 419..465 — Framer still moving it from where it used to be.
+  Two of my "the fix does nothing" conclusions were that transient, not the fix.
+
+The real cause was ordinary: a fixed element reserves no space, so the hand's
+container ran to the viewport bottom (462..568) under a bar covering 525..568.
+
+**Lessons worth keeping.** Any measurement of the hand must settle first — poll
+until two consecutive samples agree — because the hand is the one part of this
+board that is always mid-animation. And a diagnosis that survives only because
+its own verification was mis-sampled will happily be written into the docs as
+fact; the `padding-bottom` attempt "changing nothing visible" was the tell I
+should have chased rather than reported.
+
+**The guard** samples `.claim-panel` against every hand tile inside the existing
+round loop, asserts at least one window was seen (otherwise it passes for free on
+a round that offered no claim, which is how this went unguarded), and polls to a
+stable pair rather than sleeping — a fixed wait long enough on one machine is
+short on another, and an intermittent guard is worse than none. Verified by
+restoring `fixed`: it reports all 13 hand tiles under the bar on both viewports.
+With the fix, six settled windows show zero tiles under the bar, 18px clearance,
+and no board overflow introduced.
+
+---
+
 ## ✅ "Hu was declared but it was not a valid hand" — the reveal, not the engine (2026-08-02)
 
 Reported from live room **NDRV**. The engine was exonerated and the round-end

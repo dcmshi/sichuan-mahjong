@@ -234,60 +234,36 @@ so it isn't rediscovered as a bug.
   its own. Whichever way it goes, the fix wants a guard asserting the indicator
   has non-zero width, or it comes back. **Small.**
 
-- [ ] **N8 — the claim panel covers the hand you need to see.** Reported from
-  play, 2026-08-02. When a discard opens a claim window, the Pung / Kong / Hu /
-  Pass bar is `fixed bottom-0 left-0 right-0 … z-20`
-  (`components/ClaimPanel.tsx:78`) and your hand is the bottom-most row of the
-  play screen — so the bar lands squarely on top of it.
+- [x] **N8 — the claim panel covers the hand you need to see.** *(Done — the bar
+  is `sticky` and in flow; guarded in `viewport.spec.ts`.)* When a discard opened
+  a claim window, the Pung / Kong / Hu / Pass bar was `fixed bottom-0` and your
+  hand is the bottom-most row, so the bar sat on top of it for the whole
+  10-second window — while whether to pung is a judgement about the hand it was
+  covering.
 
-  **This is a decision made blind, not just an occlusion.** Claiming is
-  frequently the *wrong* move: a pung can break a pair you were using, strand a
-  run, or leave you unable to discard into your void suit. Those are exactly the
-  judgements that need the hand on screen, and the panel hides it for the whole
-  10-second window.
+  **My first diagnosis was wrong and is worth recording as such.** I measured the
+  hand's layout box ending exactly where the bar began and concluded the tiles
+  must be *painting* past their box because of `.tile-lap`. They are not: the
+  CSS gives `.tile-lap .tile-face` `width: 129.032%` but `height: 100%`, and with
+  the art's 210:255 ratio that fits the box exactly — measured, the face box and
+  the tile box are identical (514..550). The 21px I attributed to overhang was
+  `Reorder.Item`'s layout animation: sampled as the bar appears, the `li` reads
+  at 513..555 while its own `ul` is at 419..465, because Framer is still moving
+  it from where it used to sit. **Any measurement of the hand has to settle
+  first**, or it reports a frame that is already gone.
 
-  **Two obvious fixes were tried and measured, and neither works. The cause is
-  not the bar's positioning.** Measured live at 320×568 with a window open:
+  The real cause was ordinary: the hand's container ran to the viewport bottom
+  (462..568) and the fixed bar covered 525..568, because a fixed element reserves
+  no space. The fix is `sticky bottom-0` with `flex-shrink-0`, in flow — the
+  board's `flex-1 min-h-0` middle row yields the height, and sticky keeps the bar
+  pinned if the board ever scrolls. That is R3's round-end pattern.
 
-  | | top..bottom |
-  |---|---|
-  | claim bar | 525..568 |
-  | hand container (`px-2 py-2`) | 419..**525** |
-  | the hand's `ul.tile-run.tile-lap` | 471..**517** |
-  | a hand `li` | 511..552 |
-  | the `.tile` inside it | 511..**546** |
-
-  The hand's *layout* box ends at 525, exactly where the bar begins — the box
-  model says they do not overlap. But the tiles **paint** to 546, about 21px
-  past their own container, because a tile in a `.tile-lap` run is drawn larger
-  than its layout box. So the overlap is between painted ink and a correctly
-  positioned bar.
-
-  That is why both attempts failed:
-
-  1. **Padding the scroll container** by the measured bar height moved the bar's
-     top to exactly the hand container's bottom — and changed nothing visible,
-     because the tiles were already overflowing that edge.
-  2. **Putting the bar in flow** after the hand is where it already sits in the
-     tree, and the board is `h-dvh`, so the bar lands in the same place either
-     way. Visually a no-op.
-
-  So the fix has to give the hand room for the ink it actually draws, which
-  means reserving the lap overhang rather than the layout height. **Read
-  [docs/handoff-tile-rendering.md](./docs/handoff-tile-rendering.md) first** —
-  the overhang is a consequence of the 22.5%/29% lap geometry and is
-  proportional to tile size, so a hard-coded pixel padding will be wrong at
-  another size. A speculative `pb-6` on the hand container was tried and did not
-  move the flagged count off 13.
-
-  **The guard to add with the fix** (written, measured, then reverted with the
-  rest): sample `.claim-panel` inside the existing round loop in
-  `viewport.spec.ts`, count hand tiles whose painted box intersects the bar's,
-  and assert both that at least one claim window was seen — otherwise the check
-  passes for free on a round that offered no claim — and that the covered count
-  is zero. It reported **13 covered tiles** on both `chromium` and `se-portrait`,
-  so it does catch the defect. **Medium**, and it is really a tile-geometry
-  change wearing a layout bug's clothes.
+  Measured after: six settled claim windows, zero tiles under the bar, 18px
+  clearance, and no board overflow introduced. The guard was verified by
+  restoring `fixed` — it reports all 13 hand tiles under the bar on both
+  viewports — and it polls to a stable pair rather than sleeping, because a fixed
+  wait long enough on one machine is short on another and the guard then fails
+  intermittently.
 
 - [ ] **N9 — the lobby offers bot pace at a table with no bots.** Reported
   2026-08-02. `HostSetup.tsx` renders the slow/normal/fast selector

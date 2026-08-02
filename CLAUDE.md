@@ -104,7 +104,7 @@ e2e/
   game.spec.ts   full bot round      } chromium only (drive the game via __e2e)
   match.spec.ts  2-round match       }
   house-rules.spec.ts  the host's 換三張 toggle — the only spec that reaches huan
-  viewport.spec.ts     vertical-overflow + tray-clipping guard on a 320×568 phone
+  viewport.spec.ts     vertical-overflow, tray-clipping + claim-bar/hand overlap guard
   ui-clicks.spec.ts  real UI taps — runs on 5 viewports (phone/tablet × orientation)
 scripts/
   icons/         PWA PNG generation (rerun if icon.svg changes)
@@ -240,11 +240,20 @@ pool (O3) is still held as a fallback — its redaction question is answered by
 `firstDiscardIsVoid`, but the middle is no longer the empty space that motivated
 it. Then N3 (winning hands in help), N5/N6/N9 (bot pace mid-match, the claim
 window as a lobby setting, and not offering bot pace at a table of four humans),
-and four found in play: **N7** the turn indicator renders at zero width on a 320px
-phone, **N8** the claim bar covers the hand — whose cause is tile *paint*, not bar
-position, so read [docs/handoff-tile-rendering.md](./docs/handoff-tile-rendering.md)
-first — **N10** side seats draw upright and the across pile does not mirror, and
-**N11** pre-selecting a discard while you wait.
+and found in play: **N7** the turn indicator renders at zero width on a 320px
+phone, **N10** side seats draw upright and the across pile does not mirror, **N11**
+pre-selecting a discard while you wait, **N12** the event feed keeps its old
+language after a switch, and **N13** whose turn it is deserves more than 10px of
+text (fix with N7).
+
+**Measure the hand only after it settles** (2026-08-02, N8). `Reorder.Item`
+animates the hand on every layout change, so a `getBoundingClientRect` taken as
+something appears reports where tiles *were*. That transient cost two wrong
+diagnoses of the claim bar overlapping the hand — including a confident claim,
+written into the docs, that `.tile-lap` makes tiles paint below their box. It does
+not: the lap is `width: 129.032%` with `height: 100%`, which against the art's
+210:255 ratio fits exactly, so it bleeds sideways only. Poll until two consecutive
+samples agree before believing any hand geometry.
 
 **The binary embeds the tile art on purpose now** (2026-08-02). §13 used to forbid
 merging the CC-BY-SA SVGs into compiled output while the Bun binary did exactly

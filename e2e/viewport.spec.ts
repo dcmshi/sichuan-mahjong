@@ -60,6 +60,54 @@ function boardSample(page: Page): Promise<{ overflow: number; rows: string }> {
 }
 
 /**
+ * The claim bar against the hand. Deciding whether to pung is a judgement about
+ * the tiles you hold, and a `fixed` bar reserved no room and covered them for the
+ * whole 10-second window. (N8)
+ *
+ * Returns null when no window is open. `settled` matters: `Reorder.Item` animates
+ * the hand on any layout change, so a sample taken as the bar appears catches
+ * tiles still travelling from where they used to sit and reports an overlap that
+ * is a frame old. The caller waits before trusting a count.
+ */
+function claimOverlap(
+  page: Page,
+): Promise<{ crossing: number; barTop: number; lowestTile: number } | null> {
+  return page.evaluate(() => {
+    const barEl = document.querySelector('.claim-panel');
+    if (!barEl) return null;
+    const bar = barEl.getBoundingClientRect();
+    const tiles = Array.from(document.querySelectorAll('ul li .tile'))
+      .map(t => t.getBoundingClientRect())
+      .filter(r => r.height > 0);
+    if (tiles.length === 0) return null;
+    return {
+      crossing: tiles.filter(r => r.bottom > bar.top + 0.5).length,
+      barTop: Math.round(bar.top),
+      lowestTile: Math.round(Math.max(...tiles.map(r => r.bottom))),
+    };
+  });
+}
+
+/**
+ * The same reading, once two consecutive samples agree — so the hand has stopped
+ * moving. Returns null if the window closed while settling, which is a bot having
+ * resolved it and not a failure.
+ */
+async function settledClaimOverlap(page: Page) {
+  let prev = await claimOverlap(page);
+  for (let i = 0; i < 15; i++) {
+    await page.waitForTimeout(100);
+    const now = await claimOverlap(page);
+    if (now === null) return null;
+    if (prev !== null && now.lowestTile === prev.lowestTile && now.barTop === prev.barTop) {
+      return now;
+    }
+    prev = now;
+  }
+  return prev;
+}
+
+/**
  * Discard trays drawing outside where they belong. Two distinct faults, both live
  * before the density pass and each invisible to the other's check:
  *
@@ -123,6 +171,9 @@ test('play fits the viewport, and the round-end controls stay reachable', async 
   let peak = 0;
   let worstRows = '';
   const clipped = new Set<string>();
+  let claimWindows = 0;
+  let worstClaim = 0;
+  let worstClaimDetail = '';
   const deadline = Date.now() + 90_000;
   while (Date.now() < deadline) {
     if ((await g.getScreen()) === 'roundEnd') break;
@@ -133,6 +184,22 @@ test('play fits the viewport, and the round-end controls stay reachable', async 
         worstRows = s.rows;
       }
       for (const problem of await trayProblems(page)) clipped.add(problem);
+
+      // Sampled before autoPlay resolves the claim, which is the only moment the
+      // bar is up. Polled to a stable pair rather than waited out on a fixed
+      // timeout: a single sleep long enough for the hand's layout animation on
+      // one machine is too short on another, and the guard then fails
+      // intermittently — which is worse than not having it.
+      if ((await claimOverlap(page)) !== null) {
+        const settled = await settledClaimOverlap(page);
+        if (settled !== null) {
+          claimWindows++;
+          if (settled.crossing > worstClaim) {
+            worstClaim = settled.crossing;
+            worstClaimDetail = `${settled.crossing} tiles under the bar; bar top ${settled.barTop}, lowest tile ${settled.lowestTile}`;
+          }
+        }
+      }
     }
     await g.autoPlay();
     await page.waitForTimeout(130);
@@ -145,6 +212,13 @@ test('play fits the viewport, and the round-end controls stay reachable', async 
     [...clipped],
     'no discard tray may draw outside its column — that is what cuts a tile in half or lays discards over the well',
   ).toEqual([]);
+  // Without this the check below passes for free on a round that happened to
+  // offer this seat no claim, which is how N8 went unguarded.
+  expect(claimWindows, 'the round should have opened at least one claim window').toBeGreaterThan(0);
+  expect(
+    worstClaim,
+    `no hand tile may sit under the claim bar — whether to pung is a judgement about the hand it would cover (${worstClaimDetail})`,
+  ).toBe(0);
 
   await expect(page.locator('text=Round End')).toBeVisible({ timeout: 20_000 });
   await page.waitForTimeout(700); // let the row entrance settle
