@@ -430,7 +430,7 @@ describe('WebSocket: spectators', () => {
   it('spectator receives a hand-hiding spectate view; unknown game is rejected', async () => {
     // Unknown game → error + close. The server pushes the message on connect
     // (before the client sends anything), so attach the listener before open.
-    const bad = new WebSocket(`ws://127.0.0.1:${port}/ws/ZZZZ?spectate=1`);
+    const bad = new WebSocket(`ws://127.0.0.1:${port}/ws/ZZZZ?spectate=1&watch=nope`);
     const errP = wsNextMessage(bad);
     await waitOpen(bad);
     const errMsg = await errP;
@@ -440,7 +440,11 @@ describe('WebSocket: spectators', () => {
 
     // Start a real game.
     const create = await app.inject({ method: 'POST', url: '/api/lobby' });
-    const { code, hostToken } = create.json<{ code: string; hostToken: string }>();
+    const { code, hostToken, watchToken } = create.json<{
+      code: string;
+      hostToken: string;
+      watchToken: string;
+    }>();
     const sockets: WebSocket[] = [];
     for (let i = 0; i < 4; i++) {
       const ws = wsConnect(port, code, i === 0 ? hostToken : undefined);
@@ -454,8 +458,19 @@ describe('WebSocket: spectators', () => {
     wsSend(sockets[0]!, { t: 'startGame' });
     await new Promise(r => setTimeout(r, 50));
 
+    // The code alone is no longer enough to watch: the watch secret is what
+    // admits a spectator, and it survives the lobby that issued it. (C5)
+    const noSecret = new WebSocket(`ws://127.0.0.1:${port}/ws/${code}?spectate=1`);
+    const noSecretP = wsNextMessage(noSecret);
+    await waitOpen(noSecret);
+    const refused = await noSecretP;
+    expect(refused.t).toBe('error');
+    noSecret.close();
+
     // Spectate the live game. The first spectate view is pushed on connect.
-    const spec = new WebSocket(`ws://127.0.0.1:${port}/ws/${code}?spectate=1`);
+    const spec = new WebSocket(
+      `ws://127.0.0.1:${port}/ws/${code}?spectate=1&watch=${encodeURIComponent(watchToken)}`,
+    );
     const specP = wsNextMessage(spec);
     await waitOpen(spec);
     const msg = await specP;

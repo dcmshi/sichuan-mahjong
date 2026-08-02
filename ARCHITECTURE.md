@@ -4,9 +4,9 @@
 
 ## Status: v2.3 — frontend-audited
 
-Changelog from v2.2 (2026-07-31): client-only audit + fixes (F1–F25 in [TODO.md](./TODO.md)). Highlights: server `error` frames now reach the UI instead of being dropped (F1); a refreshed player can rejoin their seat (F2); the match ends on a standings screen rather than a silent bounce to the menu (F9); the service worker actually caches — it precached a dev-only path and so installed nothing in production (F5); reconnects give up instead of looping forever, and no longer replay stale actions (F6/F21); tiles are keyboard- and screen-reader-operable (F16); reduced motion is honored (F12); the claim countdown no longer depends on the client clock (F25).
+Changelog from v2.2 (2026-07-31): client-only audit + fixes (F1–F25 in [docs/history.md](./docs/history.md)). Highlights: server `error` frames now reach the UI instead of being dropped (F1); a refreshed player can rejoin their seat (F2); the match ends on a standings screen rather than a silent bounce to the menu (F9); the service worker actually caches — it precached a dev-only path and so installed nothing in production (F5); reconnects give up instead of looping forever, and no longer replay stale actions (F6/F21); tiles are keyboard- and screen-reader-operable (F16); reduced motion is honored (F12); the claim countdown no longer depends on the client clock (F25).
 
-Changelog from v2.1 (2026-07): full repo audit + fixes (tracked as A1–A20 in [TODO.md](./TODO.md)). Highlights: hardened the WS boundary (malformed frames can no longer crash the server; `claimWindowExpire` is server-only); fixed a furiten bypass (pung → self-draw), the furiten override threshold (max-skipped, §5.5.5), host-seat reservation, reconnect/restore grace during huan/void/claim, once-per-round persistence, and `endMatch` teardown; bots now pung; mDNS/QR fixed (ESM `createRequire`); `node:sqlite` loads lazily so it degrades instead of crashing. **Distribution:** the npm package is now self-contained (engine inlined, client bundled) and the Bun binaries embed the client SPA. Biome adopted + enforced in CI.
+Changelog from v2.1 (2026-07): full repo audit + fixes (tracked as A1–A20 in [docs/history.md](./docs/history.md)). Highlights: hardened the WS boundary (malformed frames can no longer crash the server; `claimWindowExpire` is server-only); fixed a furiten bypass (pung → self-draw), the furiten override threshold (max-skipped, §5.5.5), host-seat reservation, reconnect/restore grace during huan/void/claim, once-per-round persistence, and `endMatch` teardown; bots now pung; mDNS/QR fixed (ESM `createRequire`); `node:sqlite` loads lazily so it degrades instead of crashing. **Distribution:** the npm package is now self-contained (engine inlined, client bundled) and the Bun binaries embed the client SPA. Biome adopted + enforced in CI.
 
 Changelog from v2: pre-handoff polish. Added `penaltyPot` field to `GameState` schema (referenced by §11.1 property test but missing from §4.3 type definition). Bu-ting payouts clarified to fire only on wall-end finals (vacuous in 3-Hu). Tile SVG license boundary spelled out — CC-BY-SA applies to standalone SVG files only, code remains MIT, no asset inlining.
 
@@ -609,17 +609,31 @@ False Hu declarations are not counted when determining dealer rotation (PDF page
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| `POST` | `/api/lobby` | Create lobby. Returns `{ code, hostToken }`. |
-| `GET`  | `/api/lobby/:code` | Pre-join check. Returns `{ exists, players: PublicLobbyView }`. |
+| `POST` | `/api/lobby` | Create lobby. Returns `{ code, hostToken, watchToken }`. Rate-limited per caller; 503s at the concurrent-games ceiling. |
+| `GET`  | `/api/lobby/:code` | Pre-join check. Returns `{ exists, players: PublicLobbyView }` — **never `watchToken`**, since anyone holding a code can read this. Rate-limited: this is the cheapest "is this code real?" oracle. |
 | `GET`  | `/api/replay/:id` | Returns persisted action log for a completed round. |
 | `GET`  | `/healthz` | Liveness. |
 | `GET`  | `/j/:code` | Static client entry point with code prefilled. |
 
-Lobby codes: 4 chars, alphabet `ABCDEFGHJKLMNPQRSTUVWXYZ23456789` (excludes I/O/0/1). 32^4 ≈ 1M codes.
+Lobby codes: 4 chars, alphabet `ABCDEFGHJKLMNPQRSTUVWXYZ23456789` (excludes I/O/0/1). 32^4 ≈ 1M codes, drawn with `crypto.randomInt` (C2). **The code is a bearer capability** — there are no accounts, so holding it is what admits you — which is why it must be unpredictable rather than merely random: `Math.random()` is xorshift128+ and its state is recoverable from outputs an attacker harvests by creating lobbies, leaking *other people's future codes*. `CODE_LENGTH` is exported so 6 chars is a one-line change.
 
 ### 6.2 WebSocket: `/ws/:code?token=…`
 
 Token is hostToken (issued at lobby create) or playerToken (issued on `join`). Server validates and binds connection to a seat.
+
+Spectators use `/ws/:code?spectate=1&watch=…`. The watch token is issued at lobby
+create, goes to the host alone, and is compared with `timingSafeEqual`. It lives
+in **its own store in `tokens.ts`, not as a third `role`** — a seat token resolves
+to a seat and the handler reconnects whoever presents one straight into it, so a
+watch token in the same map would have seated a spectator as a player. Separate
+stores make that unrepresentable rather than something a guard has to catch. It is
+keyed by code so it outlives `deleteLobby`, which `startGame` calls.
+
+Every socket open costs the same per-caller budget as a code lookup — opening a
+socket is the other way to ask whether a code is real. Sockets are pinged every
+30s and a peer that stops answering is terminated (C7): nothing on a LAN closes an
+idle connection, but a platform proxy will, and a half-open socket otherwise holds
+a seat nobody is sitting in.
 
 ### 6.3 Client → Server messages
 
@@ -816,6 +830,30 @@ If detected:
 - Check for an existing TLS cert at the Tailscale state dir; if absent, attempt `tailscale cert <hostname>` automatically (one-shot, cached). If permissions or admin-console MagicDNS+HTTPS settings prevent provisioning, log the manual command for the user.
 - Bind an HTTPS listener on `:8443` using the cert. PWA install works on the Tailscale URL.
 - Generate share URL `https://<hostname>:8443/j/<CODE>`.
+
+### 10.2b Hosted play on a public URL
+
+`--hosted` (or `SM_HOSTED=1`) is the third deployment, and it is the *same build*:
+the client derives its socket URL from `window.location.host`, so it has never
+known a server address and nothing is configured per deployment. The flag turns
+off what is meaningless in a container — mDNS, Tailscale detection, the QR code —
+takes the port from `PORT`, and selects the hosted `RuntimeProfile` (`profile.ts`).
+
+**The profile carries numbers only.** Rate limits, the concurrent-games ceiling
+and the sweep TTLs differ; the controls themselves — CSPRNG codes, rate limiting,
+the spectator secret — are on in both, because a control that switches on with
+`--hosted` is one you develop against with it off and that fails open the first
+time somebody forgets the flag.
+
+The one genuinely deployment-shaped setting is `trustProxy`, and it is a **hop
+count, not `true`**: Fastify passes it to proxy-addr, where `true` trusts the
+whole chain and resolves `req.ip` to the *leftmost* `X-Forwarded-For` entry, which
+the client wrote — making every per-IP limit spoofable by adding a header. Hosted
+defaults to 1 hop (`SM_TRUST_PROXY` to override); self-host trusts nothing,
+because nothing is in front of it.
+
+`render.yaml` in the repo root is the Blueprint. Full rationale, the deploy steps
+and the post-deploy checklist: [docs/design-hosted-server.md](./docs/design-hosted-server.md).
 
 ### 10.3 PWA install & offline shell
 

@@ -3,8 +3,6 @@
 **Measured:** 2026-08-01 · `main` @ `aa3c47f`
 **Method:** Chromium via Playwright device profiles; `document.documentElement.scrollHeight`
 vs `window.innerHeight`, CSS px. Screens driven through a real practice game.
-**Also:** [viewport-audit.html](./viewport-audit.html) — same content, with the
-overflow drawn as bars. This file is the one to read if you are reviewing.
 
 25 screen-and-device combinations measured. **10 overflow.** No screen on any
 device overflows horizontally.

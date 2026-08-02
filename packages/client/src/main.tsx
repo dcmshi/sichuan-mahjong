@@ -5,7 +5,7 @@ import { createRoot } from 'react-dom/client';
 import { App } from './App.js';
 import { applyDocumentLang } from './i18n/index.js';
 import { useStore } from './store/index.js';
-import { sendAction } from './ws/client.js';
+import { makeWatchRef, sendAction } from './ws/client.js';
 
 // The stored language must reach <html lang> before the first paint. (F19)
 applyDocumentLang(useStore.getState().lang);
@@ -92,6 +92,12 @@ if (__E2E__) {
 
     getPhase(): string | null {
       return useStore.getState().view?.phase ?? null;
+    },
+
+    /** The host's watch grant, for driving the spectator flow. (C5) */
+    watchRef(): string {
+      const { code, watchToken } = useStore.getState();
+      return watchToken ? makeWatchRef(code, watchToken) : '';
     },
 
     getScreen(): string {

@@ -871,6 +871,11 @@ export function validateRoomSnapshot(snapshot: unknown): string[] {
   return missing;
 }
 
+/** How many rooms are live, for the concurrent-games ceiling. */
+export function roomCount(): number {
+  return rooms.size;
+}
+
 export function getRoom(code: string): GameRoom | undefined {
   return rooms.get(code);
 }

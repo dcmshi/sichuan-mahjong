@@ -46,6 +46,8 @@ export interface GameStore {
   // Session
   code: string;
   token: string;
+  /** Spectator secret for this room, held only by the host that created it. (C5) */
+  watchToken: string;
   seat: Seat | null;
   isHost: boolean;
   playerName: string;
@@ -102,6 +104,7 @@ export interface GameStore {
   goTo: (s: Screen) => void;
   setPlayerName: (n: string) => void;
   setCode: (c: string) => void;
+  setWatchToken: (t: string) => void;
   setConnected: (v: boolean) => void;
   setReconnecting: (v: boolean) => void;
   setConnectionLost: () => void;
@@ -114,6 +117,7 @@ export const useStore = create<GameStore>((set, get) => ({
   screen: 'landing',
   code: '',
   token: '',
+  watchToken: '',
   seat: null,
   isHost: false,
   playerName: '',
@@ -141,6 +145,7 @@ export const useStore = create<GameStore>((set, get) => ({
   goTo: screen => set({ screen }),
   setPlayerName: playerName => set({ playerName }),
   setCode: code => set({ code }),
+  setWatchToken: watchToken => set({ watchToken }),
   setConnected: connected => set({ connected, reconnecting: false, connectionLost: false }),
   setReconnecting: reconnecting => set({ reconnecting }),
   setConnectionLost: () => set({ connectionLost: true, reconnecting: false, connected: false }),
@@ -256,6 +261,7 @@ export const useStore = create<GameStore>((set, get) => ({
       screen: 'landing',
       code: '',
       token: '',
+      watchToken: '',
       seat: null,
       isHost: false,
       lobbyPlayers: [],

@@ -1,9 +1,16 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { LangSwitch } from '../components/LangSwitch.js';
 import { useT } from '../i18n/useT.js';
 import { clearSession, loadSession } from '../session.js';
 import { useStore } from '../store/index.js';
-import { closeConnection, connectGame, makeWsUrl, sendAction } from '../ws/client.js';
+import {
+  closeConnection,
+  connectGame,
+  makeSpectateUrl,
+  makeWsUrl,
+  parseWatchRef,
+  sendAction,
+} from '../ws/client.js';
 
 /** How long to wait for the server to accept a stored token before giving up. */
 const REJOIN_TIMEOUT_MS = 6000;
@@ -22,6 +29,18 @@ export function Landing() {
 
   // Check URL for pre-filled code (from /j/:code redirect)
   const urlCode = new URLSearchParams(window.location.search).get('code') ?? '';
+
+  // A watch link (?watch=CODE.token) connects as a spectator straight away —
+  // the secret is already in hand, so there is nothing left to ask for. (C5)
+  useEffect(() => {
+    const ref = parseWatchRef(new URLSearchParams(window.location.search).get('watch') ?? '');
+    if (!ref) return;
+    // Drop the secret from the address bar before anything can screenshot or
+    // bookmark it; the connection below already has what it needs.
+    window.history.replaceState(null, '', window.location.pathname);
+    useStore.getState().setCode(ref.code);
+    connectGame(makeSpectateUrl(ref.code, ref.watch), () => {});
+  }, []);
 
   function handleJoin() {
     if (urlCode) setCode(urlCode.toUpperCase());

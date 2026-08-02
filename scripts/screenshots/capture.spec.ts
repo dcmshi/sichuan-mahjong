@@ -131,7 +131,13 @@ test('regenerate docs screenshots', async ({ page, browser }) => {
   const wpage = await watcher.newPage();
   await wpage.goto(BASE);
   await wpage.click('text=Watch a Game');
-  await wpage.fill('input', code);
+  // A code no longer admits a spectator — the host's watch link carries its own
+  // secret. (C5)
+  const watchRef = await page.evaluate(() =>
+    (window as unknown as { __e2e: { watchRef(): string } }).__e2e.watchRef(),
+  );
+  expect(watchRef, 'host should hold a watch grant').toContain('.');
+  await wpage.fill('input', watchRef);
   await wpage.getByRole('button', { name: /^Watch$/ }).click();
   await expect(wpage.locator('text=Spectating')).toBeVisible({ timeout: 15_000 });
   await shot(wpage, 'spectate.png');

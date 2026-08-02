@@ -1,7 +1,8 @@
 # CLAUDE.md — Sichuan Mahjong
 
 Web-based 4-player Sichuan ("Bloody Rules") mahjong. Mobile-first PWA.
-Host runs on their own machine; friends join over LAN or Tailscale.
+Runs three ways off one build — LAN, Tailscale, or hosted on a public URL —
+because the client derives its origin and has never known a server address.
 
 ---
 
@@ -12,12 +13,13 @@ Keep this file short. New documentation goes in one of these instead:
 | File | Holds | Write here when… |
 |---|---|---|
 | **[ARCHITECTURE.md](./ARCHITECTURE.md)** | Types, engine API, full ruleset, protocol, persistence, networking, testing strategy | …you change behavior, a type, or a rule |
-| **[TODO.md](./TODO.md)** | Phase history + audit backlog (A1–A40, F1–F25), each item with diagnosis and fix | …you fix a bug or close an audit item |
+| **[TODO.md](./TODO.md)** | What is *open* — kept short on purpose | …you open or close a piece of work |
+| **[docs/history.md](./docs/history.md)** | Everything closed: phase log, audits A1–A40, F1–F25, R1–R7, tiles, hosting C1–C9. Each with its diagnosis | …you finish something; add a section at the top |
 | **[README.md](./README.md)** | User-facing: install, host/join, CLI flags | …you change the CLI or the player-facing flow |
 | **[docs/viewport-audit.md](./docs/viewport-audit.md)** | Measured mobile viewport overflow + the open layout questions | …you change the play or round-end layout |
 | **[docs/handoff-2026-08-01.md](./docs/handoff-2026-08-01.md)** | Where the layout/density work stands, decisions already settled, the four open ones, and the traps that cost time | …you are picking this up cold, or before a compaction |
 | **[docs/handoff-tile-rendering.md](./docs/handoff-tile-rendering.md)** | How tiles are drawn (the art, lapped), its measured layer geometry, every knob, the four things easy to get wrong | …you are changing how a tile looks |
-| **[docs/design-hosted-server.md](./docs/design-hosted-server.md)** | The Render deployment — why it needs no client change, the nine things a public URL forces (C2 built, C1/C3–C9 not), and why the hardening is not conditional on `--hosted` | …you are working on hosting, or on anything the tailnet used to protect |
+| **[docs/design-hosted-server.md](./docs/design-hosted-server.md)** | The Render deployment: deploy steps, why it needs no client change, the nine things a public URL forces (C1–C7/C9 built), and why the hardening is *not* conditional on `--hosted` | …you are working on hosting, or on anything the tailnet used to protect |
 | **[LICENSE](./LICENSE)** | MIT for code, CC-BY-SA 4.0 for the tile art, and the binary as a combined work carrying both | …you add or change a tile, or change what the release build embeds |
 | `SBR_ENG_part_1.pdf` | Novikov, *Sichuan Mahjong? It's that simple!* — the canonical ruleset | (read-only; extract with `pdftotext` when a rule is in question) |
 
@@ -70,7 +72,16 @@ node scripts/tiles/measure-glyphs.mjs
 
 # Release binaries (embed the client, no persistence): needs Bun
 bun run scripts/release/compile.ts
+
+# Hosted mode, as Render runs it. PORT is read from the env; --hosted drops
+# mDNS/Tailscale/QR, trusts one proxy hop, and tightens limits and sweeps.
+PORT=8099 node packages/server/dist/main.js --hosted
 ```
+
+`games.db` accumulates rooms from every automated run, and they are *restored at
+boot* — enough of them and the concurrent-games ceiling refuses new lobbies before
+you have played one. Clear it at `%APPDATA%\sichuan-mahjong\games.db` with the
+server stopped.
 
 ---
 
@@ -139,7 +150,7 @@ Full tree: [ARCHITECTURE.md §3](./ARCHITECTURE.md#3-repo-layout).
 All v1 work, six full-repo audit passes (A1–A40, the last found 2026-08-01), a
 frontend/design pass (F1–F25), round-end hand reveals with a fan/penalty
 breakdown (2026-07-31), and the mobile viewport work R1–R7 (2026-08-01) are
-complete. Per-item history is in [TODO.md](./TODO.md); the deferral record is
+complete. Per-item history is in [docs/history.md](./docs/history.md); the deferral record is
 [ARCHITECTURE.md §12](./ARCHITECTURE.md#12-open-questions--explicit-deferrals).
 
 **換三張 is opt-in, and off by default** (2026-08-01) — it is not in Novikov's
@@ -198,7 +209,32 @@ is when a real table learns it. Every zone centres on its content: the hand, the
 melds, and the trays, each of which is now drawn round its pile rather than across
 the screen.
 
-**Open** (see the last section of [TODO.md](./TODO.md)): a central discard pool is
+**It runs on a public URL now, and the hardening is not conditional** (2026-08-02,
+C1–C7/C9). `--hosted` selects a `RuntimeProfile` that carries **numbers only** —
+rate limits, the concurrent-games ceiling, sweep TTLs. The controls themselves are
+on in both deployments, because a control that switches on with `--hosted` is one
+you develop against with it off and that **fails open** the first time someone
+forgets the flag on a deploy. What that buys, in order of sharpness:
+
+- **Room codes come from `crypto.randomInt`.** The code is a bearer capability, and
+  `Math.random()` is xorshift128+ — an attacker harvests outputs by creating
+  lobbies and predicts *other people's future codes*. It was the only
+  `Math.random()` left; `rng.ts` stays seeded, or replays stop reproducing.
+- **Spectators need their own secret.** `?spectate=1&watch=…`, issued to the host
+  alone, in **its own store rather than a third token `role`** — a seat token
+  resolves to a seat, so a watch token in that map would have seated a spectator
+  as a player.
+- **`trustProxy` is a hop count, not `true`.** `true` resolves `req.ip` to the
+  leftmost `X-Forwarded-For` entry, which the client wrote, making every per-IP
+  limit spoofable by header.
+- **Sockets ping every 30s.** Nothing on a LAN closes an idle connection; a proxy
+  will, and a half-open socket holds a seat nobody is sitting in.
+
+`render.yaml` is the Blueprint; steps and rationale in
+[docs/design-hosted-server.md](./docs/design-hosted-server.md). Free tier, so
+persistence stays off — `getDb()` already returns null and every caller handles it.
+
+**Open** (see [TODO.md](./TODO.md), which is now only the open list): a central discard pool is
 still held as a fallback. Its redaction question is answered — `firstDiscardIsVoid`
 is the deliberate reveal it needed — but the middle is no longer the empty space
 that motivated it.

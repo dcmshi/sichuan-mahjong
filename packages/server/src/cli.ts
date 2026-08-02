@@ -10,6 +10,8 @@ export type CliOptions = {
   mdns: boolean;
   tailscale: boolean;
   share: boolean;
+  /** Running behind someone else's proxy on a public URL (Render, etc.). */
+  hosted: boolean;
   dataDir: string | null;
   /** Bot pause per move, in ms. `null` leaves the server default in place. */
   botDelayMs: number | null;
@@ -49,10 +51,14 @@ Sichuan Mahjong — local multiplayer server
 Usage: sichuan-mahjong [options]
 
 Options:
-  --port <n>          HTTP port (default: 8080)
+  --port <n>          HTTP port (default: $PORT, else 8080)
   --https-port <n>    HTTPS port for Tailscale (default: 8443)
   --no-mdns           Disable mDNS broadcast
   --no-tailscale      Disable Tailscale detection
+  --hosted            Running on a public URL behind a proxy. Turns off mDNS,
+                      Tailscale detection and the QR code, trusts one hop of
+                      X-Forwarded-For, and tightens the rate limits and the
+                      sweeps. (Also: SM_HOSTED=1)
   --share             Auto-create a Tailscale share invite for this node
                       (needs TAILSCALE_API_KEY; optional TAILSCALE_TAILNET)
   --data-dir <path>   Override SQLite data directory
@@ -74,10 +80,12 @@ export function parseCli(argv = process.argv.slice(2)): CliOptions {
     const { values } = parseArgs({
       args: argv,
       options: {
-        port: { type: 'string', default: '8080' },
+        // PORT is how every hosting platform assigns one, Render included.
+        port: { type: 'string', default: process.env.PORT ?? '8080' },
         'https-port': { type: 'string', default: '8443' },
         'no-mdns': { type: 'boolean', default: false },
         'no-tailscale': { type: 'boolean', default: false },
+        hosted: { type: 'boolean', default: process.env.SM_HOSTED === '1' },
         share: { type: 'boolean', default: false },
         'data-dir': { type: 'string' },
         'bot-delay': { type: 'string' },
@@ -97,11 +105,17 @@ export function parseCli(argv = process.argv.slice(2)): CliOptions {
       process.exit(0);
     }
 
+    const hosted = values.hosted as boolean;
+
     return {
       port: Number.parseInt(values.port as string, 10) || 8080,
       httpsPort: Number.parseInt(values['https-port'] as string, 10) || 8443,
-      mdns: !(values['no-mdns'] as boolean),
-      tailscale: !(values['no-tailscale'] as boolean),
+      // In a container both of these answer a question nobody asked: mDNS binds
+      // a multicast socket no one will ever hear, and Tailscale detection shells
+      // out three times to learn there is no Tailscale.
+      mdns: !hosted && !(values['no-mdns'] as boolean),
+      tailscale: !hosted && !(values['no-tailscale'] as boolean),
+      hosted,
       share: values.share as boolean,
       dataDir: (values['data-dir'] as string) ?? null,
       // `|| 700` is wrong here — `--bot-delay 0` is a legitimate value (instant
@@ -120,6 +134,26 @@ export function parseCli(argv = process.argv.slice(2)): CliOptions {
 // ---------------------------------------------------------------------------
 // Startup banner
 // ---------------------------------------------------------------------------
+
+/**
+ * The externally reachable URL, if the platform told us. Render sets
+ * RENDER_EXTERNAL_URL; SM_PUBLIC_URL is the vendor-neutral way to say it.
+ * Cosmetic — the client never uses this, it derives its own origin.
+ */
+export function publicUrl(env = process.env): string | null {
+  return env.SM_PUBLIC_URL ?? env.RENDER_EXTERNAL_URL ?? null;
+}
+
+/** The `--hosted` banner. No LAN address, no QR, no Tailscale advice. */
+export function printHostedBanner(opts: { httpPort: number; url: string | null }): void {
+  console.log('\n\u{1F004}  Sichuan Mahjong — hosted\n');
+  console.log(`   Listening:  0.0.0.0:${opts.httpPort}`);
+  if (opts.url) console.log(`   Public:     ${opts.url}`);
+
+  // Worth saying out loud on every boot: on a public URL the room code is the
+  // whole door, where on a tailnet the network was.
+  console.log('\n   Access control is the room code. Rate limits and sweeps are tightened.\n');
+}
 
 export function printBanner(opts: {
   httpPort: number;

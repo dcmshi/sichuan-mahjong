@@ -1,6 +1,7 @@
 import type { WebSocket } from '@fastify/websocket';
 import type { ClientMsg, GameConfig, LobbyPlayer, Seat, ServerMsg } from '@sichuan-mahjong/engine';
 import type { FastifyInstance } from 'fastify';
+import { allowJoin, clientKey } from './limits.js';
 import { allLobbies, canStart, deleteLobby, findOpenSeat, getLobby } from './lobby.js';
 import {
   type BotSpeed,
@@ -11,10 +12,51 @@ import {
   isBotSpeed,
 } from './room.js';
 import type { RoomSlot } from './room.js';
-import { issueToken, resolveToken, revokeTokensForCode } from './tokens.js';
+import { isWatchToken, issueToken, resolveToken, revokeTokensForCode } from './tokens.js';
 
 function send(ws: WebSocket, msg: ServerMsg): void {
   if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(msg));
+}
+
+/**
+ * Ping every socket on a timer and hang up on one that stops answering. (C7)
+ *
+ * Nothing needed this on a LAN or a tailnet — no middlebox closes an idle
+ * connection there, and a mahjong turn is quiet for as long as someone takes to
+ * think. A platform proxy will reap it, and the client would recover via its
+ * backoff, but only after showing "Reconnecting…" through every long pause and
+ * with MAX_RETRIES to spend. Cheaper to keep the socket warm.
+ *
+ * The dead-peer half matters too: without it a half-open connection holds a
+ * seat that nobody is sitting in, and `room.disconnect` never fires to start
+ * the bot-takeover countdown.
+ */
+const HEARTBEAT_MS = 30_000;
+
+function startHeartbeat(socket: WebSocket): void {
+  let alive = true;
+  socket.on('pong', () => {
+    alive = true;
+  });
+
+  const timer = setInterval(() => {
+    if (!alive) {
+      // Skips the close handshake deliberately: the peer is already gone, and
+      // close() would wait for a reply that is never coming.
+      socket.terminate();
+      return;
+    }
+    alive = false;
+    try {
+      socket.ping();
+    } catch {
+      /* socket died between the check and the ping */
+    }
+  }, HEARTBEAT_MS);
+
+  // unref so a lingering socket can't hold the process open at shutdown.
+  timer.unref?.();
+  socket.on('close', () => clearInterval(timer));
 }
 
 /** Parse a raw WS frame into a ClientMsg, or null if malformed. */
@@ -153,121 +195,137 @@ function bindLobbySocket(
 }
 
 export async function registerWsRoutes(app: FastifyInstance): Promise<void> {
-  app.get<{ Params: { code: string }; Querystring: { token?: string; spectate?: string } }>(
-    '/ws/:code',
-    { websocket: true },
-    (socket, req) => {
-      const code = req.params.code.toUpperCase();
-      const token = req.query.token ?? '';
+  app.get<{
+    Params: { code: string };
+    Querystring: { token?: string; spectate?: string; watch?: string };
+  }>('/ws/:code', { websocket: true }, (socket, req) => {
+    const code = req.params.code.toUpperCase();
+    const token = req.query.token ?? '';
 
-      // Read-only spectator: no token, no seat. Just subscribes to spectate views.
-      if (req.query.spectate === '1' || req.query.spectate === 'true') {
-        const room = getRoom(code);
-        if (!room) {
-          send(socket, { t: 'error', code: 'no_game', message: 'No game to spectate.' });
-          socket.close();
-          return;
-        }
-        room.addSpectator(socket);
-        socket.on('close', () => room.removeSpectator(socket));
+    // Opening a socket is the other way to ask "is this code real?", so it
+    // shares the lookup budget rather than getting its own. (C3)
+    if (!allowJoin(clientKey(req))) {
+      send(socket, { t: 'error', code: 'rate_limited', message: 'Too many attempts.' });
+      socket.close();
+      return;
+    }
+
+    startHeartbeat(socket);
+
+    // Read-only spectator: no seat, but not no secret. The room code alone
+    // used to be enough, which was fine when a tailnet decided who could
+    // reach the server at all and is not on a public URL. (C5)
+    if (req.query.spectate === '1' || req.query.spectate === 'true') {
+      if (!isWatchToken(code, req.query.watch ?? '')) {
+        send(socket, { t: 'error', code: 'no_game', message: 'No game to spectate.' });
+        socket.close();
         return;
       }
-
-      let seat: Seat | null = null;
-      let isHost = false;
-
-      // Check if reconnecting to an already-running game
-      if (token) {
-        const data = resolveToken(token);
-        if (data && data.code === code) {
-          const room = getRoom(code);
-          if (room) {
-            seat = data.seat;
-            isHost = data.role === 'host';
-            room.connect(seat, socket);
-            bindGameSocket(socket, room, seat);
-            return;
-          }
-          // No room yet → lobby phase. If this token already owns a lobby slot,
-          // this is a reconnect: re-bind the seat so the player resumes seamlessly.
-          const lobby = getLobby(code);
-          if (lobby && !lobby.started) {
-            const slotIdx = lobby.slots.findIndex(s => s?.token === token);
-            if (slotIdx !== -1) {
-              seat = slotIdx as Seat;
-              isHost = data.role === 'host';
-              const slot = lobby.slots[slotIdx]!;
-              slot.connected = true;
-              getLobbyConns(code).set(seat, socket);
-              send(socket, { t: 'joined', seat, token });
-              bindLobbySocket(socket, code, seat, isHost, lobby.hostToken);
-              broadcastLobbyTo(code, lobby.hostToken);
-              return;
-            }
-          }
-          // Host token but no slot claimed yet (first connect): flag privilege,
-          // seat is assigned when the 'join' message arrives.
-          if (data.role === 'host') isHost = true;
-        }
+      const room = getRoom(code);
+      if (!room) {
+        send(socket, { t: 'error', code: 'no_game', message: 'No game to spectate.' });
+        socket.close();
+        return;
       }
+      room.addSpectator(socket);
+      socket.on('close', () => room.removeSpectator(socket));
+      return;
+    }
 
-      // Lobby phase handler (seat assigned on 'join' message)
-      socket.on('message', (raw: Buffer) => {
-        const msg = parseClientMsg(raw);
-        if (!msg) return;
+    let seat: Seat | null = null;
+    let isHost = false;
 
-        if (msg.t === 'join') {
-          if (seat !== null) {
-            send(socket, { t: 'error', code: 'already_joined', message: 'Already joined.' });
-            return;
-          }
-
-          const lobby = getLobby(code);
-          if (!lobby) {
-            send(socket, { t: 'error', code: 'lobby_not_found', message: 'Lobby not found.' });
-            return;
-          }
-          if (lobby.started) {
-            send(socket, { t: 'error', code: 'game_started', message: 'Game already started.' });
-            return;
-          }
-
-          // Seat 0 is reserved for the host (nextRound/endMatch are gated on
-          // seat === 0). Non-host joiners are placed in seats 1–3, so a friend
-          // who joins before the host can never land in seat 0 and inherit host
-          // powers via their token. (A8)
-          let assignedSeat: Seat;
-          if (isHost) {
-            assignedSeat = 0;
-          } else {
-            const open = findOpenSeat(lobby, { skipHostSeat: true });
-            if (open === null) {
-              send(socket, { t: 'error', code: 'lobby_full', message: 'Lobby is full.' });
-              return;
-            }
-            assignedSeat = open;
-          }
-
-          seat = assignedSeat;
-          const playerToken = isHost ? token : issueToken(code, seat, 'player');
-
-          // Sanitize the client-supplied name: it's broadcast to everyone, fed into
-          // the engine, and persisted. Clamp to a trimmed string ≤ 24 chars. (A14)
-          const rawName = typeof msg.name === 'string' ? msg.name.trim() : '';
-          const name = (rawName || `Player ${seat + 1}`).slice(0, 24);
-
-          lobby.slots[seat] = { name, isBot: false, token: playerToken, connected: true };
-          getLobbyConns(code).set(seat, socket);
-
-          send(socket, { t: 'joined', seat, token: playerToken });
-          broadcastLobbyTo(code, lobby.hostToken);
-
-          // Wire lobby commands + a reconnect-friendly close handler.
-          bindLobbySocket(socket, code, seat, isHost, lobby.hostToken);
+    // Check if reconnecting to an already-running game
+    if (token) {
+      const data = resolveToken(token);
+      if (data && data.code === code) {
+        const room = getRoom(code);
+        if (room) {
+          seat = data.seat;
+          isHost = data.role === 'host';
+          room.connect(seat, socket);
+          bindGameSocket(socket, room, seat);
+          return;
         }
-      });
-    },
-  );
+        // No room yet → lobby phase. If this token already owns a lobby slot,
+        // this is a reconnect: re-bind the seat so the player resumes seamlessly.
+        const lobby = getLobby(code);
+        if (lobby && !lobby.started) {
+          const slotIdx = lobby.slots.findIndex(s => s?.token === token);
+          if (slotIdx !== -1) {
+            seat = slotIdx as Seat;
+            isHost = data.role === 'host';
+            const slot = lobby.slots[slotIdx]!;
+            slot.connected = true;
+            getLobbyConns(code).set(seat, socket);
+            send(socket, { t: 'joined', seat, token });
+            bindLobbySocket(socket, code, seat, isHost, lobby.hostToken);
+            broadcastLobbyTo(code, lobby.hostToken);
+            return;
+          }
+        }
+        // Host token but no slot claimed yet (first connect): flag privilege,
+        // seat is assigned when the 'join' message arrives.
+        if (data.role === 'host') isHost = true;
+      }
+    }
+
+    // Lobby phase handler (seat assigned on 'join' message)
+    socket.on('message', (raw: Buffer) => {
+      const msg = parseClientMsg(raw);
+      if (!msg) return;
+
+      if (msg.t === 'join') {
+        if (seat !== null) {
+          send(socket, { t: 'error', code: 'already_joined', message: 'Already joined.' });
+          return;
+        }
+
+        const lobby = getLobby(code);
+        if (!lobby) {
+          send(socket, { t: 'error', code: 'lobby_not_found', message: 'Lobby not found.' });
+          return;
+        }
+        if (lobby.started) {
+          send(socket, { t: 'error', code: 'game_started', message: 'Game already started.' });
+          return;
+        }
+
+        // Seat 0 is reserved for the host (nextRound/endMatch are gated on
+        // seat === 0). Non-host joiners are placed in seats 1–3, so a friend
+        // who joins before the host can never land in seat 0 and inherit host
+        // powers via their token. (A8)
+        let assignedSeat: Seat;
+        if (isHost) {
+          assignedSeat = 0;
+        } else {
+          const open = findOpenSeat(lobby, { skipHostSeat: true });
+          if (open === null) {
+            send(socket, { t: 'error', code: 'lobby_full', message: 'Lobby is full.' });
+            return;
+          }
+          assignedSeat = open;
+        }
+
+        seat = assignedSeat;
+        const playerToken = isHost ? token : issueToken(code, seat, 'player');
+
+        // Sanitize the client-supplied name: it's broadcast to everyone, fed into
+        // the engine, and persisted. Clamp to a trimmed string ≤ 24 chars. (A14)
+        const rawName = typeof msg.name === 'string' ? msg.name.trim() : '';
+        const name = (rawName || `Player ${seat + 1}`).slice(0, 24);
+
+        lobby.slots[seat] = { name, isBot: false, token: playerToken, connected: true };
+        getLobbyConns(code).set(seat, socket);
+
+        send(socket, { t: 'joined', seat, token: playerToken });
+        broadcastLobbyTo(code, lobby.hostToken);
+
+        // Wire lobby commands + a reconnect-friendly close handler.
+        bindLobbySocket(socket, code, seat, isHost, lobby.hostToken);
+      }
+    });
+  });
 }
 
 function handleLobbyMessage(

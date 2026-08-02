@@ -101,9 +101,45 @@ export function makeWsUrl(code: string, token: string): string {
   return `${proto}//${window.location.host}/ws/${code}?token=${encodeURIComponent(token)}`;
 }
 
-export function makeSpectateUrl(code: string): string {
+export function makeSpectateUrl(code: string, watch: string): string {
   const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  return `${proto}//${window.location.host}/ws/${code}?spectate=1`;
+  return `${proto}//${window.location.host}/ws/${code}?spectate=1&watch=${encodeURIComponent(watch)}`;
+}
+
+/**
+ * How a watch grant is written down: `CODE.token`. One string to copy, and
+ * distinct from the play code, so reading the play code aloud no longer hands
+ * out a viewing seat as well. (C5)
+ */
+export function makeWatchRef(code: string, watch: string): string {
+  return `${code}.${watch}`;
+}
+
+/** The link the host shares. Origin-relative, like everything else the app builds. */
+export function makeWatchLink(code: string, watch: string): string {
+  return `${window.location.origin}/?watch=${encodeURIComponent(makeWatchRef(code, watch))}`;
+}
+
+/**
+ * Read a watch grant back out of whatever the user pasted — the whole link, the
+ * `?watch=` value, or the bare `CODE.token`. Pure, so it is testable without a
+ * DOM: the client suite has no jsdom.
+ */
+export function parseWatchRef(input: string): { code: string; watch: string } | null {
+  let raw = input.trim();
+  if (!raw) return null;
+
+  // A pasted link: pull the query parameter out and keep going with its value.
+  const query = raw.indexOf('watch=');
+  if (query !== -1) raw = decodeURIComponent(raw.slice(query + 'watch='.length).split('&')[0]!);
+
+  const dot = raw.indexOf('.');
+  if (dot === -1) return null;
+
+  const code = raw.slice(0, dot).trim().toUpperCase();
+  const watch = raw.slice(dot + 1).trim();
+  if (code.length !== 4 || !watch) return null;
+  return { code, watch };
 }
 
 // Module-level singleton so any component can send actions without prop drilling

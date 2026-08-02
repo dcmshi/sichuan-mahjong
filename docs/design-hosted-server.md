@@ -1,6 +1,8 @@
 # Design — a hosted server on Render, without giving up self-host
 
-**Status:** proposed, 2026-08-02. **C2 is built**; everything else is design.
+**Status:** 2026-08-02. **C1–C7 and C9 are built.** C8 stays deliberately off
+(free tier, no disk). What is left is the deploy itself — see
+[Deploying](#deploying).
 
 The ask: friends should be able to play without installing Tailscale. Keep the
 self-host path working.
@@ -302,16 +304,40 @@ What that is and is not:
 
 ---
 
-## Where this stands
+## Deploying
 
-Both open questions are answered — free tier, and a separate spectator secret
-rather than a login. C2 is built. **The remaining work is C1 and C3–C9**, and the
-order that makes sense is:
+`render.yaml` is in the repo root, so Render's Blueprint flow reads everything —
+build command, start command, health check, Node version — from it.
 
-1. **C1** (`PORT`, `--hosted`) and **C9** (health check) — the minimum that
-   deploys at all.
-2. **C4** then **C3** — `trustProxy` first, because per-IP limits are worthless
-   without it and it is easy to add them in the wrong order and believe they work.
-3. **C7** (WS keepalive) — the first thing a real game over the proxy will hit.
-4. **C5** (spectator secret) and **C6** (sweep TTLs).
-5. **C8** stays off. Free tier, no disk, no persistence.
+1. **New → Blueprint** in the Render dashboard, point it at this repository, and
+   approve the plan it shows. Nothing needs configuring by hand; `plan: free` and
+   `healthCheckPath: /healthz` are already in the file.
+2. **Wait out the first build.** It is a full pnpm install plus three package
+   builds, so several minutes.
+3. **Open the URL** Render assigns and check the log line
+   `Sichuan Mahjong — hosted`. If it says anything else, `--hosted` did not take
+   and the service is running with LAN defaults.
+4. **Optionally set `SM_PUBLIC_URL`** to the assigned URL, so the boot banner
+   prints it. Cosmetic only — the client derives its own origin.
+
+Nothing else is required. In particular **do not** add a disk or
+`SICHUAN_DATA_DIR` unless you have moved off the free tier; without a disk,
+SQLite would be writing to a filesystem that vanishes on the next deploy.
+
+### What to check once it is live
+
+- Create a game, join it from a phone on cellular data — that is the whole point
+  of the exercise, and it is the case Tailscale used to serve.
+- Leave a game idle for a few minutes and confirm it does not show
+  "Reconnecting…". That is C7 doing its job through Render's proxy, and it is
+  the thing most likely to behave differently there than locally.
+- Copy the watch link and open it in a private window.
+- Confirm the play code alone does **not** admit a spectator.
+
+### Still true after deploying
+
+- **A cold start takes about a minute** after ~15 minutes of no traffic, and an
+  idle gap with every player disconnected ends the match. Free tier, by choice.
+- **The rate limits are per profile, not per deployment mode.** They are on
+  locally too, just looser. If a local suite ever starts seeing 429s, that is the
+  thing to remember before reaching for `SM_RATE_LIMIT_OFF`.

@@ -1,0 +1,41 @@
+# Render blueprint — one Web Service serving HTTP, WebSockets and the SPA.
+#
+# There is no separate relay: the client derives its socket URL from
+# window.location.host, so whatever origin served the page is the origin it
+# talks to. Hosted and self-hosted are the same build.
+#
+# See docs/design-hosted-server.md for what --hosted changes and why the
+# security hardening is not conditional on it.
+services:
+  - type: web
+    name: sichuan-mahjong
+    runtime: node
+    plan: free
+    healthCheckPath: /healthz
+
+    # Same four commands as a local build, in the same order — the client
+    # imports the engine's types, so the engine has to be built first.
+    buildCommand: >
+      corepack enable &&
+      pnpm install --frozen-lockfile &&
+      pnpm --filter @sichuan-mahjong/engine build &&
+      pnpm --filter @sichuan-mahjong/client build &&
+      pnpm --filter sichuan-mahjong build
+
+    # PORT arrives in the environment. --hosted turns off mDNS, Tailscale
+    # detection and the QR code, trusts one proxy hop so per-IP limits mean
+    # something, and tightens the limits and sweeps.
+    startCommand: node packages/server/dist/main.js --hosted
+
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      # Free tier has no persistent disk: SQLite would write to a filesystem
+      # that does not survive a deploy. The server already runs without it
+      # (getDb returns null and every caller handles that), so games are
+      # in-memory and replays are off. Mount a disk and point
+      # SICHUAN_DATA_DIR at it to turn persistence back on.
+      #
+      # SM_TRUST_PROXY only needs setting if Render ever puts more than one
+      # proxy in front of this service. It must stay a hop count -- see the
+      # note on RuntimeProfile.trustProxy for why `true` is the wrong answer.

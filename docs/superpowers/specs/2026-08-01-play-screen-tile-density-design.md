@@ -96,7 +96,7 @@ frame built around the inset face and pushed every symbol left and low; and
 *the cell keeps a bottom bevel*, because a fully flat tile reads as a printed
 sheet rather than an object on a table. Only the left/right/top bevels — the ones
 that doubled up where two tiles met — are gone. See R7 in
-[TODO.md](../../../TODO.md) for the measurements.
+[history.md](../../history.md) for the measurements.
 
 **Asset derivation.** `public/tiles/*.svg` are Wikimedia Commons, **CC BY-SA 4.0**
 (Cangjie6; Jerry Crimson Mann; Dewclouds), recorded in `credits.json` and shown in

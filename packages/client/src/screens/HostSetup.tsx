@@ -2,7 +2,7 @@ import type { Seat } from '@sichuan-mahjong/engine';
 import { useState } from 'react';
 import { useT } from '../i18n/useT.js';
 import { useStore } from '../store/index.js';
-import { connectGame, makeWsUrl, sendAction } from '../ws/client.js';
+import { connectGame, makeWatchLink, makeWsUrl, sendAction } from '../ws/client.js';
 
 export function HostSetup() {
   const [name, setName] = useState('');
@@ -19,6 +19,7 @@ export function HostSetup() {
 
   const t = useT();
   const code = useStore(s => s.code);
+  const watchToken = useStore(s => s.watchToken);
   const seat = useStore(s => s.seat);
   const lobbyPlayers = useStore(s => s.lobbyPlayers);
   const canStart = useStore(s => s.canStart);
@@ -36,12 +37,18 @@ export function HostSetup() {
     try {
       const res = await fetch('/api/lobby', { method: 'POST' });
       if (!res.ok) throw new Error('server error');
-      const { code: newCode, hostToken } = (await res.json()) as {
+      const {
+        code: newCode,
+        hostToken,
+        watchToken,
+      } = (await res.json()) as {
         code: string;
         hostToken: string;
+        watchToken: string;
       };
       const store = useStore.getState();
       store.setCode(newCode);
+      store.setWatchToken(watchToken);
       store.setPlayerName(name.trim());
 
       const ws = connectGame(makeWsUrl(newCode, hostToken), msg => {
@@ -91,22 +98,23 @@ export function HostSetup() {
   }
 
   const shareUrl = `${window.location.origin}/j/${code}`;
+  const watchLink = watchToken ? makeWatchLink(code, watchToken) : '';
 
-  function copyShareUrl() {
+  function copyText(text: string) {
     // navigator.clipboard only exists in secure contexts — on plain LAN HTTP
     // (this app's primary path) it's undefined, so the old bare writeText call
     // threw and the button silently did nothing. Legacy fallback covers HTTP
     // and any denied-permission rejection. (A34)
     const legacyCopy = () => {
       const ta = document.createElement('textarea');
-      ta.value = shareUrl;
+      ta.value = text;
       document.body.appendChild(ta);
       ta.select();
       document.execCommand('copy');
       ta.remove();
     };
     if (navigator.clipboard?.writeText) {
-      navigator.clipboard.writeText(shareUrl).catch(legacyCopy);
+      navigator.clipboard.writeText(text).catch(legacyCopy);
     } else {
       legacyCopy();
     }
@@ -125,11 +133,26 @@ export function HostSetup() {
         <button
           type="button"
           className="mt-1 text-xs text-green-400 underline"
-          onClick={copyShareUrl}
+          onClick={() => copyText(shareUrl)}
         >
           {t('host.copy')}
         </button>
       </div>
+
+      {watchLink && (
+        <div className="bg-black/30 rounded-xl p-3">
+          <p className="text-green-300 text-xs mb-1">{t('host.watchUrl')}</p>
+          <p className="font-mono text-xs break-all text-white/70">{watchLink}</p>
+          <button
+            type="button"
+            className="mt-1 text-xs text-green-400 underline"
+            onClick={() => copyText(watchLink)}
+          >
+            {t('host.copy')}
+          </button>
+          <p className="text-white/40 text-xs mt-1">{t('host.watchHint')}</p>
+        </div>
+      )}
 
       {/* Difficulty for newly added bots */}
       <div className="flex items-center gap-2 text-sm">

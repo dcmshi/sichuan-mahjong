@@ -1,30 +1,31 @@
 import { useState } from 'react';
 import { useT } from '../i18n/useT.js';
 import { useStore } from '../store/index.js';
-import { connectGame, makeSpectateUrl, setWsClient } from '../ws/client.js';
+import { connectGame, makeSpectateUrl, parseWatchRef, setWsClient } from '../ws/client.js';
 
 export function SpectateForm() {
   const t = useT();
-  const storedCode = useStore(s => s.code);
   const setStoreCode = useStore(s => s.setCode);
   const goTo = useStore(s => s.goTo);
-  const [code, setCode] = useState(storedCode);
+  const [ref, setRef] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   function watch() {
-    const trimCode = code.trim().toUpperCase();
-    if (trimCode.length !== 4) {
-      setError('join.errCode');
+    // A room code alone no longer admits a spectator — the host shares a watch
+    // link, which carries its own secret. (C5)
+    const parsed = parseWatchRef(ref);
+    if (!parsed) {
+      setError('spec.errLink');
       return;
     }
     setError('');
     setLoading(true);
-    setStoreCode(trimCode);
+    setStoreCode(parsed.code);
 
     // connectGame routes 'spectate' views through the store; we only add the
     // no-game error handling here. ('spectate' flips the screen to the board.)
-    const ws = connectGame(makeSpectateUrl(trimCode), msg => {
+    const ws = connectGame(makeSpectateUrl(parsed.code, parsed.watch), msg => {
       if (msg.t === 'error' && msg.code === 'no_game') {
         setError('spec.errNoGame');
         setLoading(false);
@@ -41,15 +42,15 @@ export function SpectateForm() {
 
       <div className="flex flex-col gap-3 w-full max-w-xs">
         <input
-          className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/50 text-xl font-mono uppercase tracking-widest text-center focus:outline-none focus:border-amber-400"
-          placeholder={t('join.code')}
-          value={code}
-          onChange={e => setCode(e.target.value.toUpperCase().slice(0, 4))}
+          className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/50 text-sm font-mono text-center focus:outline-none focus:border-amber-400"
+          placeholder={t('spec.linkPlaceholder')}
+          value={ref}
+          onChange={e => setRef(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && watch()}
-          maxLength={4}
-          // biome-ignore lint/a11y/noAutofocus: deliberate — focus the spectate code on a mobile-first form
+          // biome-ignore lint/a11y/noAutofocus: deliberate — focus the spectate link on a mobile-first form
           autoFocus
         />
+        <p className="text-white/50 text-xs text-center">{t('spec.linkHint')}</p>
         {error && <p className="text-red-400 text-sm text-center">{t(error)}</p>}
         <button
           type="button"

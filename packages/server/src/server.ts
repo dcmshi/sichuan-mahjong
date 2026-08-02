@@ -1,7 +1,8 @@
 import fastifyWebsocket from '@fastify/websocket';
 import Fastify from 'fastify';
-import { parseCli, printBanner, printQr } from './cli.js';
+import { parseCli, printBanner, printHostedBanner, printQr, publicUrl } from './cli.js';
 import { type EmbeddedClient, registerHttpRoutes } from './http.js';
+import { installLimits, sweepLimiters } from './limits.js';
 import {
   getLanIp,
   getServerUrls,
@@ -10,20 +11,21 @@ import {
   startMdns,
   stopMdns,
 } from './networking.js';
+import { type RuntimeProfile, profileFor } from './profile.js';
 import { flushAllRooms, restoreRoomsFromDisk, setBotPaceMs, sweepIdleRooms } from './room.js';
 import { createTailscaleShare } from './tailscaleShare.js';
 import { registerWsRoutes, sweepStaleLobbies } from './ws.js';
 
-// Stale-state GC (A29): abandoned lobbies die after 2h, idle rooms after 24h.
+// Stale-state GC (A29). The TTLs themselves are per-profile now: a day of dead
+// rooms is free on your own machine and is not on a shared 512MB instance.
 const SWEEP_INTERVAL_MS = 10 * 60_000;
-const LOBBY_TTL_MS = 2 * 60 * 60_000;
-const ROOM_IDLE_TTL_MS = 24 * 60 * 60_000;
 
 async function buildApp(
+  profile: RuntimeProfile,
   serverOptions: { https?: { key: string; cert: string } } = {},
   embeddedClient?: EmbeddedClient,
 ): Promise<ReturnType<typeof Fastify>> {
-  const app = Fastify({ logger: false, ...serverOptions });
+  const app = Fastify({ logger: false, trustProxy: profile.trustProxy, ...serverOptions });
   await app.register(fastifyWebsocket);
   await registerHttpRoutes(app, embeddedClient);
   await registerWsRoutes(app);
@@ -40,6 +42,8 @@ async function buildApp(
 export async function run(embeddedClient?: EmbeddedClient): Promise<void> {
   const opts = parseCli();
   const { port, httpsPort, mdns, tailscale: useTailscale, share: useShare, dataDir } = opts;
+  const profile = profileFor(opts.hosted);
+  installLimits(profile);
 
   // Propagate data-dir override before persistence module initializes
   if (dataDir) process.env.SICHUAN_DATA_DIR = dataDir;
@@ -63,14 +67,18 @@ export async function run(embeddedClient?: EmbeddedClient): Promise<void> {
   const tls = wantTls && hostname ? getTailscaleCert(hostname) : null;
 
   // HTTP server
-  const httpApp = await buildApp({}, embeddedClient);
+  const httpApp = await buildApp(profile, {}, embeddedClient);
   await httpApp.listen({ port, host: '0.0.0.0' });
 
   // HTTPS server (reuses all the same registered routes via a second Fastify instance)
   let httpsStarted = false;
   if (tls) {
     try {
-      const httpsApp = await buildApp({ https: { key: tls.key, cert: tls.cert } }, embeddedClient);
+      const httpsApp = await buildApp(
+        profile,
+        { https: { key: tls.key, cert: tls.cert } },
+        embeddedClient,
+      );
       await httpsApp.listen({ port: httpsPort, host: '0.0.0.0' });
       httpsStarted = true;
     } catch (err) {
@@ -85,16 +93,20 @@ export async function run(embeddedClient?: EmbeddedClient): Promise<void> {
   const urls = getServerUrls(port, lanIp, tailscaleInfo, httpsPort);
   const tailscaleUrl = httpsStarted ? urls.tailscale : null;
 
-  printBanner({
-    httpPort: port,
-    lanIp,
-    tailscaleUrl,
-    tailscaleHostname: hostname,
-    hasTls: httpsStarted,
-    mdnsActive,
-  });
+  if (profile.hosted) {
+    printHostedBanner({ httpPort: port, url: publicUrl() });
+  } else {
+    printBanner({
+      httpPort: port,
+      lanIp,
+      tailscaleUrl,
+      tailscaleHostname: hostname,
+      hasTls: httpsStarted,
+      mdnsActive,
+    });
 
-  if (lanIp) printQr(`http://${lanIp}:${port}`);
+    if (lanIp) printQr(`http://${lanIp}:${port}`);
+  }
 
   // Tailscale node-sharing automation (opt-in via --share).
   if (useShare) {
@@ -125,8 +137,12 @@ export async function run(embeddedClient?: EmbeddedClient): Promise<void> {
   // Periodic stale-state sweep; unref'd so it never holds the process open. (A29)
   setInterval(() => {
     try {
-      sweepStaleLobbies(LOBBY_TTL_MS);
-      sweepIdleRooms(ROOM_IDLE_TTL_MS);
+      sweepStaleLobbies(profile.lobbyTtlMs);
+      sweepIdleRooms(profile.roomIdleTtlMs);
+      // The rate-limit tables are keyed by client address, so they grow with
+      // however many addresses have touched us. Expired buckets have to go the
+      // same way abandoned lobbies do.
+      sweepLimiters();
     } catch (err) {
       console.error('[sweep] error:', err);
     }

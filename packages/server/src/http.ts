@@ -3,9 +3,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import fastifyStatic from '@fastify/static';
 import type { FastifyInstance } from 'fastify';
+import { allowCreate, allowJoin, atGameCapacity, clientKey } from './limits.js';
 import { canStart, createLobby, getLobby } from './lobby.js';
 import { getGame } from './persistence.js';
-import { issueToken, resolveToken } from './tokens.js';
+import { issueToken, issueWatchToken, resolveToken } from './tokens.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // Where to find the built client SPA. Two layouts must both work:
@@ -71,19 +72,36 @@ export async function registerHttpRoutes(
   // Liveness
   app.get('/healthz', async () => ({ ok: true }));
 
-  // Create lobby
-  app.post('/api/lobby', async (_req, reply) => {
+  // Create lobby. Unauthenticated by design — there are no accounts — which on
+  // a public URL makes it an endpoint that allocates server memory for anyone
+  // who asks. Hence both a per-caller budget and a global ceiling.
+  app.post('/api/lobby', async (req, reply) => {
+    if (!allowCreate(clientKey(req))) {
+      return reply.code(429).send({ error: 'rate_limited' });
+    }
+    if (atGameCapacity()) {
+      return reply.code(503).send({ error: 'at_capacity' });
+    }
+
     const hostToken = issueToken('__pending__', 0, 'host');
     const lobby = createLobby(hostToken);
     // Update the token with the real code
     const data = resolveToken(hostToken);
     if (data) data.code = lobby.code;
 
-    return reply.code(201).send({ code: lobby.code, hostToken });
+    // The watch secret goes to the host and nowhere else. It is never on
+    // /api/lobby/:code, which anybody holding a code can read. (C5)
+    const watchToken = issueWatchToken(lobby.code);
+
+    return reply.code(201).send({ code: lobby.code, hostToken, watchToken });
   });
 
-  // Pre-join lobby check
+  // Pre-join lobby check. Rate-limited because this is the cheapest oracle for
+  // "is this code real?" — the enumeration guard that lets the code stay 4 long.
   app.get<{ Params: { code: string } }>('/api/lobby/:code', async (req, reply) => {
+    if (!allowJoin(clientKey(req))) {
+      return reply.code(429).send({ error: 'rate_limited' });
+    }
     const lobby = getLobby(req.params.code.toUpperCase());
     if (!lobby) return reply.code(404).send({ error: 'lobby_not_found' });
 

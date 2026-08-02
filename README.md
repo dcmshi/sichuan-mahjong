@@ -1,6 +1,12 @@
 # Sichuan Mahjong
 
-4-player Sichuan "Bloody Rules" (血战到底) mahjong, playable in any modern browser. The host runs a local server on their own machine and friends join over LAN or Tailscale — no accounts, no cloud.
+4-player Sichuan "Bloody Rules" (血战到底) mahjong, playable in any modern browser. No accounts, no sign-up: a 4-letter room code is all anyone needs.
+
+Run it three ways, same build each time — the client talks to whatever origin served it, so nothing is configured per deployment:
+
+- **On your machine, over LAN** — friends on the same WiFi, no setup at all.
+- **On your machine, over [Tailscale](https://tailscale.com)** — friends anywhere, reachable only by people you've invited to your network.
+- **Hosted, on a public URL** — nothing for anyone to install. See [deploying to Render](./docs/design-hosted-server.md#deploying).
 
 <p align="center">
   <img src="docs/screenshot.png" width="300" alt="In-game board on mobile">
@@ -20,12 +26,13 @@
 - Optional house rules, off by default: 換三張 three-tile swap (host toggle in the lobby) and Flower Pig (花猪)
 - Heuristic bots (easy + medium) — practice solo or fill empty seats
 - Multi-round matches with running totals; host starts each round or ends the match
-- Spectator mode — watch any game read-only with a code (no hand exposed)
+- Spectator mode — the host shares a separate watch link, kept distinct from the join code (no hand exposed)
 - Trilingual UI — English / 简体中文 / 繁體中文
 - Mobile-first PWA (installs to home screen over HTTPS/Tailscale, with an offline app shell)
 - Keyboard-operable and screen-reader-labelled tiles; honours `prefers-reduced-motion`
 - LAN play out of the box — no setup beyond running the server
-- Cross-network play via [Tailscale](https://tailscale.com), with `--share` to auto-create a share invite
+- Cross-network play via [Tailscale](https://tailscale.com), with `--share` to auto-create a share invite, or deploy it once and skip the install entirely
+- Room codes are CSPRNG-drawn and every entry point is rate-limited, on a laptop as much as on a public URL
 - Reconnect within 60 s of disconnect; bot takes over after that, and you reclaim your seat next round
 - Refresh-safe: your seat is remembered, so a reload drops you back into the same game
 - Crash-safe: in-progress games are snapshotted and resume after a server restart (npx / Node build; the standalone binaries run without persistence)
@@ -80,13 +87,14 @@ player passes three same-suit tiles first.
 
 | Flag | Default | Description |
 |---|---|---|
-| `--port` | `8080` | HTTP port |
+| `--port` | `$PORT`, else `8080` | HTTP port |
 | `--https-port` | `8443` | HTTPS port (Tailscale only) |
 | `--no-mdns` | — | Disable mDNS broadcast |
 | `--no-tailscale` | — | Disable Tailscale detection |
 | `--share` | — | Auto-create a Tailscale share invite (needs `TAILSCALE_API_KEY`, optionally `TAILSCALE_TAILNET`) |
 | `--data-dir` | OS user data dir | Where to store the SQLite database |
 | `--bot-delay` | host's choice | Milliseconds a bot pauses per move (max 5000; `0` for instant). Overrides the lobby setting for every room |
+| `--hosted` | — | Running on a public URL behind a proxy: no mDNS/Tailscale/QR, trusts one proxy hop, tighter rate limits and sweeps (also `SM_HOSTED=1`) |
 | `--credits` | — | Print tile artwork attribution and licences, then exit |
 | `--help` | — | Show usage and exit |
 
@@ -114,6 +122,25 @@ If you want friends outside your LAN to join:
 4. They open the `https://…ts.net:8443/j/CODE` URL the server printed. Done.
 
 The same URL works for every future game — no re-sharing needed.
+
+### Or host it once, and skip the install
+
+If asking every friend to join a tailnet is the friction, deploy the app itself.
+`render.yaml` in the repo root is a Render Blueprint: point Render at the
+repository, approve the plan, and you get a public URL that needs nothing
+installed on anyone's machine. Steps and the post-deploy checklist are in
+[docs/design-hosted-server.md](./docs/design-hosted-server.md#deploying).
+
+Same build, same code. The client derives its socket URL from the origin that
+served it, so there is nothing to configure — and self-hosting keeps working
+exactly as above.
+
+**What changes on a public URL:** the network stops being the door. The room code
+is the whole access control, which is why it is CSPRNG-drawn, why every entry
+point is rate-limited, and why spectators need a separate watch link rather than
+just the code. Those hold on a LAN too — `--hosted` only tightens the numbers, it
+never turns a control on. The reasoning is in
+[docs/design-hosted-server.md](./docs/design-hosted-server.md#no-environment-dependent-auth).
 
 ---
 
