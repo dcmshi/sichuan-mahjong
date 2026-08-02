@@ -1,6 +1,7 @@
 import type { SpectatorView } from '@sichuan-mahjong/engine';
 import { motion } from 'framer-motion';
 import { MeldDisplay } from '../components/MeldDisplay.js';
+import { ReconnectingBanner } from '../components/ReconnectingBanner.js';
 import { RoundEndRow } from '../components/RoundEndRow.js';
 import { Tile, TileBack } from '../components/Tile.js';
 import { useT } from '../i18n/useT.js';
@@ -117,6 +118,7 @@ export function Spectate() {
 
   return (
     <div className="min-h-dvh board-felt flex flex-col text-white">
+      <ReconnectingBanner />
       <div className="flex items-center justify-between px-3 py-1.5 bg-black/30 text-xs">
         <span>{t('play.wall', { n: view.wallRemaining })}</span>
         <span className="text-amber-300 font-semibold">

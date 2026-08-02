@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import { ReconnectingBanner } from '../components/ReconnectingBanner.js';
 import { RoundEndRow } from '../components/RoundEndRow.js';
 import { useT } from '../i18n/useT.js';
 import { useStore } from '../store/index.js';
@@ -19,6 +20,9 @@ export function RoundEnd() {
 
   return (
     <div className="min-h-dvh bg-green-900 flex flex-col items-center p-6 text-white gap-6 [@media(max-height:480px)]:gap-3">
+      {/* Non-hosts sit here waiting on the host to start the next round, which
+          looks identical to a dropped socket without this. */}
+      <ReconnectingBanner />
       {/* Entrances animate scale/position only, never opacity: the rows used to
           mount at opacity 0 and rely on Framer to reveal them, so anywhere the
           animation didn't run the scoreboard simply never appeared. (F11) */}

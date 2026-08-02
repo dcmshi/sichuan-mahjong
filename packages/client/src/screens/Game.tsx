@@ -1,6 +1,6 @@
 import { tileFromType, tileTypeOf } from '@sichuan-mahjong/engine';
 import type { PlayerView, Seat, Suit, TileId } from '@sichuan-mahjong/engine';
-import { AnimatePresence, motion } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import { ClaimPanel } from '../components/ClaimPanel.js';
 import { EventFeed } from '../components/EventFeed.js';
@@ -10,6 +10,7 @@ import { OpponentTop } from '../components/OpponentTop.js';
 import { OwnZone } from '../components/OwnZone.js';
 import { PlayHistory } from '../components/PlayHistory.js';
 import { PlayTopBar } from '../components/PlayTopBar.js';
+import { ReconnectingBanner } from '../components/ReconnectingBanner.js';
 import { RotateOverlay } from '../components/RotateOverlay.js';
 import { Tile } from '../components/Tile.js';
 import { WallDiagram } from '../components/WallDiagram.js';
@@ -263,7 +264,6 @@ function VoidDeclarePhase({ view }: { view: PlayerView }) {
 // ---------------------------------------------------------------------------
 
 function PlayPhase({ view }: { view: PlayerView }) {
-  const reconnecting = useStore(s => s.reconnecting);
   const [showHistory, setShowHistory] = useState(false);
   const t = useT();
   const seat = view.you.seat;
@@ -283,19 +283,7 @@ function PlayPhase({ view }: { view: PlayerView }) {
     // honouring the overflow-hidden fix that let landscape reach its lower
     // half in the first place. (F13, R1)
     <div className="h-dvh board-felt flex flex-col text-white overflow-y-auto overflow-x-hidden">
-      {/* Reconnecting toast */}
-      <AnimatePresence>
-        {reconnecting && (
-          <motion.div
-            initial={{ y: -40 }}
-            animate={{ y: 0 }}
-            exit={{ y: -40 }}
-            className="fixed top-0 left-0 right-0 bg-amber-600 text-white text-center py-1.5 text-sm font-semibold z-30"
-          >
-            {t('common.reconnecting')}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <ReconnectingBanner />
 
       <PlayTopBar view={view} />
 
