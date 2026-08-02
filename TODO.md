@@ -203,6 +203,36 @@ so it isn't rediscovered as a bug.
   N5's mid-match control: reassigning a room field is not the same as mutating
   engine config underneath a live game. **Small.**
 
+- [ ] **N7 — the turn indicator is invisible on a 320px phone.** Found while
+  measuring the top bar for N4, and **pre-existing** — N4 swapped one 40px
+  control for another and changed the arithmetic not at all.
+
+  Measured in the running app at 320×568, mid-play:
+
+  | | width |
+  |---|---|
+  | bar `clientWidth` / `scrollWidth` | 320 / **323** |
+  | `Wall: 55` | 41 |
+  | **turn indicator** | **0** |
+  | icon cluster | 254 |
+
+  The cluster is `flex-shrink-0` and the indicator is the only `min-w-0 truncate`
+  child, so it absorbs the entire shortfall and truncates to nothing. "Your turn"
+  — reasonably the most important text on the screen — is simply not rendered on
+  the smallest supported phone, and the row still overflows by 3px after eating
+  all of it.
+
+  **No guard catches this.** `viewport.spec.ts` watches vertical overflow of
+  `.board-felt` and tray clipping; `ui-clicks.spec.ts` fails on document-level
+  sideways scroll, which a 3px overflow inside a clipped row never causes. Both
+  pass today.
+
+  The cluster is where the width is: `LangSwitch` alone is **122px** — three
+  40px buttons for a control most players touch once. Making it a single button
+  that cycles, or folding it into the ⚙ menu N4 just added, recovers ~80px on
+  its own. Whichever way it goes, the fix wants a guard asserting the indicator
+  has non-zero width, or it comes back. **Small.**
+
 ---
 
 ## Shelved, with reasons
