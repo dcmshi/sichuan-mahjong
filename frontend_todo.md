@@ -28,7 +28,7 @@ audit log, not a commitment — triage before picking up. Already-tracked items
   first round. A one-round match shows the same numbers twice, in two sections
   sorted differently. Gate on `countedRounds.length > 1` (or round index > 0).
 
-- [ ] **Stale `landing.hostHint` copy.** `i18n/index.ts:35` —
+- [x] **Stale `landing.hostHint` copy.** `i18n/index.ts:35` —
   "Host runs the server on their machine. Friends connect over LAN or
   Tailscale." The app is now a hosted service (canonical URL in
   `index.html`, `docs/design-hosted-server.md`); the landing page tells new
