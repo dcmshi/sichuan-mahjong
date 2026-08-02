@@ -25,18 +25,6 @@ Keep this file short. New documentation goes in one of these instead:
 
 ---
 
-## Tech stack
-
-| Package | Purpose |
-|---|---|
-| `packages/engine` | Pure rules engine (`@sichuan-mahjong/engine`). Zero deps. |
-| `packages/server` | Fastify HTTP+WS, bots, persistence (`node:sqlite`), networking (`sichuan-mahjong`) |
-| `packages/client` | React 18, Vite, Tailwind, Zustand, Framer Motion (`@sichuan-mahjong/client`) |
-
-Runtime: Node 22 LTS. Tooling: Biome (lint enforced in CI), Vitest, fast-check, Playwright.
-
----
-
 ## Dev commands
 
 ```bash
@@ -175,66 +163,28 @@ complete 3D tile, so two of them edge to edge show two bevels where a real run
 shows one shared edge. Rather than strip the body and rebuild it in CSS — which is
 what `tiles/flat/` and `.tile-cell` did until now — every tile in a `.tile-lap`
 container is drawn 29% wider than its layout box and anchored right, so it bleeds
-left over the tile before it and DOM order paints it on top. Full detail in
-[docs/handoff-tile-rendering.md](./docs/handoff-tile-rendering.md).
-
-- **The overlap is 22.5% of the art's width, which is exactly the body band** —
-  measured in from the right edge: outline to 5.5%, green to 15.4%, plate and
-  white to 22.5%, face after that. The widest glyph (`pin-3`) ends at 75.9%, so
-  the lap never touches ink. A band drawn in CSS came out of the face; this one
-  comes out of the neighbour, which is why the same 299px hand went 23.0px →
-  29.0px a tile.
-- **The box is the pitch, not the tile.** `aspect-ratio: 162.75 / 255` and an art
-  width of `129.032%`, both from the one constant 0.775. A fixed-size tile shrinks
-  its box so the art keeps its size (`--tile-w`, not Tailwind's `w-*`, because CSS
-  can't scale a width it didn't set); the hand's `fill` tiles do the opposite and
-  let the art grow into the row.
-- **A lifted tile needs a `z-index`**, or its neighbour paints across the lift, and
-  the **first tile of every wrapped row bleeds left**, which is what the trays'
-  asymmetric padding holds. Both are on the sandbox page.
-- The **corner radius is proportional** (`18.1% / 14.9%`, measured off the art's
-  outline cubics). Only `.tile-mark` needs it now — the void screen spaces its
-  tiles, so the ring wraps a whole tile rather than a pitch.
+left over the tile before it and DOM order paints it on top. The lap is 22.5% of
+the art's width — exactly the body band, so it never touches ink. Every knob, the
+measured layer geometry, and the four things easy to get wrong are in
+[docs/handoff-tile-rendering.md](./docs/handoff-tile-rendering.md); read it before
+changing how a tile looks.
 
 **The board reads itself back** (2026-08-02). The middle of the well holds the
-**wall**, drawn as four walls two tiles high — seven stacks a side, flush and
-lapped, so 4 × 7 × 2 = 56 is exactly what the deal leaves and the diagram *is* the
-wall. Emptied slots stay drawn and go dark; a bar that only shrinks gives you
-nothing to measure against. It is a square that fits the well (198×401 on one
-phone, 128×61 on a short one), absolutely positioned behind the contents so it
-costs no height. Each seat's **void declaration** sits above their pile with a
-white glow, since it is the one public statement of what they declared —
-`PublicPlayer.firstDiscardIsVoid` is derived, and **false until the flip**, which
-is when a real table learns it. Every zone centres on its content: the hand, the
-melds, and the trays, each of which is now drawn round its pile rather than across
-the screen.
+**wall**, drawn as four walls two tiles high — 4 × 7 × 2 = 56 is exactly what the
+deal leaves, so the diagram *is* the wall rather than a picture of one. Each seat's
+**void declaration** sits above their pile: `PublicPlayer.firstDiscardIsVoid` is
+derived, and **false until the flip**, which is when a real table learns it.
 
 **It runs on a public URL now, and the hardening is not conditional** (2026-08-02,
-C1–C7/C9). `--hosted` selects a `RuntimeProfile` that carries **numbers only** —
+C1–C7/C9, C10). `--hosted` selects a `RuntimeProfile` that carries **numbers only** —
 rate limits, the concurrent-games ceiling, sweep TTLs. The controls themselves are
 on in both deployments, because a control that switches on with `--hosted` is one
 you develop against with it off and that **fails open** the first time someone
-forgets the flag on a deploy. What that buys, in order of sharpness:
-
-- **Room codes come from `crypto.randomInt`.** The code is a bearer capability, and
-  `Math.random()` is xorshift128+ — an attacker harvests outputs by creating
-  lobbies and predicts *other people's future codes*. It was the only
-  `Math.random()` left; `rng.ts` stays seeded, or replays stop reproducing.
-- **Spectators need their own secret.** `?spectate=1&watch=…`, issued to the host
-  alone, in **its own store rather than a third token `role`** — a seat token
-  resolves to a seat, so a watch token in that map would have seated a spectator
-  as a player.
-- **`trustProxy` is a hop count, not `true`.** `true` resolves `req.ip` to the
-  leftmost `X-Forwarded-For` entry, which the client wrote, making every per-IP
-  limit spoofable by header.
-- **Sockets ping every 30s.** Nothing on a LAN closes an idle connection; a proxy
-  will, and a half-open socket holds a seat nobody is sitting in.
-
-- **`/robots.txt` and `/sitemap.xml` are routes** (C10), because both name an
-  absolute origin and a sitemap on the wrong origin is discarded rather than
-  followed. `Disallow: /*?` is the load-bearing line: the spectator watch secret
-  rides in a query string. The canonical and `og:*` tags in `index.html` are the
-  one place in the client that names an address — `og:*` readers don't run JS.
+forgets the flag on a deploy. Room codes come from `crypto.randomInt`, spectators
+hold their own secret in their own store, `trustProxy` is a hop count and never
+`true`, sockets ping every 30s, and `/robots.txt` + `/sitemap.xml` are routes whose
+`Disallow: /*?` keeps the watch secret out of search results. Each with its
+reasoning in [docs/design-hosted-server.md](./docs/design-hosted-server.md).
 
 `render.yaml` is the Blueprint; steps and rationale in
 [docs/design-hosted-server.md](./docs/design-hosted-server.md). Free tier, so
