@@ -174,6 +174,14 @@ export function OwnZone({ view }: { view: PlayerView }) {
   const inClaimWindow = view.claimDeadline !== null;
   const lastDiscardTile = view.lastDiscard?.tile ?? null;
 
+  // A selection only means anything while you may discard. If the turn moves on
+  // or a claim window opens with a tile raised, the lift and the "tap again to
+  // discard" hint both stayed up while `handleTileTap` had already started
+  // returning early — a control that looks armed and does nothing.
+  useEffect(() => {
+    if (!canDiscard) setSelectedTile(null);
+  }, [canDiscard]);
+
   function handleTileTap(id: TileId, source?: Element | null) {
     if (!canDiscard) return;
     play('tile');
@@ -426,6 +434,9 @@ export function OwnZone({ view }: { view: PlayerView }) {
                 type="button"
                 className="block w-full"
                 aria-label={tileLabel(id, t)}
+                // The lift is the only cue that a tile is armed, and it is purely
+                // visual; this is the same state spoken.
+                aria-pressed={selectedTile === id}
                 onKeyDown={e => {
                   if (e.key !== 'Enter' && e.key !== ' ') return;
                   e.preventDefault();
