@@ -312,7 +312,10 @@ export function OwnZone({ view }: { view: PlayerView }) {
               drawn in the pile and in the air at the same time. */}
           <div
             ref={trayRef}
-            className={`flex flex-wrap content-start items-start discard-tray tile-lap mt-0.5 min-h-0 overflow-y-auto ${
+            // justify-center to match the seat across from you, whose tray is a
+            // shrink-to-fit box its parent centres. This one is a full-width bar
+            // — it has to be, it wraps — so the rows are what centre.
+            className={`flex flex-wrap justify-center content-start items-start discard-tray tile-lap mt-0.5 min-h-0 overflow-y-auto ${
               flight ? 'discard-landing' : ''
             }`}
           >

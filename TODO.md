@@ -1,5 +1,35 @@
 # TODO
 
+## ✅ The wall is four walls, and the discards centre (2026-08-01)
+
+*"the wall in the middle is kind of lazy … right now it's impossible to tell how
+many are left"*. Correct: a single strip that only shrinks gives you nothing to
+measure it against.
+
+- [x] **`WallDiagram` replaces `WallGauge`** — four walls round the rim of the
+  well, two tiles deep, seven stacks a side. That is 4 × 7 × 2 = 56, exactly what
+  the deal leaves, so the diagram is the wall rather than a scaled picture of it.
+  **Every slot stays drawn**; the emptied ones go dark, which is the part that
+  makes it readable at a glance.
+- [x] **It is a square that fits the well, not the well's own box.** The well is
+  198×401 on one phone and 128×61 on a short one — a frame sized off the long edge
+  hangs out of the short one. `aspect-ratio: 1` with a max on both axes lets the
+  smaller edge decide, and every length inside is a percentage of that square.
+- [x] **Absolute and behind the contents**, so it costs no height in the row that
+  has none to give. A positioned element paints after every in-flow sibling
+  whatever the DOM order, so it needed a negative z-index — and `.play-well` an
+  `isolation`, or the negative index would have put it behind the felt.
+- [x] **Both dimensions of every wall are stated.** Left to shrink-to-fit, a wall
+  measures its contents, and a tile's intrinsic width is 210px: the side walls
+  came out 190px wide instead of 27. The cells must not stretch either, or the
+  cell asks its row how wide it is while the row is asking the cell.
+- [x] **The south discards centre**, to match the seat across from you. That tray
+  is a shrink-to-fit box its parent centres; this one is a full-width bar, because
+  it wraps, so the rows are what centre. The tray's left padding drops 0.88rem →
+  0.75rem in the process: rows centre on the content box, but a lapped run's
+  visible extent starts half a bleed further left than its boxes do, so the
+  content box has to sit half a bleed right of centre for the two to agree.
+
 ## ✅ Five fixes off playing it (2026-08-01)
 
 From watching the lapped tiles in a real round.

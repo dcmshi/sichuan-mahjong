@@ -98,7 +98,7 @@ sichuan-mahjong/
 │   │   ├── public/
 │   │   │   └── tiles/            # 27 3D faces + back.svg + credits.json
 │   │   ├── src/
-│   │   │   ├── components/       # Tile, MeldDisplay, ClaimPanel, EventFeed, PlayHistory, WallGauge, ErrorToast, ConnectionLost
+│   │   │   ├── components/       # Tile, MeldDisplay, ClaimPanel, EventFeed, PlayHistory, WallDiagram, ErrorToast, ConnectionLost
 │   │   │   ├── screens/          # Landing, HostSetup, JoinForm, Lobby, Game, RoundEnd, MatchEnd, Spectate, About
 │   │   │   ├── store/
 │   │   │   ├── ws/

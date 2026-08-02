@@ -188,21 +188,126 @@ body {
   z-index: 2;
 }
 
-/* The wall, drawn end-on in the well. Overlapped far harder than a run — 14
-   backs have to fit a well that is ~140px wide on a 320px phone — which is also
-   about what the wall looks like from across a table. Its own negative margin
-   rather than `.tile-lap`, because that one is 22.5% by definition: it is the
-   width of the art's body band, and this is a stack, not a run. */
-.wall-gauge-tile {
-  /* flex, so there is no line box: `.tile` is inline-level, and one shorter than
-     the block's own strut leaves the strut's leading as dead space beneath it —
-     6px a back, in a well that is fought over. */
-  display: flex;
-  width: 1.1rem;
+/* The wall: four walls round the rim of the well, two tiles deep, which is where
+   they sit on a table and leaves the middle for the discard. Absolute, so it
+   costs no height in the one row that has none to give, and it can't take a tap
+   from the history button underneath.
+
+   Every slot is drawn whether or not it still holds a tile. That is the whole
+   point — the strip this replaced only shrank, and a bar with nothing to measure
+   it against can't answer "how many are left". */
+.wall-diagram {
+  /* A square that always fits the well, rather than the well's own box: the well
+     is 198×401 on one phone and 128×61 on a short one, and a frame sized off the
+     long edge hangs out of the short one. `aspect-ratio` with a max on both axes
+     makes whichever edge is smaller the one that decides. Every length inside is
+     a percentage of this square, so the whole diagram scales with it. */
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  aspect-ratio: 1;
+  width: min(96%, 22rem);
+  max-height: 96%;
+  pointer-events: none;
+  /* Behind the well's contents. A positioned element paints after every in-flow
+     sibling whatever the DOM order, so the discard would end up under the wall;
+     a negative index puts it back, and `.play-well`'s `isolation` is what stops
+     it going behind the well's own background too. */
+  z-index: -1;
 }
 
-.wall-gauge-tile + .wall-gauge-tile {
-  margin-left: -0.67rem;
+.wall-side {
+  position: absolute;
+  display: flex;
+  gap: 1px;
+}
+
+/* The cells share the wall's length, and take their other dimension from the
+   tile's own ratio — so they must not stretch. A stretched cell asks its row how
+   wide it is while the row is asking the cell, and the cycle resolves to the
+   image's intrinsic width: the side walls came out 190px wide instead of 27. */
+.wall-row {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+}
+
+/* Each wall runs 60% of the square's edge, so its seven stacks are 8.57% each and
+   the tile's 210:255 makes the other dimension 10.4% — two deep, 21%. Both are
+   stated, and that is not belt and braces: a wall left to shrink-to-fit measures
+   its contents, and a tile's intrinsic width is 210px, so the side walls came out
+   as wide as the whole square. */
+.wall-n,
+.wall-s {
+  left: 50%;
+  transform: translateX(-50%);
+  flex-direction: column;
+  width: 60%;
+  height: 21%;
+}
+
+.wall-n {
+  top: 0;
+}
+
+.wall-s {
+  bottom: 0;
+}
+
+.wall-e,
+.wall-w {
+  top: 50%;
+  transform: translateY(-50%);
+  flex-direction: row;
+  height: 60%;
+  width: 14.5%;
+}
+
+.wall-e {
+  right: 0;
+}
+
+.wall-w {
+  left: 0;
+}
+
+.wall-n .wall-row,
+.wall-s .wall-row {
+  flex-direction: row;
+}
+
+.wall-e .wall-row,
+.wall-w .wall-row {
+  flex-direction: column;
+}
+
+/* flex for the reason `.void-hand-tile` is: `.tile` is inline-level, and the
+   line box's strut would add leading under every one of the 56. `min-*: 0` so a
+   cell can go below the tile's intrinsic size — without it seven of them refuse
+   to share a short wall and the whole side overflows. */
+.wall-cell {
+  display: flex;
+  flex: 1;
+  aspect-ratio: 210 / 255;
+}
+
+.wall-n .wall-cell,
+.wall-s .wall-cell {
+  min-width: 0;
+}
+
+.wall-e .wall-cell,
+.wall-w .wall-cell {
+  min-height: 0;
+}
+
+/* An emptied slot still shows: a wall that only shrinks gives you nothing to
+   measure what is left against, which is what the single strip this replaced
+   got wrong. */
+.wall-cell.is-empty {
+  border-radius: 15%;
+  background: rgba(0, 0, 0, 0.28);
 }
 
 /* The void declaration shows the whole hand, so you can weigh three suits
@@ -220,14 +325,6 @@ body {
 }
 
 @media (max-height: 700px) {
-  .wall-gauge-tile {
-    width: 0.7rem;
-  }
-
-  .wall-gauge-tile + .wall-gauge-tile {
-    margin-left: -0.42rem;
-  }
-
   .void-hand-tile {
     width: 2.5rem; /* Tile's "md" width */
   }
@@ -281,6 +378,9 @@ body {
   background: radial-gradient(80% 80% at 50% 40%, rgba(3, 40, 36, 0.55), rgba(2, 28, 26, 0.78));
   border-radius: 1rem;
   box-shadow: inset 0 2px 12px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  /* A stacking context, so `.wall-diagram`'s negative z-index lands between this
+     background and the well's contents rather than behind the felt. */
+  isolation: isolate;
 }
 
 /* While a discard is in flight (OwnZone's FlyingDiscard), the tile it's heading
@@ -291,14 +391,21 @@ body {
   opacity: 0;
 }
 
-/* Inset tray for discard pools. The left padding is the tray's own 0.3rem plus
-   the 0.58rem a lapped run's first tile bleeds — and the first tile of *every*
-   wrapped row bleeds, so without it row two starts outside the tray. */
+/* Inset tray for discard pools. The extra left padding is the bleed: the first
+   tile of a lapped run hangs off the left, and in a wrapping tray that is the
+   first tile of *every* row, so without it row two starts outside the tray.
+
+   0.45rem of extra, not the 0.58rem `.tile-run` uses, and the difference is what
+   centres a row. Rows centre on the *content* box, but the tiles' visible extent
+   runs half a bleed further left than their boxes do, so the content box has to
+   sit half a bleed right of the tray's centre for the two to agree — which is
+   exactly what an asymmetry of one bleed gives. Every tray is `sm`, where the
+   bleed is 0.29 × 1.55rem ≈ 0.45rem. */
 .discard-tray {
   background: rgba(0, 0, 0, 0.18);
   border-radius: 0.6rem;
   box-shadow: inset 0 1px 5px rgba(0, 0, 0, 0.4);
-  padding: 0.3rem 0.3rem 0.3rem 0.88rem;
+  padding: 0.3rem 0.3rem 0.3rem 0.75rem;
 }
 
 /* ---------------------------------------------------------------------------

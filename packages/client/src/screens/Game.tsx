@@ -12,7 +12,7 @@ import { PlayHistory } from '../components/PlayHistory.js';
 import { PlayTopBar } from '../components/PlayTopBar.js';
 import { RotateOverlay } from '../components/RotateOverlay.js';
 import { Tile } from '../components/Tile.js';
-import { WallGauge } from '../components/WallGauge.js';
+import { WallDiagram } from '../components/WallDiagram.js';
 import { useSound } from '../hooks/useSound.js';
 import { useT } from '../i18n/useT.js';
 import { useStore } from '../store/index.js';
@@ -315,7 +315,7 @@ function PlayPhase({ view }: { view: PlayerView }) {
           {/* The wall, above the discard it feeds — which is where it sits on a
               table. The exact count is in the top bar; this is for reading how
               much round is left without doing arithmetic. */}
-          <WallGauge remaining={view.wallRemaining} />
+          <WallDiagram remaining={view.wallRemaining} />
           {lastDiscardTile !== null && (
             <div className="flex flex-col items-center gap-1">
               <span className="text-xs text-green-300">{t('play.lastDiscard')}</span>
