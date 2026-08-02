@@ -1,4 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion';
+import { useEscapeToClose } from '../hooks/useDismissable.js';
 import { useT } from '../i18n/useT.js';
 
 const SECTION_KEYS = [
@@ -13,11 +14,17 @@ const SECTION_KEYS = [
 ] as const;
 
 export function HowToPlay({ onClose }: { onClose: () => void }) {
+  useEscapeToClose(true, onClose);
   const t = useT();
   return (
     <AnimatePresence>
       <motion.div
         className="fixed inset-0 z-40 bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-4"
+        // biome-ignore lint/a11y/useSemanticElements: a native <dialog> needs imperative
+        // showModal()/close() tied to mount and unmount, and its ::backdrop sits outside
+        // the Framer transition this overlay animates with.
+        role="dialog"
+        aria-modal="true"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}

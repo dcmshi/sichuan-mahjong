@@ -1,5 +1,6 @@
 import type { GameEvent, Seat, TileId } from '@sichuan-mahjong/engine';
 import { AnimatePresence, motion } from 'framer-motion';
+import { useEscapeToClose } from '../hooks/useDismissable.js';
 import { useT } from '../i18n/useT.js';
 import { type HistoryItem, useStore } from '../store/index.js';
 import { Tile } from './Tile.js';
@@ -63,6 +64,7 @@ export function PlayHistory({
   nameOf,
   onClose,
 }: { nameOf: (seat: Seat) => string; onClose: () => void }) {
+  useEscapeToClose(true, onClose);
   const history = useStore(s => s.history);
   const t = useT();
   const rows = historyRows(history);
@@ -71,6 +73,11 @@ export function PlayHistory({
     <AnimatePresence>
       <motion.div
         className="fixed inset-0 z-40 bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-4"
+        // biome-ignore lint/a11y/useSemanticElements: a native <dialog> needs imperative
+        // showModal()/close() tied to mount and unmount, and its ::backdrop sits outside
+        // the Framer transition this overlay animates with.
+        role="dialog"
+        aria-modal="true"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
