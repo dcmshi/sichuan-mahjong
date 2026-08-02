@@ -1,5 +1,5 @@
 import type { Seat } from '@sichuan-mahjong/engine';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useT } from '../i18n/useT.js';
 import { useStore } from '../store/index.js';
 import { connectGame, makeWatchLink, makeWsUrl, sendAction } from '../ws/client.js';
@@ -16,6 +16,17 @@ export function HostSetup() {
   const [botLevel, setBotLevel] = useState<'easy' | 'medium'>('easy');
   const [huanSanZhang, setHuanSanZhang] = useState(false);
   const [botSpeed, setBotSpeed] = useState<'slow' | 'normal' | 'fast'>('normal');
+  // Which copy button last fired. The clipboard write is silent — on a phone
+  // there is no cursor, no selection and no toast, so without this the tap is
+  // indistinguishable from a dead button.
+  const [copied, setCopied] = useState<'share' | 'watch' | null>(null);
+  const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (copiedTimer.current) clearTimeout(copiedTimer.current);
+    },
+    [],
+  );
 
   const t = useT();
   const code = useStore(s => s.code);
@@ -100,7 +111,7 @@ export function HostSetup() {
   const shareUrl = `${window.location.origin}/j/${code}`;
   const watchLink = watchToken ? makeWatchLink(code, watchToken) : '';
 
-  function copyText(text: string) {
+  function copyText(text: string, which: 'share' | 'watch') {
     // navigator.clipboard only exists in secure contexts — on plain LAN HTTP
     // (this app's primary path) it's undefined, so the old bare writeText call
     // threw and the button silently did nothing. Legacy fallback covers HTTP
@@ -118,6 +129,9 @@ export function HostSetup() {
     } else {
       legacyCopy();
     }
+    setCopied(which);
+    if (copiedTimer.current) clearTimeout(copiedTimer.current);
+    copiedTimer.current = setTimeout(() => setCopied(null), 2000);
   }
 
   return (
@@ -133,9 +147,9 @@ export function HostSetup() {
         <button
           type="button"
           className="mt-1 text-xs text-green-400 underline"
-          onClick={() => copyText(shareUrl)}
+          onClick={() => copyText(shareUrl, 'share')}
         >
-          {t('host.copy')}
+          {copied === 'share' ? t('host.copied') : t('host.copy')}
         </button>
       </div>
 
@@ -146,9 +160,9 @@ export function HostSetup() {
           <button
             type="button"
             className="mt-1 text-xs text-green-400 underline"
-            onClick={() => copyText(watchLink)}
+            onClick={() => copyText(watchLink, 'watch')}
           >
-            {t('host.copy')}
+            {copied === 'watch' ? t('host.copied') : t('host.copy')}
           </button>
           <p className="text-white/40 text-xs mt-1">{t('host.watchHint')}</p>
         </div>
