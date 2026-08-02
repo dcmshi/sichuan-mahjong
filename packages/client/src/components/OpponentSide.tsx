@@ -90,6 +90,14 @@ export function OpponentSide({
           {pileDiscards.slice(-6).map(id => (
             <Tile key={id} id={id} size="sm" lastDiscard={id === lastDiscardTile} />
           ))}
+          {/* The cap is for space (R1), but silently dropping the earliest
+              discards hid information that matters for reading a hand. The
+              count is free to show. */}
+          {pileDiscards.length > 6 && (
+            <span className="self-center text-[9px] text-white/50 px-1">
+              +{pileDiscards.length - 6}
+            </span>
+          )}
         </div>
       )}
     </div>

@@ -71,6 +71,14 @@ export function OpponentTop({ view, relSeat }: { view: PlayerView; relSeat: 0 | 
           {pileDiscards.slice(-9).map(id => (
             <Tile key={id} id={id} size="sm" lastDiscard={id === lastDiscardTile} />
           ))}
+          {/* The cap is for space (R1), but silently dropping the earliest
+              discards hid information that matters for reading a hand. The
+              count is free to show. */}
+          {pileDiscards.length > 9 && (
+            <span className="self-center text-[9px] text-white/50 px-1">
+              +{pileDiscards.length - 9}
+            </span>
+          )}
         </div>
       )}
     </div>
