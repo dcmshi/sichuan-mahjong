@@ -713,13 +713,14 @@ Mobile-first. Portrait phone is the design target; tablets and desktop scale up 
    - **Top:** opponent across the table — back-of-tile hand strip, exposed melds, recent discards.
    - **Left/right:** opponents to either side — a short overlapped stack of backs with the hand count beside it, plus melds and discards. One back per tile stood ~500px tall, which set the height of the whole middle row; the count is also easier to read than counting slivers.
    - **Bottom:** your hand (tappable, sorted), your melds, your discard row.
-   - **Center:** the play well — the last discard, highlighted, and the transient event feed (§8.5), capped at two lines so it cannot reach the centred label beneath it. Each seat's pond sits with that seat, not in the middle.
+   - **Center:** the play well — the last discard, highlighted, the transient event feed (§8.5, capped at two lines so it cannot reach the centred label beneath it), and the **wall diagram** (`WallDiagram`): four walls round the rim, seven stacks a side, two tiles high, flush and lapped, which is 4 x 7 x 2 = 56 and so exactly what the deal leaves. Emptied slots stay drawn and go dark — a bar that only shrinks gives nothing to measure against. It is a square that fits the well and sits behind the contents, so it costs no height in a row that has none. A 🗒 button in its bottom-right corner opens the round's move history. Each seat's pond sits with that seat, not in the middle.
    - **Floating action panel:** appears during claim windows. Pung / Kong / Hu / Pass buttons + countdown bar. Big touch targets.
    - **Top bar:** wall-remaining counter, whose turn it is, language toggle, sound and help buttons.
    - **Score strip:** running score deltas per player, directly under the top bar.
    - Huan and void declaration are whole screens of their own rather than states of this one, so there is no phase indicator here.
    - **Furiten badge:** visible to your own seat if you're in furiten state (skip-Hu locked until next self-draw). Tooltip explains the rule.
-   - **First-discard flip panel:** on your first turn, if you separated a tile at void declaration (§5.4), the hand is not discardable and this panel shows that tile plus a "Flip your first discard" button — the one discard you don't get to choose. Opponents' unflipped tiles render as a tile back at the head of their pond.
+   - **First-discard flip panel:** on your first turn, if you separated a tile at void declaration (§5.4), the hand is not discardable and this panel shows that tile plus a "Flip your first discard" button — the one discard you don't get to choose.
+   - **The void declaration is drawn above each seat's pond, not in it** — face down until its owner flips it, then face up with a white glow. It is the one public statement of what that seat declared, and `PublicPlayer.firstDiscardIsVoid` is what says so (false until the flip). Holding it out of the pile is also what keeps it from scrolling out of an opponent's capped tray.
 6. **Round end** — per-seat rank, wind, name, a Hu badge and this round's score delta, then match totals, then "Next round" / "End match" (host) or "Leave". Each row expands (`RoundEndRow`) to that seat's revealed hand and melds, its fan list and hand value if it won or its ready state if it didn't, and an itemised list of the payments that produced its delta. Winners' rows start expanded. Spectators get the same rows on their own screen once the round settles.
 7. **Match end** — final standings from the accumulated `matchScores`, then back to the menu. Reached on the server's `matchEnd` frame, which used to reset straight to Landing with no result shown. (F9)
 
@@ -973,14 +974,19 @@ and identical discards stay distinct — and `historyRowFor` is the inverse of
 sits in the play well, because a fourth top-bar icon truncated the turn indicator.
 
 **O3. Central discard pool.** Show every discard in the middle, mark the last one,
-and show each player's chosen void suit. The redaction decision it needs:
-`PublicPlayer` has no `voidedSuit` — only `you` gets it, and the first discard sits
-face down precisely so the suit is not leaked early (A37) — so it should become
-public only once that player has flipped their first discard, which is when a real
-table learns it. A40 raises the bar rather than lowering it: the suit *did* reach
-every client through the event log, and now correctly doesn't, so the pool needs a
-deliberate reveal instead of a field that happened to be on the wire. Still held as
-a fallback — the per-seat trays are staying.
+and show each player's chosen void suit. **The redaction decision it needed has
+since been made and shipped:** `PublicPlayer.firstDiscardIsVoid` says whether a
+seat's `discards[0]` is the tile they declared, and is false until that seat flips
+it — which is when a real table learns it, and is the deliberate reveal A40 said
+this needed rather than a field that happened to be on the wire. The PDF edge case
+is handled by the same derivation: a player may declare a suit they hold none of, a
+card indicator stands in, and no tile ever reveals it (`usedIndicator`). Each seat's
+declaration is drawn above their own pile today.
+
+What is left is the layout, and it got harder rather than easier — the middle now
+holds the wall diagram, the last discard and the history control, so the empty
+space that motivated a central pool is gone. Still a fallback; the per-seat trays
+are staying.
 
 **O4. Discard tile styling** — ✅ Done (2026-08-01), and it wasn't the discard pile.
 The report was that the middle discard looked glossier than the hand and trays: the

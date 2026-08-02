@@ -183,11 +183,24 @@ left over the tile before it and DOM order paints it on top. Full detail in
   outline cubics). Only `.tile-mark` needs it now — the void screen spaces its
   tiles, so the ring wraps a whole tile rather than a pitch.
 
+**The board reads itself back** (2026-08-02). The middle of the well holds the
+**wall**, drawn as four walls two tiles high — seven stacks a side, flush and
+lapped, so 4 × 7 × 2 = 56 is exactly what the deal leaves and the diagram *is* the
+wall. Emptied slots stay drawn and go dark; a bar that only shrinks gives you
+nothing to measure against. It is a square that fits the well (198×401 on one
+phone, 128×61 on a short one), absolutely positioned behind the contents so it
+costs no height. Each seat's **void declaration** sits above their pile with a
+white glow, since it is the one public statement of what they declared —
+`PublicPlayer.firstDiscardIsVoid` is derived, and **false until the flip**, which
+is when a real table learns it. Every zone centres on its content: the hand, the
+melds, and the trays, each of which is now drawn round its pile rather than across
+the screen.
+
 **Open** (see the last section of [TODO.md](./TODO.md)): a central discard pool is
-held as a fallback, and needs a deliberate reveal for opponents' void suits — A40
-just stopped those leaking through the event log, so they are genuinely private
-now. The release binary embedding the tile SVGs still contradicts the licence note
-in [ARCHITECTURE.md §13](./ARCHITECTURE.md#13-license--credits).
+still held as a fallback. Its redaction question is answered — `firstDiscardIsVoid`
+is the deliberate reveal it needed — but the middle is no longer the empty space
+that motivated it. The release binary embedding the tile SVGs still contradicts the
+licence note in [ARCHITECTURE.md §13](./ARCHITECTURE.md#13-license--credits).
 
 A real landscape layout for phones (R4 Phase 2 in
 [docs/viewport-audit.md](./docs/viewport-audit.md)) stays shelved with its reasons
