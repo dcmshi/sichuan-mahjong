@@ -30,6 +30,10 @@ services:
     envVars:
       - key: NODE_VERSION
         value: "22"
+      # NOTE (2026-08-02): this is *not* what the live service does. Replays are
+      # served (/api/replay/:id returns 200), so finished rounds are recorded —
+      # which is what made the NDRV "invalid Hu" report answerable without
+      # reproducing it. Treat the paragraph below as the intent, not the state.
       # Free tier has no persistent disk: SQLite would write to a filesystem
       # that does not survive a deploy. The server already runs without it
       # (getDb returns null and every caller handles that), so games are

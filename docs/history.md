@@ -11,6 +11,49 @@ file had reached 1,566 lines of which two were actually open.
 
 ---
 
+## ✅ "Hu was declared but it was not a valid hand" — the reveal, not the engine (2026-08-02)
+
+Reported from live room **NDRV**. The engine was exonerated and the round-end
+reveal was at fault, so this is worth recording for the method as much as the fix.
+
+**How it was checked.** `render.yaml` says the free tier has no disk and so
+persistence and replays are off — but `/api/replay/1` on the live service
+returned **200**, not 404, so the comment is wrong and every finished round is
+recorded. Ids 3, 4 and 5 are NDRV's three rounds with full action logs. Because
+`hand.ts` is untouched by N2, the local engine *is* the deployed one, so each
+recorded `HuRecord` could be re-checked against `isWinningHand` directly rather
+than by replaying. **All nine wins were valid** — correct tile counts, real
+winning shapes, void suits consistent with the tiles held.
+
+**The actual bug.** `RoundEndRow` drew `player.hand` and the melds, and nothing
+else. On a Hu by discard the winning tile never enters `hand`: `applyHuStatus`
+scores with `[...player.hand, actualWinTile]` and leaves the tile in the
+discarder's pile. So the reveal showed **13 tiles that plainly do not win** —
+which reads exactly as the engine having accepted an invalid Hu. Seven of the
+nine NDRV wins were discard wins and every one of them was drawn one tile short;
+the two self-draws were complete, because a self-drawn tile *is* in the hand.
+That inconsistency between the two win types is the tell.
+
+**Why the fix is in the client.** Adding the tile to `player.hand` in the engine
+would double-count it: the engine never removes it from the discarder's
+`discards`, so the same tile would exist twice and break the 108-tile
+conservation property. `separateWinningTile` returns it only for a discard win,
+and the reveal draws it ringed and set apart — which is also how a real table
+leaves the winning tile.
+
+**The guard** is the nine real NDRV wins as fixtures, asserting
+`revealedTileCount === 14 + kongs`. One case deliberately re-derives the old
+behaviour and asserts all seven discard wins were short by exactly one, so the
+regression is pinned rather than merely fixed.
+
+Two lessons. Replays make a live report answerable without reproducing it — the
+`/api/replay/:id` route paid for itself here. And `RoundResult.hand` is
+documented as "concealed hand, revealed", which is true and still not the
+winning hand; a field whose name is accurate can still be the wrong thing to
+draw.
+
+---
+
 ## ✅ N2 — the dice are real now (2026-08-02)
 
 Two throws, both with two dice, both from `rng.ts` on a stream of their own

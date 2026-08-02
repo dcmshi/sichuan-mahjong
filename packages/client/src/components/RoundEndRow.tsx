@@ -2,7 +2,7 @@ import type { RoundResult, Seat } from '@sichuan-mahjong/engine';
 import { motion } from 'framer-motion';
 import { useState } from 'react';
 import { useT } from '../i18n/useT.js';
-import { formatFan, ledgerLines } from '../roundEnd.js';
+import { formatFan, ledgerLines, separateWinningTile } from '../roundEnd.js';
 import { useStore } from '../store/index.js';
 import { MeldDisplay } from './MeldDisplay.js';
 import { Tile } from './Tile.js';
@@ -28,6 +28,7 @@ export function RoundEndRow({
   // "You" or 你.
   const isPractice = useStore(s => s.isPractice);
   const lines = ledgerLines(player.ledger, player.seat);
+  const winningTile = separateWinningTile(player);
 
   return (
     <motion.div
@@ -78,6 +79,13 @@ export function RoundEndRow({
                 <Tile key={id} id={id} size="sm" />
               ))}
             </div>
+            {/* Ringed and set apart because it is the tile that won, and
+                because `separateWinningTile` explains why it is not in `hand`. */}
+            {winningTile !== null && (
+              <div className="flex flex-wrap tile-lap pl-2 rounded-lg ring-2 ring-amber-400">
+                <Tile id={winningTile} size="sm" />
+              </div>
+            )}
             {player.melds.length > 0 && (
               <div className="flex flex-wrap gap-1">
                 {player.melds.map((m, i) => (
