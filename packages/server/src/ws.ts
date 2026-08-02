@@ -12,6 +12,7 @@ import {
   isBotSpeed,
 } from './room.js';
 import type { RoomSlot } from './room.js';
+import { isAllowedOrigin } from './security.js';
 import { isWatchToken, issueToken, resolveToken, revokeTokensForCode } from './tokens.js';
 
 function send(ws: WebSocket, msg: ServerMsg): void {
@@ -201,6 +202,16 @@ export async function registerWsRoutes(app: FastifyInstance): Promise<void> {
   }>('/ws/:code', { websocket: true }, (socket, req) => {
     const code = req.params.code.toUpperCase();
     const token = req.query.token ?? '';
+
+    // A WS handshake ignores the same-origin policy, so without this any page on
+    // the internet can open sockets here — spending its *visitors'* IP addresses
+    // against the per-IP budget that is the whole reason a 4-character code is
+    // guess-resistant. (H2)
+    if (!isAllowedOrigin(req.headers.origin, req.headers.host)) {
+      send(socket, { t: 'error', code: 'forbidden_origin', message: 'Origin not allowed.' });
+      socket.close();
+      return;
+    }
 
     // Opening a socket is the other way to ask "is this code real?", so it
     // shares the lookup budget rather than getting its own. (C3)
