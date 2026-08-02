@@ -98,7 +98,7 @@ sichuan-mahjong/
 │   │   ├── public/
 │   │   │   └── tiles/            # 27 3D faces + back.svg + credits.json
 │   │   ├── src/
-│   │   │   ├── components/       # Tile, MeldDisplay, ClaimPanel, EventFeed, PlayHistory, ErrorToast, ConnectionLost
+│   │   │   ├── components/       # Tile, MeldDisplay, ClaimPanel, EventFeed, PlayHistory, WallGauge, ErrorToast, ConnectionLost
 │   │   │   ├── screens/          # Landing, HostSetup, JoinForm, Lobby, Game, RoundEnd, MatchEnd, Spectate, About
 │   │   │   ├── store/
 │   │   │   ├── ws/
@@ -231,7 +231,7 @@ export type GameConfig = {
   voidDiscardRule: 'strict' | 'lenient';   // default 'strict'; lenient = Novikov canonical
   enableFlowerPig: boolean;          // default false (HOUSE RULE — see §5.9)
   fanCap: number;                    // default 3 → max payment 2^3 = 8
-  claimWindowMs: number;             // default 3000
+  claimWindowMs: number;             // default 6000
 };
 
 export const DEFAULT_CONFIG: GameConfig = {
@@ -242,7 +242,7 @@ export const DEFAULT_CONFIG: GameConfig = {
   voidDiscardRule: 'strict',
   enableFlowerPig: false,
   fanCap: 3,
-  claimWindowMs: 3000,
+  claimWindowMs: 6000,
 };
 ```
 
@@ -419,7 +419,7 @@ The engine also rejects claims on void-suit tiles regardless of mode (no rationa
 
 Pung, exposed kong, and Hu can be claimed off a discard. **No chow claims.**
 
-Window duration = `config.claimWindowMs` (default 3000ms, per PDF). Closes early if every eligible player has explicitly passed.
+Window duration = `config.claimWindowMs` (default 6000ms). Closes early if every eligible player has explicitly passed, so the longer deadline only costs time when someone is actually deciding. It was 3000 until 2026-08-01: a claim is three decisions in one window — notice the discard, see that it fits, choose between Hu, Pung and Kong — and 3s only sufficed if you were already waiting for the tile.
 
 Resolution priority: **Hu > Kong > Pung**.
 - Multiple Hu claims on the same discard: all honored (see §5.6).

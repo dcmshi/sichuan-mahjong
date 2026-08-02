@@ -1,5 +1,38 @@
 # TODO
 
+## ✅ Five fixes off playing it (2026-08-01)
+
+From watching the lapped tiles in a real round.
+
+- [x] **The hand is centred.** It was left-aligned on anything wider than 13
+  capped tiles — 555px sitting at the left of a 1200px row. `justify-center` was
+  already there and did nothing: `.tile-run` is `inline-flex`, so it shrank to its
+  content and centred the tiles *within itself*. `w-full` on the hand's group is
+  the fix; melds still want the shrink-to-fit, so it isn't on `.tile-run`.
+- [x] **Illegal discards dim to 75%, not 60%.** Early in a hand the void suit is
+  the only legal discard, so ten of thirteen tiles dim at once and 60 read as
+  "these are barely here" rather than "not this turn".
+- [x] **The e2e spec stopped keying off that class.** It located discardable tiles
+  with `li:not(.opacity-60)`, so changing the value silently broke four projects.
+  There is a `data-discardable` hook now, as `data-void-tile` already was — the
+  second time a Tailwind class in a selector has cost a full e2e run.
+- [x] **The wall is drawn, not just counted** (`WallGauge`). A run of backs in the
+  well, one per four tiles and overlapped hard, so it starts at 14 and empties over
+  the round — roughly what the wall looks like from across a table. The exact count
+  stays in the top bar. Its tiles are `display: flex`: a `.tile` is inline-level,
+  and one shorter than the block's strut leaves the leading as dead space, which
+  cost 6px a back in the well of all places.
+- [x] **The void declaration got bigger, centred, and its marks flash.** Whole-hand
+  comparison is the point of that screen, so its tiles are `lg`, dropping to `md`
+  where four rows would push Confirm off the bottom (R3). The marks pulse rather
+  than sitting still — a static outline on four of thirteen reads as decoration.
+  Drawn as a `::after` from `currentColor` so only the ring animates and no layout
+  box moves; reduced motion rests it at full opacity.
+- [x] **The claim window is 6s, was 3s.** A claim is three decisions inside one
+  window — notice the discard, see that it fits your hand, choose between Hu, Pung
+  and Kong. It closes as soon as every eligible seat has acted, so the longer
+  deadline costs nothing except when someone is genuinely thinking.
+
 ## ✅ Tiles are the untouched art, and a run laps (2026-08-01)
 
 *"I think the art overlapped looks best, the css still looks kind of clunky"* —

@@ -188,6 +188,76 @@ body {
   z-index: 2;
 }
 
+/* The wall, drawn end-on in the well. Overlapped far harder than a run — 14
+   backs have to fit a well that is ~140px wide on a 320px phone — which is also
+   about what the wall looks like from across a table. Its own negative margin
+   rather than `.tile-lap`, because that one is 22.5% by definition: it is the
+   width of the art's body band, and this is a stack, not a run. */
+.wall-gauge-tile {
+  /* flex, so there is no line box: `.tile` is inline-level, and one shorter than
+     the block's own strut leaves the strut's leading as dead space beneath it —
+     6px a back, in a well that is fought over. */
+  display: flex;
+  width: 1.1rem;
+}
+
+.wall-gauge-tile + .wall-gauge-tile {
+  margin-left: -0.67rem;
+}
+
+/* The void declaration shows the whole hand, so you can weigh three suits
+   against each other rather than choosing blind — which is worth as much tile as
+   the viewport can afford. It drops a size where four rows of `lg` would push
+   Confirm off the bottom (R3's lesson), the same bargain `.last-discard-tile`
+   makes. */
+.void-hand-tile {
+  width: 3.5rem; /* Tile's "lg" width */
+}
+
+@media (max-height: 700px) {
+  .wall-gauge-tile {
+    width: 0.7rem;
+  }
+
+  .wall-gauge-tile + .wall-gauge-tile {
+    margin-left: -0.42rem;
+  }
+
+  .void-hand-tile {
+    width: 2.5rem; /* Tile's "md" width */
+  }
+}
+
+/* The marked tiles at the void declaration flash rather than sitting in a static
+   ring: these are the tiles you are about to give up, and an outline around four
+   of thirteen reads as decoration when it doesn't move. A pseudo-element, so only
+   the ring pulses — animating the wrapper would take the tile with it — and drawn
+   with spread on an inset-0 box, so it moves no layout box. The colour comes from
+   `currentColor`, which the suit's text class sets to its button's colour. */
+.tile-mark-flash {
+  position: relative;
+}
+
+.tile-mark-flash::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: 0 0 0 3px currentColor;
+  animation: void-mark-flash 1.1s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes void-mark-flash {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.2;
+  }
+}
+
 /* ---------------------------------------------------------------------------
    Board — vibrant jade felt table with recessed wells
 --------------------------------------------------------------------------- */

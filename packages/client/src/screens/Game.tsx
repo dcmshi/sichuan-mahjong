@@ -12,6 +12,7 @@ import { PlayHistory } from '../components/PlayHistory.js';
 import { PlayTopBar } from '../components/PlayTopBar.js';
 import { RotateOverlay } from '../components/RotateOverlay.js';
 import { Tile } from '../components/Tile.js';
+import { WallGauge } from '../components/WallGauge.js';
 import { useSound } from '../hooks/useSound.js';
 import { useT } from '../i18n/useT.js';
 import { useStore } from '../store/index.js';
@@ -150,13 +151,15 @@ function VoidDeclarePhase({ view }: { view: PlayerView }) {
     sou: 'bg-blue-700 hover:bg-blue-600 border-blue-500',
   };
 
-  // The ring takes each suit's *button* colour, so the marked tiles and the
-  // button you pressed are visibly the same choice. Written out rather than
-  // built from the suit name because Tailwind only ships classes it can see.
-  const SUIT_RINGS: Record<Suit, string> = {
-    man: 'ring-red-500',
-    pin: 'ring-emerald-500',
-    sou: 'ring-blue-500',
+  // The mark takes each suit's *button* colour, so the marked tiles and the
+  // button you pressed are visibly the same choice. A text colour, not a ring:
+  // `.tile-mark-flash` draws the ring from `currentColor` so it can pulse.
+  // Written out rather than built from the suit name because Tailwind only ships
+  // classes it can see.
+  const SUIT_MARKS: Record<Suit, string> = {
+    man: 'text-red-500',
+    pin: 'text-emerald-500',
+    sou: 'text-blue-500',
   };
 
   return (
@@ -194,7 +197,7 @@ function VoidDeclarePhase({ view }: { view: PlayerView }) {
           its button's colour instead of being the only thing shown. */}
       <div className="min-h-0 overflow-y-auto">
         <p className="text-sm text-green-300 mb-2">{t('void.yourHand')}</p>
-        <div className="flex flex-wrap gap-1">
+        <div className="flex flex-wrap justify-center gap-1">
           {view.you.hand.map(id => {
             const { suit } = tileFromType(tileTypeOf(id));
             const marked = suit === chosenSuit;
@@ -206,13 +209,18 @@ function VoidDeclarePhase({ view }: { view: PlayerView }) {
                 // count the tiles in this container — fine when only the chosen
                 // suit was rendered, wrong now that the whole hand is.
                 data-void-tile={marked ? 'true' : undefined}
-                // ring, so the mark is drawn outside the tile and moves no box.
-                // 3px rather than 2: pin's emerald is the one ring sitting on a
-                // green felt, and it needs the extra pixel to read as clearly as
-                // the red and the blue do. `tile-mark` matches the tile's corner.
-                className={marked ? `tile-mark ring-[3px] ${SUIT_RINGS[suit]}` : ''}
+                // The mark is drawn outside the tile and moves no box; 3px rather
+                // than 2 because pin's emerald is the one colour sitting on green
+                // felt, and it needs the extra pixel to read as clearly as the red
+                // and the blue. `tile-mark` matches the tile's corner.
+                className={[
+                  'void-hand-tile',
+                  marked ? `tile-mark tile-mark-flash ${SUIT_MARKS[suit]}` : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
               >
-                <Tile id={id} size="md" />
+                <Tile id={id} fill />
               </div>
             );
           })}
@@ -296,6 +304,10 @@ function PlayPhase({ view }: { view: PlayerView }) {
               line on a short viewport (index.css): it's pointer-events-none,
               so it can't scroll internally to make room for more. */}
           <EventFeed view={view} />
+          {/* The wall, above the discard it feeds — which is where it sits on a
+              table. The exact count is in the top bar; this is for reading how
+              much round is left without doing arithmetic. */}
+          <WallGauge remaining={view.wallRemaining} />
           {lastDiscardTile !== null && (
             <div className="flex flex-col items-center gap-1">
               <span className="text-xs text-green-300">{t('play.lastDiscard')}</span>

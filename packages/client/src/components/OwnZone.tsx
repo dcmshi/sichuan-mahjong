@@ -355,7 +355,12 @@ export function OwnZone({ view }: { view: PlayerView }) {
           // suit markings stop being readable. Flush at px-2 they reach 23.4px,
           // and lapping each tile over the one before it (tile-lap) spends the
           // hidden 22.5% on the art instead, which draws them at ~29px.
-          className="tile-run tile-lap pb-1 list-none justify-center"
+          //
+          // w-full is what makes justify-center mean anything: `.tile-run` is
+          // inline-flex, so on a window wider than 13 capped tiles it shrank to
+          // its content and sat against the left edge — centred within itself,
+          // which is no centring at all. Melds still want the shrink-to-fit.
+          className="tile-run tile-lap w-full pb-1 list-none justify-center"
         >
           {handOrder.map(id => (
             <Reorder.Item
@@ -363,7 +368,14 @@ export function OwnZone({ view }: { view: PlayerView }) {
               value={id}
               // Shrink-to-fit: every tile flexes to share the row width (capped so
               // small hands don't balloon), so the whole hand fits with no scroll.
-              className={`flex-1 min-w-0 max-w-[42px] ${legalDiscards.has(id) ? '' : 'opacity-60'}`}
+              // What the e2e spec reads to find a tile it may discard. It used
+              // to key off the dimming class itself, which silently stopped
+              // matching the moment that class changed value.
+              data-discardable={legalDiscards.has(id) ? 'true' : undefined}
+              // 75, not 60: early in a hand the void suit is the only legal
+              // discard, so most of the hand is dimmed at once and 60 read as
+              // "these tiles are barely here" rather than "not this turn".
+              className={`flex-1 min-w-0 max-w-[42px] ${legalDiscards.has(id) ? '' : 'opacity-75'}`}
               onPointerDown={e => {
                 tapStart.current = { x: e.clientX, y: e.clientY };
               }}

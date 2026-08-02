@@ -31,7 +31,12 @@ export const DEFAULT_CONFIG: GameConfig = {
   voidDiscardRule: 'strict',
   enableFlowerPig: false,
   fanCap: 3,
-  claimWindowMs: 3000,
+  // 6s, not the 3s this shipped with. A claim is three decisions inside one
+  // window — notice the discard, see that it fits your hand, and pick between Hu,
+  // Pung and Kong — and 3s was only ever enough if you were already expecting the
+  // tile. The window still closes as soon as every eligible seat has acted, so
+  // the longer deadline costs nothing except when someone is genuinely thinking.
+  claimWindowMs: 6000,
 };
 
 /**

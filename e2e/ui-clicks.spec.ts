@@ -109,14 +109,14 @@ test('opening played via real UI clicks (huan tiles, void suit, discard tap)', a
   const flipButton = page.getByRole('button', { name: /Flip your first discard/i });
   if (voidSuitTiles > 0) {
     await expect(flipButton).toBeVisible({ timeout: 10_000 });
-    await expect(page.locator('ul li:not(.opacity-60)')).toHaveCount(0);
+    await expect(page.locator('ul li[data-discardable]')).toHaveCount(0);
     await flipButton.click();
     await expect(flipButton).toBeHidden({ timeout: 10_000 });
   }
 
   // ── Wait for our next turn, then tap a discardable hand tile to select it and
   //    tap again to discard. ──
-  const discardable = page.locator('ul li:not(.opacity-60)');
+  const discardable = page.locator('ul li[data-discardable]');
   await expect.poll(() => discardable.count(), { timeout: 30_000 }).toBeGreaterThan(0);
   const before = await hand.count();
 
