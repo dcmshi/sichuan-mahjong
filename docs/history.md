@@ -47,9 +47,18 @@ Live at `https://sichuan-mahjong.onrender.com`. Post-deploy observations are in
   client-side ping events proves nothing. The observable is the socket outliving
   the 60s at which a missed pong would have terminated it.
 
-One thing came *out* of the deploy rather than into it: the `trustProxy` hop count
-is wrong for a Cloudflare-fronted Render service, and is now the open item in
-[TODO.md](../TODO.md).
+- [x] **The `trustProxy` hop count came out of the deploy, and the answer was to
+  leave it alone.** One hop keys per-IP limits to a Cloudflare edge address rather
+  than to the player, so `SM_TRUST_PROXY=2` looked like the fix. It was the
+  opposite: raising it moved `req.ip` onto an entry the client writes, and a forged
+  `X-Forwarded-For` took a request from 8-of-10 rejected to 10-of-10 allowed. Back
+  at one hop, 150 forged source addresses share one bucket and the header buys
+  nothing. **Render appends to `X-Forwarded-For` instead of replacing it**, so no
+  hop count can reach the player without also reaching something an attacker
+  controls — the granularity cost is accepted rather than outstanding. The lesson
+  is the shape of the test, not the number: checking only that the limit got
+  *tighter* would have passed a spoofable configuration, which is why the
+  acceptance test had a second half that forged the header.
 
 ## ✅ Search engines can read it — C10 (2026-08-02)
 

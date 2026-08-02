@@ -855,6 +855,14 @@ the client wrote — making every per-IP limit spoofable by adding a header. Hos
 defaults to 1 hop (`SM_TRUST_PROXY` to override); self-host trusts nothing,
 because nothing is in front of it.
 
+**One hop is the tested answer, not a starting guess — do not raise it.** Render
+fronts the service with Cloudflare and *appends* to `X-Forwarded-For` rather than
+replacing it, so a client-supplied value survives into the chain. At 2 hops a
+forged header took a request from 8-of-10 rejected to 10-of-10 allowed; at 1 hop
+150 forged addresses share one bucket. The cost is that `req.ip` is an edge
+address, so players behind one edge node share a budget — accepted deliberately,
+and recorded as [O5](#12-open-questions--explicit-deferrals).
+
 `render.yaml` in the repo root is the Blueprint. Full rationale, the deploy steps
 and the post-deploy checklist: [docs/design-hosted-server.md](./docs/design-hosted-server.md).
 
@@ -1039,6 +1047,19 @@ every tile is the 3D art, and a run *laps* to hide the doubled bevel instead of
 removing it. The two tiles matched either way, but the lap is the art as drawn,
 costs no glyph width, and retired `.tile-cell` and the whole flatten pipeline. See
 [docs/handoff-tile-rendering.md](./docs/handoff-tile-rendering.md).
+
+**O5. Per-IP limits are keyed to a Cloudflare edge address, not to the player.**
+Deferred deliberately (2026-08-02) after testing, not left unexamined. `trustProxy`
+stays at one hop because Render appends to `X-Forwarded-For` instead of replacing
+it, so any count that reaches the player also reaches an entry an attacker
+controls — raising it to 2 made every per-IP limit bypassable with a header. The
+residue is granularity: unrelated players behind the same edge node share a
+60/minute budget. The fix would be preferring `CF-Connecting-IP` in `clientKey()`,
+which Cloudflare overwrites per request; **not done**, because it is safe only if
+that header is sanitised and this very bug shows Render does not sanitise inbound
+headers in general, so it could only be verified *after* deploying. Revisit if
+real players start seeing `rate_limited`. Measurements in
+[docs/design-hosted-server.md §C4](./docs/design-hosted-server.md#c4-fastify-has-to-be-told-it-is-behind-a-proxy).
 
 ---
 

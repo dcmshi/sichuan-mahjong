@@ -1,8 +1,10 @@
 # Design — a hosted server on Render, without giving up self-host
 
 **Status:** 2026-08-02. **C1–C7, C9 and C10 are built.** C8 stays deliberately off
-(free tier, no disk). What is left is the deploy itself — see
-[Deploying](#deploying).
+(free tier, no disk). **It is deployed** — live at
+`https://sichuan-mahjong.onrender.com`; steps in [Deploying](#deploying), and what
+the first deploy taught in [What the first deploy actually
+showed](#what-the-first-deploy-actually-showed-2026-08-02).
 
 The ask: friends should be able to play without installing Tailscale. Keep the
 self-host path working.
@@ -152,18 +154,17 @@ Render terminates TLS and forwards. Without `trustProxy`, `req.ip` is the
 proxy's address for every request, so every per-IP limit in C3 becomes a single
 shared global limit and the first busy player locks everyone out.
 
-**Measured against the live service (2026-08-02): one hop is not enough.**
-Render fronts the service with Cloudflare — responses carry `server: cloudflare`
-— so there are at least two proxies in the chain, and trusting one lands on an
-edge address rather than on the player.
+**Measured against the live service (2026-08-02): one hop does not reach the
+player, and raising it is worse.** Render fronts the service with Cloudflare —
+responses carry `server: cloudflare` — so there are at least two proxies in the
+chain, and trusting one lands on an edge address rather than on the caller.
 
 The test that shows it: the hosted join budget is 60/minute, so 60 is the most
 any single key may spend. Driven over **one pinned TCP connection** the limiter
 cut in at request 71, near enough to 60 for one key. Driven over **~120 parallel
 connections** it allowed about 145 before the first 429. If `req.ip` were the
 client's address both runs would stop at 60, because both come from one machine.
-They don't, so the key varies with the connection — it is the edge node, not the
-caller.
+They don't, so the key varies with the connection — it is the edge node.
 
 Two consequences, neither of them a spoofing hole:
 
@@ -174,13 +175,47 @@ Two consequences, neither of them a spoofing hole:
 
 What is *not* broken is the property C4 is really about: because this is a hop
 count rather than `true`, `req.ip` still comes from infrastructure, and no
-header a client writes can move it.
+header a client writes can move it. That property is worth more than the
+granularity, which is what the next paragraph turns out to prove.
 
-**The fix is `SM_TRUST_PROXY`, and it must be verified rather than guessed** —
-over-trusting by one hop starts reading an entry the client controls, which is
-the failure `true` would have handed us. The acceptance test is the asymmetry
-above collapsing: with the right count, one machine cannot exceed 60 no matter
-how many connections it opens.
+**Tested, and the answer is: leave it at one hop.** `SM_TRUST_PROXY=2` was the
+obvious candidate — client → Cloudflare → Render's router → app — and it was
+wrong. Raising it moved `req.ip` onto an entry the client writes, which is
+precisely the failure `true` would have caused.
+
+The measurement, same client, same second, requests alternating:
+
+| `SM_TRUST_PROXY` | No header | Forged `X-Forwarded-For` |
+|---|---|---|
+| 2 | 8 of 10 rejected | **10 of 10 allowed** |
+| unset (1 hop) | 86 of 150 allowed | 94 of 150 allowed |
+
+At two hops the header alone flips a rejection into an acceptance. At one hop
+both groups are limited at the same rate, so 150 forged source addresses share
+one bucket and the header buys nothing.
+
+**No hop count can do better here**, and Render says why: it *appends* to
+`X-Forwarded-For` rather than replacing it, so a client-supplied value survives
+into the chain the app parses ([feature request][xff], acknowledged by Render
+with "we set the first IP in the list to the real client IP" — which is only
+true when the client did not send one). Any count that reaches leftward far
+enough to find the player also reaches an attacker-controlled entry. One hop
+reads the address Render's own edge appended, which no client can write.
+
+So the residual cost above — a shared per-edge-node budget — is **accepted, not
+outstanding**. It is a granularity problem, not a bypass, and 60/minute is far
+from binding for four friends looking up a code.
+
+The change that would fix granularity is preferring `CF-Connecting-IP` in
+`clientKey()`, which Cloudflare overwrites on every request. **Deliberately not
+done**: it is safe only if that header is sanitized, and this very bug proves
+Render does not sanitize inbound headers in general, so it would have to be
+verified *after* deploying — trading a safe-but-coarse limiter for a
+possibly-spoofable one to fix something that is not hurting. Revisit only if real
+players start seeing `rate_limited`; the test is the table above with
+`CF-Connecting-IP` in place of `X-Forwarded-For`.
+
+[xff]: https://feedback.render.com/features/p/send-the-correct-xforwardedfor
 
 ### C5. Spectating is unauthenticated, and that was fine until now
 

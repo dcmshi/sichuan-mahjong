@@ -196,8 +196,12 @@ Two things the deploy taught, both recorded in
 `package.json`**, so the security overrides live in `pnpm-workspace.yaml` and
 `packageManager` pins the toolchain — and the fix the error message suggests
 (`--no-frozen-lockfile`) would have dropped those pins rather than restored them.
-**Render fronts the service with Cloudflare**, so `trustProxy: 1` resolves to an
-edge address instead of the player; that is the open item in TODO.md.
+**Render fronts the service with Cloudflare and does not sanitise inbound
+`X-Forwarded-For`**, so `trustProxy` stays at **one hop** — tested, and raising it
+to 2 made every per-IP limit bypassable with a header. `req.ip` is therefore an
+edge address rather than the player, which is a granularity cost that is
+deliberately accepted; the reasoning and the measurements are in
+[docs/design-hosted-server.md §C4](./docs/design-hosted-server.md#c4-fastify-has-to-be-told-it-is-behind-a-proxy).
 
 **Open** (see [TODO.md](./TODO.md), which is now only the open list): a central discard pool is
 still held as a fallback. Its redaction question is answered — `firstDiscardIsVoid`

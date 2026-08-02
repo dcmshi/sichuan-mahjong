@@ -2,11 +2,13 @@
 
 4-player Sichuan "Bloody Rules" (血战到底) mahjong, playable in any modern browser. No accounts, no sign-up: a 4-letter room code is all anyone needs.
 
+**▶ Play it now: [sichuan-mahjong.onrender.com](https://sichuan-mahjong.onrender.com)** — nothing to install. It's on a free tier, so the first visit after a quiet spell takes a minute to wake up.
+
 Run it three ways, same build each time — the client talks to whatever origin served it, so nothing is configured per deployment:
 
 - **On your machine, over LAN** — friends on the same WiFi, no setup at all.
 - **On your machine, over [Tailscale](https://tailscale.com)** — friends anywhere, reachable only by people you've invited to your network.
-- **Hosted, on a public URL** — nothing for anyone to install. See [deploying to Render](./docs/design-hosted-server.md#deploying).
+- **Hosted, on a public URL** — what the link above is. See [deploying to Render](./docs/design-hosted-server.md#deploying) to run your own.
 
 <p align="center">
   <img src="docs/screenshot.png" width="300" alt="In-game board on mobile">
