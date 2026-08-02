@@ -29,8 +29,12 @@ export function Landing() {
   const setCode = useStore(s => s.setCode);
   const setPlayerName = useStore(s => s.setPlayerName);
 
-  // Check URL for pre-filled code (from /j/:code redirect)
-  const urlCode = new URLSearchParams(window.location.search).get('code') ?? '';
+  // Pre-filled code from the /j/:code redirect. Read once and normalized here,
+  // so the button label and the code we actually join with agree — a lowercase
+  // ?code=ab12 used to render "Join ab12" beside a lobby called AB12.
+  const [urlCode] = useState(() =>
+    (new URLSearchParams(window.location.search).get('code') ?? '').toUpperCase(),
+  );
 
   // A watch link (?watch=CODE.token) connects as a spectator straight away —
   // the secret is already in hand, so there is nothing left to ask for. (C5)
@@ -45,7 +49,7 @@ export function Landing() {
   }, []);
 
   function handleJoin() {
-    if (urlCode) setCode(urlCode.toUpperCase());
+    if (urlCode) setCode(urlCode);
     goTo('joinForm');
   }
 
