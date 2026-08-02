@@ -1,8 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <!-- App icon: a mahjong tile (red-dot back motif) on the board-felt green. -->
+  <!-- App icon: a mahjong tile bearing 中 (the red dragon) on the board-felt
+       green. 中 rather than the one-dot 筒 it used to draw, because 🀄 is the
+       glyph the app itself leads with on every screen and in the page title.
+
+       Drawn as two rectangles, not text: a favicon renders without web fonts,
+       so a <text> element would depend on the viewer having a CJK face
+       installed. Keep this geometry in step with scripts/icons/generate-icons.mjs,
+       which redraws it in JS rather than rasterising this file. -->
   <rect width="512" height="512" rx="96" fill="#0c5f57"/>
   <rect x="106" y="76" width="300" height="360" rx="44" fill="#fdfaf3"/>
   <rect x="106" y="76" width="300" height="360" rx="44" fill="none" stroke="#d9cfc0" stroke-width="10"/>
-  <circle cx="256" cy="256" r="86" fill="#b91c1c"/>
-  <circle cx="256" cy="256" r="34" fill="#fdfaf3"/>
+  <!-- 口: stroke is centred on the path, so the 130×122 box at 30 wide spans
+       176..336 / 180..332 with a 206..306 / 210..302 counter. -->
+  <rect x="191" y="195" width="130" height="122" fill="none" stroke="#b91c1c" stroke-width="30"/>
+  <!-- The vertical stroke, through the box and out both sides. -->
+  <rect x="241" y="112" width="30" height="288" fill="#b91c1c"/>
 </svg>

@@ -4,7 +4,7 @@
 //
 // Run: node scripts/icons/generate-icons.mjs
 //
-// No image dependency: the icon is five primitives, so it is drawn directly and
+// No image dependency: the icon is a handful of primitives, so it is drawn directly and
 // encoded with node:zlib. Keep the geometry here in step with icon.svg.
 
 import { writeFileSync } from 'node:fs';
@@ -17,7 +17,7 @@ const OUT_DIR = fileURLToPath(new URL('../../packages/client/public/', import.me
 const FELT = [0x0c, 0x5f, 0x57];
 const BONE = [0xfd, 0xfa, 0xf3];
 const EDGE = [0xd9, 0xcf, 0xc0];
-const DOT = [0xb9, 0x1c, 0x1c];
+const INK = [0xb9, 0x1c, 0x1c];
 
 /** Supersampling factor; the whole icon is drawn at N× and box-filtered down. */
 const SS = 4;
@@ -26,10 +26,6 @@ function insideRoundRect(px, py, x, y, w, h, r) {
   if (px < x || py < y || px > x + w || py > y + h) return false;
   const cx = Math.min(Math.max(px, x + r), x + w - r);
   const cy = Math.min(Math.max(py, y + r), y + h - r);
-  return (px - cx) ** 2 + (py - cy) ** 2 <= r * r;
-}
-
-function insideCircle(px, py, cx, cy, r) {
   return (px - cx) ** 2 + (py - cy) ** 2 <= r * r;
 }
 
@@ -42,8 +38,14 @@ function sample(px, py, bleed) {
   const bg = bleed || insideRoundRect(px, py, 0, 0, 512, 512, 96);
   if (!bg) return null;
 
-  if (insideCircle(px, py, 256, 256, 34)) return BONE;
-  if (insideCircle(px, py, 256, 256, 86)) return DOT;
+  // 中, drawn as 口 plus a vertical stroke through it. Geometry mirrors
+  // packages/client/public/icon.svg — see the note there about why it is
+  // rectangles and not text.
+  const inBox =
+    insideRoundRect(px, py, 176, 180, 160, 152, 0) &&
+    !insideRoundRect(px, py, 206, 210, 100, 92, 0);
+  const inStem = insideRoundRect(px, py, 241, 112, 30, 288, 0);
+  if (inBox || inStem) return INK;
   // 10px stroke centred on the tile outline.
   if (
     insideRoundRect(px, py, 101, 71, 310, 370, 49) &&
