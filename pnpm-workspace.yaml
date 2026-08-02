@@ -1,6 +1,14 @@
 packages:
   - 'packages/*'
 
+# Security pins. These live here rather than under `pnpm` in package.json
+# because pnpm has stopped reading that field, and a silently-empty override
+# set both drops the pins and fails `--frozen-lockfile` against a lockfile
+# that still records them.
+overrides:
+  vite@<6.4.2: ^6.4.2
+  esbuild@<0.25.0: ^0.25.0
+
 onlyBuiltDependencies:
   - '@biomejs/biome'
   - esbuild
