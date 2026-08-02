@@ -164,7 +164,6 @@ const en: Dict = {
   'end.hu': 'Hu!',
   'end.notReady': 'not ready',
   'end.ready': 'ready',
-  'end.details': 'Show scoring details',
   'end.handValue': 'Hand value {n}',
 
   'fan.Kong': 'Kong',
@@ -377,7 +376,6 @@ const zhHans: Dict = {
   'end.hu': '胡！',
   'end.notReady': '未听牌',
   'end.ready': '已听牌',
-  'end.details': '显示计分明细',
   'end.handValue': '番数 {n}',
 
   'fan.Kong': '杠',
@@ -586,7 +584,6 @@ const zhHant: Dict = {
   'end.hu': '胡！',
   'end.notReady': '未聽牌',
   'end.ready': '已聽牌',
-  'end.details': '顯示計分明細',
   'end.handValue': '番數 {n}',
 
   'fan.Kong': '槓',
