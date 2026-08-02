@@ -17,7 +17,7 @@ audit log, not a commitment — triage before picking up. Already-tracked items
   created, so a second tap POSTs `/api/lobby` again and starts a second game.
   Keep it disabled until `joined` (or a timeout).
 
-- [ ] **"Hard" bot is actually "medium".** `screens/HostSetup.tsx:173` —
+- [x] **"Hard" bot is actually "medium".** `screens/HostSetup.tsx:173` —
   `botLevel` is typed `'easy' | 'medium'` but the medium button renders
   `t('host.hard')`. Either the label oversells the difficulty or the key is
   wrong; players will read "Hard" and get medium.

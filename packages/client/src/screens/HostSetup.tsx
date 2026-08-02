@@ -170,7 +170,7 @@ export function HostSetup() {
                   : 'bg-black/20 text-white/70 hover:text-white',
               ].join(' ')}
             >
-              {t(level === 'easy' ? 'host.easy' : 'host.hard')}
+              {t(level === 'easy' ? 'host.easy' : 'host.medium')}
             </button>
           ))}
         </div>
