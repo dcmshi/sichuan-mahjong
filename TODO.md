@@ -233,6 +233,36 @@ so it isn't rediscovered as a bug.
   its own. Whichever way it goes, the fix wants a guard asserting the indicator
   has non-zero width, or it comes back. **Small.**
 
+- [ ] **N8 — the claim panel covers the hand you need to see.** Reported from
+  play, 2026-08-02. When a discard opens a claim window, the Pung / Kong / Hu /
+  Pass bar is `fixed bottom-0 left-0 right-0 … z-20`
+  (`components/ClaimPanel.tsx:78`) and your hand is the bottom-most row of the
+  play screen — so the bar lands squarely on top of it.
+
+  **This is a decision made blind, not just an occlusion.** Claiming is
+  frequently the *wrong* move: a pung can break a pair you were using, strand a
+  run, or leave you unable to discard into your void suit. Those are exactly the
+  judgements that need the hand on screen, and the panel hides it for the whole
+  10-second window.
+
+  The bar is `fixed`, so it is out of flow and pushes nothing. Three ways out:
+
+  1. **Pad the scroll container while the window is open** by the bar's height.
+     Smallest change, keeps the countdown pinned where the thumb already is.
+  2. **Put the bar in flow** at the end of the scroll container, so the hand
+     reflows above it. Cleaner, but the bar then moves with scroll position.
+  3. **Move it above the hand row** — least disruptive to layout, most
+     disruptive to muscle memory, since every other primary control is bottom-anchored.
+
+  (1) is the recommendation.
+
+  **The trap is `viewport.spec.ts`.** It asserts the play screen never overflows
+  its scroll container, sampling across a round on a 320×568 phone — and adding
+  padding during the claim window changes that budget at exactly the moment the
+  guard is least likely to sample. Whatever the fix, the guard needs to sample
+  *with a claim window open*, which today it only does by luck. R3's sticky
+  round-end bar is the precedent for getting this right. **Small-medium.**
+
 ---
 
 ## Shelved, with reasons
