@@ -2,7 +2,14 @@ import type { WebSocket } from '@fastify/websocket';
 import type { ClientMsg, GameConfig, LobbyPlayer, Seat, ServerMsg } from '@sichuan-mahjong/engine';
 import type { FastifyInstance } from 'fastify';
 import { allLobbies, canStart, deleteLobby, findOpenSeat, getLobby } from './lobby.js';
-import { type GameRoom, createRoom, getRoom } from './room.js';
+import {
+  type BotSpeed,
+  DEFAULT_BOT_SPEED,
+  type GameRoom,
+  createRoom,
+  getRoom,
+  isBotSpeed,
+} from './room.js';
 import type { RoomSlot } from './room.js';
 import { issueToken, resolveToken, revokeTokensForCode } from './tokens.js';
 
@@ -28,6 +35,16 @@ function parseClientMsg(raw: Buffer): ClientMsg | null {
 export function houseRules(rules: unknown): Partial<GameConfig> {
   const r = (rules ?? {}) as Record<string, unknown>;
   return { enableHuanSanZhang: r.huanSanZhang === true };
+}
+
+/**
+ * The host's bot pace, which is not a rule and so does not belong in
+ * `GameConfig` — anything unrecognised falls back rather than being trusted, as
+ * with every other field off the wire.
+ */
+export function botSpeedFrom(rules: unknown): BotSpeed {
+  const r = (rules ?? {}) as Record<string, unknown>;
+  return isBotSpeed(r.botSpeed) ? r.botSpeed : DEFAULT_BOT_SPEED;
 }
 
 /** Bind a socket to in-game message routing for `seat` (used on join, start, and reconnect). */
@@ -283,7 +300,7 @@ function handleLobbyMessage(
         difficulty: s?.difficulty ?? 'easy',
       }));
 
-      const room = createRoom(code, slots, houseRules(msg.rules));
+      const room = createRoom(code, slots, houseRules(msg.rules), botSpeedFrom(msg.rules));
 
       // Transfer lobby connections to the room, then start
       const conns = lobbyConnections.get(code);

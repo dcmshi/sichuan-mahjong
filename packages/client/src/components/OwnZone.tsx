@@ -158,6 +158,11 @@ export function OwnZone({ view }: { view: PlayerView }) {
     return () => clearTimeout(id);
   }, [flight]);
 
+  // The void declaration is drawn on its own above the pile, so the pile is
+  // everything after it.
+  const pileDiscards = view.you.firstDiscardIsVoid ? view.you.discards.slice(1) : view.you.discards;
+  const voidDiscardTile = view.you.firstDiscardIsVoid ? (view.you.discards[0] ?? null) : null;
+
   const isMyTurn = view.turn === seat && view.phase === 'play' && view.claimDeadline === null;
   const canDiscard = isMyTurn && view.yourLegalActions.some(a => a.t === 'discard');
   // The tile set aside at void declaration is the mandatory first discard: on this
@@ -225,7 +230,10 @@ export function OwnZone({ view }: { view: PlayerView }) {
           the clip that comes with overflow-x. */}
       {view.you.melds.length > 0 && (
         <div className="max-w-full overflow-x-auto px-3 pt-1 pb-1">
-          <div className="flex flex-nowrap gap-1 w-max">
+          {/* mx-auto, as across the table: `w-max` centres while the melds fit,
+              and once they don't the scroller takes over — centring the scroller
+              itself would put the leftmost meld out of reach. */}
+          <div className="flex flex-nowrap gap-1 w-max mx-auto">
             {view.you.melds.map((m, i) => (
               <MeldDisplay key={i} meld={m} />
             ))}
@@ -303,6 +311,26 @@ export function OwnZone({ view }: { view: PlayerView }) {
       {(view.you.discards.length > 0 || view.you.pendingFirstDiscard) && (
         <div className="px-2 pt-1 flex flex-col min-h-0">
           <span className="text-[10px] text-green-300 flex-shrink-0">{t('play.yourDiscards')}</span>
+          {/* The void declaration, held out of the pile and set above it: it is the
+              one public statement of what this seat declared, and reading it off
+              the front of a wrapping pile meant hunting for it. Face down until
+              its owner flips it on their first turn (A37). */}
+          {(view.you.pendingFirstDiscard || voidDiscardTile !== null) && (
+            <div className="flex justify-center pt-0.5">
+              {voidDiscardTile === null ? (
+                <TileBack size="sm" />
+              ) : (
+                <Tile
+                  id={voidDiscardTile}
+                  size="sm"
+                  voidDiscard
+                  lastDiscard={
+                    view.lastDiscard?.from === seat && voidDiscardTile === lastDiscardTile
+                  }
+                />
+              )}
+            </div>
+          )}
           {/* Flush, so a 320px phone fits 9 tiles a row instead of 8 and a full
               round's discards land in two rows rather than three.
               `content-start items-start` because a wrapping flex container
@@ -312,22 +340,22 @@ export function OwnZone({ view }: { view: PlayerView }) {
               drawn in the pile and in the air at the same time. */}
           <div
             ref={trayRef}
-            // justify-center to match the seat across from you, whose tray is a
-            // shrink-to-fit box its parent centres. This one is a full-width bar
-            // — it has to be, it wraps — so the rows are what centre.
-            className={`flex flex-wrap justify-center content-start items-start discard-tray tile-lap mt-0.5 min-h-0 overflow-y-auto ${
+            // w-fit mx-auto, like every other seat's: the tray is drawn around
+            // the pile rather than across the screen. It still wraps — fit-content
+            // is min(max-content, available), so a full round fills the row and
+            // spills onto a second — but three discards get a tray three tiles
+            // wide instead of a bar with a hole in it. justify-center stays for
+            // the last, partial row of a wrapped pile.
+            className={`flex flex-wrap justify-center content-start items-start w-fit max-w-full mx-auto discard-tray tile-lap mt-0.5 min-h-0 overflow-y-auto ${
               flight ? 'discard-landing' : ''
             }`}
           >
-            {/* Face down until you flip it on your first turn (A37) */}
-            {view.you.pendingFirstDiscard && <TileBack size="sm" />}
-            {view.you.discards.map((id, i) => (
+            {pileDiscards.map(id => (
               <Tile
                 key={id}
                 id={id}
                 size="sm"
                 lastDiscard={view.lastDiscard?.from === seat && id === lastDiscardTile}
-                voidDiscard={i === 0 && view.you.firstDiscardIsVoid}
               />
             ))}
           </div>

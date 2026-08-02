@@ -31,12 +31,14 @@ export const DEFAULT_CONFIG: GameConfig = {
   voidDiscardRule: 'strict',
   enableFlowerPig: false,
   fanCap: 3,
-  // 6s, not the 3s this shipped with. A claim is three decisions inside one
-  // window — notice the discard, see that it fits your hand, and pick between Hu,
-  // Pung and Kong — and 3s was only ever enough if you were already expecting the
-  // tile. The window still closes as soon as every eligible seat has acted, so
-  // the longer deadline costs nothing except when someone is genuinely thinking.
-  claimWindowMs: 6000,
+  // 10s. This shipped at 3, went to 6, and was still hurrying people: a claim is
+  // three decisions inside one window — notice the discard, see that it fits your
+  // hand, and pick between Hu, Pung and Kong — and you are usually looking at
+  // your own hand when it opens. The deadline is only ever a backstop: the window
+  // closes the moment every eligible seat has acted, and anyone who doesn't want
+  // the tile has a Pass button, so a longer one costs time only when someone is
+  // genuinely thinking. Bots answer within their pace and never wait it out.
+  claimWindowMs: 10000,
 };
 
 /**

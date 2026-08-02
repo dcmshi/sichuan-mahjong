@@ -231,7 +231,7 @@ export type GameConfig = {
   voidDiscardRule: 'strict' | 'lenient';   // default 'strict'; lenient = Novikov canonical
   enableFlowerPig: boolean;          // default false (HOUSE RULE — see §5.9)
   fanCap: number;                    // default 3 → max payment 2^3 = 8
-  claimWindowMs: number;             // default 6000
+  claimWindowMs: number;             // default 10000
 };
 
 export const DEFAULT_CONFIG: GameConfig = {
@@ -242,7 +242,7 @@ export const DEFAULT_CONFIG: GameConfig = {
   voidDiscardRule: 'strict',
   enableFlowerPig: false,
   fanCap: 3,
-  claimWindowMs: 6000,
+  claimWindowMs: 10000,
 };
 ```
 
@@ -420,7 +420,7 @@ The engine also rejects claims on void-suit tiles regardless of mode (no rationa
 
 Pung, exposed kong, and Hu can be claimed off a discard. **No chow claims.**
 
-Window duration = `config.claimWindowMs` (default 6000ms). Closes early if every eligible player has explicitly passed, so the longer deadline only costs time when someone is actually deciding. It was 3000 until 2026-08-01: a claim is three decisions in one window — notice the discard, see that it fits, choose between Hu, Pung and Kong — and 3s only sufficed if you were already waiting for the tile.
+Window duration = `config.claimWindowMs` (default 10000ms). Closes early once every eligible player has acted, so the deadline is a backstop rather than a pace: it costs time only when someone is genuinely deciding, and anyone who does not want the tile has a Pass button. It was 3000 until 2026-08-01, then 6000 the same day — a claim is three decisions in one window (notice the discard, see that it fits, choose between Hu, Pung and Kong) and you are usually looking at your own hand when it opens.
 
 Resolution priority: **Hu > Kong > Pung**.
 - Multiple Hu claims on the same discard: all honored (see §5.6).
@@ -958,12 +958,15 @@ decision, not a patch: exclude `tiles/` from the embed and ship them beside the
 binary, or accept the merge and state the binary's licence accordingly. **The npm
 package and the from-source path are unaffected** — both serve `tiles/` from disk.
 
-**O2. Bot pacing** — ✅ Done (2026-08-01), both halves. Bots pause
-`DEFAULT_BOT_PACE_MS` (700ms) a move instead of 150, retunable with
-`--bot-delay <ms>`; the pace lives in `room.ts` rather than `GameConfig` because
-it changes no rule and a replay of the same seed is identical at any value, and
-`SM_BOT_DELAY_MS` lets the vitest and Playwright configs pin the old 150 so
-whole-round suites don't pay for it. The history panel (`PlayHistory`) keeps the
+**O2. Bot pacing** — ✅ Done (2026-08-01), both halves. Bots pause instead of
+answering in 150ms, and the host picks the pace in the lobby: `BOT_SPEEDS` is
+slow 1800 / normal 900 / fast 400, carried on `startGame.rules.botSpeed` and
+narrowed by `botSpeedFrom` in `ws.ts` beside `houseRules`. The pace lives in
+`room.ts` rather than `GameConfig` because it changes no rule and a replay of the
+same seed is identical at any value — which is also why it is a room field, not
+part of the state. `--bot-delay <ms>` (and the `SM_BOT_DELAY_MS` seam the vitest
+and Playwright configs use) pins the whole process and **outranks the lobby**, or
+a host who picked "slow" would have the suites playing at 1.8s a move. The history panel (`PlayHistory`) keeps the
 round's events in the store — raw, with ids, so a language switch re-renders them
 and identical discards stay distinct — and `historyRowFor` is the inverse of
 `feedLineFor`: discards are the bulk of the list rather than dropped. Its control

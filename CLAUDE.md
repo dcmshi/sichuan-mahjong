@@ -103,7 +103,7 @@ e2e/
 scripts/
   icons/         PWA PNG generation (rerun if icon.svg changes)
   screenshots/   docs/*.png capture — `pnpm shots`, kept out of `pnpm e2e`
-  tiles/         flat tile faces: measure-glyphs.mjs (needs chromium) → flatten-tiles.mjs
+  tiles/         sandbox.html (open it directly) + measure-glyphs.mjs (needs chromium)
 ```
 
 Full tree: [ARCHITECTURE.md §3](./ARCHITECTURE.md#3-repo-layout).
@@ -146,11 +146,16 @@ the lobby; the choice rides on `startGame.rules` and is narrowed by `houseRules(
 in `ws.ts`. Practice mode therefore never shows the huan phase, which is why
 `e2e/house-rules.spec.ts` exists — it is the only spec that reaches that screen.
 
-**Bots pause 700ms a move** (2026-08-01), not the old 150 — a circuit used to
-resolve inside a second. `--bot-delay <ms>` retunes it; `SM_BOT_DELAY_MS` is the
-seam the vitest and Playwright configs use to pin the old pace, since whole-round
-suites assert nothing about timing. The 🗒 control in the play well opens the
-round's move history, which is what the transient event feed can't be.
+**Bot pace is the host's, from the lobby** (2026-08-02) — slow 1800 / normal 900
+/ fast 400, against the old flat 150 at which a circuit resolved inside a second.
+It rides on `startGame.rules.botSpeed`, is narrowed by `botSpeedFrom` in `ws.ts`,
+and is a `GameRoom` field rather than `GameConfig`: it changes no rule and a
+replay of the same seed is identical at any value. `--bot-delay <ms>` and the
+`SM_BOT_DELAY_MS` seam pin the process and **outrank the lobby**, which is what
+keeps whole-round suites fast. The claim window is 10s, up from 3 — it closes as
+soon as every eligible seat has acted, so the deadline is a backstop, not a pace.
+The 🗒 control in the play well opens the round's move history, which is what the
+transient event feed can't be.
 
 **Tiles are the untouched art, and a run laps** (2026-08-01). Each source SVG is a
 complete 3D tile, so two of them edge to edge show two bevels where a real run

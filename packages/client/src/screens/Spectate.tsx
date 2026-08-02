@@ -12,6 +12,10 @@ function SeatRow({ view, seat }: { view: SpectatorView; seat: number }) {
   const isTurn = view.turn === seat;
   const isDealer = view.dealer === seat;
   const lastFromHere = view.lastDiscard?.from === seat ? view.lastDiscard.tile : null;
+  // The void declaration is drawn on its own above the pile, so the pile is
+  // everything after it.
+  const pileDiscards = p.firstDiscardIsVoid ? p.discards.slice(1) : p.discards;
+  const voidDiscardTile = p.firstDiscardIsVoid ? (p.discards[0] ?? null) : null;
 
   return (
     <div
@@ -65,18 +69,28 @@ function SeatRow({ view, seat }: { view: SpectatorView; seat: number }) {
         )}
       </div>
 
-      {(p.discards.length > 0 || p.pendingFirstDiscard) && (
-        <div className="flex flex-wrap discard-tray tile-lap">
-          {/* Face down until its owner flips it on their first turn (A37) */}
-          {p.pendingFirstDiscard && <TileBack size="sm" />}
-          {p.discards.map((id, i) => (
+      {/* The void declaration, held out of the pile and set above it: it is the
+              one public statement of what this seat declared, and reading it off
+              the front of a wrapping pile meant hunting for it. Face down until
+              its owner flips it on their first turn (A37). */}
+      {(p.pendingFirstDiscard || voidDiscardTile !== null) && (
+        <div className="flex">
+          {voidDiscardTile === null ? (
+            <TileBack size="sm" />
+          ) : (
             <Tile
-              key={id}
-              id={id}
+              id={voidDiscardTile}
               size="sm"
-              lastDiscard={id === lastFromHere}
-              voidDiscard={i === 0 && p.firstDiscardIsVoid}
+              voidDiscard
+              lastDiscard={voidDiscardTile === lastFromHere}
             />
+          )}
+        </div>
+      )}
+      {pileDiscards.length > 0 && (
+        <div className="flex flex-wrap discard-tray tile-lap">
+          {pileDiscards.map(id => (
+            <Tile key={id} id={id} size="sm" lastDiscard={id === lastFromHere} />
           ))}
         </div>
       )}

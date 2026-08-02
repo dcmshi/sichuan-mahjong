@@ -48,7 +48,12 @@ export type ClientMsg =
    * older client (or a rejoining one) still starts a game on the defaults, and
    * every field is validated at the WS boundary — `ws.ts` trusts nothing.
    */
-  | { t: 'startGame'; rules?: { huanSanZhang?: boolean } }
+  | {
+      t: 'startGame';
+      /** Host-only lobby choices. `botSpeed` is a pace, not a rule — the server
+          keeps it out of GameConfig so a replay is identical at any value. */
+      rules?: { huanSanZhang?: boolean; botSpeed?: 'slow' | 'normal' | 'fast' };
+    }
   | { t: 'nextRound' }
   | { t: 'endMatch' }
   | { t: 'action'; action: GameAction };

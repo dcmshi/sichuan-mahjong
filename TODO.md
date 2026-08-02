@@ -1,5 +1,34 @@
 # TODO
 
+## ✅ Bot pace is the host's, and the declaration sits above the pile (2026-08-02)
+
+- [x] **Bot pace is a lobby setting** — Slow / Normal / Fast, 1800 / 900 / 400ms.
+  It rides on `startGame.rules.botSpeed`, is narrowed by `botSpeedFrom` beside
+  `houseRules`, and is a `GameRoom` field rather than `GameConfig`: it changes no
+  rule and a replay of the same seed is identical at any value. Normal is 900, up
+  from the 700 that still played too fast.
+  **`--bot-delay` outranks it**, along with the `SM_BOT_DELAY_MS` seam — otherwise
+  a host who picked Slow would have the Playwright suite running at 1.8s a move.
+- [x] **The claim window is 10s**, from 3 → 6 → 10 over one day of playing it. It
+  closes the moment every eligible seat has acted and anyone uninterested has a
+  Pass button, so the deadline is a backstop rather than a pace, and the only cost
+  of a long one is to someone who is genuinely thinking.
+- [x] **The void declaration is held out of the pile**, on its own line above it,
+  for all four seats and the spectator. It is the one public statement of what a
+  seat declared, and hunting for it at the front of a wrapping pile was the thing
+  marking it in place hadn't fixed. The face-down tile occupies the same slot
+  before the flip, so the row doesn't appear from nowhere on turn 1. It also drops
+  the caveat from the entry below: an opponent's capped tray can no longer scroll
+  its void discard out of sight, because it was never in the tray.
+- [x] **Your own tray is drawn round the pile, not across the screen** — `w-fit
+  mx-auto`, like every other seat's. It still wraps: `fit-content` is
+  min(max-content, available), so a full round fills the row and spills onto a
+  second, but three discards get a tray three tiles wide.
+- [x] **Your melds centre**, with the `mx-auto` the seat across the table already
+  had — `w-max` centres while they fit, and the scroller takes over when they
+  don't, because centring the scroller itself would put the leftmost meld out of
+  reach.
+
 ## ✅ The wall stacks and laps, and the void discard is marked (2026-08-01)
 
 - [x] **Stacks, not two rows.** Each wall is seven stacks two tiles high, with the

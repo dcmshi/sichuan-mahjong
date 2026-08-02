@@ -34,24 +34,32 @@ const RECONNECT_TIMEOUT_MS = 60_000;
 const PERSIST_DEBOUNCE_MS = 1000;
 
 /**
- * How long a bot pauses before acting. This was 150ms, at which a circuit of
- * three bots — discard, claim window, discard, discard — resolved inside a
- * second: by the time you looked up, the tile you might have ponged was four
- * discards back. The transient event feed doesn't recover it either (it holds
- * two lines for 3.5s and drops to one on a short viewport, by design), so the
- * pace itself had to give. (O2)
+ * How long a bot pauses before acting, by the host's choice in the lobby. This
+ * was 150ms flat, at which a circuit of three bots — discard, claim window,
+ * discard, discard — resolved inside a second: by the time you looked up, the
+ * tile you might have ponged was four discards back. The transient event feed
+ * doesn't recover it either (two lines for 3.5s, one on a short viewport, by
+ * design), so the pace itself had to give. (O2)
  *
  * A pace, not a rule: it lives here rather than in `GameConfig` because it
  * changes nothing about the game, and a replay of the same seed is identical at
- * any value.
+ * any value. Normal was 700 and is 900 — it only reads as deliberate once it is
+ * slower than the eye expects.
  */
-const DEFAULT_BOT_PACE_MS = 700;
+export const BOT_SPEEDS = { fast: 400, normal: 900, slow: 1800 } as const;
+export type BotSpeed = keyof typeof BOT_SPEEDS;
+export const DEFAULT_BOT_SPEED: BotSpeed = 'normal';
+
 const MAX_BOT_PACE_MS = 5000;
+
+export function isBotSpeed(v: unknown): v is BotSpeed {
+  return v === 'slow' || v === 'normal' || v === 'fast';
+}
 
 /**
  * `SM_BOT_DELAY_MS` is the harness seam: the unit and Playwright suites play
- * whole rounds through bots, so they pin the old 150ms rather than pay four
- * seconds a circuit for a pace no assertion looks at.
+ * whole rounds through bots, so they pin 150ms rather than pay minutes a suite
+ * for a pace no assertion looks at.
  */
 function paceFromEnv(): number | null {
   const raw = process.env.SM_BOT_DELAY_MS;
@@ -60,20 +68,26 @@ function paceFromEnv(): number | null {
   return Number.isFinite(ms) && ms >= 0 ? ms : null;
 }
 
-let botPace = clampBotPace(paceFromEnv() ?? DEFAULT_BOT_PACE_MS);
+/**
+ * An explicit process-wide pace, from `--bot-delay` or the env seam. Null means
+ * nobody asked, and each room uses whatever speed its host picked. It outranks
+ * the lobby on purpose: it is an operator's or a test harness's decision, and a
+ * suite that pinned 150ms must not have a lobby default put it back to 900.
+ */
+let paceOverride: number | null = paceFromEnv();
 
 function clampBotPace(ms: number): number {
-  if (!Number.isFinite(ms)) return DEFAULT_BOT_PACE_MS;
+  if (!Number.isFinite(ms)) return BOT_SPEEDS[DEFAULT_BOT_SPEED];
   return Math.min(MAX_BOT_PACE_MS, Math.max(0, Math.round(ms)));
 }
 
-/** Set the bot pace for every room in this process (CLI `--bot-delay`). */
+/** Pin the pace for every room in this process (CLI `--bot-delay`). */
 export function setBotPaceMs(ms: number): void {
-  botPace = clampBotPace(ms);
+  paceOverride = clampBotPace(ms);
 }
 
-export function botPaceMs(): number {
-  return botPace;
+export function botPaceMs(speed: BotSpeed = DEFAULT_BOT_SPEED): number {
+  return paceOverride ?? BOT_SPEEDS[speed];
 }
 
 /**
@@ -135,6 +149,8 @@ export class GameRoom {
    * "a rejection is unexpected" contract treats as bugs. (A26)
    */
   private botPendingSeats: Set<Seat> = new Set();
+  /** The host's lobby choice. `--bot-delay` outranks it — see `botPaceMs`. */
+  private readonly botSpeed: BotSpeed;
   private started = false;
   /**
    * Last time anything happened here (state change or a connection). A room can
@@ -150,9 +166,15 @@ export class GameRoom {
   /** Set once the match ends: the room is torn down and must accept no further work. (A11) */
   private ended = false;
 
-  constructor(code: string, slots: RoomSlot[], config: Partial<GameConfig> = {}) {
+  constructor(
+    code: string,
+    slots: RoomSlot[],
+    config: Partial<GameConfig> = {},
+    botSpeed: BotSpeed = DEFAULT_BOT_SPEED,
+  ) {
     this.code = code;
     this.slots = slots;
+    this.botSpeed = botSpeed;
     this.isHumanSeat = slots.map(s => !s.isBot);
     const players: [PlayerInit, PlayerInit, PlayerInit, PlayerInit] = slots.map(s => ({
       name: s.name,
@@ -260,7 +282,7 @@ export class GameRoom {
       this.botTimers.delete(timer);
       this.botPendingSeats.delete(seat);
       fn();
-    }, botPaceMs());
+    }, botPaceMs(this.botSpeed));
     this.botTimers.add(timer);
   }
 
@@ -774,8 +796,9 @@ export function createRoom(
   code: string,
   slots: RoomSlot[],
   config?: Partial<GameConfig>,
+  botSpeed?: BotSpeed,
 ): GameRoom {
-  const room = new GameRoom(code, slots, config);
+  const room = new GameRoom(code, slots, config, botSpeed);
   rooms.set(code, room);
   return room;
 }

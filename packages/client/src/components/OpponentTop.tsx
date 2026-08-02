@@ -7,6 +7,10 @@ import { Tile, TileBack } from './Tile.js';
 export function OpponentTop({ view, relSeat }: { view: PlayerView; relSeat: 0 | 1 | 2 }) {
   const opp = view.others[relSeat];
   const lastDiscardTile = view.lastDiscard?.from === opp.seat ? view.lastDiscard.tile : null;
+  // The void declaration is drawn on its own above the pile, so the pile is
+  // everything after it.
+  const pileDiscards = opp.firstDiscardIsVoid ? opp.discards.slice(1) : opp.discards;
+  const voidDiscardTile = opp.firstDiscardIsVoid ? (opp.discards[0] ?? null) : null;
   return (
     <div className="flex flex-col items-center gap-1 w-full min-w-0">
       <div
@@ -44,18 +48,28 @@ export function OpponentTop({ view, relSeat }: { view: PlayerView; relSeat: 0 | 
           that drives claims is also rendered large in the well, and this
           column is full-width, so a row holds plenty — no scroll needed
           (contrast OpponentSide, whose 80px column can't fit one). (R2.3) */}
-      {(opp.discards.length > 0 || opp.pendingFirstDiscard) && (
-        <div className="flex items-start max-w-full overflow-x-hidden discard-tray tile-lap">
-          {/* Their void tile is face down until they flip it on their first turn (A37) */}
-          {opp.pendingFirstDiscard && <TileBack size="sm" />}
-          {opp.discards.slice(-9).map((id, i) => (
+      {/* The void declaration, held out of the pile and set above it: it is the
+              one public statement of what this seat declared, and reading it off
+              the front of a wrapping pile meant hunting for it. Face down until
+              its owner flips it on their first turn (A37). */}
+      {(opp.pendingFirstDiscard || voidDiscardTile !== null) && (
+        <div className="flex justify-center">
+          {voidDiscardTile === null ? (
+            <TileBack size="sm" />
+          ) : (
             <Tile
-              key={id}
-              id={id}
+              id={voidDiscardTile}
               size="sm"
-              lastDiscard={id === lastDiscardTile}
-              voidDiscard={opp.firstDiscardIsVoid && id === opp.discards[0] && i === 0}
+              voidDiscard
+              lastDiscard={voidDiscardTile === lastDiscardTile}
             />
+          )}
+        </div>
+      )}
+      {pileDiscards.length > 0 && (
+        <div className="flex items-start max-w-full overflow-x-hidden discard-tray tile-lap">
+          {pileDiscards.slice(-9).map(id => (
+            <Tile key={id} id={id} size="sm" lastDiscard={id === lastDiscardTile} />
           ))}
         </div>
       )}

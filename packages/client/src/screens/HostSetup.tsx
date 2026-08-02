@@ -15,6 +15,7 @@ export function HostSetup() {
   );
   const [botLevel, setBotLevel] = useState<'easy' | 'medium'>('easy');
   const [huanSanZhang, setHuanSanZhang] = useState(false);
+  const [botSpeed, setBotSpeed] = useState<'slow' | 'normal' | 'fast'>('normal');
 
   const t = useT();
   const code = useStore(s => s.code);
@@ -182,6 +183,31 @@ export function HostSetup() {
         </span>
       </div>
 
+      {/* Bot pace. Not a rule — it changes nothing about the game and a replay of
+          the same seed is identical at any of them — so it rides alongside the
+          rules rather than inside them. Slow is for following what happened;
+          fast is for players who already know. */}
+      <div className="bg-black/20 rounded-xl px-3 py-2.5 text-sm">
+        <div className="font-semibold">{t('host.botSpeed')}</div>
+        <div className="text-xs text-green-300 leading-snug mb-2">{t('host.botSpeedHint')}</div>
+        <div className="flex gap-1.5">
+          {(['slow', 'normal', 'fast'] as const).map(speed => (
+            <button
+              key={speed}
+              type="button"
+              aria-pressed={botSpeed === speed}
+              onClick={() => setBotSpeed(speed)}
+              className={[
+                'flex-1 min-h-10 rounded-lg font-semibold transition-colors',
+                botSpeed === speed ? 'bg-amber-400 text-black' : 'bg-black/30 text-white/70',
+              ].join(' ')}
+            >
+              {t(`host.botSpeed.${speed}`)}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="flex flex-col gap-2">
         {[0, 1, 2, 3].map(i => {
           const p = lobbyPlayers[i];
@@ -230,7 +256,7 @@ export function HostSetup() {
       <button
         type="button"
         className="w-full py-4 bg-amber-500 hover:bg-amber-400 active:bg-amber-600 rounded-xl font-bold text-lg mt-auto disabled:opacity-40"
-        onClick={() => sendAction({ t: 'startGame', rules: { huanSanZhang } })}
+        onClick={() => sendAction({ t: 'startGame', rules: { huanSanZhang, botSpeed } })}
         disabled={!canStart}
       >
         {canStart ? t('host.start') : t('host.waitingPlayers')}

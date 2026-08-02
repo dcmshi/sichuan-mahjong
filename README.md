@@ -86,13 +86,14 @@ player passes three same-suit tiles first.
 | `--no-tailscale` | — | Disable Tailscale detection |
 | `--share` | — | Auto-create a Tailscale share invite (needs `TAILSCALE_API_KEY`, optionally `TAILSCALE_TAILNET`) |
 | `--data-dir` | OS user data dir | Where to store the SQLite database |
-| `--bot-delay` | `700` | Milliseconds a bot pauses per move (max 5000; `0` for instant) |
+| `--bot-delay` | host's choice | Milliseconds a bot pauses per move (max 5000; `0` for instant). Overrides the lobby setting for every room |
 | `--help` | — | Show usage and exit |
 
-Bots pause about three quarters of a second per move so a circuit of them is
-followable — at the old 150ms the discard you might have ponged was already four
-tiles back by the time you looked up. Lower `--bot-delay` if you'd rather grind
-practice hands quickly.
+**Bot pace** is a host setting in the lobby — Slow, Normal or Fast (1.8s, 0.9s,
+0.4s a move). Bots pause so a circuit of them is followable: at the old flat
+150ms the discard you might have ponged was already four tiles back by the time
+you looked up. `--bot-delay <ms>` pins the pace for every room on the server and
+overrides the lobby choice, which is what you want for grinding practice hands.
 
 ### As a joiner (connecting to someone else's game)
 
