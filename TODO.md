@@ -307,6 +307,41 @@ so it isn't rediscovered as a bug.
   the same "are there any bots" test, and neither should be reachable at a table
   of four people. **Small.**
 
+- [ ] **N10 — the board is drawn from one viewpoint, not from the table's
+  centre.** Reported 2026-08-02. Two related faults, both of which make the
+  board read as four copies of *your* view rather than one table seen from your
+  seat.
+
+  **Side seats draw their tiles upright.** `OpponentSide.tsx:90` is a
+  `flex flex-wrap w-20` column of upright tiles, capped at 6. At a real table
+  those players' tiles face sideways, and drawing them rotated would also be
+  *cheaper vertically*: a rotated tile is wider than it is tall, so a row of
+  them costs the column far less height than the wrapped upright pile does.
+  That matters — the side columns are what set the middle row's height, and R2.3
+  already had to shrink them once to let `flex-1 min-h-0` pay off.
+
+  **The across seat's discards run the same way yours do.**
+  `OpponentTop.tsx:71` renders `pileDiscards.slice(-9)` left to right, exactly
+  like your own tray. At a table, North's pile grows away from the centre from
+  *their* point of view, which from yours means it should mirror: **first
+  discard nearest the centre, the tray extending outward.** Today the two piles
+  read in the same direction, so the newest tile is on opposite sides depending
+  on whose pile you are looking at — the kind of thing that is never noticed
+  consciously and quietly makes the board harder to read.
+
+  Same fix for the side seats once they rotate: the pile should grow away from
+  the centre for its owner.
+
+  **Traps.** `viewport.spec.ts` asserts no `.discard-tray` tile draws outside
+  its tray box and that no tray overlaps `.play-well` — rotation changes every
+  one of those boxes, which is exactly what that guard exists for. And
+  `.tile-lap` laps tiles horizontally by 22.5% of the *art's* width; under
+  rotation the lap axis rotates with it, so read
+  [docs/handoff-tile-rendering.md](./docs/handoff-tile-rendering.md) before
+  assuming the lap still works. The caps (6 side, 9 across) exist for space and
+  are rendered with a "+N more" indicator rather than silently truncated;
+  rotation may free enough room to raise them. **Medium.**
+
 ---
 
 ## Shelved, with reasons
