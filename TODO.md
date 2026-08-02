@@ -126,23 +126,35 @@ so it isn't rediscovered as a bug.
   `GameRoom` field because it paces the server. Nothing here reaches the engine,
   so it changes no replay.
 
-  **Per-player or host-set?** Worth settling before building, because the two
-  cost different amounts. The animation is *local rendering only*: every client
-  gets the same `claimed` event and draws its own copy over a board that has
-  already updated underneath, so one player watching a slow flight while another
-  watches a fast one desyncs nothing and blocks nobody.
+  **Settled: per-player, in localStorage beside the language and sound toggles.**
+  The animation is *local rendering only* — every client gets the same `claimed`
+  event and draws its own copy over a board that has already updated underneath,
+  so one player watching a slow flight while another watches a fast one desyncs
+  nothing and blocks nobody. That also makes it the cheaper build: no protocol
+  field, no `ws.ts` narrowing, no room field for a value the server never reads.
 
-  That makes **per-player the cheaper option as well as the more flexible one** —
-  localStorage beside the language and sound toggles, which are already exactly
-  this shape, and no protocol change, no `ws.ts` narrowing, no room field. A
-  host-set version needs all three for a value the server never reads.
+  Nothing about this touches the lobby. **Small.**
 
-  **`botSpeed` is genuinely different and should stay global**: bots move on the
-  server, everyone watches the same moves land at the same moment, and a per-
-  player value there would be meaningless. That is the distinction — server-
-  driven pace is shared, local rendering is not.
+- [ ] **N5 — let the pace change once the game has started.** Bot pace is already
+  a host setting in the lobby (slow 1800 / normal 900 / fast 400, on
+  `startGame.rules.botSpeed`, narrowed by `botSpeedFrom` in `ws.ts`) — but it is
+  chosen once and then fixed for the match. The table that picks Normal and finds
+  it slow on round three has no way to say so without ending the match.
 
-  Small either way.
+  Unlike N4 this **is** genuinely global and has to stay server-side: bots move on
+  the server and everyone watches the same moves land at the same moment.
+
+  The mechanism is already most of the way there. `botSpeed` is a `GameRoom`
+  field rather than `GameConfig` precisely because it changes no rule and a replay
+  of the same seed is identical at any value, so it can be reassigned mid-match
+  without touching state or the snapshot. What is missing is a `ClientMsg` to
+  carry it, host-only enforcement at the WS boundary beside the other host
+  actions, and a control somewhere in the play screen.
+
+  Two things to keep: `--bot-delay` / `SM_BOT_DELAY_MS` must still **outrank** the
+  new message, or a host who picks Slow puts the Playwright suite at 1.8s a move;
+  and the value needs the same `botSpeedFrom` narrowing, since it would be a new
+  thing a client can assert. **Small-medium.**
 
 ---
 
