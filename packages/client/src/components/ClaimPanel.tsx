@@ -1,5 +1,6 @@
 import type { GameAction, Seat } from '@sichuan-mahjong/engine';
 import { useEffect, useState } from 'react';
+import { useSound } from '../hooks/useSound.js';
 import { useT } from '../i18n/useT.js';
 import { sendAction } from '../ws/client.js';
 
@@ -33,9 +34,15 @@ export function initialRemaining(claimDeadline: number, windowMs: number, now: n
 
 export function ClaimPanel({ seat, legalActions, claimDeadline, windowMs }: Props) {
   const [pct, setPct] = useState(100);
+  // One claim per window. The panel used to stay fully armed until the server's
+  // next view arrived, so on a slow connection a second tap sent the action
+  // again — and Hu twice is not the same as Hu once.
+  const [sent, setSent] = useState(false);
   const t = useT();
+  const play = useSound();
 
   useEffect(() => {
+    setSent(false);
     const startRemaining = initialRemaining(claimDeadline, windowMs, Date.now());
     // Elapsed time comes from the monotonic clock, so a system clock adjustment
     // mid-window can't jump the bar.
@@ -56,6 +63,11 @@ export function ClaimPanel({ seat, legalActions, claimDeadline, windowMs }: Prop
   const canPass = legalActions.some(a => a.t === 'pass');
 
   function act(action: GameAction) {
+    if (sent) return;
+    setSent(true);
+    // Every other action you take makes a noise; claiming was the one that
+    // didn't, so the loudest move in the game was the quietest.
+    play(action.t === 'pass' ? 'tile' : 'claim');
     sendAction({ t: 'action', action });
   }
 
@@ -76,8 +88,9 @@ export function ClaimPanel({ seat, legalActions, claimDeadline, windowMs }: Prop
         {canHu && (
           <button
             type="button"
-            className="flex-1 py-3 bg-red-600 hover:bg-red-500 active:bg-red-700 rounded-xl font-bold text-lg"
+            className="flex-1 py-3 bg-red-600 hover:bg-red-500 active:bg-red-700 rounded-xl font-bold text-lg disabled:opacity-40"
             onClick={() => act({ t: 'claim', seat, claim: { kind: 'hu' } })}
+            disabled={sent}
           >
             {t('claim.hu')}
           </button>
@@ -85,8 +98,9 @@ export function ClaimPanel({ seat, legalActions, claimDeadline, windowMs }: Prop
         {canKong && (
           <button
             type="button"
-            className="flex-1 py-3 bg-purple-600 hover:bg-purple-500 active:bg-purple-700 rounded-xl font-bold text-lg"
+            className="flex-1 py-3 bg-purple-600 hover:bg-purple-500 active:bg-purple-700 rounded-xl font-bold text-lg disabled:opacity-40"
             onClick={() => act({ t: 'claim', seat, claim: { kind: 'kong' } })}
+            disabled={sent}
           >
             {t('claim.kong')}
           </button>
@@ -94,8 +108,9 @@ export function ClaimPanel({ seat, legalActions, claimDeadline, windowMs }: Prop
         {canPung && (
           <button
             type="button"
-            className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 rounded-xl font-bold text-lg"
+            className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 rounded-xl font-bold text-lg disabled:opacity-40"
             onClick={() => act({ t: 'claim', seat, claim: { kind: 'pung' } })}
+            disabled={sent}
           >
             {t('claim.pung')}
           </button>
@@ -103,8 +118,9 @@ export function ClaimPanel({ seat, legalActions, claimDeadline, windowMs }: Prop
         {canPass && (
           <button
             type="button"
-            className="flex-1 py-3 bg-green-800 hover:bg-green-700 active:bg-green-900 rounded-xl font-bold text-lg"
+            className="flex-1 py-3 bg-green-800 hover:bg-green-700 active:bg-green-900 rounded-xl font-bold text-lg disabled:opacity-40"
             onClick={() => act({ t: 'pass', seat })}
+            disabled={sent}
           >
             {t('claim.pass')}
           </button>
