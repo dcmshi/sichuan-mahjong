@@ -56,6 +56,7 @@ export function EventFeed({ view }: { view: PlayerView }) {
   const lastEvents = useStore(s => s.lastEvents);
   const [lines, setLines] = useState<{ id: number; text: string }[]>([]);
   const nextId = useRef(0);
+  const timers = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
   const play = useSound();
   const t = useT();
 
@@ -83,9 +84,26 @@ export function EventFeed({ view }: { view: PlayerView }) {
 
     setLines(prev => [...prev, ...added].slice(-MAX_LINES));
     const ids = new Set(added.map(a => a.id));
-    const timer = setTimeout(() => setLines(prev => prev.filter(l => !ids.has(l.id))), VISIBLE_MS);
-    return () => clearTimeout(timer);
+    // Deliberately not cleared when this effect re-runs, only on unmount. Each
+    // timer owns one batch of lines, and `lastEvents` is a fresh array reference
+    // on every server push — so a per-run cleanup cancelled the pending timer,
+    // and the next run hit the `length === 0` guard and returned without ever
+    // rescheduling it. That line then had nothing left to remove it and sat on
+    // the board until the round ended.
+    const timer = setTimeout(() => {
+      timers.current.delete(timer);
+      setLines(prev => prev.filter(l => !ids.has(l.id)));
+    }, VISIBLE_MS);
+    timers.current.add(timer);
   }, [lastEvents, you]);
+
+  useEffect(() => {
+    const pending = timers.current;
+    return () => {
+      for (const timer of pending) clearTimeout(timer);
+      pending.clear();
+    };
+  }, []);
 
   // Positioned inside the play well by its parent: as a viewport-fixed overlay
   // it sat on top of the opponent-across name and hand.
