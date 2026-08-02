@@ -161,8 +161,19 @@ export async function registerHttpRoutes(
     return { exists: true, players, canStart: canStart(lobby) };
   });
 
-  // Replay — returns persisted action log for a completed round
+  // Replay — returns persisted action log for a completed round.
+  //
+  // **This needs an ownership check before persistence is ever turned back on.**
+  // Ids are sequential integers and there is no token here, so with a disk
+  // mounted (see design-hosted-server.md C8) walking the integers reads every
+  // completed game's action log, seed and room code. It is inert today only
+  // because the free tier has no disk and `getGame` short-circuits on a null db
+  // — which makes it a landmine rather than a bug. Rate-limited in the meantime
+  // so it stops being the one entry point with no budget at all. (M2)
   app.get<{ Params: { id: string } }>('/api/replay/:id', async (req, reply) => {
+    if (!allowJoin(clientKey(req))) {
+      return reply.code(429).send({ error: 'rate_limited' });
+    }
     const id = Number.parseInt(req.params.id, 10);
     if (Number.isNaN(id)) return reply.code(400).send({ error: 'invalid_id' });
     const record = getGame(id);
