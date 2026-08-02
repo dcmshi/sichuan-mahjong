@@ -388,6 +388,50 @@ so it isn't rediscovered as a bug.
   discards twice. And the mandatory first-discard flip (A35) is not a discard:
   on that turn there is nothing to arm. **Small-medium.**
 
+- [ ] **N12 — the event feed keeps its old language after a switch.** Reported
+  2026-08-02. "X ponged" and "X declared Hu!" stay in whatever language they
+  were announced in; only lines added *after* the switch use the new one.
+
+  **The cause is one word in a type.** `EventFeed` holds
+  `useState<{ id: number; text: string }[]>` and fills it with
+  `tr(line.key, …)` at announce time (`EventFeed.tsx`), so the translation is
+  baked into state and nothing re-runs when `lang` changes.
+
+  **The fix already exists twice over in this codebase.** `PlayHistory` keeps
+  `{ key, seat, tile }` and translates at render — which is why the move history
+  *does* switch language mid-round — and the store's own comment on `history`
+  says why: "Raw events, not formatted lines: the store has no translator, and a
+  player switching language mid-round should see the whole list switch with
+  them." The feed is the one place that didn't follow it. Store
+  `{ id, key, seat }` and call `t` in the JSX.
+
+  **Testable without a DOM**, unlike most feed behaviour: `feedLineFor` is
+  already exported and already returns `{ key, seat }`. The gap is only that the
+  component throws that structure away, so a test asserting the stored shape
+  carries no rendered text is enough. **Small.**
+
+- [ ] **N13 — whose turn it is deserves more than 10px of text.** Reported
+  2026-08-02. The only indication is `t('play.yourTurn')` in the top bar, in the
+  `text-xs` row, coloured amber (`PlayTopBar.tsx:50`). Nothing else on the board
+  changes: `isMyTurn` in `OwnZone` gates which buttons exist and whether tiles
+  carry `data-discardable`, but it lights nothing up. On a phone, at the top of
+  the screen, while you are looking at your hand at the bottom, it is easy to
+  miss that you are the one holding the game up.
+
+  Candidates, cheapest first: a ring or glow on the hand row itself, which is
+  where the player is already looking and where the action has to be taken; the
+  amber pulse the claim bar already uses, so the two read as the same family; or
+  a brief centre-screen cue at turn start, which is the most obvious and the most
+  intrusive. The hand-row treatment is the recommendation — it puts the signal
+  where the decision is.
+
+  **Fix it together with [N7](#open)**, which is the same indicator being
+  clipped to zero width on a 320px phone. N7 is "you cannot see it", this is
+  "seeing it is not enough"; fixing either alone leaves the other, and both want
+  the same measurement pass. Whatever lands needs a guard that the cue is
+  actually present when `view.turn === you`, since the current one is a colour
+  swap that no test asserts. **Small-medium.**
+
 ---
 
 ## Shelved, with reasons
