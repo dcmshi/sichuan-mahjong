@@ -52,6 +52,9 @@ export const DEFAULT_BOT_SPEED: BotSpeed = 'normal';
 
 const MAX_BOT_PACE_MS = 5000;
 
+/** Ceiling on read-only viewers of one room. See `addSpectator`. (L1) */
+export const MAX_SPECTATORS = 16;
+
 export function isBotSpeed(v: unknown): v is BotSpeed {
   return v === 'slow' || v === 'normal' || v === 'fast';
 }
@@ -330,16 +333,25 @@ export class GameRoom {
     }
   }
 
-  /** Attach a read-only spectator. They receive hand-hiding spectate views. */
-  addSpectator(ws: WebSocket): void {
+  /**
+   * Attach a read-only spectator. They receive hand-hiding spectate views.
+   *
+   * Returns false when the room is already at `MAX_SPECTATORS`. Every state
+   * change is broadcast to every spectator, so an uncapped set makes a leaked
+   * watch link a broadcast amplifier — N sockets multiply the per-move write
+   * cost. (L1)
+   */
+  addSpectator(ws: WebSocket): boolean {
+    if (this.spectators.size >= MAX_SPECTATORS) return false;
     this.spectators.add(ws);
-    if (!this.started) return;
+    if (!this.started) return true;
     this.send(ws, { t: 'spectate', view: projectSpectatorView(this.state), events: [] });
     // Mirrors the A9 player path: a client arriving at round end is handed the
     // finished round directly rather than waiting for a broadcast that already happened.
     if (this.state.phase === 'roundEnd') {
       this.send(ws, { t: 'roundEnd', results: this.buildRoundResult() });
     }
+    return true;
   }
 
   removeSpectator(ws: WebSocket): void {

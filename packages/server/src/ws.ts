@@ -238,7 +238,11 @@ export async function registerWsRoutes(app: FastifyInstance): Promise<void> {
         socket.close();
         return;
       }
-      room.addSpectator(socket);
+      if (!room.addSpectator(socket)) {
+        send(socket, { t: 'error', code: 'spectators_full', message: 'Too many spectators.' });
+        socket.close();
+        return;
+      }
       socket.on('close', () => room.removeSpectator(socket));
       return;
     }
