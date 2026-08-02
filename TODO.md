@@ -124,11 +124,25 @@ so it isn't rediscovered as a bug.
 
   **This is a client preference, not a rule** — unlike `botSpeed`, which is a
   `GameRoom` field because it paces the server. Nothing here reaches the engine,
-  so it changes no replay. The open question is whether it should be per-player
-  (localStorage, everyone picks their own) rather than host-set: bot pace has to
-  be shared because everyone watches the same bots, but how fast *your* tiles
-  slide is yours alone. **Recommend per-player, with the lobby setting as the
-  table default.** Small.
+  so it changes no replay.
+
+  **Per-player or host-set?** Worth settling before building, because the two
+  cost different amounts. The animation is *local rendering only*: every client
+  gets the same `claimed` event and draws its own copy over a board that has
+  already updated underneath, so one player watching a slow flight while another
+  watches a fast one desyncs nothing and blocks nobody.
+
+  That makes **per-player the cheaper option as well as the more flexible one** —
+  localStorage beside the language and sound toggles, which are already exactly
+  this shape, and no protocol change, no `ws.ts` narrowing, no room field. A
+  host-set version needs all three for a value the server never reads.
+
+  **`botSpeed` is genuinely different and should stay global**: bots move on the
+  server, everyone watches the same moves land at the same moment, and a per-
+  player value there would be meaningless. That is the distinction — server-
+  driven pace is shared, local rendering is not.
+
+  Small either way.
 
 ---
 
