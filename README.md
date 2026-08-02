@@ -87,6 +87,7 @@ player passes three same-suit tiles first.
 | `--share` | — | Auto-create a Tailscale share invite (needs `TAILSCALE_API_KEY`, optionally `TAILSCALE_TAILNET`) |
 | `--data-dir` | OS user data dir | Where to store the SQLite database |
 | `--bot-delay` | host's choice | Milliseconds a bot pauses per move (max 5000; `0` for instant). Overrides the lobby setting for every room |
+| `--credits` | — | Print tile artwork attribution and licences, then exit |
 | `--help` | — | Show usage and exit |
 
 **Bot pace** is a host setting in the lobby — Slow, Normal or Fast (1.8s, 0.9s,
@@ -172,3 +173,10 @@ For architecture details, type system, engine API, and design decisions see **[A
 Code: [MIT](./LICENSE)
 
 Tile SVGs in `packages/client/public/tiles/`: [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) via Wikimedia Commons. Attribution in [`credits.json`](./packages/client/public/tiles/credits.json), surfaced at `/about`.
+
+The **standalone binaries embed the tile art**, so each one is a combined work
+that ships both licences — MIT for its code, CC BY-SA 4.0 for the artwork inside
+it. Pass on a binary and you are passing on the artwork with it; run
+`sichuan-mahjong --credits` for the attribution that has to go along. Details in
+[LICENSE §3](./LICENSE). The npm package serves the tiles from disk as ordinary
+files.

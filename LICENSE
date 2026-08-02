@@ -1,0 +1,77 @@
+# Sichuan Mahjong — licensing
+
+Two licences apply to this project: **MIT** for the code, and **CC BY-SA 4.0**
+for the tile artwork. Section 3 states what that means for the compiled release
+binary, which contains both.
+
+---
+
+## 1. Code — MIT
+
+MIT License
+
+Copyright (c) 2026 the Sichuan Mahjong contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---
+
+## 2. Tile artwork — CC BY-SA 4.0
+
+The 27 suit tiles in `packages/client/public/tiles/` — `man-1`…`man-9`,
+`pin-1`…`pin-9`, `sou-1`…`sou-9` — come from the Wikimedia Commons category
+[SVG Planar illustrations of Mahjong tiles][commons].
+
+- **Author:** Cangjie6 (primary); Jerry Crimson Mann (original);
+  User:Dewclouds (vectorisation)
+- **Licence:** [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/)
+- **Changes:** the files are renamed (`MJw1-.svg` → `man-1.svg`, and so on) and
+  are otherwise used as published. Per-file attribution, including each file's
+  upstream name and Commons URL, is in
+  [`packages/client/public/tiles/credits.json`](packages/client/public/tiles/credits.json).
+
+`back.svg` is an original work for this project, drawn to match the dimensions
+and border of the Cangjie6 set. It is MIT, like the code.
+
+[commons]: https://commons.wikimedia.org/wiki/Category:SVG_Planar_illustrations_of_Mahjong_tiles
+
+---
+
+## 3. The release binary is a combined work, and ships both licences
+
+The standalone binaries built by `scripts/release/compile.ts` base64-embed the
+whole built client — the 27 CC BY-SA tiles included — into the executable. That
+is deliberate: a single self-contained file is the point of that build, and
+splitting the art back out would mean shipping a folder beside every binary.
+
+So a release binary is a combined work. **The MIT terms in section 1 cover its
+code; the CC BY-SA 4.0 terms in section 2 cover the tile artwork inside it, and
+travel with it.** Anyone redistributing a binary is redistributing the artwork
+and takes on the section 2 attribution obligation. The binary carries the
+attribution needed to satisfy it in three places, so it is never separated from
+the art:
+
+- `sichuan-mahjong --credits` prints it to the terminal,
+- the in-app About screen states it in all three UI languages, and
+- `/tiles/credits.json` is served with the per-file detail.
+
+Nothing here restricts the code: the engine, server and client sources remain
+MIT, and a build that omits `tiles/` carries no CC BY-SA obligation at all. The
+npm package and the from-source path serve the tiles from disk as ordinary
+files and are unaffected either way.

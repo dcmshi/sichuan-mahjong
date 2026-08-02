@@ -947,17 +947,19 @@ live.
 
 ### Open
 
-**O1. The release binary embeds the tile SVGs, which §13 says not to do.**
-`scripts/release/gen-embedded-client.mjs` walks `packages/client/dist`
-recursively and base64-embeds every file into
-`packages/server/src/generated/embedded-client.ts`, which is then compiled into
-the Bun binary — 28 SVGs, back down from 57 now that the flat derivatives are
-gone. §13 states the CC-BY-SA boundary depends on the SVGs staying "standalone
-fetched assets" and says explicitly not to "bundle, inline, or otherwise merge the
-SVGs into compiled JavaScript output". The two cannot both be true. Needs a
-decision, not a patch: exclude `tiles/` from the embed and ship them beside the
-binary, or accept the merge and state the binary's licence accordingly. **The npm
-package and the from-source path are unaffected** — both serve `tiles/` from disk.
+**O1. The release binary embeds the tile SVGs** — ✅ Resolved (2026-08-02) by
+**accepting the merge and stating the binary's licence**, rather than by
+excluding `tiles/` from the embed. `gen-embedded-client.mjs` keeps walking
+`packages/client/dist` and base64-embedding every file, 27 CC-BY-SA tiles
+included, because a self-contained executable is what that build is for; the
+alternative meant shipping a folder beside every binary and giving up the one
+property the binary has. What changed is the claim: §13 used to forbid merging
+the SVGs into compiled output while the binary did it anyway, so the **rule** was
+what was wrong. The repo now has a [LICENSE](./LICENSE) whose §3 says a binary is
+a combined work carrying both licences, and the CC-BY-SA attribution is reachable
+from the binary itself — `--credits`, the About screen, `/tiles/credits.json` —
+so it can never be separated from the art it covers. The npm and from-source
+paths are unaffected; both serve `tiles/` from disk.
 
 **O2. Bot pacing** — ✅ Done (2026-08-01), both halves. Bots pause instead of
 answering in 150ms, and the host picks the pace in the lobby: `BOT_SPEEDS` is
@@ -1001,9 +1003,26 @@ costs no glyph width, and retired `.tile-cell` and the whole flatten pipeline. S
 
 ## 13. License & credits
 
+Full text: [LICENSE](./LICENSE). In short:
+
 - Code: MIT.
-- Tile SVGs: per Wikimedia Commons, CC-BY-SA. Per-file attribution in `client/public/tiles/credits.json`, surfaced on `/about`.
-- The CC-BY-SA license applies **only** to the SVG files shipped as separate assets in `client/public/tiles/`. The surrounding code remains MIT. Do not bundle, inline, or otherwise merge the SVGs into compiled JavaScript output — keep them as standalone fetched assets so the license boundary stays clean.
+- Tile SVGs: the 27 suit tiles are Wikimedia Commons, CC-BY-SA 4.0, renamed and
+  otherwise as published. Per-file attribution in
+  `client/public/tiles/credits.json`, surfaced on `/about`. `back.svg` is
+  original to this project and MIT.
+- **The release binary is a combined work and ships both licenses** (2026-08-02,
+  closing O1). It base64-embeds the built client, tiles included, because a
+  single self-contained file is the point of that build. MIT covers its code;
+  CC-BY-SA 4.0 covers the artwork inside it and travels with it, so whoever
+  redistributes a binary redistributes the art and takes on the attribution.
+  **The attribution therefore has to be reachable from the binary**, and is,
+  three ways: `--credits` (the `CREDITS` text in `cli.ts`), the About screen in
+  all three UI languages, and `/tiles/credits.json`. An earlier version of this
+  section forbade merging the SVGs into compiled output; the binary did it
+  anyway, so the rule was the thing that was wrong.
+- Nothing above restricts the code. The npm package and the from-source path
+  serve `tiles/` from disk as ordinary files, and a build that omits `tiles/`
+  carries no CC-BY-SA obligation at all.
 
 ---
 

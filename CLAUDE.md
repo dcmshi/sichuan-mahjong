@@ -199,8 +199,14 @@ the screen.
 **Open** (see the last section of [TODO.md](./TODO.md)): a central discard pool is
 still held as a fallback. Its redaction question is answered — `firstDiscardIsVoid`
 is the deliberate reveal it needed — but the middle is no longer the empty space
-that motivated it. The release binary embedding the tile SVGs still contradicts the
-licence note in [ARCHITECTURE.md §13](./ARCHITECTURE.md#13-license--credits).
+that motivated it.
+
+**The binary embeds the tile art on purpose now** (2026-08-02). §13 used to forbid
+merging the CC-BY-SA SVGs into compiled output while the Bun binary did exactly
+that, so the rule was what was wrong. [LICENSE](./LICENSE) §3 states a binary as a
+combined work carrying both licences, and `--credits` puts the attribution inside
+the executable so it can't be separated from the art it covers. Adding a tile
+without a `credits.json` entry now fails a test in both packages.
 
 A real landscape layout for phones (R4 Phase 2 in
 [docs/viewport-audit.md](./docs/viewport-audit.md)) stays shelved with its reasons

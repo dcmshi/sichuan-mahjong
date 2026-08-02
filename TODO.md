@@ -1,5 +1,31 @@
 # TODO
 
+## ✅ O1 closed — the binary embeds the tile art on purpose (2026-08-02)
+
+- [x] **Accepted the merge rather than unpicking it.** `gen-embedded-client.mjs`
+  base64-embeds the whole client into the Bun binary, 27 CC-BY-SA tiles included,
+  while ARCHITECTURE §13 said never to "bundle, inline, or otherwise merge the
+  SVGs into compiled JavaScript output". The two had contradicted each other since
+  A20. The build is the part worth keeping — a self-contained executable is the
+  whole point of that path, and splitting `tiles/` back out means shipping a folder
+  beside every binary — so **the rule was what was wrong**, and it is gone.
+- [x] **The repo has a LICENSE**, which it did not before, despite README linking
+  `./LICENSE` and three docs claiming MIT. §1 is MIT for the code, §2 is CC-BY-SA
+  4.0 for the 27 suit tiles with the rename disclosed as the only change, and §3
+  states a release binary as a combined work carrying both.
+- [x] **The attribution is reachable from the binary**, which is what makes §3
+  hold rather than assert: `--credits` prints it (the `CREDITS` text in `cli.ts`),
+  the About screen carries it in all three languages, and `/tiles/credits.json`
+  has the per-file detail. A headless operator who never opens the UI can still
+  get at it.
+- [x] **Two tests keep the claim true.** `packages/server/tests/credits.test.ts`
+  asserts the four things CC-BY-SA 4.0 §3(a)(1) requires the text to carry —
+  creators, licence URI, source, and that the files were changed — plus the line
+  telling a redistributor the executable contains the art.
+  `packages/client/tests/tile-credits.test.ts` asserts `credits.json` and the
+  shipped SVGs agree **in both directions**, so a tile added without attribution
+  fails rather than quietly making LICENSE §2 false inside a compiled artifact.
+
 ## ✅ Bot pace is the host's, and the declaration sits above the pile (2026-08-02)
 
 - [x] **Bot pace is a lobby setting** — Slow / Normal / Fast, 1800 / 900 / 400ms.

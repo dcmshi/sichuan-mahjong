@@ -16,6 +16,33 @@ export type CliOptions = {
   help: boolean;
 };
 
+/**
+ * The CC BY-SA 4.0 attribution for the tile art, as text. The release binary
+ * embeds the SVGs (see LICENSE §3), so the attribution has to be reachable from
+ * the binary itself and not only from a file next to it. The About screen and
+ * /tiles/credits.json cover someone who opens the UI; this covers someone who
+ * only ever has the executable.
+ */
+export const CREDITS = `
+Sichuan Mahjong
+
+  Code                 MIT
+  Tile artwork         CC BY-SA 4.0
+
+The 27 suit tiles (man/pin/sou 1-9) are from the Wikimedia Commons category
+"SVG Planar illustrations of Mahjong tiles", by Cangjie6 (primary),
+Jerry Crimson Mann (original) and User:Dewclouds (vectorisation).
+They are renamed for this project and otherwise used as published.
+
+  Licence     https://creativecommons.org/licenses/by-sa/4.0/
+  Source      https://commons.wikimedia.org/wiki/Category:SVG_Planar_illustrations_of_Mahjong_tiles
+  Per-file    /tiles/credits.json on a running server
+
+The tile back is an original work for this project, and is MIT. This binary
+embeds the artwork, so redistributing it redistributes CC BY-SA material —
+keep this notice with it. Full terms: LICENSE in the source repository.
+`.trim();
+
 const HELP = `
 Sichuan Mahjong — local multiplayer server
 
@@ -29,8 +56,10 @@ Options:
   --share             Auto-create a Tailscale share invite for this node
                       (needs TAILSCALE_API_KEY; optional TAILSCALE_TAILNET)
   --data-dir <path>   Override SQLite data directory
-  --bot-delay <ms>    How long bots pause per move (default: 700, max 5000).
+  --bot-delay <ms>    How long bots pause per move (max 5000). Overrides the
+                      host's lobby choice for every room on this server.
                       Lower it to speed practice games up, 0 for instant.
+  --credits           Show tile artwork attribution and licences
   --help              Show this message
 `.trim();
 
@@ -52,6 +81,7 @@ export function parseCli(argv = process.argv.slice(2)): CliOptions {
         share: { type: 'boolean', default: false },
         'data-dir': { type: 'string' },
         'bot-delay': { type: 'string' },
+        credits: { type: 'boolean', default: false },
         help: { type: 'boolean', default: false },
       },
       strict: true,
@@ -59,6 +89,11 @@ export function parseCli(argv = process.argv.slice(2)): CliOptions {
 
     if (values.help) {
       console.log(HELP);
+      process.exit(0);
+    }
+
+    if (values.credits) {
+      console.log(CREDITS);
       process.exit(0);
     }
 
