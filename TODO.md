@@ -167,6 +167,40 @@ so it isn't rediscovered as a bug.
   and the value needs the same `botSpeedFrom` narrowing, since it would be a new
   thing a client can assert. **Small-medium.**
 
+- [ ] **N6 — let the host set the claim window.** How long you get to answer a
+  discard with Pung, Kong or Hu is fixed at **10s** (`GameConfig.claimWindowMs`).
+  It has already moved twice — 3s, then 6s, then 10s — which is the tell that
+  there is no single right number: a table of beginners wants longer, and four
+  people who know the game want the pause gone.
+
+  **Not the same thing as N4, and it cannot be per-player.** N4 is local
+  rendering — every client draws its own copy of an animation over a board that
+  has already updated, so one player watching a slow flight blocks nobody. The
+  claim window is a **deadline in engine state** that the whole table waits on:
+  play does not advance until it resolves. One window, one value, everybody's.
+  So it belongs beside `botSpeed` as a lobby setting.
+
+  **Nearly all of it is already built.** `claimWindowMs` lives in `GameConfig`,
+  `views.ts` projects `config` whole into `PlayerView`, and `ClaimPanel` already
+  takes `windowMs` as a prop — driving the countdown bar, the seconds-left
+  readout and F25's clock-skew range check off it. The server has simply never
+  set it, inheriting `DEFAULT_CONFIG`. So the work is a lobby control, a field on
+  `startGame.rules`, narrowing in `ws.ts`, and the existing `Partial<GameConfig>`
+  argument `createRoom` already takes. **No client countdown change at all.**
+
+  **Narrow it to presets, not a number.** `houseRules()` must not accept a free
+  integer off the wire: `claimWindowMs: 86400000` freezes a table until the room
+  sweeps, and `0` closes the window before a human can see it. Take a
+  `'quick' | 'normal' | 'relaxed'` enum the way `botSpeedFrom` takes `botSpeed`,
+  map it server-side to 5000 / 10000 / 20000, and fall back to normal for
+  anything unrecognised.
+
+  **Unlike `botSpeed` this one *is* a `GameConfig` field**, so it lands in
+  `GameState` and in the snapshot. That is fine for a lobby setting — it changes
+  no tile and no legal action — but it is why this should **not** be folded into
+  N5's mid-match control: reassigning a room field is not the same as mutating
+  engine config underneath a live game. **Small.**
+
 ---
 
 ## Shelved, with reasons
@@ -174,3 +208,9 @@ so it isn't rediscovered as a bug.
 - **A real landscape layout for phones** (R4 Phase 2). Reasons recorded in
   [docs/viewport-audit.md](./docs/viewport-audit.md); landscape shows a
   rotate-to-portrait prompt during play instead.
+
+- **The last three frontend-audit items** (2026-08-02), 17 of 20 having shipped.
+  Keyboard hand reordering, modal focus trapping, and spectator parity for
+  sound / move history / How-to-play. None is user-facing breakage, which is why
+  they are the ones left; each with its reasoning at the top of
+  [frontend_todo.md](./frontend_todo.md).

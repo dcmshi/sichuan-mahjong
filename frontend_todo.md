@@ -6,6 +6,23 @@ audit log, not a commitment — triage before picking up. Already-tracked items
 (landscape layout R4 Phase 2, central discard pool O3) live in
 [TODO.md](./TODO.md) and are not repeated here.
 
+**Shelved 2026-08-02, with 17 of 20 done.** The remainder is deliberately
+parked in favour of the feature work in [TODO.md](./TODO.md) — none of the
+three is user-facing breakage, which is why they are the ones left:
+
+- **Keyboard hand reordering** (Low) — the hand is draggable with a pointer and
+  not with a keyboard. Reordering is cosmetic: it changes no legal action and
+  the engine sorts on its own, so the keyboard user loses arrangement, not play.
+- **Modal focus trapping and restore** (Low, partly done) — `role`/`aria-modal`
+  and Escape-to-close shipped; Tab can still walk out of an open dialog into the
+  board behind it.
+- **Spectator parity** (Medium, partly done) — the language switch and match
+  totals shipped; sound, move history and How-to-play are still play-screen
+  only.
+
+Pick these back up when the feature list is clear, or sooner if one starts
+costing a real player something.
+
 ---
 
 ## High — user-facing broken or misleading behaviour
