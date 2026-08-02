@@ -9,6 +9,7 @@ export function RoundEnd() {
   const result = useStore(s => s.roundResult);
   const seat = useStore(s => s.seat);
   const matchScores = useStore(s => s.matchScores);
+  const countedRounds = useStore(s => s.countedRounds);
   const isHost = useStore(s => s.isHost);
   const resetSession = useStore(s => s.resetSession);
 
@@ -50,8 +51,11 @@ export function RoundEnd() {
         </div>
       </div>
 
-      {/* Match totals (if multiple rounds played) */}
-      {Object.keys(matchScores).length > 0 && (
+      {/* Match totals, only once there is more than one round to total. Keyed
+          off countedRounds rather than matchScores, which is already populated
+          by round 1 and so showed the same numbers twice, in two sections
+          sorted differently. */}
+      {countedRounds.length > 1 && (
         <div className="w-full max-w-sm sm:max-w-2xl flex flex-col gap-2">
           <p className="text-green-300 text-xs font-semibold uppercase tracking-wide">
             {t('end.matchTotal')}

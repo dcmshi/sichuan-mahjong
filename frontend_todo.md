@@ -22,7 +22,7 @@ audit log, not a commitment — triage before picking up. Already-tracked items
   `t('host.hard')`. Either the label oversells the difficulty or the key is
   wrong; players will read "Hard" and get medium.
 
-- [ ] **Match totals show after round 1, duplicating "This Round".**
+- [x] **Match totals show after round 1, duplicating "This Round".**
   `screens/RoundEnd.tsx:54` — the comment says "if multiple rounds played" but
   the guard is `Object.keys(matchScores).length > 0`, which is true after the
   first round. A one-round match shows the same numbers twice, in two sections
