@@ -82,6 +82,7 @@ export function HostSetup() {
           <input
             className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/50 text-lg focus:outline-none focus:border-amber-400"
             placeholder={t('join.name')}
+            aria-label={t('join.name')}
             value={name}
             onChange={e => setName(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && void createAndJoin()}

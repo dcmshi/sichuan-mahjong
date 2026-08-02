@@ -44,6 +44,9 @@ export function SpectateForm() {
         <input
           className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/50 text-sm font-mono text-center focus:outline-none focus:border-amber-400"
           placeholder={t('spec.linkPlaceholder')}
+          aria-label={t('spec.linkPlaceholder')}
+          autoCorrect="off"
+          spellCheck={false}
           value={ref}
           onChange={e => setRef(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && watch()}

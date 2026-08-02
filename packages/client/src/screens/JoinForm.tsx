@@ -70,6 +70,12 @@ export function JoinForm() {
         <input
           className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/50 text-xl font-mono uppercase tracking-widest text-center focus:outline-none focus:border-amber-400"
           placeholder={t('join.code')}
+          // A placeholder vanishes the moment you type, so it was never the label
+          // it was standing in for.
+          aria-label={t('join.code')}
+          autoCapitalize="characters"
+          autoCorrect="off"
+          spellCheck={false}
           value={code}
           onChange={e => setCode(e.target.value.toUpperCase().slice(0, 4))}
           maxLength={4}
@@ -79,6 +85,7 @@ export function JoinForm() {
         <input
           className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/50 text-lg focus:outline-none focus:border-amber-400"
           placeholder={t('join.name')}
+          aria-label={t('join.name')}
           value={name}
           onChange={e => setName(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && void handleJoin()}
