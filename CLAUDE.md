@@ -80,6 +80,7 @@ server stopped.
 packages/engine/src/
   tiles.ts       tile encoding (TileId 0..107, TileType 0..26)
   rng.ts         xoshiro128** seedable PRNG — the only source of randomness
+  dice.ts        the two throws: seating (highest is East) and the wall break
   hand.ts        isWinningHand, isTenpai, ukeire
   scoring.ts     fan calc, payment matrix, TMV
   claims.ts      claim window resolution
@@ -95,7 +96,10 @@ packages/client/src/
   main.tsx       window.__e2e test helpers (VITE_E2E builds only)
   store/         Zustand store (mirrors PlayerView)
   session.ts     seat token in localStorage — what makes "Rejoin" work
+  prefs.ts       per-player display prefs in localStorage (animation pace)
   ws/client.ts   WsClient singleton + sendAction
+  components/DiceOverlay.tsx  the two throws, revealed at the deal
+  components/SettingsMenu.tsx the ⚙ popover: sound + animation pace
 e2e/
   game.spec.ts   full bot round      } chromium only (drive the game via __e2e)
   match.spec.ts  2-round match       }
@@ -138,8 +142,11 @@ Full tree: [ARCHITECTURE.md §3](./ARCHITECTURE.md#3-repo-layout).
 
 All v1 work, six full-repo audit passes (A1–A40, the last found 2026-08-01), a
 frontend/design pass (F1–F25), round-end hand reveals with a fan/penalty
-breakdown (2026-07-31), and the mobile viewport work R1–R7 (2026-08-01) are
-complete. Per-item history is in [docs/history.md](./docs/history.md); the deferral record is
+breakdown (2026-07-31), the mobile viewport work R1–R7 (2026-08-01), the hosting
+work (C1–C10), and the first three feature items N1/N2/N4 (2026-08-02) are
+complete. A separate frontend audit shipped 17 of 20 items and the remaining
+three are shelved with reasons at the top of [frontend_todo.md](./frontend_todo.md).
+Per-item history is in [docs/history.md](./docs/history.md); the deferral record is
 [ARCHITECTURE.md §12](./ARCHITECTURE.md#12-open-questions--explicit-deferrals).
 
 **換三張 is opt-in, and off by default** (2026-08-01) — it is not in Novikov's
@@ -204,10 +211,40 @@ edge address rather than the player, which is a granularity cost that is
 deliberately accepted; the reasoning and the measurements are in
 [docs/design-hosted-server.md §C4](./docs/design-hosted-server.md#c4-fastify-has-to-be-told-it-is-behind-a-proxy).
 
-**Open** (see [TODO.md](./TODO.md), which is now only the open list): a central discard pool is
-still held as a fallback. Its redaction question is answered — `firstDiscardIsVoid`
-is the deliberate reveal it needed — but the middle is no longer the empty space
-that motivated it.
+**The dice are real** (2026-08-02, N2). Two throws, both with two dice, both from
+`rng.ts` on a stream of their own (`seed + ':dice'`) so they neither consume from
+nor perturb the shuffle. **Seating is on by default** — everyone throws, highest
+is East — unlike every other addition to Novikov, because the wall throw he *does*
+specify is meaningless without an East to throw it. Ties re-throw among the tied,
+capped at four rounds, then the lowest tied seat takes it. The wall break follows
+his three worked examples rather than his prose, and is applied as a **rotation of
+the wall array**, so no distribution changes — only which tiles a seed deals.
+`createGame`'s `dealer` is now `Seat | null`: null asks for the throw, a seat pins
+it (which is what `startNextRound` and dealer-sensitive tests use). The client
+reveals it in a two-stage overlay drawn with CSS 3D cubes — **no physics library**,
+because the outcome is decided before anything is drawn, so a physics engine would
+have to be rigged to land on a chosen face. [ARCHITECTURE.md §4.3.1](./ARCHITECTURE.md#431-the-dice-dicets).
+
+**Animation pace is per-player, in localStorage** (2026-08-02, N4). Speed
+(slow/medium/fast, default medium) and skip, behind the ⚙ menu in the play top
+bar — which **replaced** the standalone 🔊 button rather than joining it, because
+the icon cluster already leaves the turn indicator no room. The durations that
+shipped are now `fast`, so the default is 1.5× slower than before. Deliberately
+*not* beside `botSpeed` on `startGame.rules`: bots move on the server so their
+pace is the table's, but animation is local rendering over a board that has
+already updated. Kept separate from `prefers-reduced-motion`, which stays honoured
+globally — that is an accessibility signal, this is a taste.
+
+**Open** (see [TODO.md](./TODO.md), which is only the open list): a central discard
+pool (O3) is still held as a fallback — its redaction question is answered by
+`firstDiscardIsVoid`, but the middle is no longer the empty space that motivated
+it. Then N3 (winning hands in help), N5/N6/N9 (bot pace mid-match, the claim
+window as a lobby setting, and not offering bot pace at a table of four humans),
+and four found in play: **N7** the turn indicator renders at zero width on a 320px
+phone, **N8** the claim bar covers the hand — whose cause is tile *paint*, not bar
+position, so read [docs/handoff-tile-rendering.md](./docs/handoff-tile-rendering.md)
+first — **N10** side seats draw upright and the across pile does not mirror, and
+**N11** pre-selecting a discard while you wait.
 
 **The binary embeds the tile art on purpose now** (2026-08-02). §13 used to forbid
 merging the CC-BY-SA SVGs into compiled output while the Bun binary did exactly

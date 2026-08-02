@@ -71,6 +71,7 @@ sichuan-mahjong/
 │   │   ├── src/
 │   │   │   ├── tiles.ts          # tile encoding, wall, seeded shuffle
 │   │   │   ├── rng.ts            # xoshiro128** seedable PRNG
+│   │   │   ├── dice.ts           # the two throws: seating, and the wall break (§4.3.1)
 │   │   │   ├── melds.ts          # Meld types & detection
 │   │   │   ├── hand.ts           # win detection (regular + 7 pairs), tenpai (with exhaustive-wait), ukeire
 │   │   │   ├── scoring.ts        # fan calculation, compatibility table, payment matrix, TMV calc
@@ -99,13 +100,15 @@ sichuan-mahjong/
 │   │   ├── public/
 │   │   │   └── tiles/            # 27 3D faces + back.svg + credits.json
 │   │   ├── src/
-│   │   │   ├── components/       # Tile, MeldDisplay, ClaimPanel, EventFeed, PlayHistory, WallDiagram, ErrorToast, ConnectionLost
+│   │   │   ├── components/       # Tile, MeldDisplay, ClaimPanel, EventFeed, PlayHistory, WallDiagram, ErrorToast, ConnectionLost,
+│   │   │   │                     #   SettingsMenu (⚙ popover), Die + DiceOverlay (N2), ClaimFlight (N1)
 │   │   │   ├── screens/          # Landing, HostSetup, JoinForm, Lobby, Game, RoundEnd, MatchEnd, Spectate, About
 │   │   │   ├── store/
 │   │   │   ├── ws/
-│   │   │   ├── hooks/
+│   │   │   ├── hooks/           # useSound, useAnimation (per-player pace), useDismissable
 │   │   │   ├── i18n/            # EN / zh-Hans / zh-Hant string catalogs
 │   │   │   ├── session.ts       # seat token in localStorage — survives a refresh
+│   │   │   ├── prefs.ts         # per-player display prefs in localStorage (animation pace)
 │   │   │   ├── index.css        # Tailwind entry
 │   │   │   ├── App.tsx
 │   │   │   └── main.tsx
@@ -192,7 +195,8 @@ export type GameState = {
   config: GameConfig;
   phase: Phase;
   seed: string;
-  wall: TileId[];                   // full shuffled wall
+  dice: DiceRecord;                 // what the two throws decided this round (§4.3.1)
+  wall: TileId[];                   // shuffled, then rotated to the break (§4.3.1)
   drawIndex: number;                // pointer; next live-end draw
   kongDrawIndex: number;            // pointer from far end; kong-replacement draws here
   players: [PlayerState, PlayerState, PlayerState, PlayerState];
@@ -353,12 +357,16 @@ export type PlayerView = {
   yourLegalActions: GameAction[];
   claimDeadline: number | null;
   config: GameConfig;
+  dealer: Seat;                     // who the seating throw made East
+  dice: DiceRecord;                 // unredacted on purpose — see below
 };
 
 export function projectView(state: GameState, seat: Seat): PlayerView;
 ```
 
 `yourLegalActions` is the engine telling the UI exactly which buttons to enable. The client never duplicates rule logic.
+
+`dice` is the one field on this type that carries **no** redaction. Every other addition needed a decision — concealed kongs, drawn tiles, the face-down first discard — because the question is always "would this seat know it at a real table". Dice are thrown face-up in front of four people, so there is nothing here to withhold. `SpectatorView` carries it for the same reason.
 
 ---
 
@@ -370,8 +378,8 @@ Canonical source: Vitaly Novikov, *Sichuan Mahjong? It's that simple!* (PDF). Te
 108 total: man / pin / sou × 1–9 × 4 copies each. No winds, dragons, flowers, jokers.
 
 ### 5.2 Setup
-1. Wall built from `buildWall(seed)`. Tabletop wall-break ceremony is purely cosmetic; for digital, deterministic shuffle is sufficient.
-2. Dealer for the first round = host = seat 0. After each round, dealer rotates per §5.10.
+1. Wall built from `buildWall(seed)`, then **rotated to the break** the dice chose (§4.3.1). The ceremony is real rather than cosmetic — it is a rotation of a uniform shuffle, so it changes no distribution, only which tiles a seed deals.
+2. Dealer for the first round is **whoever rolled highest** in the seating throw (§4.3.1), not the host. `enableSeatingThrow: false` pins it back to seat 0, which is what tests that need a fixed dealer use. After each round, dealer rotates per §5.10.
 3. Deal: 13 tiles to each player. Dealer (East) gets a 14th immediately and starts.
 
 ### 5.3 Phase: Huan San Zhang (3-tile swap, optional, **default off**)
@@ -816,7 +824,8 @@ App-root overlays, mounted alongside whichever screen is active:
 - Optimistic local state only for tile selection / drag preview. Committed actions wait for server `view` confirmation.
 - WebSocket reconnect with exponential backoff; "reconnecting…" toast. It gives up after 8 consecutive failures — an invalid token fails identically every time, so retrying forever just hid the problem. (F6)
 - Only the `join` handshake survives a closed socket. Screens send it before the socket opens; everything else is a user action taken while visibly disconnected, and flushing the queue on reconnect delivered stale discards and lobby commands a round late. (F21)
-- **Seat session** (`src/session.ts`) — `{ code, token, name, isHost }` in `localStorage`, written on `joined`/`lobby` and cleared by `resetSession`. It is what makes "Rejoin" on Landing possible after a refresh; the host flag is re-persisted from the `lobby` frame because `joined` arrives before it is known. A stale token is ignored rather than rejected by the server, so the rejoin attempt times out after 6s. (F2)
+- **Seat session** (`src/session.ts`) — `{ code, token, name, isHost, isPractice }` in `localStorage`, written on `joined`/`lobby` and cleared by `resetSession`. It is what makes "Rejoin" on Landing possible after a refresh; the host flag is re-persisted from the `lobby` frame because `joined` arrives before it is known. A stale token is ignored rather than rejected by the server, so the rejoin attempt times out after 6s. (F2) `isPractice` was written but never read back for a while, so every rejoin returned a practice game as a normal one — read *and* write when adding a field here, and cover both directions.
+- **Display preferences** (`src/prefs.ts`) — animation speed and skip, per player, in `localStorage` under `sm-anim`. Deliberately not on `startGame.rules` beside `botSpeed`: bots move on the server so their pace has to be the table's, whereas animation pace is local rendering over a board that has already updated, so it desyncs nothing. No protocol field, no `ws.ts` narrowing. Kept separate from `prefers-reduced-motion`, which stays honoured globally via `MotionConfig reducedMotion="user"` — that is an accessibility signal, this is a taste. (N4)
 
 ### 8.5 Animations (Framer Motion 12)
 
@@ -982,7 +991,8 @@ After step 4, every future game uses the same URL — no per-session re-sharing.
   - Tenpai detection: a tenpai hand has at least one tile-type completing it (subject to exhaustive-wait filter).
   - Furiten state: a furiten player's `yourLegalActions` contains a discard-Hu action *iff* the candidate hand's `totalFan` strictly exceeds `minFanToOverride` (the greater-value override of §5.5.5).
   - Compatibility table: for any winning hand and Hu subtype, `calcHandScore` never produces a result containing two mutually-incompatible fans per the matrix (`phase4.test.ts`).
-- **Replay tests:** canned action logs from real games → expected end states. Include at least one game per fan combination from §5.8.
+- **Dice** (`dice.test.ts`, §4.3.1): the sum-to-wall table is asserted against the PDF's tabulation entry by entry (5/9 → East and so on); the seating throw is a property test that each round's contenders are a strict subset of the last and the winner threw in every round; the cap is pinned with a scripted RNG where every seat rolls 6+6 forever, which must terminate on the lowest seat rather than loop. `rotateWall` is checked as a permutation. One test asserts East lands on all four seats across 200 seeds — everything else would pass if the throw always returned seat 0.
+- **Replay tests:** canned action logs from real games → expected end states. Include at least one game per fan combination from §5.8. **The wall break rotates what a seed deals**, so these are regenerated whenever §4.3.1's geometry changes — deliberately, and in one pass rather than twice.
 - **Standing-tile rhythm** (`first-discard.test.ts`): across a sample of full rounds, every player who separated a face-down tile must reach the `14 − 3·melds` tiles a win needs, wins must actually occur for them, and wall-end readiness must be computable. Synthetic-state tests can't catch this class of bug — they build a correctly-sized hand by construction, which is exactly how A35 survived five audit passes.
 
 ### 11.2 Server
@@ -1000,7 +1010,9 @@ Node environment, no DOM — so tests target the store, the transport and the pu
 helpers behind the components rather than rendered output:
 
 - Store reducers: match-score accumulation and replay guard (A30/A39), `error` surfacing (F1), the match-end transition (F9).
-- `session.ts` round-trip and rejection of unusable stored values (F2).
+- `session.ts` round-trip and rejection of unusable stored values (F2), including `isPractice` in **both** directions — it was written and never read back, so the field survived storage and vanished on the way out — and a CJK name surviving the round trip.
+- `prefs.ts`: the animation scale, with `fast` pinned at exactly 1× because the component constants *are* the fast values, and a drifting multiplier would silently retime what shipped. Skip collapses to zero at every speed, and stored values are parsed field-by-field so an older entry missing a key still restores the half it carries (N4).
+- `DiceOverlay`'s two pure helpers: `diceKey`, which is what stops the overlay re-showing on every one of the dozens of views a round pushes, and `decidingRound`. Plus `faceRotation`, asserted on the property that makes a cube read as a die — opposite faces sum to 7, so they must be half a turn apart on exactly one axis (N2).
 - `WsClient`: the retry cap and budget reset (F6), and that only the `join` handshake survives a closed socket (F21).
 - Pure helpers extracted for exactly this reason — `tileLabel` (F16), the event-feed sound/announcement mapping (F7), `joinErrorForStatus` (F22), the claim countdown's skew handling (F25) — each also asserted against the catalog so a rendered key can't go missing.
 - i18n catalog parity across the three languages (A18).

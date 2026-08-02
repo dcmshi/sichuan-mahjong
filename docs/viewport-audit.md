@@ -416,3 +416,33 @@ which performs real taps on five viewports and fails on sideways scroll.
 `docs/screenshot.png` shows the current play screen on an iPhone 14, late in a
 round with both discard trays full — the case that previously needed 434px of
 scrolling.
+
+---
+
+## Found in play afterwards (2026-08-02)
+
+Two layout defects this audit did not reach, both open in
+[TODO.md](../TODO.md) with their measurements:
+
+- **N7 — the turn indicator renders at zero width on a 320px phone.** The top
+  bar is `scrollWidth` 323 in a 320px viewport; the icon cluster takes 254 of it
+  and the indicator, the only `min-w-0 truncate` child, absorbs the whole
+  shortfall. "Your turn" is simply not drawn. `LangSwitch` alone is 122px —
+  three 40px buttons for a control most players touch once.
+- **N8 — the claim bar covers the hand.** Not a positioning bug: the hand's
+  layout box ends exactly where the bar begins, but the tiles *paint* about 21px
+  past their own container, because a tile in a `.tile-lap` run is drawn larger
+  than its box. Padding the container and putting the bar in flow were both
+  tried and both changed nothing. See
+  [handoff-tile-rendering.md](./handoff-tile-rendering.md) before attempting it.
+- **N10 — the board is drawn from one viewpoint.** Side seats draw upright tiles
+  in a wrapped `w-20` column where a real table has them sideways; rotating them
+  would also cost the column less height, which matters because the side columns
+  are what set the middle row. The across seat's discards run the same direction
+  as your own instead of mirroring.
+
+**The lesson for this document:** every measurement here was taken on a board at
+rest. N7 needed the *widths inside a row*, and N8 needed the difference between
+a layout box and painted ink — neither of which a vertical-overflow number can
+express. `e2e/viewport.spec.ts` guards the overflow and the trays; it did not
+guard either of these, and in N8's case it only samples a claim window by luck.

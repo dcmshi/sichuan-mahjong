@@ -25,7 +25,9 @@ Run it three ways, same build each time — the client talks to whatever origin 
 ## Features
 
 - Full Bloody Rules engine: void declaration (定缺), bloody-to-end sit-out, all 10 fan combinations, payment matrix, kong refunds
+- Dice that decide something: everyone throws for seats and the highest is East, then East throws again for where the wall breaks — and the break really is where the deal starts
 - Optional house rules, off by default: 換三張 three-tile swap (host toggle in the lobby) and Flower Pig (花猪)
+- Per-player animation pace (slow / medium / fast, or off) behind the ⚙ in the play screen, alongside sound
 - Heuristic bots (easy + medium) — practice solo or fill empty seats
 - Multi-round matches with running totals; host starts each round or ends the match
 - Spectator mode — the host shares a separate watch link, kept distinct from the join code (no hand exposed)

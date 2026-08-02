@@ -312,13 +312,20 @@ so it isn't rediscovered as a bug.
   board read as four copies of *your* view rather than one table seen from your
   seat.
 
-  **Side seats draw their tiles upright.** `OpponentSide.tsx:90` is a
-  `flex flex-wrap w-20` column of upright tiles, capped at 6. At a real table
-  those players' tiles face sideways, and drawing them rotated would also be
-  *cheaper vertically*: a rotated tile is wider than it is tall, so a row of
-  them costs the column far less height than the wrapped upright pile does.
-  That matters — the side columns are what set the middle row's height, and R2.3
-  already had to shrink them once to let `flex-1 min-h-0` pay off.
+  **Side seats draw their tiles upright, in a scroll box.**
+  `OpponentSide.tsx:90` is `flex flex-wrap content-start w-20 overflow-y-auto`,
+  capped at 6 tiles. Three things wrong at once: the tiles face the wrong way for
+  those seats, they *wrap* into a ragged block rather than reading as a pile, and
+  the whole thing is a **scroll region** — which is why it reads as clutter
+  rather than as someone's discards. A scrollbar over six tiles is a layout that
+  ran out of room and said so.
+
+  Rotating them addresses all three. At a real table those players' tiles face
+  sideways, and a rotated tile is wider than it is tall — so a run of them costs
+  the column far less *height*, which is the budget that is actually tight. That
+  matters because the side columns are what set the middle row's height, and R2.3
+  already had to shrink them once to let `flex-1 min-h-0` pay off. Enough
+  recovered height may remove the need to wrap, scroll, or cap at 6 at all.
 
   **The across seat's discards run the same way yours do.**
   `OpponentTop.tsx:71` renders `pileDiscards.slice(-9)` left to right, exactly
