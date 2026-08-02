@@ -81,6 +81,16 @@ Design and rationale: [design-hosted-server.md §C10](./design-hosted-server.md)
 - [x] **A `<noscript>` block, because `<div id="root">` is empty until JS runs.**
   Google renders JavaScript; its first pass does not. Three sentences of what the
   game is costs nothing and is the only text in the initial HTML.
+- [x] **The SPA fallback learned to say no** (`isSpaRoute`). It answered every
+  unmatched path with `index.html` and a 200, which is right for `/j/AB23` and
+  wrong for `/assets/index-OLD.js` — that 200 is why a client rebuild without a
+  server restart surfaced as a parse error rather than a 404 naming the file, the
+  footgun CLAUDE.md warns about. It also blocked Search Console's **HTML-file
+  verification**, the method Google recommends, which fetches a filename it knows
+  is absent and reads a 200 as a server that cannot distinguish present from
+  missing. The line is a file extension, or an `/api/` prefix; the client's only
+  routes are `/` and `/j/:code`, and a room code is `[A-Z2-9]{4}`, so no route
+  contains a dot.
 
 ---
 

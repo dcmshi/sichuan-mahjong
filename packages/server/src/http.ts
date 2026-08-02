@@ -30,6 +30,26 @@ const CLIENT_DIST = CLIENT_DIST_CANDIDATES.find(existsSync) ?? CLIENT_DIST_CANDI
 export type EmbeddedAsset = { type: string; body: string };
 export type EmbeddedClient = Record<string, EmbeddedAsset>;
 
+/**
+ * Whether an unmatched URL is a client *route*, which the SPA fallback should
+ * answer with index.html, or a request for something that simply is not here.
+ *
+ * The fallback used to answer everything, and 200 + HTML for a missing file is a
+ * lie that costs twice. A stale bundle reference (`/assets/index-OLD.js`, which
+ * is what every client rebuild without a server restart produces) comes back as
+ * a parse error somewhere downstream rather than as a 404 naming the file. And a
+ * server that never says no cannot pass Google's HTML-file site verification,
+ * which fetches a filename it knows is absent and expects to be told so.
+ *
+ * The client's routes are `/` and `/j/:code`, where a code is `[A-Z2-9]{4}` —
+ * none of them contain a dot, so an extension is a reliable tell.
+ */
+export function isSpaRoute(url: string): boolean {
+  const pathname = url.split('?')[0] ?? '';
+  if (pathname.startsWith('/api/')) return false;
+  return !/\.[a-z0-9]+$/i.test(pathname);
+}
+
 export async function registerHttpRoutes(
   app: FastifyInstance,
   embeddedClient?: EmbeddedClient,
@@ -60,14 +80,18 @@ export async function registerHttpRoutes(
       app.get('/', async (_req, reply) =>
         reply.header('cache-control', 'no-cache').type(idxType).send(idxBuf),
       );
-      app.setNotFoundHandler(async (_req, reply) =>
-        reply.header('cache-control', 'no-cache').type(idxType).send(idxBuf),
-      );
+      app.setNotFoundHandler(async (req, reply) => {
+        if (!isSpaRoute(req.url)) return reply.code(404).send({ error: 'not_found' });
+        return reply.header('cache-control', 'no-cache').type(idxType).send(idxBuf);
+      });
     }
   } else if (existsSync(CLIENT_DIST)) {
     // Serve client SPA from disk (monorepo dev + npm-packed builds).
     await app.register(fastifyStatic, { root: CLIENT_DIST, prefix: '/', wildcard: false });
-    app.setNotFoundHandler(async (_req, reply) => reply.sendFile('index.html'));
+    app.setNotFoundHandler(async (req, reply) => {
+      if (!isSpaRoute(req.url)) return reply.code(404).send({ error: 'not_found' });
+      return reply.sendFile('index.html');
+    });
   }
 
   // Liveness

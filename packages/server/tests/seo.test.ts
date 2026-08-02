@@ -8,7 +8,7 @@ vi.mock('../src/persistence.js', () => ({
   deleteLiveRoom: vi.fn(),
 }));
 import Fastify from 'fastify';
-import { registerHttpRoutes } from '../src/http.js';
+import { isSpaRoute, registerHttpRoutes } from '../src/http.js';
 import { originFor, robotsTxt } from '../src/seo.js';
 
 async function buildApp() {
@@ -88,5 +88,33 @@ describe('crawler surface', () => {
     const txt = robotsTxt(null);
     expect(txt).toContain('Disallow: /api/');
     expect(txt).not.toContain('Sitemap:');
+  });
+});
+
+// The SPA fallback answering everything with 200 + HTML is what stops Google's
+// HTML-file verification working: it fetches a filename it knows is absent and
+// reads a success as "this server cannot tell me no". Same reason a stale
+// bundle used to surface as a parse error rather than a 404.
+describe('the SPA fallback distinguishes a route from a missing file', () => {
+  it('treats the client routes as routes', () => {
+    expect(isSpaRoute('/')).toBe(true);
+    expect(isSpaRoute('/j/AB23')).toBe(true);
+    expect(isSpaRoute('/?code=AB23&spectate=1')).toBe(true);
+  });
+
+  it('treats anything with an extension, and any /api/ path, as missing', () => {
+    expect(isSpaRoute('/google1a2b3c4d5e6f.html')).toBe(false);
+    expect(isSpaRoute('/assets/index-OLD.js')).toBe(false);
+    expect(isSpaRoute('/favicon.ico?v=2')).toBe(false);
+    expect(isSpaRoute('/api/nope')).toBe(false);
+  });
+
+  it('serves a 404 for a file that is not there', async () => {
+    const app = Fastify({ logger: false });
+    await registerHttpRoutes(app);
+    const res = await app.inject({ method: 'GET', url: '/googleabc123.html' });
+    expect(res.statusCode).toBe(404);
+    expect(res.body).not.toContain('<!DOCTYPE html>');
+    await app.close();
   });
 });

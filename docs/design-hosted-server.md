@@ -263,6 +263,16 @@ The `og:*` tags and the canonical are the exception that proves the rule: the
 crawlers that read them do not run JavaScript, so those are the one place in the
 client that names an absolute address, in `index.html` with a comment saying so.
 
+**And the fallback had to learn to say no.** It answered *everything* unmatched
+with `index.html` and a 200 — which is right for `/j/AB23` and wrong for
+`/assets/index-OLD.js`, where it turns a missing bundle into a parse error
+somewhere downstream instead of a 404 naming the file. Google's HTML-file
+verification makes the same distinction load-bearing: it fetches a filename it
+knows is absent, and a server that returns 200 for it cannot be verified.
+`isSpaRoute` draws the line at a file extension (and at `/api/`), which is safe
+because the client's routes are `/` and `/j/:code` and a room code is
+`[A-Z2-9]{4}`.
+
 ---
 
 ## What the free tier actually costs you
@@ -379,12 +389,24 @@ build command, start command, health check, Node version — from it.
 4. **Optionally set `SM_PUBLIC_URL`** to the assigned URL, so the boot banner
    prints it. Cosmetic only — the client derives its own origin, and C10's
    `RENDER_EXTERNAL_URL` is already set by the platform.
-5. **Point Google at it.** Add the URL as a property in [Search
-   Console](https://search.google.com/search-console), verify it with the HTML-tag
-   method (a `<meta name="google-site-verification">` line in
-   `packages/client/index.html`, next to the other meta), and submit
-   `/sitemap.xml`. Then request indexing for `/` once, rather than waiting for a
-   crawl to find a site nothing links to.
+5. **Point Google at it.** Add the URL as a **URL prefix** property in [Search
+   Console](https://search.google.com/search-console) — a Domain property wants a
+   DNS record on `onrender.com`, which Render owns. Verify with the **HTML file**
+   method: drop the `google<token>.html` it gives you into
+   `packages/client/public/`, which Vite copies verbatim and `@fastify/static`
+   registers a route for at boot. Then submit `/sitemap.xml` and request indexing
+   for `/` once, rather than waiting for a crawl to find a site nothing links to.
+
+   `packages/client/public/google2b9f6e0ac5009e7b.html` is that file, and it
+   **stays there permanently** — Google re-checks it and silently un-verifies the
+   property if it stops resolving. It is a one-line ownership proof rather than a
+   secret; it is meant to be world-readable.
+
+   **That method depends on the server being able to say no**, which it could not
+   until C10: the SPA fallback answered every unmatched path with `index.html` and
+   a 200, and Google's verifier probes for a filename it knows is absent to check
+   the server distinguishes the two. `isSpaRoute` now draws that line at a file
+   extension, since the client's only routes are `/` and `/j/:code`.
 
    If the deployment ever moves off `*.onrender.com`, the canonical and `og:*`
    URLs in `index.html` are the five lines to change — nothing else in the client
