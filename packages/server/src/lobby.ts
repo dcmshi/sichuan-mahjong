@@ -1,12 +1,26 @@
+import { randomInt } from 'node:crypto';
 import type { Seat } from '@sichuan-mahjong/engine';
 
 // Alphabet excludes I, O, 0, 1 to avoid confusion
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+export const CODE_LENGTH = 4;
 
+/**
+ * A room code is a bearer capability: holding it is what lets you join or watch,
+ * because the app has no accounts. So it has to be unpredictable, not merely
+ * random-looking — `Math.random()` is xorshift128+, whose state is recoverable
+ * from a run of outputs, and anyone can harvest outputs by creating lobbies.
+ * That leaks *other people's future codes*, which is worse than the 32^4 space
+ * being guessable. On a tailnet neither mattered; on a public URL both do.
+ *
+ * `randomInt` is CSPRNG-backed and rejection-samples, so it stays uniform for
+ * any alphabet length (this one is 32, so there'd be no modulo bias either way —
+ * but the next person to edit the alphabet shouldn't have to know that).
+ */
 export function generateCode(): string {
   let code = '';
-  for (let i = 0; i < 4; i++) {
-    code += CODE_ALPHABET[Math.floor(Math.random() * CODE_ALPHABET.length)];
+  for (let i = 0; i < CODE_LENGTH; i++) {
+    code += CODE_ALPHABET[randomInt(CODE_ALPHABET.length)];
   }
   return code;
 }

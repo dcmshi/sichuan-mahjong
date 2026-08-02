@@ -1,9 +1,14 @@
 # Design — a hosted server on Render, without giving up self-host
 
-**Status:** proposed, 2026-08-02. Nothing here is built yet.
+**Status:** proposed, 2026-08-02. **C2 is built**; everything else is design.
 
 The ask: friends should be able to play without installing Tailscale. Keep the
 self-host path working.
+
+**Settled since the first draft:** the free tier (see [What the free tier
+actually costs you](#what-the-free-tier-actually-costs-you)), and **one security
+posture for both deployments** rather than auth that switches on when hosted —
+reasoning in [No environment-dependent auth](#no-environment-dependent-auth).
 
 ---
 
@@ -51,6 +56,42 @@ Go with A.
 
 ---
 
+## No environment-dependent auth
+
+The question was whether to gate lobbies and spectators on the hosted build and
+leave the Tailscale build open. **No — one hardened path, in both.** Four
+reasons, in the order I weight them:
+
+1. **It fails open.** The gate would hang off `--hosted`. Forget the flag on a
+   deploy and the public URL gets the *unprotected* variant. A security control
+   whose absence is the default of the riskier deployment is backwards; these
+   should fail closed.
+2. **A control that exists in one deployment is tested in neither.** Local is
+   what you develop and play against all day, hosted is what needs the gate. You
+   would exercise the unhardened path constantly and the hardened one never.
+3. **"Self-host means trusted network" is not actually true.** Self-host also
+   covers the binary on a laptop at a café and someone forwarding port 8080 —
+   neither of which `--hosted` knows anything about. Tailscale is one self-host
+   topology, not all of them.
+4. **A login is disproportionate to what is being protected.** There are no
+   accounts and no PII; the asset is a mahjong game in progress. Credentials
+   would mean storage, reset, and session handling — a real attack surface added
+   to defend against a stranger watching you play.
+
+**Instead, make the room code good at the job it already has.** It is a bearer
+capability — there are no accounts, so holding the code is what admits you. That
+is a legitimate design, it just has to be built like one: unpredictable (C2),
+impractical to guess at scale (C3–C4), and **separately held for spectators**
+(C5), so sharing the play code does not silently hand out a viewing seat. That
+gives capability-based access control that is identical in both deployments, and
+it makes the Tailscale build strictly better too, at no cost.
+
+The one thing genuinely worth varying by environment is the **numbers** — rate
+limit thresholds, the concurrent-room cap, sweep TTLs. Those protect the
+*instance*, not the players. So `--hosted` should tune them, never toggle them.
+
+---
+
 ## What has to change
 
 Nine items. None are large; C2–C5 are the ones that exist only because the URL
@@ -69,21 +110,28 @@ tells you to install Tailscale for cross-network play. Tailscale detection is
 `ENOENT` immediately, not three 2s timeouts — but it is still shelling out in a
 container for an answer that is always "no".
 
-### C2. Room codes must be unguessable, not merely random
+### C2. Room codes must be unguessable, not merely random — ✅ done (2026-08-02)
 
-`lobby.ts` builds a 4-character code from a 32-character alphabet with
-`Math.random()`. Two separate problems, and the second is the sharp one:
+`lobby.ts` built a 4-character code from a 32-character alphabet with
+`Math.random()`. Two separate problems, and the second was the sharp one:
 
 - **1,048,576 possible codes.** Enumerable by anyone who wants to, especially
   since spectating needs no token (below).
 - **`Math.random()` is not unpredictable.** V8's `xorshift128+` state can be
   recovered from a modest run of outputs, and an attacker can create lobbies at
-  will to harvest them. That means predicting *other people's future codes*, not
+  will to harvest them. That meant predicting *other people's future codes*, not
   just guessing at random.
 
-Switch to `crypto.randomInt`. I would **keep the length at 4** — codes get read
-aloud across a table, and unpredictability plus rate limiting is the fix that
-matters. Six characters (1.07 billion) is the knob if it ever needs turning.
+Now `crypto.randomInt`, which is CSPRNG-backed and rejection-samples so it stays
+uniform for any alphabet length. **Length stays at 4** — codes get read aloud
+across a table, and unpredictability plus rate limiting is the fix that matters.
+Six characters (1.07 billion) is the knob if it ever needs turning; `CODE_LENGTH`
+is exported so it is one edit.
+
+This was **the only `Math.random()` in the server or the engine**. Seat tokens
+were already `randomUUID()`, and the engine's randomness all goes through the
+seeded `rng.ts`, which must stay exactly as it is or replays stop being
+reproducible.
 
 ### C3. Rate limits, and a cap on how much a stranger can allocate
 
@@ -111,10 +159,14 @@ strangers' games.
 
 Views are properly redacted — `projectSpectatorView` hides hands, and the A31 /
 A40 audits closed the event-log channel — so the exposure is "a stranger can
-watch your game", not "a stranger can see your tiles". Still a decision to make
-rather than inherit. Options, cheapest first: leave it (it is a mahjong game),
-require the host to enable spectating per room, or give spectators a distinct
-link containing a second secret.
+watch your game", not "a stranger can see your tiles".
+
+**Decided: give spectators their own secret**, issued per room and not derivable
+from the play code, so the host shares a distinct "watch" link. Not a login — see
+[No environment-dependent auth](#no-environment-dependent-auth) — just the same
+bearer-capability model applied to the second door, which today has no lock at
+all. It also makes the two grants independent: reading the play code aloud stops
+implying a viewing seat, and either can be handled separately per room.
 
 ### C6. Idle sweeps are tuned for a machine you own
 
@@ -168,10 +220,13 @@ For this app that means two real things:
    when everyone genuinely disconnects.
 
 The paid Starter tier (about $7/month at time of writing) stays warm and can take
-a disk, which turns C8 on and makes both problems go away. **My recommendation is
-to ship on free and see whether (2) ever actually happens** — with C8 already
-degrading gracefully, upgrading later is a dashboard change and an env var, not a
-rewrite.
+a disk, which turns C8 on and makes both problems go away.
+
+**Decided: free tier** (2026-08-02). So plan for it rather than around it —
+persistence stays off, and C6's sweep TTLs matter more than they would on a warm
+instance with room to spare. If (2) ever actually eats a match, upgrading is a
+dashboard change plus `SICHUAN_DATA_DIR`, not a rewrite, because C8 already
+degrades to `null` on its own.
 
 ---
 
@@ -236,17 +291,27 @@ What that is and is not:
 - **Not at risk:** hands, wall, and concealed melds. Redaction is per-viewer in
   `views.ts` across both channels, and A31 and A40 were each a leak found and
   closed on the event-log side.
-- **At risk without C2–C4:** strangers guessing a code and joining or watching
-  your game, and an unauthenticated endpoint that allocates memory without limit.
+- **Fixed:** code prediction (C2). Codes are now CSPRNG-drawn, so the remaining
+  question is guessing at 1-in-a-million per try, which is C3's job.
+- **Still at risk, until C3–C5:** an unauthenticated endpoint that allocates
+  memory without limit, unthrottled code guessing, and a spectator door with no
+  lock on it.
 - **No accounts, no PII, no payment data** — players type a display name and
   nothing else, which is the main reason a public host is reasonable here at all.
   If that ever changes, this section needs revisiting first.
 
 ---
 
-## Open questions for the next session
+## Where this stands
 
-1. **Spectating (C5)** — leave it open, host-toggled, or a separate secret?
-2. **Free or Starter** — my recommendation is free until an idle gap actually
-   eats a match, but if a lost match would be genuinely irritating, start paid
-   and turn C8 on from the beginning.
+Both open questions are answered — free tier, and a separate spectator secret
+rather than a login. C2 is built. **The remaining work is C1 and C3–C9**, and the
+order that makes sense is:
+
+1. **C1** (`PORT`, `--hosted`) and **C9** (health check) — the minimum that
+   deploys at all.
+2. **C4** then **C3** — `trustProxy` first, because per-IP limits are worthless
+   without it and it is easy to add them in the wrong order and believe they work.
+3. **C7** (WS keepalive) — the first thing a real game over the proxy will hit.
+4. **C5** (spectator secret) and **C6** (sweep TTLs).
+5. **C8** stays off. Free tier, no disk, no persistence.

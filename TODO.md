@@ -1,5 +1,26 @@
 # TODO
 
+## ✅ Room codes are CSPRNG-drawn (C2, 2026-08-02)
+
+- [x] **`generateCode` uses `crypto.randomInt`, not `Math.random`.** The room code
+  is a bearer capability — there are no accounts, so holding it is what admits
+  you — and `Math.random()` is xorshift128+, whose state is recoverable from a run
+  of outputs that anyone can harvest by creating lobbies. That leaks **other
+  people's future codes**, which is a sharper problem than the 32⁴ space being
+  guessable. Neither mattered on a tailnet; both do behind a public URL.
+- [x] **It was the only `Math.random()` in the server or the engine.** Seat tokens
+  were already `randomUUID()`, and engine randomness goes through the seeded
+  `rng.ts`, which has to stay that way or replays stop reproducing.
+- [x] **Length stays 4**, with `CODE_LENGTH` exported so six is one edit. Codes
+  get read aloud across a table; unpredictability plus rate limiting (C3) is the
+  fix that matters, not more characters.
+- [x] Tests cover the alphabet (no I/O/0/1), no repeats across 2000 draws, **every
+  position emitting all 32 characters** — which is what catches a `randomInt(len -
+  1)` that would quietly shrink the keyspace — and that no live code is reissued.
+
+First item of [docs/design-hosted-server.md](./docs/design-hosted-server.md); C1
+and C3–C9 are still open there.
+
 ## ✅ O1 closed — the binary embeds the tile art on purpose (2026-08-02)
 
 - [x] **Accepted the merge rather than unpicking it.** `gen-embedded-client.mjs`
