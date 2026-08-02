@@ -114,6 +114,7 @@ const en: Dict = {
 
   'dice.seatingTitle': 'Rolling for seats — highest is East',
   'dice.isEast': '{name} is East',
+  'dice.youAreEast': 'You are East',
   'dice.afterTie': 'after a tie',
   'dice.wallTitle': '{name} rolls for the wall break',
   'dice.wallResult': '{wind} wall, {n} stacks in',
@@ -342,6 +343,7 @@ const zhHans: Dict = {
 
   'dice.seatingTitle': '掷骰定位 — 点数最大者为庄',
   'dice.isEast': '{name} 为庄家',
+  'dice.youAreEast': '你是庄家',
   'dice.afterTie': '平局重掷后',
   'dice.wallTitle': '{name} 掷骰决定从哪里开牌',
   'dice.wallResult': '{wind}家牌墙，第 {n} 墩',
@@ -564,6 +566,7 @@ const zhHant: Dict = {
 
   'dice.seatingTitle': '擲骰定位 — 點數最大者為莊',
   'dice.isEast': '{name} 為莊家',
+  'dice.youAreEast': '你是莊家',
   'dice.afterTie': '平局重擲後',
   'dice.wallTitle': '{name} 擲骰決定從哪裡開牌',
   'dice.wallResult': '{wind}家牌牆，第 {n} 墩',

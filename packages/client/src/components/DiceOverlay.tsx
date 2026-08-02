@@ -127,8 +127,13 @@ export function DiceOverlay({
                     ),
                   )}
                 </div>
+                {/* `nameOf` returns "You" for your own seat, which made this
+                    read "You is East". Your own case needs its own sentence,
+                    not a name substituted into someone else's. */}
                 <div className="text-lg font-semibold text-amber-300">
-                  {t('dice.isEast', { name: nameOf(view.dealer) })}
+                  {view.dealer === view.you.seat
+                    ? t('dice.youAreEast')
+                    : t('dice.isEast', { name: nameOf(view.dealer) })}
                 </div>
                 {seatingRounds > 1 && (
                   <div className="text-xs text-white/50">{t('dice.afterTie')}</div>

@@ -27,6 +27,10 @@ export function loadSession(): StoredSession | null {
       token: v.token,
       name: typeof v.name === 'string' ? v.name : '',
       isHost: v.isHost === true,
+      // `persistSession` has always written this; reading it back was missed,
+      // so every rejoin came back as a non-practice game and a solo-vs-bots
+      // player got the "(you)" badge they are not supposed to see.
+      isPractice: v.isPractice === true,
     };
   } catch {
     return null;
