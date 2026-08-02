@@ -17,6 +17,8 @@ Keep this file short. New documentation goes in one of these instead:
 | **[docs/viewport-audit.md](./docs/viewport-audit.md)** | Measured mobile viewport overflow + the open layout questions | …you change the play or round-end layout |
 | **[docs/handoff-2026-08-01.md](./docs/handoff-2026-08-01.md)** | Where the layout/density work stands, decisions already settled, the four open ones, and the traps that cost time | …you are picking this up cold, or before a compaction |
 | **[docs/handoff-tile-rendering.md](./docs/handoff-tile-rendering.md)** | How tiles are drawn (the art, lapped), its measured layer geometry, every knob, the four things easy to get wrong | …you are changing how a tile looks |
+| **[docs/design-hosted-server.md](./docs/design-hosted-server.md)** | Proposed Render deployment (nothing built yet) — why it needs no client change, and the nine things a public URL forces | …you are working on hosting, or on anything the tailnet used to protect |
+| **[LICENSE](./LICENSE)** | MIT for code, CC-BY-SA 4.0 for the tile art, and the binary as a combined work carrying both | …you add or change a tile, or change what the release build embeds |
 | `SBR_ENG_part_1.pdf` | Novikov, *Sichuan Mahjong? It's that simple!* — the canonical ruleset | (read-only; extract with `pdftotext` when a rule is in question) |
 
 ---
