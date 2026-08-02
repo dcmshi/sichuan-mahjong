@@ -90,7 +90,16 @@ export function EventFeed({ view }: { view: PlayerView }) {
   // Positioned inside the play well by its parent: as a viewport-fixed overlay
   // it sat on top of the opponent-across name and hand.
   return (
-    <div className="absolute top-2 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-1 pointer-events-none max-w-full">
+    // aria-live because these lines are the only notice that someone ponged,
+    // konged or declared Hu, and they fade after a few seconds — a screen-reader
+    // user had no way to learn a claim had happened at all. Polite, not
+    // assertive: it is commentary, and it must not cut across the claim panel's
+    // own countdown.
+    <div
+      className="absolute top-2 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-1 pointer-events-none max-w-full"
+      aria-live="polite"
+      aria-atomic="false"
+    >
       <AnimatePresence>
         {lines.map(l => (
           <motion.div
