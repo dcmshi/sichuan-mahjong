@@ -79,7 +79,25 @@ so it isn't rediscovered as a bug.
   "one die" and "a die" appear nowhere in the document. Deciding turn order by a
   roll is real mahjong practice and common in other variants, but here it would
   be an **addition beyond Novikov**, so it belongs where 換三張 already sits: a
-  host toggle, off by default. `createGame` already takes `dealer` and
+  host toggle, off by default.
+
+  **Cross-checked against outside sources, and it is two dice everywhere, never
+  one.** Chinese Classical (Four Winds rule collection) seats players in two
+  stages: one player throws *two* dice and counts counterclockwise to find a
+  temporary East, then a second throw picks who draws first from a row of wind
+  tiles, and the drawn winds are the real seats. Modern simplified play collapses
+  that to "everyone rolls, highest is East". No source describes a single die for
+  turn order.
+
+  **And it is two dice for the wall break in Chinese Classical too — thrown by
+  two different people.** East throws and counts counterclockwise to name a
+  player; *that* player throws again and the two sums are added. Which is almost
+  certainly what Novikov's otherwise baffling clause means when it says
+  "5 or 9 indicate East as the second player to throw dice" — it is naming the
+  second thrower. **But his three worked examples derive both the wall and the
+  indent from the first roll alone, and never mention a second.** The examples
+  are unambiguous and the prose is not, so implement the examples and record the
+  discrepancy here rather than splitting the difference. `createGame` already takes `dealer` and
   `startNextRound` rotates it after, so the mechanism is cheap; it is the
   ruleset claim that needs to stay honest.
 
