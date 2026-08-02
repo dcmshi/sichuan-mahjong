@@ -332,9 +332,14 @@ function PlayPhase({ view }: { view: PlayerView }) {
               </motion.div>
             </div>
           )}
-          <div className="text-xs text-white/30 mt-1">
-            {view.you.voidedSuit ? t('play.void', { suit: t(`suit.${view.you.voidedSuit}`) }) : ''}
-          </div>
+          {/* Rendered only when there is a suit to name. An empty string still
+              gives the div a line box, and on the shortest viewports every pixel
+              in the well is already spoken for (R1). */}
+          {view.you.voidedSuit && (
+            <div className="text-xs text-white/30 mt-1">
+              {t('play.void', { suit: t(`suit.${view.you.voidedSuit}`) })}
+            </div>
+          )}
           {/* In the well, not the top bar: a fourth icon up there truncated the
               turn indicator to "Y...", and the bar has no width to spare. Here it
               is absolutely positioned, so it costs no height either — and the
