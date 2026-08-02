@@ -1,3 +1,4 @@
+import { LangSwitch } from '../components/LangSwitch.js';
 import { useT } from '../i18n/useT.js';
 import { useStore } from '../store/index.js';
 
@@ -11,6 +12,12 @@ export function Lobby() {
 
   return (
     <div className="min-h-dvh bg-green-900 flex flex-col items-center justify-center gap-6 p-6 text-white">
+      {/* Waiting for the host is exactly when someone has time to notice the
+          language is wrong, and it was the one waiting screen with no way to
+          change it without leaving the room. */}
+      <div className="absolute top-4 right-4">
+        <LangSwitch />
+      </div>
       <div className="text-4xl">🀄</div>
       <div className="text-center">
         <h2 className="text-2xl font-bold">{t('lobby.title')}</h2>
