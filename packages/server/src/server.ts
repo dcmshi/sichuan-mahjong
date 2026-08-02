@@ -20,13 +20,29 @@ import { registerWsRoutes, sweepStaleLobbies } from './ws.js';
 // rooms is free on your own machine and is not on a shared 512MB instance.
 const SWEEP_INTERVAL_MS = 10 * 60_000;
 
+/**
+ * Biggest WebSocket frame we will accept. (H1)
+ *
+ * `ws` defaults to 100 MB, which on a 512 MB instance is an out-of-memory kill of
+ * every in-progress game. The frame is buffered *before* the message handler
+ * runs, so the validation in `ws.ts` sits downstream of this and cannot help —
+ * the size has to be refused by the socket itself. The largest real message is a
+ * `join` carrying a name already capped at 24 characters, so 64 KB is ~100× the
+ * headroom anything legitimate needs. Over it, `ws` closes with 1009 and the
+ * client's existing reconnect path takes over.
+ */
+const MAX_WS_FRAME_BYTES = 64 * 1024;
+
 async function buildApp(
   profile: RuntimeProfile,
   serverOptions: { https?: { key: string; cert: string } } = {},
   embeddedClient?: EmbeddedClient,
 ): Promise<ReturnType<typeof Fastify>> {
+  // logger stays false deliberately: both the seat token and the spectator watch
+  // secret travel in query strings, and a request logger would write every one of
+  // them into the platform's log console.
   const app = Fastify({ logger: false, trustProxy: profile.trustProxy, ...serverOptions });
-  await app.register(fastifyWebsocket);
+  await app.register(fastifyWebsocket, { options: { maxPayload: MAX_WS_FRAME_BYTES } });
   await registerHttpRoutes(app, embeddedClient);
   await registerWsRoutes(app);
   return app;
