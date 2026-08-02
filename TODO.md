@@ -246,23 +246,66 @@ so it isn't rediscovered as a bug.
   judgements that need the hand on screen, and the panel hides it for the whole
   10-second window.
 
-  The bar is `fixed`, so it is out of flow and pushes nothing. Three ways out:
+  **Two obvious fixes were tried and measured, and neither works. The cause is
+  not the bar's positioning.** Measured live at 320×568 with a window open:
 
-  1. **Pad the scroll container while the window is open** by the bar's height.
-     Smallest change, keeps the countdown pinned where the thumb already is.
-  2. **Put the bar in flow** at the end of the scroll container, so the hand
-     reflows above it. Cleaner, but the bar then moves with scroll position.
-  3. **Move it above the hand row** — least disruptive to layout, most
-     disruptive to muscle memory, since every other primary control is bottom-anchored.
+  | | top..bottom |
+  |---|---|
+  | claim bar | 525..568 |
+  | hand container (`px-2 py-2`) | 419..**525** |
+  | the hand's `ul.tile-run.tile-lap` | 471..**517** |
+  | a hand `li` | 511..552 |
+  | the `.tile` inside it | 511..**546** |
 
-  (1) is the recommendation.
+  The hand's *layout* box ends at 525, exactly where the bar begins — the box
+  model says they do not overlap. But the tiles **paint** to 546, about 21px
+  past their own container, because a tile in a `.tile-lap` run is drawn larger
+  than its layout box. So the overlap is between painted ink and a correctly
+  positioned bar.
 
-  **The trap is `viewport.spec.ts`.** It asserts the play screen never overflows
-  its scroll container, sampling across a round on a 320×568 phone — and adding
-  padding during the claim window changes that budget at exactly the moment the
-  guard is least likely to sample. Whatever the fix, the guard needs to sample
-  *with a claim window open*, which today it only does by luck. R3's sticky
-  round-end bar is the precedent for getting this right. **Small-medium.**
+  That is why both attempts failed:
+
+  1. **Padding the scroll container** by the measured bar height moved the bar's
+     top to exactly the hand container's bottom — and changed nothing visible,
+     because the tiles were already overflowing that edge.
+  2. **Putting the bar in flow** after the hand is where it already sits in the
+     tree, and the board is `h-dvh`, so the bar lands in the same place either
+     way. Visually a no-op.
+
+  So the fix has to give the hand room for the ink it actually draws, which
+  means reserving the lap overhang rather than the layout height. **Read
+  [docs/handoff-tile-rendering.md](./docs/handoff-tile-rendering.md) first** —
+  the overhang is a consequence of the 22.5%/29% lap geometry and is
+  proportional to tile size, so a hard-coded pixel padding will be wrong at
+  another size. A speculative `pb-6` on the hand container was tried and did not
+  move the flagged count off 13.
+
+  **The guard to add with the fix** (written, measured, then reverted with the
+  rest): sample `.claim-panel` inside the existing round loop in
+  `viewport.spec.ts`, count hand tiles whose painted box intersects the bar's,
+  and assert both that at least one claim window was seen — otherwise the check
+  passes for free on a round that offered no claim — and that the covered count
+  is zero. It reported **13 covered tiles** on both `chromium` and `se-portrait`,
+  so it does catch the defect. **Medium**, and it is really a tile-geometry
+  change wearing a layout bug's clothes.
+
+- [ ] **N9 — the lobby offers bot pace at a table with no bots.** Reported
+  2026-08-02. `HostSetup.tsx` renders the slow/normal/fast selector
+  unconditionally, so a host filling all four seats with people is still asked
+  how fast the bots should play. It changes nothing — `botSpeed` only paces
+  `GameRoom`'s bot driver — so it is a control that reads as broken rather than
+  one that misbehaves.
+
+  Disable it (or drop it) when `lobbyPlayers` holds four humans. Disabled rather
+  than hidden is the better default: a seat can be kicked and refilled with a
+  bot at any point before Start, and a control that appears and vanishes as
+  seats change is worse than one that greys out. The value still rides on
+  `startGame.rules.botSpeed` either way, so nothing server-side changes — and
+  `botSpeedFrom` already narrows whatever arrives.
+
+  Worth pairing with **N5**, which adds a mid-match pace control: that one wants
+  the same "are there any bots" test, and neither should be reachable at a table
+  of four people. **Small.**
 
 ---
 
