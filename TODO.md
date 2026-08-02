@@ -71,9 +71,17 @@ so it isn't rediscovered as a bug.
   has to be regenerated**. Do that deliberately, not as a surprise.
 
   Dice must come from `rng.ts` like all engine randomness, or replays stop
-  reproducing. Rolling for the *first* dealer is a separate, smaller change —
-  `createGame` already takes `dealer`, and `startNextRound` rotates it after.
-  **Engine + UI; the rotation is small, the corpus regeneration is the work.**
+  reproducing.
+
+  **Fact-checked: there is no seating roll in this ruleset.** The PDF describes
+  exactly one throw — East's two dice for the wall break — and never says how
+  East is chosen; §"preparatory phase" starts with East already established.
+  "one die" and "a die" appear nowhere in the document. Deciding turn order by a
+  roll is real mahjong practice and common in other variants, but here it would
+  be an **addition beyond Novikov**, so it belongs where 換三張 already sits: a
+  host toggle, off by default. `createGame` already takes `dealer` and
+  `startNextRound` rotates it after, so the mechanism is cheap; it is the
+  ruleset claim that needs to stay honest.
 
 - [ ] **N3 — a "what can I win with" section in How to play.** The help covers
   the flow but never states the shape of a winning hand: four sets plus a pair,
@@ -82,6 +90,27 @@ so it isn't rediscovered as a bug.
 
   Three catalogs move together (the parity test enforces it), and the Chinese
   needs a speaker rather than a gloss. **Small, but the writing is the job.**
+
+- [ ] **N4 — put animation pace in the host's hands.** Play already reads fast, and
+  N1 adds motion to it. Two lobby settings, riding on `startGame.rules` beside
+  `botSpeed` and narrowed in `ws.ts` the same way:
+
+  - **Skip animations** — a boolean, default **false**. Distinct from
+    `prefers-reduced-motion`, which is already honoured globally via
+    `MotionConfig reducedMotion="user"`: that is an OS-level accessibility
+    signal, this is a table preference, and conflating them would let one player's
+    taste override another's access need.
+  - **Animation speed** — slow / medium / fast, default **medium**. Today's
+    durations become **fast** (`DISCARD_FLIGHT_MS` 280, `FLIGHT_MS` 420,
+    `HU_CELEBRATION_MS` 1200), so the default gets slower than it is now.
+
+  **This is a client preference, not a rule** — unlike `botSpeed`, which is a
+  `GameRoom` field because it paces the server. Nothing here reaches the engine,
+  so it changes no replay. The open question is whether it should be per-player
+  (localStorage, everyone picks their own) rather than host-set: bot pace has to
+  be shared because everyone watches the same bots, but how fast *your* tiles
+  slide is yours alone. **Recommend per-player, with the lobby setting as the
+  table default.** Small.
 
 ---
 
