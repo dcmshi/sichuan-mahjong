@@ -1,5 +1,6 @@
 import type { SpectatorView } from '@sichuan-mahjong/engine';
 import { motion } from 'framer-motion';
+import { LangSwitch } from '../components/LangSwitch.js';
 import { MeldDisplay } from '../components/MeldDisplay.js';
 import { ReconnectingBanner } from '../components/ReconnectingBanner.js';
 import { RoundEndRow } from '../components/RoundEndRow.js';
@@ -104,6 +105,8 @@ export function Spectate() {
   const view = useStore(s => s.spectatorView);
   const code = useStore(s => s.code);
   const roundResult = useStore(s => s.roundResult);
+  const matchScores = useStore(s => s.matchScores);
+  const countedRounds = useStore(s => s.countedRounds);
   const resetSession = useStore(s => s.resetSession);
 
   if (!view) {
@@ -126,13 +129,16 @@ export function Spectate() {
             ? t('spec.roundOver')
             : t('play.othersTurn', { name: turnName })}
         </span>
-        <button
-          type="button"
-          className="text-white/60 hover:text-white"
-          onClick={() => resetSession()}
-        >
-          {t('nav.leave')}
-        </button>
+        <div className="flex items-center gap-2">
+          <LangSwitch />
+          <button
+            type="button"
+            className="text-white/60 hover:text-white"
+            onClick={() => resetSession()}
+          >
+            {t('nav.leave')}
+          </button>
+        </div>
       </div>
 
       <div className="px-2 py-1 text-center text-[10px] text-green-300 uppercase tracking-wide">
@@ -165,6 +171,39 @@ export function Spectate() {
                 defaultOpen={p.hu !== null}
               />
             ))}
+          {/* The store has been accumulating these for spectators all along;
+              the screen simply never showed them. */}
+          {countedRounds.length > 1 && (
+            <div className="flex flex-col gap-1 mt-1">
+              <p className="text-green-300 text-[10px] font-semibold uppercase tracking-wide">
+                {t('end.matchTotal')}
+              </p>
+              {[...roundResult.players]
+                .sort((a, b) => (matchScores[b.seat] ?? 0) - (matchScores[a.seat] ?? 0))
+                .map(p => (
+                  <div
+                    key={p.seat}
+                    className="flex items-center gap-2 bg-black/15 rounded-lg px-3 py-1.5 text-xs"
+                  >
+                    <span className="text-green-300 w-10">{t(`wind.${p.seat}`)}</span>
+                    <span className="flex-1 truncate">{p.name}</span>
+                    <span
+                      className={[
+                        'font-mono font-bold',
+                        (matchScores[p.seat] ?? 0) > 0
+                          ? 'text-emerald-300'
+                          : (matchScores[p.seat] ?? 0) < 0
+                            ? 'text-red-300'
+                            : 'text-white/60',
+                      ].join(' ')}
+                    >
+                      {(matchScores[p.seat] ?? 0) > 0 ? '+' : ''}
+                      {matchScores[p.seat] ?? 0}
+                    </span>
+                  </div>
+                ))}
+            </div>
+          )}
         </div>
       )}
 
