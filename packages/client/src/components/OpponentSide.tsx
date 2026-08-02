@@ -66,8 +66,16 @@ export function OpponentSide({
       {(opp.discards.length > 0 || opp.pendingFirstDiscard) && (
         <div className="flex flex-wrap content-start items-start w-20 min-h-0 overflow-y-auto discard-tray tile-lap">
           {opp.pendingFirstDiscard && <TileBack size="sm" />}
-          {opp.discards.slice(-6).map(id => (
-            <Tile key={id} id={id} size="sm" lastDiscard={id === lastDiscardTile} />
+          {/* slice, so the void discard only carries its mark while it is still
+              in the visible tail of a capped tray. */}
+          {opp.discards.slice(-6).map((id, i) => (
+            <Tile
+              key={id}
+              id={id}
+              size="sm"
+              lastDiscard={id === lastDiscardTile}
+              voidDiscard={opp.firstDiscardIsVoid && id === opp.discards[0] && i === 0}
+            />
           ))}
         </div>
       )}

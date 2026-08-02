@@ -48,8 +48,14 @@ export function OpponentTop({ view, relSeat }: { view: PlayerView; relSeat: 0 | 
         <div className="flex items-start max-w-full overflow-x-hidden discard-tray tile-lap">
           {/* Their void tile is face down until they flip it on their first turn (A37) */}
           {opp.pendingFirstDiscard && <TileBack size="sm" />}
-          {opp.discards.slice(-9).map(id => (
-            <Tile key={id} id={id} size="sm" lastDiscard={id === lastDiscardTile} />
+          {opp.discards.slice(-9).map((id, i) => (
+            <Tile
+              key={id}
+              id={id}
+              size="sm"
+              lastDiscard={id === lastDiscardTile}
+              voidDiscard={opp.firstDiscardIsVoid && id === opp.discards[0] && i === 0}
+            />
           ))}
         </div>
       )}

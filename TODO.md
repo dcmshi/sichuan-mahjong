@@ -1,5 +1,34 @@
 # TODO
 
+## ✅ The wall stacks and laps, and the void discard is marked (2026-08-01)
+
+- [x] **Stacks, not two rows.** Each wall is seven stacks two tiles high, with the
+  upper tile drawn offset out and the lower one lapping over it, so a stack reads
+  as a stack. Along the wall they sit flush, lapped 22.5% exactly as the hand is.
+  Together that took the frame from 21% deep and 60% long to 17% and 54% — the
+  space the ask was about.
+- [x] **Every tile is placed outright**, `left/top/width` in percentages of the
+  square, computed by `wallSlots`. The flex version had each cell asking its row
+  how wide it was while the row asked the cell, and the cycle resolved to the tile
+  art's intrinsic 210px — the side walls came out as wide as the whole square. The
+  CSS is now two rules and nothing sizes from content.
+- [x] **The first discard is marked in every tray**, which is the only public
+  statement of what a seat declared. `PublicPlayer.firstDiscardIsVoid` is derived,
+  not stored: `!usedIndicator` is the record that a tile *was* separated, and the
+  other two terms say it has since been flipped into `discards`. **It is false
+  while the tile is still face down** — the flip is what makes the suit public,
+  and A40 is the standing reminder of what happens otherwise.
+- [x] **The mark is a glow on the art, not a ring on the box.** In a lapped tray
+  the box is the pitch and the art hangs a fifth of a tile past it, so a box ring
+  would sit narrow and offset; `drop-shadow` follows the art's own alpha, as the
+  selected and last-discard markers already do. White, because amber is spoken for
+  by the last discard, and `:not(.tile-last-discard)` so they can't fight over one
+  tile. The marked tile needs a `z-index` too: it is the *first* in the tray, so
+  the whole rest of the pile laps over it.
+
+Known: an opponent's tray is capped (last 6 or 9), so their void discard loses its
+mark once it scrolls out. Yours and the spectator's are never capped.
+
 ## ✅ The wall is four walls, and the discards centre (2026-08-01)
 
 *"the wall in the middle is kind of lazy … right now it's impossible to tell how

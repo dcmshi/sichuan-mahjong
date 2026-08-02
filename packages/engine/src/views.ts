@@ -33,6 +33,15 @@ export type PublicPlayer = {
    * `discards` until flipped. Its owner gets the id in `you`. (A37)
    */
   pendingFirstDiscard: boolean;
+  /**
+   * True once the face-down first discard has been turned over, which makes
+   * `discards[0]` the void-suit tile this player declared. False for an indicator
+   * user, who never separated one, and false while it is still face down — the
+   * flip is what makes the suit public, and A40 is the standing reminder of what
+   * happens when something says it earlier than that. Nothing here is new
+   * information: after the flip the tile is face up in front of everyone.
+   */
+  firstDiscardIsVoid: boolean;
   status: 'playing' | 'hu';
   hu: HuRecord | null;
   isReady: boolean;
@@ -250,6 +259,9 @@ function toPublicPlayer(p: PlayerState, revealMelds: boolean): PublicPlayer {
     melds: toPublicMelds(p.melds, revealMelds),
     discards: p.discards,
     pendingFirstDiscard: p.pendingFirstDiscard !== null,
+    // `usedIndicator` is the persistent record of whether a tile was separated at
+    // all; the other two say it has since been flipped and landed in `discards`.
+    firstDiscardIsVoid: !p.usedIndicator && p.pendingFirstDiscard === null && p.discards.length > 0,
     status: p.status,
     hu: p.hu,
     isReady: p.isReady,

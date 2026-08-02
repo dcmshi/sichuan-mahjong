@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
+  WALL_EW_DEPTH,
+  WALL_NS_DEPTH,
   WALL_STACKS,
-  WALL_STACKS_PER_SIDE,
   WALL_TILES,
-  sideStacks,
+  wallSlots,
   wallStacks,
 } from '../src/components/WallDiagram.js';
 
@@ -38,12 +39,42 @@ describe('wall diagram', () => {
     }
   });
 
-  it('splits the ring into four equal sides', () => {
-    const stacks = wallStacks(WALL_TILES);
-    for (let side = 0; side < 4; side++) {
-      expect(sideStacks(stacks, side)).toHaveLength(WALL_STACKS_PER_SIDE);
+  it('places one slot per tile, and fills exactly the ones still standing', () => {
+    expect(wallSlots(WALL_TILES)).toHaveLength(WALL_TILES);
+    expect(wallSlots(WALL_TILES).every(s => s.filled)).toBe(true);
+    expect(wallSlots(0).some(s => s.filled)).toBe(false);
+    for (const n of [1, 17, 40, 55]) {
+      expect(wallSlots(n).filter(s => s.filled)).toHaveLength(n);
     }
-    expect(sideStacks(wallStacks(2), 0)[0]).toBe(0);
-    expect(sideStacks(wallStacks(2), 3).at(-1)).toBe(2);
+  });
+
+  it('keeps every slot inside the square', () => {
+    for (const slot of wallSlots(WALL_TILES)) {
+      expect(slot.left).toBeGreaterThanOrEqual(0);
+      expect(slot.top).toBeGreaterThanOrEqual(0);
+      expect(slot.left + slot.width).toBeLessThanOrEqual(100.01);
+    }
+  });
+
+  it('leaves the middle clear for the discard', () => {
+    // Both walls of a pair, plus what they leave between them, is the whole edge.
+    expect(100 - 2 * WALL_NS_DEPTH).toBeGreaterThan(50);
+    expect(100 - 2 * WALL_EW_DEPTH).toBeGreaterThan(50);
+  });
+
+  it('laps the stacks rather than spacing them', () => {
+    const north = wallSlots(WALL_TILES).slice(0, 4);
+    // Two slots to a stack, so the next stack is two along.
+    const pitch = north[2]!.left - north[0]!.left;
+    expect(pitch).toBeLessThan(north[0]!.width);
+    expect(pitch / north[0]!.width).toBeCloseTo(0.775, 3);
+  });
+
+  it('stacks the second tile over the first rather than beside it', () => {
+    const [upper, lower] = wallSlots(WALL_TILES);
+    expect(lower!.left).toBe(upper!.left);
+    expect(lower!.top).toBeGreaterThan(upper!.top);
+    // Overlapping, not stood end to end: the rise is a fraction of the tile.
+    expect(lower!.top - upper!.top).toBeLessThan(upper!.width);
   });
 });

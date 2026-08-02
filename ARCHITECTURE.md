@@ -284,6 +284,7 @@ export type PublicPlayer = {                    // what every seat may see about
   melds: PublicMeld[];                          // concealed kong tile null'd until roundEnd (A27)
   discards: TileId[];
   pendingFirstDiscard: boolean;                 // owes the §5.4 flip — the tile itself stays secret
+  firstDiscardIsVoid: boolean;                  // and once flipped, discards[0] IS that tile
   status: 'playing' | 'hu'; hu: HuRecord | null;
   isReady: boolean; scoreDelta: number; handCount: number;
 };

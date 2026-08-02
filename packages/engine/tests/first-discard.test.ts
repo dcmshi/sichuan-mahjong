@@ -190,6 +190,38 @@ describe('A35 — the separated tile is the first mandatory discard', () => {
     expect(r.events.some(e => e.e === 'discarded' && e.tile === pending)).toBe(true);
   });
 
+  it('only calls the first discard a void declaration once it is face up', () => {
+    const { state, separated } = declareAllVoid(newGame('a35-flip'));
+    const dealer = state.dealer;
+    expect(separated[dealer]).toBe(true);
+
+    // Face down: the tile is not in `discards` and nothing may point at it, or
+    // the suit leaks before the flip makes it public (the A40 failure mode).
+    const before = projectView(state, ((dealer + 1) % 4) as Seat);
+    expect(before.others.every(o => !o.firstDiscardIsVoid)).toBe(true);
+
+    const r = applyAction(state, { t: 'flipFirstDiscard', seat: dealer });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+
+    // Face up: every seat sees it, including the one that flipped it.
+    for (const viewer of [0, 1, 2, 3] as Seat[]) {
+      const v = projectView(r.state, viewer);
+      const them = viewer === dealer ? v.you : v.others.find(o => o.seat === dealer)!;
+      expect(them.firstDiscardIsVoid).toBe(true);
+      expect(them.discards[0]).toBe(r.state.players[dealer]!.discards[0]);
+    }
+  });
+
+  it('never says that of an indicator user, who separated nothing', () => {
+    const { state, separated } = declareAllVoid(newGame('a35-flip'));
+    const indicator = ([0, 1, 2, 3] as Seat[]).find(s => !separated[s]);
+    if (indicator === undefined) return; // this seed separated for everyone
+    expect(state.players[indicator]!.usedIndicator).toBe(true);
+    const v = projectView(state, indicator);
+    expect(v.you.firstDiscardIsVoid).toBe(false);
+  });
+
   it('flipFirstDiscard is rejected when nothing is pending', () => {
     const { state } = declareAllVoid(newGame('a35-nothing'));
     const flipped = applyAction(state, { t: 'flipFirstDiscard', seat: state.dealer });

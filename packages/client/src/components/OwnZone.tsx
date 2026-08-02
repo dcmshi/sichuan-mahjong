@@ -321,12 +321,13 @@ export function OwnZone({ view }: { view: PlayerView }) {
           >
             {/* Face down until you flip it on your first turn (A37) */}
             {view.you.pendingFirstDiscard && <TileBack size="sm" />}
-            {view.you.discards.map(id => (
+            {view.you.discards.map((id, i) => (
               <Tile
                 key={id}
                 id={id}
                 size="sm"
                 lastDiscard={view.lastDiscard?.from === seat && id === lastDiscardTile}
+                voidDiscard={i === 0 && view.you.firstDiscardIsVoid}
               />
             ))}
           </div>

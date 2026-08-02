@@ -41,6 +41,12 @@ export type TileProps = {
   interactive?: boolean;
   /** Fill the parent's width (height follows the aspect-ratio) instead of a fixed size. */
   fill?: boolean;
+  /**
+   * The void-suit tile this seat set aside at declaration and flipped on turn 1 —
+   * the first tile in their tray, and the only public statement of what they
+   * declared. Marked so the table can read it back at a glance.
+   */
+  voidDiscard?: boolean;
 };
 
 /**
@@ -63,6 +69,7 @@ export function Tile({
   size = 'md',
   interactive = true,
   fill = false,
+  voidDiscard = false,
 }: TileProps) {
   const { suit, rank } = tileFromType(tileTypeOf(id));
   const src = `/tiles/${suit}-${rank}.svg`;
@@ -121,6 +128,7 @@ export function Tile({
           fill ? 'w-full' : SIZE_CLASSES[size],
           selected ? 'is-selected' : '',
           lastDiscard ? 'tile-last-discard' : '',
+          voidDiscard ? 'tile-void-discard' : '',
           clickable ? 'cursor-pointer focus-visible:outline focus-visible:outline-2' : '',
           clickable ? 'focus-visible:outline-amber-400' : 'cursor-default',
         ]

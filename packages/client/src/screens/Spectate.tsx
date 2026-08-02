@@ -69,8 +69,14 @@ function SeatRow({ view, seat }: { view: SpectatorView; seat: number }) {
         <div className="flex flex-wrap discard-tray tile-lap">
           {/* Face down until its owner flips it on their first turn (A37) */}
           {p.pendingFirstDiscard && <TileBack size="sm" />}
-          {p.discards.map(id => (
-            <Tile key={id} id={id} size="sm" lastDiscard={id === lastFromHere} />
+          {p.discards.map((id, i) => (
+            <Tile
+              key={id}
+              id={id}
+              size="sm"
+              lastDiscard={id === lastFromHere}
+              voidDiscard={i === 0 && p.firstDiscardIsVoid}
+            />
           ))}
         </div>
       )}
