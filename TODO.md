@@ -342,6 +342,45 @@ so it isn't rediscovered as a bug.
   are rendered with a "+N more" indicator rather than silently truncated;
   rotation may free enough room to raise them. **Medium.**
 
+- [ ] **N11 — pre-select a discard while you wait, and back out if a claim
+  appears.** Requested 2026-08-02. Today the hand is inert until it is your
+  turn: `OwnZone.tsx:192` clears `selectedTile` whenever `canDiscard` goes
+  false, so three bot turns pass with nothing to do but watch. Let a player
+  arm a tile early; play it the moment it becomes legal.
+
+  **It fits Sichuan especially well.** `voidDiscardRule: 'strict'` means that
+  until your void suit is gone your legal discards are *only* void-suit tiles —
+  the decision is already made, so the taps are pure latency. That is the case
+  worth optimising, more than the general one.
+
+  **Nothing goes on the wire early.** Arming is local state; the existing
+  `sendAction` fires only once the action is legal, so `ws.ts` needs no new
+  message and no new validation. It is a client affordance over rules that
+  already exist.
+
+  **The cancel is the point, and it is the part to get right.** If a claim
+  window opens where you could Pung, Kong or Hu, firing the armed discard would
+  silently spend a claim you would have taken — the worst possible outcome,
+  because it happens without you touching anything. Disarm whenever
+  `yourLegalActions` contains a claim, and say so on screen rather than just
+  going quiet.
+
+  **A second case to decide, which the request does not cover:** you draw a tile
+  before you discard, and an armed discard commits you *before* you see the
+  draw. Sometimes that is exactly what you want; sometimes the draw is the tile
+  that changes your mind. Recommend disarming on any self-draw that is itself a
+  legal discard, and keeping the arm only through turns where nothing you drew
+  could matter — or, simpler and more honest, arm-to-highlight and still require
+  the confirming tap, so the saving is the decision rather than the action.
+  Worth trying the aggressive version first and seeing whether it ever bites.
+
+  **Traps.** `selectedTile` must survive view pushes instead of being cleared by
+  the `canDiscard` effect, but must still clear when the tile leaves the hand —
+  the hand reconciles on `handKey`, so hook the same signal. Needs a
+  fired-once guard like `ClaimPanel`'s `sent`, or a slow connection re-arms and
+  discards twice. And the mandatory first-discard flip (A35) is not a discard:
+  on that turn there is nothing to arm. **Small-medium.**
+
 ---
 
 ## Shelved, with reasons
