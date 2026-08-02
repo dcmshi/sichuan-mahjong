@@ -45,11 +45,44 @@ Live at `https://sichuan-mahjong.onrender.com`. Post-deploy observations are in
 - [x] **C7's keepalive survives the proxy, but is invisible from the client.** The
   ping frames are answered at the edge and never reach the browser, so counting
   client-side ping events proves nothing. The observable is the socket outliving
-  the 60s at which a missed pong would have terminated it — measured at 300s open.
+  the 60s at which a missed pong would have terminated it.
 
 One thing came *out* of the deploy rather than into it: the `trustProxy` hop count
 is wrong for a Cloudflare-fronted Render service, and is now the open item in
 [TODO.md](../TODO.md).
+
+## ✅ Search engines can read it — C10 (2026-08-02)
+
+Design and rationale: [design-hosted-server.md §C10](./design-hosted-server.md).
+
+- [x] **`/robots.txt` and `/sitemap.xml` are routes, not files.** The diagnosis is
+  that they *can't* be files: both name an absolute origin, and **a sitemap whose
+  URLs sit on a different origin than the one that served it is discarded** rather
+  than followed — so a URL baked in at build time is wrong on every deployment but
+  one, and this build runs on three. `originFor` takes `RENDER_EXTERNAL_URL` when
+  the platform set one (Render does, unasked) and derives it from the request
+  otherwise, the same way the client has always derived its socket URL. `Host` is
+  a header the client wrote, so it is checked against a host shape before being
+  echoed into a response body.
+- [x] **The SPA fallback was answering both with `index.html` and a 200.** Not a
+  redirect, not a 404 — HTML that parses as zero robots directives. It happened to
+  mean "crawl everything", which is roughly right by accident, and it hid the
+  absence of a sitemap behind a success.
+- [x] **`Disallow: /*?` closes the watch link.** Every stateful URL here keeps its
+  state in the query string, and `?spectate=1&watch=…` holds the C5 spectator
+  secret. This line is the reason the rule exists; duplicate `/?code=ABCD` results
+  are the side benefit. `/j/:code` goes too, being a door that expires.
+- [x] **The canonical and `og:*` tags are the one absolute address in the client.**
+  Everything else derives its origin, but the crawlers that read `og:*` do not run
+  JavaScript, so those five lines name `https://sichuan-mahjong.onrender.com` in
+  `index.html` with a comment saying what a fork has to change. `<title>` and the
+  description now say what the page is instead of "Local 4-player…", which stopped
+  being true when it stopped being local.
+- [x] **A `<noscript>` block, because `<div id="root">` is empty until JS runs.**
+  Google renders JavaScript; its first pass does not. Three sentences of what the
+  game is costs nothing and is the only text in the initial HTML.
+
+---
 
 ## ✅ It runs on a public URL — C1–C7, C9 (2026-08-02)
 

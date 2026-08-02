@@ -230,6 +230,12 @@ forgets the flag on a deploy. What that buys, in order of sharpness:
 - **Sockets ping every 30s.** Nothing on a LAN closes an idle connection; a proxy
   will, and a half-open socket holds a seat nobody is sitting in.
 
+- **`/robots.txt` and `/sitemap.xml` are routes** (C10), because both name an
+  absolute origin and a sitemap on the wrong origin is discarded rather than
+  followed. `Disallow: /*?` is the load-bearing line: the spectator watch secret
+  rides in a query string. The canonical and `og:*` tags in `index.html` are the
+  one place in the client that names an address — `og:*` readers don't run JS.
+
 `render.yaml` is the Blueprint; steps and rationale in
 [docs/design-hosted-server.md](./docs/design-hosted-server.md). Free tier, so
 persistence stays off — `getDb()` already returns null and every caller handles it.

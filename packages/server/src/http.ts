@@ -6,6 +6,7 @@ import type { FastifyInstance } from 'fastify';
 import { allowCreate, allowJoin, atGameCapacity, clientKey } from './limits.js';
 import { canStart, createLobby, getLobby } from './lobby.js';
 import { getGame } from './persistence.js';
+import { originFor, robotsTxt, sitemapXml } from './seo.js';
 import { issueToken, issueWatchToken, resolveToken } from './tokens.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -71,6 +72,27 @@ export async function registerHttpRoutes(
 
   // Liveness
   app.get('/healthz', async () => ({ ok: true }));
+
+  // Crawler surface. These are routes rather than files in the client's
+  // public/ because both have to name an absolute origin, and this build is
+  // the same one whether it is on a LAN address, a tailnet name or a public
+  // URL. Registered before the SPA fallback, which would otherwise answer
+  // /robots.txt with index.html and a 200.
+  app.get('/robots.txt', async (req, reply) =>
+    reply
+      .header('cache-control', 'public, max-age=86400')
+      .type('text/plain; charset=utf-8')
+      .send(robotsTxt(originFor(req))),
+  );
+
+  app.get('/sitemap.xml', async (req, reply) => {
+    const origin = originFor(req);
+    if (!origin) return reply.code(404).send({ error: 'no_origin' });
+    return reply
+      .header('cache-control', 'public, max-age=86400')
+      .type('application/xml; charset=utf-8')
+      .send(sitemapXml(origin));
+  });
 
   // Create lobby. Unauthenticated by design — there are no accounts — which on
   // a public URL makes it an endpoint that allocates server memory for anyone

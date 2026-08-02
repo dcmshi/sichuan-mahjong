@@ -8,12 +8,35 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Mahjong" />
-    <meta name="description" content="Local 4-player Sichuan Mahjong (Bloody Rules)" />
+    <title>Sichuan Mahjong — Bloody Rules, free in your browser</title>
+    <meta
+      name="description"
+      content="Play Sichuan mahjong (Bloody Rules / 血战到底) in your browser. Four seats, bots for the empty ones, and a four-letter code to invite friends — no app, no account."
+    />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+
+    <!-- The one absolute address in the client. Crawlers that read og:* do not
+         run JavaScript, so these cannot be derived from location the way the
+         socket URL is; robots.txt and sitemap.xml are served by the server for
+         exactly that reason. A fork living somewhere else changes these five
+         lines — nothing else in the app knows a server address. -->
+    <link rel="canonical" href="https://sichuan-mahjong.onrender.com/" />
+    <meta property="og:url" content="https://sichuan-mahjong.onrender.com/" />
+    <meta property="og:image" content="https://sichuan-mahjong.onrender.com/icon-512.png" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Sichuan Mahjong" />
+    <meta property="og:title" content="Sichuan Mahjong — Bloody Rules, free in your browser" />
+    <meta
+      property="og:description"
+      content="Four seats, bots for the empty ones, and a four-letter code to invite friends — no app, no account."
+    />
+    <meta property="og:image:alt" content="Sichuan Mahjong" />
+    <meta name="twitter:card" content="summary" />
+
     <link rel="icon" href="/icon.svg" type="image/svg+xml" />
     <link rel="icon" href="/icon-192.png" type="image/png" sizes="192x192" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <title>Sichuan Mahjong</title>
     <script>
       // Register service worker (only on HTTPS for real PWA install)
       if ('serviceWorker' in navigator && location.protocol === 'https:') {
@@ -23,6 +46,15 @@
   </head>
   <body>
     <div id="root"></div>
+    <noscript>
+      <h1>Sichuan Mahjong</h1>
+      <p>
+        A 4-player game of Sichuan mahjong (Bloody Rules / 血战到底) — 108 tiles, 1–9 in three
+        suits, no winds or dragons. Every player declares a void suit and discards it first,
+        and the round continues until 3 players have won or the wall is exhausted.
+      </p>
+      <p>JavaScript is required to play.</p>
+    </noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

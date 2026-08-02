@@ -91,6 +91,7 @@ sichuan-mahjong/
 │   │   │   ├── persistence.ts    # SQLite at user data dir
 │   │   │   ├── tokens.ts
 │   │   │   ├── networking.ts     # IP detection, mDNS, Tailscale detection, TLS provisioning
+│   │   │   ├── seo.ts            # robots.txt / sitemap.xml, built from the request's origin
 │   │   │   ├── cli.ts            # startup output, QR code
 │   │   │   └── main.ts
 │   │   └── tests/
@@ -614,6 +615,8 @@ False Hu declarations are not counted when determining dealer rotation (PDF page
 | `GET`  | `/api/replay/:id` | Returns persisted action log for a completed round. |
 | `GET`  | `/healthz` | Liveness. |
 | `GET`  | `/j/:code` | Static client entry point with code prefilled. |
+| `GET`  | `/robots.txt` | Crawler rules. Allows `/`; disallows `/api/`, `/j/`, `/healthz` and **every URL with a query string** — the spectator watch secret is one of those. |
+| `GET`  | `/sitemap.xml` | The one indexable page. Both files must name the origin that served them, so both derive it (`RENDER_EXTERNAL_URL`, else a shape-checked `Host`) instead of being static assets with a URL baked in (C10). |
 
 Lobby codes: 4 chars, alphabet `ABCDEFGHJKLMNPQRSTUVWXYZ23456789` (excludes I/O/0/1). 32^4 ≈ 1M codes, drawn with `crypto.randomInt` (C2). **The code is a bearer capability** — there are no accounts, so holding it is what admits you — which is why it must be unpredictable rather than merely random: `Math.random()` is xorshift128+ and its state is recoverable from outputs an attacker harvests by creating lobbies, leaking *other people's future codes*. `CODE_LENGTH` is exported so 6 chars is a one-line change.
 

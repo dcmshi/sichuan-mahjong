@@ -1,6 +1,6 @@
 # Design — a hosted server on Render, without giving up self-host
 
-**Status:** 2026-08-02. **C1–C7 and C9 are built.** C8 stays deliberately off
+**Status:** 2026-08-02. **C1–C7, C9 and C10 are built.** C8 stays deliberately off
 (free tier, no disk). What is left is the deploy itself — see
 [Deploying](#deploying).
 
@@ -234,6 +234,35 @@ build; a config decision, deferrable.
 
 It already exists and returns `{ ok: true }`.
 
+### C10. A public URL is a page a crawler will read — ✅ done (2026-08-02)
+
+On a tailnet there was no one to tell. On a public URL there are three problems,
+and only the first is the obvious one.
+
+**`/robots.txt` answered with the SPA.** The not-found handler returns
+`index.html` with a **200**, so every crawler asking for robots.txt got HTML that
+parses as zero directives. Google reads that as "crawl everything", which is
+approximately the intent but arrives by accident — and the same 200 hid the fact
+that there was no sitemap either.
+
+**Neither file can be a static asset in `public/`.** Both have to name an
+absolute origin — robots.txt in its `Sitemap:` line, sitemap.xml in every `<loc>`
+— and **a sitemap whose URLs are not on the origin that served it is discarded**,
+not followed. A file baked at build time would be wrong on every deployment but
+one, so they are routes, and the origin comes from `RENDER_EXTERNAL_URL` when the
+platform set one and from the request otherwise. `Host` is a header the client
+wrote, so it is shape-checked before it is echoed into a body.
+
+**`Disallow: /*?` is not tidiness.** Every stateful URL this app produces carries
+its state in the query string, and one of them is `?spectate=1&watch=…` — the C5
+watch secret. A watch link pasted into anything a crawler reads must not become a
+search result. `/j/:code` is disallowed for the weaker reason that it is a door
+that expires.
+
+The `og:*` tags and the canonical are the exception that proves the rule: the
+crawlers that read them do not run JavaScript, so those are the one place in the
+client that names an absolute address, in `index.html` with a comment saying so.
+
 ---
 
 ## What the free tier actually costs you
@@ -348,7 +377,18 @@ build command, start command, health check, Node version — from it.
    `Sichuan Mahjong — hosted`. If it says anything else, `--hosted` did not take
    and the service is running with LAN defaults.
 4. **Optionally set `SM_PUBLIC_URL`** to the assigned URL, so the boot banner
-   prints it. Cosmetic only — the client derives its own origin.
+   prints it. Cosmetic only — the client derives its own origin, and C10's
+   `RENDER_EXTERNAL_URL` is already set by the platform.
+5. **Point Google at it.** Add the URL as a property in [Search
+   Console](https://search.google.com/search-console), verify it with the HTML-tag
+   method (a `<meta name="google-site-verification">` line in
+   `packages/client/index.html`, next to the other meta), and submit
+   `/sitemap.xml`. Then request indexing for `/` once, rather than waiting for a
+   crawl to find a site nothing links to.
+
+   If the deployment ever moves off `*.onrender.com`, the canonical and `og:*`
+   URLs in `index.html` are the five lines to change — nothing else in the client
+   knows an address.
 
 Nothing else is required. In particular **do not** add a disk or
 `SICHUAN_DATA_DIR` unless you have moved off the free tier; without a disk,
@@ -401,6 +441,10 @@ Open: the `trustProxy` hop count, per [C4](#c4-fastify-has-to-be-told-it-is-behi
 
 - **A cold start takes about a minute** after ~15 minutes of no traffic, and an
   idle gap with every player disconnected ends the match. Free tier, by choice.
+  **Googlebot pays that minute too**, and it gives a page far less than a minute
+  before it gives up. Expect indexing to take a few attempts, and read a
+  "crawled — currently not indexed" in Search Console as the free tier talking
+  rather than as something to fix in the markup.
 - **The rate limits are per profile, not per deployment mode.** They are on
   locally too, just looser. If a local suite ever starts seeing 429s, that is the
   thing to remember before reaching for `SM_RATE_LIMIT_OFF`.
