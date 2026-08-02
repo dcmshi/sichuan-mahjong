@@ -2,9 +2,9 @@ import type { PlayerView } from '@sichuan-mahjong/engine';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useState } from 'react';
 import { useT } from '../i18n/useT.js';
-import { useStore } from '../store/index.js';
 import { HowToPlay } from './HowToPlay.js';
 import { LangSwitch } from './LangSwitch.js';
+import { SettingsMenu } from './SettingsMenu.js';
 
 /** Sign-prefixed score delta, e.g. "+12" / "-3" / "0". */
 export function formatDelta(n: number): string {
@@ -40,8 +40,6 @@ function ScoreRow({
 export function PlayTopBar({ view }: { view: PlayerView }) {
   const [showHowToPlay, setShowHowToPlay] = useState(false);
   const [showScores, setShowScores] = useState(false);
-  const soundEnabled = useStore(s => s.soundEnabled);
-  const toggleSound = useStore(s => s.toggleSound);
   const t = useT();
   const seat = view.you.seat;
 
@@ -71,15 +69,7 @@ export function PlayTopBar({ view }: { view: PlayerView }) {
           </span>
         </button>
         <LangSwitch />
-        <button
-          type="button"
-          className="min-h-10 min-w-10 flex items-center justify-center text-white/50 hover:text-white"
-          onClick={toggleSound}
-          title={t('play.toggleSound')}
-          aria-label={t('play.toggleSound')}
-        >
-          {soundEnabled ? '🔊' : '🔇'}
-        </button>
+        <SettingsMenu />
         <button
           type="button"
           className="min-h-10 min-w-10 flex items-center justify-center text-white/50 hover:text-white"

@@ -11,6 +11,55 @@ file had reached 1,566 lines of which two were actually open.
 
 ---
 
+## ✅ N4 — animation pace is the player's, not the table's (2026-08-02)
+
+Two settings behind a new ⚙ menu in the play top bar: **animation speed**
+(slow / medium / fast) and **skip animations** (off). Both live in localStorage
+under `sm-anim`, beside the language preference.
+
+**Per-player, not on `startGame.rules`.** The obvious place was beside
+`botSpeed`, and it is the wrong one. Bot pace has to be the table's because bots
+move *on the server* and everyone watches the same move land at the same moment.
+Animation pace is local rendering only: every client receives the same `claimed`
+event and draws its own copy over a board that has already updated underneath,
+so one player on slow and another on fast desync nothing and block nobody. That
+also made it the cheaper build — no protocol field, no `ws.ts` narrowing, no
+room state for a value the server never reads.
+
+**The shipped durations became `fast`, and the default is `medium`.** So the
+default is now 1.5× slower than what was there before: `DISCARD_FLIGHT_MS` 280 →
+420, `FLIGHT_MS` 420 → 630, `HU_CELEBRATION_MS` 1200 → 1800. Slow is 2×. A test
+pins `fast` at exactly 1×, because the constants in the components *are* the fast
+values and a drifting multiplier would silently retime what shipped.
+
+**Skip is not "speed zero".** A zero duration still mounts the overlay, still
+schedules the clear timer and still paints a frame; skipping has to mean the
+animation is never started. So the components branch on `skip` rather than
+multiplying by it — and `OwnZone`'s layout effect still clears `takeoff.current`
+on the skip path, or the *next* discard would find a stale takeoff waiting and
+fly the wrong tile.
+
+**It is deliberately separate from `prefers-reduced-motion`**, which stays
+honoured globally through `MotionConfig reducedMotion="user"`. That is an
+OS-level accessibility signal and this is a taste. Conflating them would let
+turning this *off* look like it should override someone's system setting; the
+menu says so in a hint under the checkbox.
+
+**The ⚙ replaced the 🔊 button rather than joining it.** Measured on the
+smallest supported phone, the top bar is already at `scrollWidth` 323 in a
+320px viewport — the icon cluster is 254px of it — so a fifth 40px control was
+not available. Sound moved into the menu, which keeps the bar width-neutral and
+gives the next preference somewhere to go. Muting costs a second tap now, which
+is the right trade for a once-a-session action that arrives with a label instead
+of an emoji you have to interpret.
+
+Verified by driving the real app at 320×568: the menu opens, Escape closes it,
+both settings reach localStorage and survive a reload, the speed buttons disable
+while skipping, and forty moves played with skip on left **zero** stranded
+flight overlays on the board. 11 new unit tests; 12/12 e2e still green.
+
+---
+
 ## ✅ It is deployed, and the build fought back first (2026-08-02)
 
 Live at `https://sichuan-mahjong.onrender.com`. Post-deploy observations are in

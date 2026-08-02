@@ -1,6 +1,7 @@
 import type { PlayerView, TileId } from '@sichuan-mahjong/engine';
 import { AnimatePresence, Reorder, motion } from 'framer-motion';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useAnimationPace } from '../hooks/useAnimation.js';
 import { useSound } from '../hooks/useSound.js';
 import { useT } from '../i18n/useT.js';
 import { sendAction } from '../ws/client.js';
@@ -17,9 +18,10 @@ import { Tile, TileBack, tileLabel } from './Tile.js';
 const HU_CELEBRATION_MS = 1200;
 
 /**
- * How long a discarded tile takes to travel from your hand to your tray. Short
- * enough not to sit in front of the next decision, long enough to be a movement
- * you can follow rather than a jump.
+ * How long a discarded tile takes to travel from your hand to your tray, at the
+ * `fast` setting. Short enough not to sit in front of the next decision, long
+ * enough to be a movement you can follow rather than a jump; the player's
+ * animation preference scales both of these from here. (N4)
  */
 const DISCARD_FLIGHT_MS = 280;
 
@@ -42,7 +44,7 @@ const boxOf = (el: Element): Flight['from'] => {
  * tile animating in from somewhere else would fail that guard the moment a
  * sample caught it in flight. Nothing here is inside a tray.
  */
-function FlyingDiscard({ flight }: { flight: Flight }) {
+function FlyingDiscard({ flight, durationMs }: { flight: Flight; durationMs: number }) {
   return (
     <motion.div
       // tile-lap: both boxes it measures are pitches — a hand tile's and a tray
@@ -51,7 +53,7 @@ function FlyingDiscard({ flight }: { flight: Flight }) {
       className="tile-lap fixed left-0 top-0 z-30 pointer-events-none"
       initial={{ x: flight.from.left, y: flight.from.top, width: flight.from.width }}
       animate={{ x: flight.to.left, y: flight.to.top, width: flight.to.width }}
-      transition={{ duration: DISCARD_FLIGHT_MS / 1000, ease: [0.3, 0.7, 0.4, 1] }}
+      transition={{ duration: durationMs / 1000, ease: [0.3, 0.7, 0.4, 1] }}
     >
       <Tile id={flight.tile} interactive={false} fill />
     </motion.div>
@@ -95,6 +97,8 @@ export function OwnZone({ view }: { view: PlayerView }) {
   const seat = view.you.seat;
   const play = useSound();
   const t = useT();
+  const { skip: skipAnimations, scale: animScale } = useAnimationPace();
+  const discardFlightMs = DISCARD_FLIGHT_MS * animScale;
 
   // Local hand arrangement: lets the player drag tiles to organise their hand.
   // Reconciled against the server hand on every update — keep the custom order
@@ -120,9 +124,9 @@ export function OwnZone({ view }: { view: PlayerView }) {
 
   useEffect(() => {
     if (!showHuCelebration) return;
-    const id = setTimeout(() => setShowHuCelebration(false), HU_CELEBRATION_MS);
+    const id = setTimeout(() => setShowHuCelebration(false), HU_CELEBRATION_MS * animScale);
     return () => clearTimeout(id);
-  }, [showHuCelebration]);
+  }, [showHuCelebration, animScale]);
 
   // Discard flight (hand → tray). The source box is captured at the tap, because
   // by the time the server's view comes back the hand has already re-laid out
@@ -139,6 +143,12 @@ export function OwnZone({ view }: { view: PlayerView }) {
   useLayoutEffect(() => {
     const pending = takeoff.current;
     if (!pending) return;
+    // Clear the pending takeoff even when skipping, or the next discard would
+    // find a stale one waiting and fly the wrong tile.
+    if (skipAnimations) {
+      takeoff.current = null;
+      return;
+    }
     const landed = view.you.discards.at(-1);
     if (landed !== pending.tile) return; // our discard hasn't come back yet
     takeoff.current = null;
@@ -154,9 +164,9 @@ export function OwnZone({ view }: { view: PlayerView }) {
   // leave the landing tile hidden for the rest of the round.
   useEffect(() => {
     if (!flight) return;
-    const id = setTimeout(() => setFlight(null), DISCARD_FLIGHT_MS + 60);
+    const id = setTimeout(() => setFlight(null), discardFlightMs + 60);
     return () => clearTimeout(id);
-  }, [flight]);
+  }, [flight, discardFlightMs]);
 
   // The void declaration is drawn on its own above the pile, so the pile is
   // everything after it.
@@ -227,9 +237,9 @@ export function OwnZone({ view }: { view: PlayerView }) {
   return (
     <>
       {/* Hu celebration */}
-      <AnimatePresence>{showHuCelebration && <HuCelebration />}</AnimatePresence>
+      <AnimatePresence>{showHuCelebration && !skipAnimations && <HuCelebration />}</AnimatePresence>
 
-      {flight && <FlyingDiscard flight={flight} />}
+      {flight && <FlyingDiscard flight={flight} durationMs={discardFlightMs} />}
 
       {/* Your melds. One row that scrolls, like the across opponent's (R6): this
           was a plain non-wrapping flex of fixed-width tiles, so a third or fourth

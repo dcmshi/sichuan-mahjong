@@ -9,6 +9,12 @@ import type {
 } from '@sichuan-mahjong/engine';
 import { create } from 'zustand';
 import { type Lang, applyDocumentLang, loadLang, persistLang } from '../i18n/index.js';
+import {
+  type AnimationPrefs,
+  type AnimationSpeed,
+  loadAnimationPrefs,
+  persistAnimationPrefs,
+} from '../prefs.js';
 import { clearSession, persistSession } from '../session.js';
 import { closeConnection } from '../ws/client.js';
 
@@ -101,6 +107,10 @@ export interface GameStore {
   toggleSound: () => void;
   lang: Lang;
   setLang: (l: Lang) => void;
+  /** Local rendering pace. Never leaves this client — see `prefs.ts`. */
+  animation: AnimationPrefs;
+  setAnimationSpeed: (s: AnimationSpeed) => void;
+  toggleSkipAnimations: () => void;
 
   // Actions
   goTo: (s: Screen) => void;
@@ -145,6 +155,19 @@ export const useStore = create<GameStore>((set, get) => ({
     applyDocumentLang(lang);
     set({ lang });
   },
+  animation: loadAnimationPrefs(),
+  setAnimationSpeed: speed =>
+    set(s => {
+      const animation = { ...s.animation, speed };
+      persistAnimationPrefs(animation);
+      return { animation };
+    }),
+  toggleSkipAnimations: () =>
+    set(s => {
+      const animation = { ...s.animation, skip: !s.animation.skip };
+      persistAnimationPrefs(animation);
+      return { animation };
+    }),
 
   goTo: screen => set({ screen }),
   setPlayerName: playerName => set({ playerName }),

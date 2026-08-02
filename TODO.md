@@ -120,7 +120,9 @@ so it isn't rediscovered as a bug.
   Three catalogs move together (the parity test enforces it), and the Chinese
   needs a speaker rather than a gloss. **Small, but the writing is the job.**
 
-- [ ] **N4 — put animation pace in the host's hands.** Play already reads fast, and
+- [x] **N4 — put animation pace in the player's hands.** *(Done — `prefs.ts` +
+  the ⚙ menu; see [docs/history.md](./docs/history.md) for why the gear replaced
+  the sound button rather than joining it.)* Play already reads fast, and
   N1 adds motion to it. Two lobby settings, riding on `startGame.rules` beside
   `botSpeed` and narrowed in `ws.ts` the same way:
 

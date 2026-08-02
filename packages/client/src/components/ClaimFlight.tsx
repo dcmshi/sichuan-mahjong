@@ -1,12 +1,14 @@
 import type { GameEvent } from '@sichuan-mahjong/engine';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
+import { useAnimationPace } from '../hooks/useAnimation.js';
 import { useStore } from '../store/index.js';
 import { Tile } from './Tile.js';
 
 /**
- * How long the tile takes to cross. Long enough to follow, short enough not to
- * sit in front of the board it just changed.
+ * How long the tile takes to cross, at the `fast` setting. Long enough to
+ * follow, short enough not to sit in front of the board it just changed; the
+ * player's animation preference scales it from here. (N4)
  */
 const FLIGHT_MS = 420;
 
@@ -39,9 +41,12 @@ type Flight = { id: number; tile: number; from: Box; to: Box };
  */
 export function ClaimFlight() {
   const lastEvents = useStore(s => s.lastEvents);
+  const { skip, scale } = useAnimationPace();
   const [flights, setFlights] = useState<Flight[]>([]);
+  const durationMs = FLIGHT_MS * scale;
 
   useEffect(() => {
+    if (skip) return;
     // `hu` also emits a `claimed`, but a winning tile goes into a revealed hand
     // rather than a meld row, and the round-end screen is about to take over.
     const claims = lastEvents.filter(
@@ -68,10 +73,10 @@ export function ClaimFlight() {
     // the copy would sit on the board for the rest of the round. (F20's lesson)
     const timer = setTimeout(
       () => setFlights(prev => prev.filter(f => !ids.has(f.id))),
-      FLIGHT_MS + 60,
+      durationMs + 60,
     );
     return () => clearTimeout(timer);
-  }, [lastEvents]);
+  }, [lastEvents, skip, durationMs]);
 
   return (
     <AnimatePresence>
@@ -86,7 +91,7 @@ export function ClaimFlight() {
           initial={{ x: f.from.left, y: f.from.top, width: f.from.width }}
           animate={{ x: f.to.left, y: f.to.top, width: f.to.width }}
           exit={{ opacity: 0 }}
-          transition={{ duration: FLIGHT_MS / 1000, ease: [0.22, 0.8, 0.3, 1] }}
+          transition={{ duration: durationMs / 1000, ease: [0.22, 0.8, 0.3, 1] }}
         >
           <Tile id={f.tile} interactive={false} fill />
         </motion.div>
