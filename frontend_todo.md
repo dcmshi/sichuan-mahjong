@@ -36,12 +36,12 @@ audit log, not a commitment — triage before picking up. Already-tracked items
 
 ## Medium — UX gaps and silent failures
 
-- [ ] **No "copied" feedback on Copy buttons.** `screens/HostSetup.tsx:103` —
+- [x] **No "copied" feedback on Copy buttons.** `screens/HostSetup.tsx:103` —
   `copyText` has a solid legacy fallback, but the button gives no confirmation;
   on a phone the user cannot tell anything happened. Swap the label to
   "Copied ✓" for ~2s.
 
-- [ ] **Selected hand tile stays lifted after the turn passes.**
+- [x] **Selected hand tile stays lifted after the turn passes.**
   `components/OwnZone.tsx:93` — `selectedTile` is only cleared on discard.
   If a claim window opens or the turn moves on while a tile is selected, the
   tile stays raised and the "Tap again to discard" hint stays up, even though
@@ -49,34 +49,34 @@ audit log, not a commitment — triage before picking up. Already-tracked items
   `selectedTile` when `canDiscard` goes false, and set `aria-pressed` on the
   selected tile.
 
-- [ ] **Dimmed wrong-suit tiles in Huan are still tappable — and swallow the
+- [x] **Dimmed wrong-suit tiles in Huan are still tappable — and swallow the
   tap.** `screens/Game.tsx:89` — wrong-suit tiles render at `opacity-30` but
   the wrapper still calls `toggle`, which silently ignores them. Either make
   them truly non-interactive or give feedback; a control that responds to a
   tap with nothing reads as broken.
 
-- [ ] **Claim panel buttons give no pressed state and can double-send.**
+- [x] **Claim panel buttons give no pressed state and can double-send.**
   `components/ClaimPanel.tsx:58` — tapping Hu/Pung/Pass sends the action but
   the panel stays fully armed until the server's next view arrives. On a slow
   connection a second tap re-sends. Disable the buttons (or the panel) on
   first tap; also no sound on own claim, unlike every other own action.
 
-- [ ] **Spectator gets no reconnect feedback.** `screens/Spectate.tsx` — the
+- [x] **Spectator gets no reconnect feedback.** `screens/Spectate.tsx` — the
   play screen renders the "Reconnecting…" banner (`screens/Game.tsx:280`) but
   the spectate screen renders nothing until `ConnectionLost` fires ~47s
   later. Same gap on `RoundEnd` for non-hosts waiting on the host.
 
-- [ ] **ConnectionLost offers only "Back to menu".**
+- [x] **ConnectionLost offers only "Back to menu".**
   `components/ConnectionLost.tsx` — after the socket gives up, the one way out
   discards the session even when a saved token might still work (e.g. the
   phone was just in a tunnel). Offer "Try again" (reconnect with the stored
   session) alongside the exit.
 
-- [ ] **Lobby has no language switch.** `screens/Lobby.tsx` — the landing,
+- [x] **Lobby has no language switch.** `screens/Lobby.tsx` — the landing,
   huan/void, and play screens all have `LangSwitch`; a player stuck waiting
   in the lobby can't change language without leaving.
 
-- [ ] **`(you)` badge keyed off the practice name.**
+- [x] **`(you)` badge keyed off the practice name.**
   `screens/MatchEnd.tsx:56`, `components/RoundEndRow.tsx:46` —
   `player.seat === youSeat && player.name !== t('landing.practiceName')`
   suppresses the badge when the name equals the localized practice name, so a
@@ -84,7 +84,7 @@ audit log, not a commitment — triage before picking up. Already-tracked items
   practice mode is the goal; compare against the stored practice flag or the
   exact localized name only when this client created the practice game.
 
-- [ ] **Spectator mode is a second-class board.** `screens/Spectate.tsx` — no
+- [~] **Spectator mode is a second-class board.** *(LangSwitch and match totals done; sound, move history and HowToPlay still play-screen-only.)* `screens/Spectate.tsx` — no
   `LangSwitch`, no sound, no move history, no HowToPlay, no match totals at
   round end (the store accumulates `matchScores` for spectators but the
   screen never shows them). The round-end reveal is there; the rest is a
@@ -92,46 +92,46 @@ audit log, not a commitment — triage before picking up. Already-tracked items
 
 ## Low — polish, consistency, dead code
 
-- [ ] **Dead i18n key `end.details`.** `i18n/index.ts:165` — "Show scoring
+- [x] **Dead i18n key `end.details`.** `i18n/index.ts:165` — "Show scoring
   details" exists in all three catalogs but nothing renders it (RoundEndRow
   expands inline). Remove or wire up.
 
-- [ ] **Landing join button shows the raw URL code.**
+- [x] **Landing join button shows the raw URL code.**
   `screens/Landing.tsx:141` — `landing.joinCode` renders `urlCode` as-is
   while `handleJoin` uppercases it; a lowercase `?code=ab12` shows "Join
   ab12" next to a lobby named "AB12". Also: `urlCode` is re-parsed from
   `window.location.search` on every render — read it once.
 
-- [ ] **Form inputs use placeholders as their only labels.**
+- [x] **Form inputs use placeholders as their only labels.**
   `screens/JoinForm.tsx:70,80`, `screens/HostSetup.tsx:71`,
   `screens/SpectateForm.tsx:44` — no `<label>`/`aria-label`; placeholders
   vanish once filled and are not a WCAG label. The join-code input would also
   benefit from `autoCapitalize="characters" autoCorrect="off"
   spellCheck={false}` for mobile keyboards.
 
-- [ ] **Modals lack dialog semantics and Escape-to-close.** HowToPlay,
+- [~] **Modals lack dialog semantics and Escape-to-close.** *(role/aria-modal + Escape on HowToPlay and PlayHistory; focus trapping and restore still open.)* HowToPlay,
   PlayHistory, the scores dropdown, ConnectionLost, and the long-press tile
   preview all overlay the app with no `role="dialog"`/`aria-modal`, no focus
   management (focus stays on whatever launched them; the background is still
   tabbable), and no Escape handler — backdrop tap is the only way out.
   RotateOverlay likewise sits over a still-focusable board.
 
-- [ ] **Claim countdown bar is invisible to assistive tech.**
+- [x] **Claim countdown bar is invisible to assistive tech.**
   `components/ClaimPanel.tsx:67` — a styled div with `width: %`; add
   `role="progressbar"` + `aria-valuenow` (or accept that it's decorative and
   give the panel an `aria-live` "N seconds to claim" instead).
 
-- [ ] **Event feed is not announced.** `components/EventFeed.tsx:93` —
+- [x] **Event feed is not announced.** `components/EventFeed.tsx:93` —
   transient lines appear visually only; a screen-reader user hears nothing
   when someone pongs/kongs/hus. An `aria-live="polite"` wrapper would
   announce them. (ErrorToast already does this right via `<output>`.)
 
-- [ ] **Icon-only and decorative emoji unmarked.** 🔊/🔇 and "?" buttons have
+- [x] **Icon-only and decorative emoji unmarked.** 🔊/🔇 and "?" buttons have
   labels (good), but the decorative 🀄/🏆/👀/🏁 glyphs are bare text a screen
   reader will announce; add `aria-hidden`. `LangSwitch` and the sound toggle
   don't expose pressed state (`aria-pressed`).
 
-- [ ] **Theme colour mismatch.** `index.html:6` sets `theme-color` and the SW
+- [x] **Theme colour mismatch.** `index.html:6` sets `theme-color` and the SW
   background to `#0c5f57` (the felt), but Landing/Lobby/round-end screens
   paint `bg-green-900` (#14532d). The browser chrome and the page disagree on
   every non-game screen.
@@ -141,12 +141,12 @@ audit log, not a commitment — triage before picking up. Already-tracked items
   handles Enter/Space as select/discard only. Arrow-key reordering while a
   tile has focus would close the gap.
 
-- [ ] **Empty "Void:" line still takes layout space.**
+- [x] **Empty "Void:" line still takes layout space.**
   `screens/Game.tsx:340` — renders an empty string inside a fixed div when
   `voidedSuit` is null; on the shortest viewports every pixel in the well is
   spoken for (R1). Render nothing instead of an empty div.
 
-- [ ] **Opponent trays cap history with no indication.**
+- [x] **Opponent trays cap history with no indication.**
   `components/OpponentSide.tsx:90` (`slice(-6)`), `OpponentTop.tsx:71`
   (`slice(-9)`) — deliberate for space, but there is no "…and N earlier"
   affordance; the count of hidden discards is knowable and free to show.
