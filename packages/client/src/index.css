@@ -211,6 +211,11 @@ body {
    Confirm off the bottom (R3's lesson), the same bargain `.last-discard-tile`
    makes. */
 .void-hand-tile {
+  /* flex for the same reason `.wall-gauge-tile` is: `.tile` is inline-level, so
+     a block wrapper gives it a line box and the strut's descender leading sits
+     underneath — 6px against a 68px tile. The flash ring is drawn on this box,
+     so that 6px put the ring's bottom edge below the tile it is marking. */
+  display: flex;
   width: 3.5rem; /* Tile's "lg" width */
 }
 

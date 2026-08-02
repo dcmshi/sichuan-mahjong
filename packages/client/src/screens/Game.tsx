@@ -180,7 +180,12 @@ function VoidDeclarePhase({ view }: { view: PlayerView }) {
             className={[
               'flex-1 py-4 rounded-xl border-2 font-bold text-lg transition-all',
               SUIT_COLORS[suit],
-              chosenSuit === suit ? 'ring-4 ring-amber-400 scale-105' : 'opacity-80',
+              // The mark is drawn *inside* the button and the button doesn't
+              // grow. Both were outside before — a 4px ring plus `scale-105`,
+              // which widened it by 14px — and since the three sit in one
+              // `gap-3` row, whichever you picked ate 7px out of the gap beside
+              // it: 5px against the untouched 12px on the other side.
+              chosenSuit === suit ? 'shadow-[inset_0_0_0_4px_#fbbf24]' : 'opacity-80',
             ].join(' ')}
             onClick={() => setChosenSuit(suit)}
           >
@@ -197,7 +202,10 @@ function VoidDeclarePhase({ view }: { view: PlayerView }) {
           its button's colour instead of being the only thing shown. */}
       <div className="min-h-0 overflow-y-auto">
         <p className="text-sm text-green-300 mb-2">{t('void.yourHand')}</p>
-        <div className="flex flex-wrap justify-center gap-1">
+        {/* pb-1 so the last row's flash ring has somewhere to be drawn: it is a
+            3px spread on the tile's own box, and this container scrolls, so on
+            the bottom row it was clipped by the scroller's edge. */}
+        <div className="flex flex-wrap justify-center gap-1 pb-1">
           {view.you.hand.map(id => {
             const { suit } = tileFromType(tileTypeOf(id));
             const marked = suit === chosenSuit;
