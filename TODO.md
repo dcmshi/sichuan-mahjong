@@ -1156,6 +1156,45 @@ so it isn't rediscovered as a bug.
   same trap `HELP_FAN_ORDER` was built to avoid. And the round-end screen should
   probably say which limit was used, since that is the number a dispute is about.
   **Small-medium.**
+- [ ] **N28 - the kong button names its tile in a code no other screen uses, and
+  never says what it will do.** Reported 2026-08-03: "it looks like it adds an
+  additional tile to my hand, but it's not super clear in the UI which one it is."
+
+  **Both halves of that are right, and the second one is the app's fault twice
+  over.**
+
+  `KongButtons.tsx` builds its label as
+  `` `${suit[0]?.toUpperCase()}${rank}` `` - so the button reads **"Kong M3
+  (promoted)"**. `M3` appears nowhere else in the app: every other tile is named
+  through `tileLabel`, which renders "3 Characters" and is translated. So the one
+  control that asks a player to give up a specific tile is the one that names it in
+  untranslated shorthand, and in Chinese the `{label}` slot stays Latin.
+
+  **And a promoted kong really does add a tile, which is why it looks confusing.**
+  You already hold an exposed pung; the button moves the fourth copy out of your
+  hand onto that meld, and then you draw a **replacement** off the far end of the
+  wall (`kongDrawIndex`). So one tile leaves and one arrives, and the button says
+  neither. The three subtypes differ in exactly this way and all three read as one
+  purple button:
+
+  - **concealed** (暗杠): all four are in hand; they leave hand and become a meld.
+    Pays 2 from each non-Hu player.
+  - **promoted** (补杠): one leaves hand and joins an existing exposed pung. Pays 1
+    from each - *and it can be robbed*, which is a risk the button does not mention.
+  - **postponed** (迟杠): same shape as promoted but the fourth tile was already in
+    hand rather than freshly drawn, and **it pays nothing at all**. A player has no
+    way to tell from the UI that one of these two identical-looking buttons is worth
+    points and the other is not.
+
+  So: name the tile with `tileLabel`, and say what happens. Recommend also marking
+  the hand tile the kong would consume - the question asked was "which one is it",
+  and `data-discardable` already shows there is a per-tile marking mechanism. The
+  robbing risk on a promoted kong is worth a word too, since it is the only kong
+  that can lose you the hand.
+
+  Cheap to test without a DOM: the label belongs in a pure helper beside
+  `tileLabel`, which is exactly what `armedDiscard.ts` and `feedLineFor` do.
+  **Small.**
 ---
 
 ## Shelved, with reasons
