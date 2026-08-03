@@ -2,9 +2,10 @@
 
 Findings from a frontend / UI-UX audit of `packages/client` (2026-08-02).
 Grouped by severity; each entry names the file and the diagnosis. This is an
-audit log, not a commitment — triage before picking up. Already-tracked items
-(landscape layout R4 Phase 2, central discard pool O3) live in
-[TODO.md](../TODO.md) and are not repeated here.
+audit log, not a commitment — triage before picking up. Two items it would
+otherwise have raised were tracked elsewhere and are not repeated here: the
+landscape layout (R4 Phase 2) and the central discard pool (O3), both now shelved
+in [TODO.md](../TODO.md) — O3 as **won't do**, 2026-08-03.
 
 **Shelved 2026-08-02, with 17 of 20 done.** The remainder is deliberately
 parked in favour of the feature work in [TODO.md](../TODO.md) — none of the

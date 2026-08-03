@@ -1091,8 +1091,10 @@ GitHub Actions: build engine → lint → typecheck → test (vitest) → build 
 ## 12. Open questions / explicit deferrals
 
 Items 1–11 have since been implemented (✅) and are kept as a record of the
-decisions and where each landed. The **Open** list at the end of this section is
-live.
+decisions and where each landed. **O1–O5 below are now all resolved too** — three
+built, one closed won't-do, one a tested and accepted trade-off — so as of
+2026-08-03 nothing in this section is outstanding. Live work is in
+[TODO.md](./TODO.md).
 
 1. **Reconnection > 60s** — ✅ Done: bot takeover holds for the rest of the round; a reconnected human reclaims their seat at the next round (`GameRoom.nextRound` recomputes `isBot` from `isHumanSeat` + connection state). See §6.5.
 2. **Host shutdown midgame** — ✅ Done: in-progress rooms are snapshotted to SQLite (`live_rooms` table) — debounced on every state change and flushed on graceful shutdown (SIGINT/SIGTERM). On boot, `restoreRoomsFromDisk()` rehydrates each room and re-registers its tokens, so players reconnect with their saved token and resume; unconnected human seats arm the normal 60s bot-takeover so play never stalls. Snapshots are deleted on `endMatch`. (A hard crash loses at most the last ~1s of actions.)
@@ -1106,7 +1108,7 @@ live.
 10. **Replay-test corpus** — ✅ Done: canned games per fan combination + penalty paths.
 11. **Round-end hand reveals and score breakdown** — ✅ Done (2026-07-31). Only the fan list was on the wire; hands and the payment breakdown both needed the server to send more. `GameState.ledger` accumulates a `LedgerEntry` per payment, derived from the events the engine already emits inside the single `ok()` constructor so the two cannot drift, and living on the state so it survives the snapshot/restore path. `RoundResult.players[]` carries `hand`, `melds`, `isReady` and that seat's slice of the ledger; `HuRecord.fans` became `FanEntry[]` so fan names are translatable. See §8.1, §6.4 and §11.3.
 
-### Open
+### O1–O5, each with how it was resolved
 
 **O1. The release binary embeds the tile SVGs** — ✅ Resolved (2026-08-02) by
 **accepting the merge and stating the binary's licence**, rather than by
@@ -1151,20 +1153,27 @@ and identical discards stay distinct — and `historyRowFor` is the inverse of
 `feedLineFor`: discards are the bulk of the list rather than dropped. Its control
 sits in the play well, because a fourth top-bar icon truncated the turn indicator.
 
-**O3. Central discard pool.** Show every discard in the middle, mark the last one,
-and show each player's chosen void suit. **The redaction decision it needed has
-since been made and shipped:** `PublicPlayer.firstDiscardIsVoid` says whether a
-seat's `discards[0]` is the tile they declared, and is false until that seat flips
-it — which is when a real table learns it, and is the deliberate reveal A40 said
-this needed rather than a field that happened to be on the wire. The PDF edge case
-is handled by the same derivation: a player may declare a suit they hold none of, a
-card indicator stands in, and no tile ever reveals it (`usedIndicator`). Each seat's
-declaration is drawn above their own pile today.
+**O3. Central discard pool** — ❌ **Won't do** (2026-08-03). Show every discard in
+the middle, mark the last one, and show each player's chosen void suit. Closed
+without being built, because everything it was *for* now arrives another way and
+the space it wanted is occupied.
 
-What is left is the layout, and it got harder rather than easier — the middle now
-holds the wall diagram, the last discard and the history control, so the empty
-space that motivated a central pool is gone. Still a fallback; the per-seat trays
-are staying.
+It was three wishes in one. **See every discard**, which the per-seat trays capped
+at 10 a side and 9 across — delivered by N33, where tapping any tray opens the
+whole pile upright and unlapped, so the cap costs nothing. **See who declared
+what**, which needed a redaction decision — delivered by
+`PublicPlayer.firstDiscardIsVoid`, derived and false until that seat flips it,
+which is when a real table learns it and is the deliberate reveal A40 asked for;
+each seat's declaration is drawn above its own pile. The PDF edge case falls out of
+the same derivation: a player may declare a suit they hold none of, a card
+indicator stands in, and no tile ever reveals it (`usedIndicator`). **Fill the
+middle**, which was the layout motivation and is the one that expired — the well
+now holds the wall diagram, the last discard and the history control.
+
+So the remaining delta is a fourth way to read information already reachable in
+two, competing for the one part of the board that is now full. The per-seat trays
+are staying. Reopen this only if the trays themselves are being reconsidered, not
+as a feature on its own.
 
 **O4. Discard tile styling** — ✅ Done (2026-08-01), and it wasn't the discard pile.
 The report was that the middle discard looked glossier than the hand and trays: the

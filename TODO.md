@@ -16,15 +16,16 @@ so it isn't rediscovered as a bug.
 
 ## Open
 
-Three items. **N19 is the only one that is gameplay work** rather than plumbing,
-layout or research.
+Two items. **N19 is gameplay work; N26 is a sweep.**
 
 N23 (French, Spanish, Japanese), N31 (the lobby's Start button) and N35 (the
-support/source links) all closed 2026-08-03 — each in
-[docs/history.md](./docs/history.md). N23 left one thing open that is not a task:
-the four Japanese terms it had to coin, because Sichuan has them and riichi does
-not — 欠け色, 金鉤釣, 槓上放銃, 花豚 — **want a native speaker's eye**. The borrowed
-ones do not.
+support/source links) all shipped 2026-08-03, each written up in
+[docs/history.md](./docs/history.md). **O3 was closed the same day without being
+built** — it is under Shelved below, with the reasoning in ARCHITECTURE §12.
+
+N23 left one thing open that is not a task: the four Japanese terms it had to
+coin, because Sichuan has them and riichi does not — 欠け色, 金鉤釣, 槓上放銃,
+花豚 — **want a native speaker's eye**. The borrowed ones do not.
 
 ### N19 — a hard bot, so the ladder has three rungs
 
@@ -103,28 +104,20 @@ So the shape is: `dealer` on `RoundResult` (and the winds in play can come off
 decision about the lobby. **Small-medium** — the sweep is what makes it more
 than the one-line fix it looks like.
 
-### O3 — a central discard pool
-
-Show every discard in the middle, mark the last one, and show each player's void
-suit.
-
-**The redaction question it needed is answered and shipped.**
-`PublicPlayer.firstDiscardIsVoid` says whether a seat's `discards[0]` is the
-tile they declared, and is false until that seat flips it — which is when a
-real table learns it, and is the deliberate reveal A40 said this needed rather
-than a field that happens to be on the wire. The PDF edge case falls out of the
-same derivation: a player may declare a suit they hold none of, a card indicator
-stands in, and no tile ever reveals it (`usedIndicator`).
-
-What is left is the layout, and it got *harder* rather than easier. The middle
-of the well now holds the wall diagram, the last discard and the history
-control, so the empty space that motivated a central pool is gone. Each seat's
-declaration is already drawn above their own pile, and N33 made every pile
-openable in full with a tap. **Still a fallback; the per-seat trays are staying.**
-
 ---
 
 ## Shelved, with reasons
+
+- **A central discard pool** (O3) — closed as **won't do**, 2026-08-03. It was
+  three wishes in one, and two of them shipped by other means: N33 made every
+  seat's full pile one tap away, so the trays' 10-a-side cap costs nothing, and
+  `firstDiscardIsVoid` puts each seat's declaration above its own pile. The third
+  was the layout motivation — an empty middle — and the well now holds the wall
+  diagram, the last discard and the history control. What is left would be a
+  fourth route to information already reachable by two, competing for the fullest
+  part of the board. Reasoning in
+  [ARCHITECTURE.md §12](./ARCHITECTURE.md#12-open-questions--explicit-deferrals).
+  Reopen only if the per-seat trays are themselves being reconsidered.
 
 - **A real landscape layout for phones** (R4 Phase 2). Reasons recorded in
   [docs/viewport-audit.md](./docs/viewport-audit.md); landscape shows a

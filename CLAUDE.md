@@ -261,7 +261,11 @@ is a deliberately accepted granularity cost. Free tier, so persistence stays off
 `getDb()` returns null and every caller handles it. Reasoning and measurements in
 [docs/design-hosted-server.md](./docs/design-hosted-server.md).
 
-**Open** — see [TODO.md](./TODO.md), which is only the open list: **N19** a hard
-bot so the ladder has three rungs, **N26** the nine wind call sites above, and
-**O3** a central discard pool, still held as a fallback. N19 is the only one that
-is gameplay work rather than plumbing, layout or research.
+**Open** — see [TODO.md](./TODO.md), which is only the open list, and is down to
+two: **N19** a hard bot so the ladder has three rungs, and **N26** the nine wind
+call sites above. **O3, the central discard pool, was closed won't-do** on
+2026-08-03: two of the three things it was for shipped by other means (N33 opens
+any seat's full pile with a tap; `firstDiscardIsVoid` puts each declaration above
+its own pile), and the third — an empty middle — expired when the well filled with
+the wall diagram. Reasoning in
+[ARCHITECTURE.md §12](./ARCHITECTURE.md#12-open-questions--explicit-deferrals).
