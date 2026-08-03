@@ -291,11 +291,30 @@ second player to throw dice", which is probably Chinese Classical's two-thrower
 version — but the examples derive both answers from one roll and never mention a
 second, so the examples win and the discrepancy is recorded rather than split.
 
+**Counterclockwise is seat-*decreasing*, and `(sum - 1) % 4` seats along means
+`dealer - step`** (N22). `nextActiveSeat` advances by `(from + 3) % 4` and the
+client seats `seat + 3` to the viewer's right, so the seat to East's right — South
+— is `dealer - 1`. This counted `dealer + step`, naming North for the sum the PDF
+tabulates as South; West at step 2 was unaffected, which is why the symptom looked
+like a diagram quirk. A **wind** is therefore a distance from East and never a seat
+index: the client's `windOfSeat(seat, dealer)`, since East rotates each round.
+
 **The break is a rotation.** `rotateWall(buildWall(seed), breakOffset)`, and the
 deal proceeds from index 0 as before. A rotation of a uniform shuffle is still
 uniform, so this changes no distribution and no fairness — it changes only which
 tiles a given seed deals, which is why it landed with the replay corpus in one
 go rather than twice.
+
+**Seat `s`'s wall is array quarter `(4 - s) % 4`**, not quarter `s` (N22). The
+quarters are consumed in ascending index order, because `drawIndex` only
+increments — so for "the next wall opened" to be "the next seat in play order",
+which *decreases*, the layout has to run against the seat index. Assigning quarter
+`s` to seat `s` made the wall unwind clockwise while play went counterclockwise.
+`WallDiagram.wallHead` carries the matching half (`absolute + youSeat`, and
+`[2,1,0,3]` in `ringSlot`); a sign error in either puts the break on the wrong
+player's wall with every value still in range, which is what
+`wall-diagram.test.ts` now asserts against `sideOfSeat` rather than against a copy
+of the offset arithmetic.
 
 Pre-N2 snapshots are **refused** on restore, not half-restored: `requiredShape()`
 derives its key list from a live `createGame`, so `dice` became required the

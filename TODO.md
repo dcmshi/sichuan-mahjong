@@ -817,7 +817,9 @@ so it isn't rediscovered as a bug.
   research something concrete to disagree with. When a case is settled against an
   outside source, it becomes a line in one of those files. **Medium.**
 
-- [ ] **N22 — the wall diagram walks the ring against the turn order.** Found
+- [x] **N22 — the wall diagram walks the ring against the turn order.** *(Done —
+  and it was worse than filed: the dice were naming the wrong seat's wall. Two
+  tests broke, no seeded deal did.)* Found
   while building N14, and deliberately *not* fixed there. The engine dismantles
   walls in increasing seat order (`breakOffset = wallSeat * 27 + …`, then forward
   through the array), while `nextActiveSeat` advances the turn by `(from + 3) % 4`
@@ -834,6 +836,42 @@ so it isn't rediscovered as a bug.
   the same one N2 paid — **the canned replay corpus has to be regenerated**,
   because it changes which tiles a given seed deals. That is the whole reason this
   is filed rather than done. **Small, with a deliberate test churn.**
+
+  **The item understated it, and the corpus fear was wrong.**
+
+  It is not only the diagram. `throwForWall` computed `wallSeat` as
+  `(dealer + step) % 4`, stepping *clockwise*, so for a sum of 2 — which the PDF
+  tabulates as South — it named the seat to East's **left**. South is the seat to
+  East's right, because that is who plays next: `nextActiveSeat` is
+  `(from + 3) % 4` and the client seats `seat + 3` on the viewer's right. So the
+  dice were naming the wrong wall for 2/6/10 and 4/8/12, with West at step 2
+  unaffected — which is why it read as a diagram problem. Fixed to
+  `(dealer - step + 4) % 4`.
+
+  A third thing fell out of the same sentence: the overlay rendered
+  `wind.${wallSeat}` — the **absolute** seat index as a wind — so it was correct
+  only when the dealer happened to be seat 0, and East rotates every round. It is
+  `windOfSeat(wallSeat, dealer)` now, a pure exported helper, because the browser
+  reaches the wrong-looking case by luck.
+
+  The array mapping is the part the item described. Quarter `q` now belongs to seat
+  `(4 - q) % 4`, so consuming the array forwards travels counterclockwise; the
+  client half is a sign flip in `wallHead` and `[2,1,0,3]` in `ringSlot`, with the
+  reversed side pair moving from bottom/left to top/right so the ring stays closed.
+
+  **No replay corpus needed regenerating.** `replay.test.ts` builds synthetic
+  states with `wall = [0..107]` and never calls `createGame`, so nothing there
+  depends on a seeded deal. Exactly two tests failed — the sum→seat table and the
+  break-quarter invariant — and both were *stating the old direction*, which is
+  what they were for. The e2e suite's fixed seed still produces a round the
+  viewport guard can use.
+
+  The diagram test that should have caught this was restating
+  `wallSeat * 27 + (27 - indent * 2)` inline and asserting a ring quarter, so it
+  agreed with a copy of the formula rather than with the board. It now drives
+  `throwForWall` directly and asserts the head lands on `sideOfSeat` of the seat
+  the dice named — which is the property, and which fails on either half of the
+  mapping alone.
 
 - [ ] **N23 — French, Spanish and Japanese.** Requested 2026-08-02. The catalog is
   three languages today (`en`, `zh-Hans`, `zh-Hant`) and the machinery is already

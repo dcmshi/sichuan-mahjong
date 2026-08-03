@@ -1,5 +1,5 @@
 import type { Seat } from '@sichuan-mahjong/engine';
-import { WALL_SIZE } from '@sichuan-mahjong/engine';
+import { WALL_SIZE, createRng, throwForWall } from '@sichuan-mahjong/engine';
 import { describe, expect, it } from 'vitest';
 import {
   WALL_EW_DEPTH,
@@ -8,6 +8,7 @@ import {
   WALL_STACKS_PER_SIDE,
   WALL_TILES,
   type WallState,
+  ringSlot,
   sideOfSeat,
   wallHead,
   wallSlots,
@@ -138,18 +139,40 @@ describe('the break decides where the wall opens', () => {
     expect(sideOfSeat(1 as Seat, 2 as Seat)).toBe(1);
   });
 
-  it('puts the head on the wall the dice picked, from every seat', () => {
-    // `throwForWall` builds breakOffset as wallSeat * 27 + (27 - indent * 2).
-    for (let wallSeat = 0; wallSeat < 4; wallSeat++) {
-      for (let you = 0; you < 4; you++) {
-        const breakOffset = wallSeat * (WALL_SIZE / 4) + (WALL_SIZE / 4 - 2 * 3);
-        const head = wallHead(breakOffset, you as Seat);
-        const expectedRel = (wallSeat - you + 4) % 4;
-        expect(Math.floor(head / WALL_STACKS_PER_SIDE), `wall ${wallSeat} seen from ${you}`).toBe(
-          expectedRel,
-        );
+  /**
+   * The head lands on the side where the chosen wall's owner is sitting.
+   *
+   * Asserted against `sideOfSeat` and driven by the engine's own `throwForWall`,
+   * rather than against a copy of the break-offset arithmetic. The old version
+   * restated `wallSeat * 27 + (27 - indent * 2)` inline and asserted a ring
+   * quarter, so it agreed with a formula rather than with the board — and it went
+   * on passing while the diagram opened the wall of the player *opposite* the one
+   * the dice had named. That is the whole of N22, and this is the assertion that
+   * would have caught it.
+   */
+  it('opens the wall of the seat the dice named, on that seat’s side of the screen', () => {
+    for (const seed of ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']) {
+      for (let dealer = 0; dealer < 4; dealer++) {
+        const t = throwForWall(createRng(seed), dealer as Seat);
+        for (let you = 0; you < 4; you++) {
+          const head = wallHead(t.breakOffset, you as Seat);
+          expect(
+            ringSlot(head).side,
+            `seed ${seed}, dealer ${dealer}: wall ${t.wallSeat} seen from ${you}`,
+          ).toBe(sideOfSeat(t.wallSeat as Seat, you as Seat));
+        }
       }
     }
+  });
+
+  it('walks the ring the way the turn passes — bottom, right, top, left', () => {
+    // Play travels counterclockwise: `nextActiveSeat` is `(from + 3) % 4`, and
+    // relative seat 3 renders on the viewer's right. So the wall must open toward
+    // the right, not the left. It used to advance bottom → left → top → right,
+    // which is the other way round the table. (N22)
+    const sides = [0, 7, 14, 21].map(ring => ringSlot(ring).side);
+    expect(sides).toEqual([2, 1, 0, 3]);
+    expect(sides).toEqual([0, 1, 2, 3].map(rel => sideOfSeat(((4 - rel) % 4) as Seat, 0)));
   });
 
   it('moves the head along the wall as the indent grows', () => {

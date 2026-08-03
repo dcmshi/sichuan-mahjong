@@ -11,6 +11,44 @@ file had reached 1,566 lines of which two were actually open.
 
 ---
 
+## ✅ Counterclockwise means seat-decreasing (N22 — 2026-08-03)
+
+`throwForWall` computed `wallSeat` as `(dealer + step) % 4`, stepping *clockwise*
+round the table. But play travels counterclockwise — `nextActiveSeat` is
+`(from + 3) % 4`, and the client seats `seat + 3` on the viewer's right — so South,
+the seat to East's right, is `dealer - 1`. For a sum of 2, which the PDF tabulates
+as South, the engine named the seat to East's **left**. South and North were
+swapped; West at step 2 was unaffected, which is exactly why it read as a diagram
+quirk rather than a rule bug.
+
+A third thing fell out of the same sentence. The overlay rendered
+`wind.${wallSeat}` — the **absolute** seat index as a wind — so it was right only
+when the dealer happened to be seat 0, and East rotates every round. It is
+`windOfSeat(wallSeat, dealer)` now, pure and exported for the same reason
+`throwerKey` is: the browser reaches the wrong-looking case by luck.
+
+The array mapping is the part the item described. Quarter `q` belongs to seat
+`(4 - q) % 4` now, so consuming the array forwards travels counterclockwise the
+way play does. The client half is a sign flip in `wallHead` and `[2,1,0,3]` in
+`ringSlot`, with the reversed side pair moving from bottom/left to top/right so the
+ring stays closed — each side's exit corner is still the next side's entry.
+
+**The replay-corpus cost the item warned about did not exist.**
+`replay.test.ts` builds synthetic states with `wall = [0..107]` and never calls
+`createGame`, so nothing in it depends on a seeded deal. Exactly two tests failed,
+and both were *stating the old direction*, which is what they were for. The e2e
+suite's fixed seed still produces a round the viewport guard can use.
+
+**The test that should have caught it was agreeing with a copy of the formula.**
+`wall-diagram.test.ts` restated `wallSeat * 27 + (27 - indent * 2)` inline and
+asserted a ring quarter — so it passed while the diagram opened the wall of the
+player *opposite* the one the dice had named. It now drives the engine's own
+`throwForWall` and asserts the head lands on `sideOfSeat` of that seat, which is
+the property rather than the arithmetic, and which fails on either half of the
+mapping alone.
+
+---
+
 ## ✅ The sponsor button, and the two questions it was held for (N20 — 2026-08-03)
 
 The profile rather than a project tier: there are no tiers to point at, and

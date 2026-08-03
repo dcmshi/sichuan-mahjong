@@ -49,6 +49,23 @@ export function throwerKey(stage: 'seating' | 'wall', dealer: Seat, youSeat: Sea
 }
 
 /**
+ * A seat's wind, which is its distance from East *against* the seat index.
+ *
+ * This read `wind.${wallSeat}` — the absolute index — so it was only right when
+ * the dealer happened to be seat 0, and East rotates every round. Winds run in
+ * play order, and play runs counterclockwise by decreasing seat, so South is
+ * `dealer - 1`: the seat to East's right, which is where a table seats them.
+ * (N22)
+ *
+ * Pure and exported for the same reason `throwerKey` is: the local player is East
+ * only a quarter of the time, and the dealer is seat 0 only a quarter of the
+ * time, so the browser reaches the wrong-looking cases by luck.
+ */
+export function windOfSeat(seat: Seat, dealer: Seat): number {
+  return (dealer - seat + 4) % 4;
+}
+
+/**
  * The dice, thrown where the table can see them.
  *
  * Two stages, the first only on the round that ran the seating throw: everyone
@@ -201,7 +218,7 @@ export function DiceOverlay({
                 </div>
                 <div className="text-base text-white/90">
                   {t('dice.wallResult', {
-                    wind: t(`wind.${view.dice.wallSeat}`),
+                    wind: t(`wind.${windOfSeat(view.dice.wallSeat, view.dealer)}`),
                     n: view.dice.indent,
                   })}
                 </div>

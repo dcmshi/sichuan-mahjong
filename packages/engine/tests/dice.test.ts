@@ -113,19 +113,26 @@ describe('the seating throw', () => {
 describe('the wall throw', () => {
   it('counts the sum counterclockwise from East, as the PDF tabulates it', () => {
     // 5/9 → East, 2/6/10 → South, 3/7/11 → West, 4/8/12 → North, with East at
-    // seat 0 so the offset and the seat coincide.
+    // seat 0.
+    //
+    // **The seat indices descend, and that is the point of N22.** South is the
+    // seat to East's right, because the turn passes to the right — `nextActiveSeat`
+    // is `(from + 3) % 4` and the client seats `seat + 3` on the viewer's right.
+    // So with East at seat 0, South is seat 3, West is 2, North is 1. This table
+    // used to ascend, which named North for a sum of 2: the PDF's winds were being
+    // read onto the table backwards.
     const expected: Record<number, Seat> = {
-      2: 1,
+      2: 3,
       3: 2,
-      4: 3,
+      4: 1,
       5: 0,
-      6: 1,
+      6: 3,
       7: 2,
-      8: 3,
+      8: 1,
       9: 0,
-      10: 1,
+      10: 3,
       11: 2,
-      12: 3,
+      12: 1,
     };
     for (const [sum, seat] of Object.entries(expected)) {
       const n = Number(sum);
@@ -163,7 +170,14 @@ describe('the wall throw', () => {
         expect(t.breakOffset).toBeLessThan(WALL_SIZE);
         // The offset lands in the selected wall's quarter, indent stacks in
         // from its right end.
-        expect(Math.floor(t.breakOffset / TILES_PER_WALL)).toBe(t.wallSeat);
+        //
+        // Quarter `(4 - seat) % 4`, not `seat`: the array is consumed in ascending
+        // index order, so for "the next wall opened" to be "the next seat in play
+        // order" — which decreases — the quarters have to be laid out against the
+        // seat index. The client's `wallHead` carries the matching half of this,
+        // and a sign error there puts the break on the wrong player's wall with
+        // every value still in range. (N22)
+        expect(Math.floor(t.breakOffset / TILES_PER_WALL)).toBe((4 - t.wallSeat) % 4);
       }),
       { numRuns: 200 },
     );

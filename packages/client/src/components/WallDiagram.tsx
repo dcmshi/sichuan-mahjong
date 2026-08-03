@@ -79,10 +79,17 @@ export function sideOfSeat(seat: Seat, youSeat: Seat): number {
  * position keeps its place around the table and its place along the wall, which
  * is what a player can actually read off it. The rotation by `youSeat` is what
  * turns an absolute seat into a screen side, exactly as `sideOfSeat` does.
+ *
+ * **The rotation adds where it used to subtract**, which is the client half of
+ * N22. The engine puts seat `s`'s wall in array quarter `(4 - s) % 4`, so that
+ * consuming the array forwards travels counterclockwise round the table the way
+ * play does; relative quarter is therefore `absolute + youSeat`, not
+ * `absolute - youSeat`. Get this sign wrong and the break opens on the wrong
+ * player's wall — silently, since every value is still in range.
  */
 export function wallHead(breakOffset: number, youSeat: Seat): number {
   const absolute = Math.round((breakOffset / WALL_SIZE) * WALL_STACKS);
-  return (((absolute - youSeat * WALL_STACKS_PER_SIDE) % WALL_STACKS) + WALL_STACKS) % WALL_STACKS;
+  return (((absolute + youSeat * WALL_STACKS_PER_SIDE) % WALL_STACKS) + WALL_STACKS) % WALL_STACKS;
 }
 
 /**
@@ -119,16 +126,24 @@ export function wallStacks(state: WallState): number[] {
  * top left-to-right, right top-to-bottom, bottom **left-to-right**, left
  * top-to-bottom, so it jumped from the bottom-right corner back to the
  * bottom-left. That is invisible while the head is pinned to a corner and stops
- * being invisible the moment the dice move it. Sides advance in seat order — the
- * order the engine's wall array runs in — and each side's direction is chosen so
- * one side's exit corner is the next side's entry.
+ * being invisible the moment the dice move it. (N14)
+ *
+ * **And it went round the table the wrong way.** Sides used to advance bottom →
+ * left → top → right, which on screen is clockwise, while the turn passes to the
+ * player on your right — counterclockwise. So the wall opened one way and play
+ * travelled the other. They now both go bottom → right → top → left, matching
+ * `sideOfSeat`: relative seat 3, the next to play, is on side 1. (N22)
+ *
+ * Each side's direction is still chosen so one side's exit corner is the next
+ * side's entry — which under the new order means the reversed pair is top and
+ * right rather than bottom and left.
  */
-function ringSlot(ring: number): { side: number; i: number } {
-  const side = [2, 3, 0, 1][Math.floor(ring / WALL_STACKS_PER_SIDE)] as number;
+export function ringSlot(ring: number): { side: number; i: number } {
+  const side = [2, 1, 0, 3][Math.floor(ring / WALL_STACKS_PER_SIDE)] as number;
   const k = ring % WALL_STACKS_PER_SIDE;
-  // Bottom runs right-to-left and left runs bottom-to-top, which is what closes
-  // the loop against top (left-to-right) and right (top-to-bottom).
-  const i = side === 2 || side === 3 ? WALL_STACKS_PER_SIDE - 1 - k : k;
+  // Bottom runs left-to-right into the bottom-right corner, right runs up into
+  // the top-right, top runs right-to-left, left runs down and closes the loop.
+  const i = side === 0 || side === 1 ? WALL_STACKS_PER_SIDE - 1 - k : k;
   return { side, i };
 }
 

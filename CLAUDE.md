@@ -238,6 +238,16 @@ reveals it in a two-stage overlay drawn with CSS 3D cubes — **no physics libra
 because the outcome is decided before anything is drawn, so a physics engine would
 have to be rigged to land on a chosen face. [ARCHITECTURE.md §4.3.1](./ARCHITECTURE.md#431-the-dice-dicets).
 
+**Counterclockwise means seat-*decreasing*, everywhere** (2026-08-03, N22). Play
+passes by `(from + 3) % 4` and the client seats `seat + 3` to the viewer's right,
+so South — the seat to East's right — is `dealer - 1`. The wall throw counted
+`dealer + step`, which named North for the PDF's South, and the wall array's
+quarters were laid out in ascending seat order while `drawIndex` only increments,
+so the wall unwound clockwise while play went counterclockwise. Quarter `q` now
+belongs to seat `(4 - q) % 4`; the diagram's half is a sign flip in `wallHead` and
+`[2,1,0,3]` in `ringSlot`. **A wind is a distance from East, never a seat index** —
+`windOfSeat(seat, dealer)`, since East rotates every round.
+
 **Animation pace is per-player, in localStorage** (2026-08-02, N4). Speed
 (slow/medium/fast, default medium) and skip, behind the ⚙ menu in the play top
 bar — which **replaced** the standalone 🔊 button rather than joining it, because
@@ -253,11 +263,10 @@ pool (O3) is still held as a fallback — its redaction question is answered by
 `firstDiscardIsVoid`, but the middle is no longer the empty space that motivated
 it. Then **N10** side seats draw upright and the across pile does not mirror,
 **N16** group a winning hand into the sets that won it, **N19** a hard bot so the
-ladder has three rungs, **N20** a `.github/FUNDING.yml` sponsor button, **N21**
-check the *payments* against sources other than the PDF (a real table disputed
-one), and **N22** the wall diagram walks the ring against the turn order because
-the engine does. N19 is the only open item that is gameplay work rather than
-plumbing, layout or research.
+ladder has three rungs, **N21** check the *payments* against sources other than
+the PDF (a real table disputed one), and **N23** French, Spanish and Japanese.
+N19 is the only open item that is gameplay work rather than plumbing, layout or
+research.
 
 **The help draws the hands, and the fan table reads the engine** (2026-08-02, N3).
 The example hands are checked by `isWinningHand` in a test, because a help screen

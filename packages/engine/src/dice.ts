@@ -111,6 +111,25 @@ export function throwForSeats(rng: Rng): { rounds: SeatingRound[]; east: Seat } 
  * 5/9 → East, 2/6/10 → South, 3/7/11 → West, 4/8/12 → North — which is
  * `(sum - 1) % 4` seats along. The lower die is the indent, in stacks, counted
  * from that wall's right end; a stack is two tiles.
+ *
+ * **Counterclockwise means seat-*decreasing* here, and it did not used to.**
+ * `nextActiveSeat` advances the turn by `(from + 3) % 4`, and the client seats
+ * `seat + 3` to the viewer's right — so play travels counterclockwise round the
+ * table by decreasing seat index, and South, the seat to East's right, is
+ * `dealer - 1`. This counted `dealer + step`, which named North for a sum of 2
+ * and South for a sum of 4: the two were swapped against the table's own
+ * geometry. (N22)
+ *
+ * The wall array runs the same way, for the same reason. Its four quarters are
+ * consumed in ascending index order — `drawIndex` only increments — so quarter
+ * `q` has to belong to seat `-q` for "the next wall opened" to be "the next seat
+ * in play order". Assigning quarter `q` to seat `q` made the wall unwind
+ * clockwise while play went counterclockwise, which is what made the diagram
+ * open one way round the table and the turn travel the other.
+ *
+ * None of this changes a distribution: the wall is a uniform shuffle and the
+ * break is a rotation of it, so the direction is ritual. It does change which
+ * tiles a given seed deals.
  */
 export function throwForWall(
   rng: Rng,
@@ -118,9 +137,10 @@ export function throwForWall(
 ): Omit<DiceRecord, 'seating'> & { wall: DiePair } {
   const wall = rollPair(rng);
   const step = (pairSum(wall) - 1) % 4;
-  const wallSeat = ((dealer + step) % 4) as Seat;
+  const wallSeat = ((dealer - step + 4) % 4) as Seat;
   const indent = lowerDie(wall);
-  const breakOffset = (wallSeat * TILES_PER_WALL + (TILES_PER_WALL - indent * 2)) % WALL_SIZE;
+  const quarter = (4 - wallSeat) % 4;
+  const breakOffset = (quarter * TILES_PER_WALL + (TILES_PER_WALL - indent * 2)) % WALL_SIZE;
   return { wall, wallSeat, indent, breakOffset };
 }
 
