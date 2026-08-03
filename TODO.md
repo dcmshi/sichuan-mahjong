@@ -784,7 +784,10 @@ so it isn't rediscovered as a bug.
   There is no free-text field in `FUNDING.yml`, which is why the note lives in the
   README rather than "in the blurb".
 
-- [ ] **N21 — check the round's *payments* against sources other than the PDF.**
+- [x] **N21 — check the round's *payments* against sources other than the PDF.**
+  *(Done — [docs/audit-payments.md](./docs/audit-payments.md). Every payment rule
+  confirmed; the one real divergence is the fan cap, filed as N27. Two
+  comprehension bugs found and fixed.)*
   Reported 2026-08-02: a player at a real table said a hand was settled wrong, and
   on being asked, **it was the payment that was disputed rather than the fan.**
   That narrows this a long way — the fan calculation and the payment matrix are
@@ -849,6 +852,30 @@ so it isn't rediscovered as a bug.
   wrong, so the tests exist to make a future change visible and to give the
   research something concrete to disagree with. When a case is settled against an
   outside source, it becomes a line in one of those files. **Medium.**
+
+  **Done, and the engine was right about every payment.** Three outside sources
+  against Novikov's Tables 5–7: a tournament ruleset, a commercial payout table,
+  and Chinese-language summaries of 血战到底. Findings, each with its decision, in
+  [docs/audit-payments.md](./docs/audit-payments.md). Two worth repeating here:
+
+  **The one divergence is not a payment — it is `fanCap`.** Novikov states the cap
+  as a *variant*: "Typical value of that limit is 3 (as in MIL's version of rules)
+  or 4 (as played in Russia and on the MahjongSoft site)", and his own Table 5 is
+  drawn at 4. We ship 3 and never surface it, so a table playing the 4-fan variant
+  sees every capped hand pay exactly half. **That is the best fit for the original
+  report**, and it is [N27](#open).
+
+  **The kong amounts had one dissenting source and it lost 3–1.** A commercial
+  payout table gives 1 point for every kong type; Novikov, the tournament rules and
+  the Chinese sources all give concealed 2 from each, melded-from-a-discard 2 from
+  the discarder, promoted 1 from each. Ours matches the three.
+
+  Two comprehension bugs turned up and were fixed in the same pass, neither of
+  which changes a payment but both of which change what a player is told one *was*:
+  the Chinese round-end screen labelled the point value as 番数 ("number of fan"),
+  so a 4-point hand read as 4 fan and would convert to 16; and "You won this round!"
+  rendered the moment you Hu, when the round is not over, you have not necessarily
+  won, and the hand's value went unsaid.
 
 - [x] **N22 — the wall diagram walks the ring against the turn order.** *(Done —
   and it was worse than filed: the dice were naming the wrong seat's wall. Two
@@ -1101,6 +1128,34 @@ so it isn't rediscovered as a bug.
   `PlayerView.dealer`, which is already projected), one shared helper, and a
   decision about the lobby. **Small-medium** - the sweep is what makes it more
   than the one-line fix it looks like.
+- [ ] **N27 - let the table choose the fan cap.** Found by [N21](#open)'s audit,
+  2026-08-03, and the best candidate for the payment a real table disputed.
+
+  Novikov states the cap as a variant, not a constant: *"Typical value of that
+  limit is 3 (as in MIL's version of rules) or 4 (as played in Russia and on the
+  MahjongSoft site). Hence, maximal hand value is 2*2*2=8 points for the limit of
+  3 fans, and 2*2*2*2=16 points for the limit of 4 fans."* His own Table 5 is drawn
+  at 4. Both values are canonical; we ship 3 and offer no way to say otherwise.
+
+  **At the cap every payment is exactly half.** An 8-point hand becomes 16, and
+  self-drawn it collects 51 rather than 27. Someone who learned the game on the
+  4-fan variant reads every large hand as short-paid, and nothing on screen says
+  which limit is in force.
+
+  **Almost all of it is built.** `fanCap` is already a `GameConfig` field that
+  `calcHandScore` and `calcTMV` both read, and `createRoom` already takes a
+  `Partial<GameConfig>`. So this is a lobby control, a field on `startGame.rules`,
+  and narrowing in `ws.ts`.
+
+  **Narrow it to the two documented values, not a number** - the same reasoning as
+  `claimWindow` (N6). A raw integer off the wire is a scoring exploit in one frame:
+  `fanCap: 30` makes a hand worth 2^30. Take `3 | 4` and fall back to 3.
+
+  Two more things to decide rather than assume. The help screen states the cap in
+  prose (`htp.fan.cap`), so it has to read the value rather than restate it - the
+  same trap `HELP_FAN_ORDER` was built to avoid. And the round-end screen should
+  probably say which limit was used, since that is the number a dispute is about.
+  **Small-medium.**
 ---
 
 ## Shelved, with reasons

@@ -11,6 +11,58 @@ file had reached 1,566 lines of which two were actually open.
 
 ---
 
+## ✅ The payments check out; the fan cap does not (N21 — 2026-08-03)
+
+A player at a real table said a hand had been settled wrongly, and on being asked
+said it was the **payment** rather than the fan. Checked against three sources
+outside Novikov — a tournament ruleset, a commercial payout table, and
+Chinese-language summaries of 血战到底 — with a decision per rule in
+[docs/audit-payments.md](./audit-payments.md).
+
+**Every payment rule the engine implements is confirmed.** A winner sitting out the
+rest of the deal is Novikov verbatim. Self-draw at `handValue + 1` from each
+non-Hu player, and a discard win at `handValue` from the discarder alone, are
+Table 6 verbatim. The false-Hu penalty is 8 to each player *still in the deal*,
+with the worked example giving 24 for three — which is what `payments.test.ts`
+already asserted. Wall-end payouts on the theoretical maximum, and the 48-point
+forbidden-suit penalty going to nobody rather than to opponents, are both stated
+outright.
+
+**The kong amounts had one dissenting source and it lost 3–1.** A commercial payout
+table gives 1 point for every kong type; Novikov, the tournament rules and the
+Chinese sources all give concealed 2 from each non-Hu player, melded-from-a-discard
+2 from the discarder, and promoted 1 from each. Ours matches the three. The three
+no-payment paths — robbed promoted kong, a Hu on the tile discarded after the kong,
+and the declarer being non-ready at wall end — are the three refund paths already
+in `kongPaymentLog`.
+
+**The one real divergence is not a payment at all.** Novikov states the fan cap as
+a *variant*: "Typical value of that limit is 3 (as in MIL's version of rules) or 4
+(as played in Russia and on the MahjongSoft site)", and his own Table 5 is drawn at
+4. We ship 3 and never surface it. At the cap every payment is exactly half what a
+4-fan table expects — an 8-point hand becomes 16, and self-drawn collects 51 rather
+than 27. **That is the best fit for the original report**, and nothing on screen
+says which limit is in force. Filed as [N27](../TODO.md); the default stays 3,
+which the tournament source calls the competitive standard.
+
+**Two comprehension bugs, fixed here.** Neither changes a payment; both change what
+a player is told one *was*, which is the same dispute from the other end.
+
+`end.handValue` is passed the point value — 1/2/4/8 — and both Chinese catalogs
+rendered it as 番数 / 番數, "number of fan". So a 4-point hand read as "4 fan",
+which is not even reachable at a 3-fan cap and which a reader would convert to 16
+points. **A screen that mislabels the basis of a payment produces exactly the report
+this audit started from.** Now 点数 / 點數.
+
+And "You won this round!" rendered the instant you Hu, wrong three ways: the round
+is not over, since Bloody Rules runs until three players Hu or the wall ends; you
+have not necessarily won, since three seats can Hu and the round-end ranking is by
+score, so a cheap early Hu can finish last; and it said nothing about what the hand
+was worth. Now `Hand complete · {n} points` — one line, because that column fits
+exactly on a 320px phone and a second would fail the overflow guard.
+
+---
+
 ## ✅ The reveal shows the sets that won (N16 — 2026-08-03)
 
 The round-end reveal drew a winner's concealed tiles as one flush run of fourteen,

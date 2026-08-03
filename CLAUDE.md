@@ -19,6 +19,7 @@ Keep this file short. New documentation goes in one of these instead:
 | **[docs/viewport-audit.md](./docs/viewport-audit.md)** | Measured mobile viewport overflow + the open layout questions | …you change the play or round-end layout |
 | **[docs/handoff-2026-08-01.md](./docs/handoff-2026-08-01.md)** | Where the layout/density work stands, decisions already settled, the four open ones, and the traps that cost time | …you are picking this up cold, or before a compaction |
 | **[docs/handoff-tile-rendering.md](./docs/handoff-tile-rendering.md)** | How tiles are drawn (the art, lapped), its measured layer geometry, every knob, the four things easy to get wrong | …you are changing how a tile looks |
+| **[docs/audit-payments.md](./docs/audit-payments.md)** | Every payment rule checked against three sources outside the PDF, with a decision each. The fan cap is the one divergence | …you change a payment, a fan value, or `fanCap` |
 | **[docs/audit-public-deployment.md](./docs/audit-public-deployment.md)** | What a public URL exposes that a LAN never did — five findings, each reproduced against the live service, with the order to fix them | …you touch the WS boundary, the HTTP routes, or anything a stranger can reach |
 | **[docs/design-hosted-server.md](./docs/design-hosted-server.md)** | The Render deployment: deploy steps, why it needs no client change, the nine things a public URL forces (C1–C7/C9 built), and why the hardening is *not* conditional on `--hosted` | …you are working on hosting, or on anything the tailnet used to protect |
 | **[LICENSE](./LICENSE)** | MIT for code, CC-BY-SA 4.0 for the tile art, and the binary as a combined work carrying both | …you add or change a tile, or change what the release build embeds |
@@ -262,11 +263,21 @@ globally — that is an accessibility signal, this is a taste.
 pool (O3) is still held as a fallback — its redaction question is answered by
 `firstDiscardIsVoid`, but the middle is no longer the empty space that motivated
 it. Then **N10** side seats draw upright and the across pile does not mirror,
-**N19** a hard bot so the ladder has three rungs, **N21** check the *payments*
-against sources other than the PDF (a real table disputed one), **N23** French,
-Spanish and Japanese, and **N26** nine call sites label a seat's wind from its
-absolute index. N19 is the only open item that is gameplay work rather than
-plumbing, layout or research.
+**N19** a hard bot so the ladder has three rungs, **N23** French, Spanish and
+Japanese, **N26** nine call sites label a seat's wind from its absolute index, and
+**N27** let the table choose the fan cap. N19 is the only open item that is
+gameplay work rather than plumbing, layout or research.
+
+**The payments are right; the cap is a variant we never surfaced** (2026-08-03,
+N21). Three sources outside the PDF confirm every payment rule — winner sits out,
+self-draw `handValue + 1` from each, discard win `handValue` from the discarder
+alone, kongs 2/2/1, false Hu a flat 8 per player still in the deal, wall end on TMV.
+The divergence is `fanCap`: Novikov calls the limit "3 (as in MIL's version) or 4
+(as played in Russia)", so at the cap every payment is *half* what a 4-fan table
+expects. Default stays 3; exposing it is N27. Findings in
+[docs/audit-payments.md](./docs/audit-payments.md). **A screen that mislabels the
+basis of a payment causes the same dispute as a wrong payment** — the Chinese
+round-end screen was calling the point value 番数, "number of fan".
 
 **The reveal shows the sets that won** (2026-08-03, N16). `HuRecord.shape` is the
 decomposition the fans were *scored* from, because a hand parses more than one way

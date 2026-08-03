@@ -545,13 +545,19 @@ export function OwnZone({ view }: { view: PlayerView }) {
             </Reorder.Item>
           ))}
         </Reorder.Group>
+        {/* "You won this round!" was wrong three ways, and this renders the
+            instant you Hu: the round is *not* over — Bloody Rules runs until three
+            players Hu or the wall ends — you have not necessarily won, since three
+            seats can Hu and the round-end ranking is by score, and it said nothing
+            about what the hand was worth. One line, because this column fits
+            exactly on a 320px phone and a second would fail the overflow guard. */}
         {view.you.status === 'hu' && (
           <motion.p
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             className="text-center text-amber-400 font-bold mt-2"
           >
-            {t('play.youWon')}
+            {t('play.youHu', { n: view.you.hu?.handValue ?? 1 })}
           </motion.p>
         )}
       </div>
