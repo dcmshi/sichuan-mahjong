@@ -170,7 +170,10 @@ so it isn't rediscovered as a bug.
   and the value needs the same `botSpeedFrom` narrowing, since it would be a new
   thing a client can assert. **Small-medium.**
 
-- [ ] **N6 — let the host set the claim window.** How long you get to answer a
+- [x] **N6 — let the host set the claim window.** *(Done — a quick / normal /
+  relaxed preset on `startGame.rules`, mapped by `claimWindowMsFrom` in `ws.ts`.
+  Guarded through to `GameState.config`, because that hop can fail silently.)*
+  How long you get to answer a
   discard with Pung, Kong or Hu is fixed at **10s** (`GameConfig.claimWindowMs`).
   It has already moved twice — 3s, then 6s, then 10s — which is the tell that
   there is no single right number: a table of beginners wants longer, and four
@@ -235,7 +238,8 @@ so it isn't rediscovered as a bug.
   has non-zero width, or it comes back. **Small.**
 
 - [x] **N8 — the claim panel covers the hand you need to see.** *(Done — the bar
-  is `sticky` and in flow; guarded in `viewport.spec.ts`.)* When a discard opened
+  stays `fixed` and the board pads by its measured height; guarded in
+  `viewport.spec.ts`.)* When a discard opened
   a claim window, the Pung / Kong / Hu / Pass bar was `fixed bottom-0` and your
   hand is the bottom-most row, so the bar sat on top of it for the whole
   10-second window — while whether to pung is a judgement about the hand it was
@@ -269,7 +273,9 @@ so it isn't rediscovered as a bug.
   wait long enough on one machine is short on another and the guard then fails
   intermittently.
 
-- [ ] **N9 — the lobby offers bot pace at a table with no bots.** Reported
+- [x] **N9 — the lobby offers bot pace at a table with no bots.** *(Done — the
+  group greys out and says why once all four seats hold humans; an empty seat
+  keeps it live, since it can still take a bot.)* Reported
   2026-08-02. `HostSetup.tsx` renders the slow/normal/fast selector
   unconditionally, so a host filling all four seats with people is still asked
   how fast the bots should play. It changes nothing — `botSpeed` only paces
@@ -368,7 +374,9 @@ so it isn't rediscovered as a bug.
   discards twice. And the mandatory first-discard flip (A35) is not a discard:
   on that turn there is nothing to arm. **Small-medium.**
 
-- [ ] **N12 — the event feed keeps its old language after a switch.** Reported
+- [x] **N12 — the event feed keeps its old language after a switch.** *(Done —
+  the feed stores `{ id, key, seat }` and calls `t` in the JSX, as `PlayHistory`
+  already did.)* Reported
   2026-08-02. "X ponged" and "X declared Hu!" stay in whatever language they
   were announced in; only lines added *after* the switch use the new one.
 
@@ -411,6 +419,82 @@ so it isn't rediscovered as a bug.
   the same measurement pass. Whatever lands needs a guard that the cue is
   actually present when `view.turn === you`, since the current one is a colour
   swap that no test asserts. **Small-medium.**
+
+- [ ] **N14 — the wall empties from the same corner whatever the dice said.**
+  Reported 2026-08-02. N2 made the break real in the engine, and the diagram does
+  not read it: the throw picks a wall and an indent, the tiles come off from
+  there, but on screen the run always starts at the top-left.
+
+  **The cause is one index.** `wallStacks` (`WallDiagram.tsx:53`) computes
+  `throughThisStack = i * 2 + 2` from stack **0**, so stack 0 always empties
+  first, and `wallSlots` places stack 0 at `side === 0, i === 0` — the left end
+  of the top wall. Nothing in either function takes the break as an argument.
+
+  **The answer is already on the wire.** `PlayerView.dice` is projected
+  unredacted on purpose (`views.ts:89` — "dice are thrown face-up on a table"),
+  carrying `wallSeat`, `indent` and `breakOffset`. No protocol change, no engine
+  change; the diagram just has to be told where to start.
+
+  **Three mappings make this more than passing an offset**, and they are the
+  reason to think before coding:
+
+  - **Absolute seat to screen side.** `wallSeat` is a `Seat`; the diagram's four
+    sides are screen-relative. `projectView` orders `others` counterclockwise
+    from the viewer (`views.ts:292`), which is how `relSeat` works, but there is
+    no exported seat-to-side helper — the client would compute
+    `(wallSeat - you + 4) % 4` itself.
+  - **108 stacks of wall against 28 stacks of diagram.** `breakOffset` indexes
+    the 108-tile array; the diagram is 7 stacks a side because 4 × 7 × 2 = 56 is
+    what the deal *leaves*, not what the wall *was*. So the break cannot be a
+    slot index — it maps proportionally, or the head is placed per-wall from
+    `wallSeat` + `indent` and the arc walked from there.
+  - **The walk is four runs, not a ring.** `wallSlots` goes top left-to-right,
+    right top-to-bottom, bottom **left-to-right**, left top-to-bottom — so it
+    already jumps from the bottom-right corner back to the bottom-left. That is
+    invisible while the head is fixed at a corner; it stops being invisible the
+    moment the head moves and the run has to wrap.
+
+  **And the same function gets the other end wrong, which is worth fixing in the
+  same pass.** `wallRemaining` is `kongDrawIndex - drawIndex + 1`
+  (`views.ts:317`), and `kongDrawIndex` starts at 107 and *decrements*
+  (`actions.ts:781`): kong replacements come off the **tail**, walking back
+  toward the break from the other side. A real wall empties from both ends
+  inward. The diagram collapses both into one count and takes it all off one
+  corner, so a round with two kongs draws a wall that is wrong at both ends. The
+  fix wants `drawIndex` and `kongDrawIndex` rather than the single total —
+  which does mean a new projected field, and is the one part of this that
+  touches `views.ts`.
+
+  **Testable without a DOM**, which is why it is cheap to get right:
+  `wallStacks` and `wallSlots` are exported for exactly that and
+  `packages/client/tests/wall-diagram.test.ts` already asserts on them. A test
+  that the same `remaining` puts the gap in different places for different
+  `wallSeat`/`indent` values is the whole guard.
+
+  **Recommendation: place the head per-wall from `wallSeat` and `indent`, make
+  the walk a real ring first, and take the two-ended fix with it.** Polish, so
+  it can wait — but it is polish that makes N2's dice mean something on screen,
+  which is the only place a player can see them. **Small-medium.**
+
+- [ ] **N15 — "You rolls for the wall break".** Reported 2026-08-02. The dice
+  overlay's wall stage is `t('dice.wallTitle', { name: nameOf(view.dealer) })`
+  (`DiceOverlay.tsx:147`), and `nameOf` returns the string "You" for your own
+  seat — so whenever you are East the sentence takes a second-person subject with
+  a third-person verb.
+
+  **The fix already exists 11 lines above it.** The seating stage hit exactly this
+  and was fixed at the time: `view.dealer === view.you.seat` picks
+  `dice.youAreEast` rather than substituting a name into `dice.isEast`, and the
+  comment there says why — "Your own case needs its own sentence, not a name
+  substituted into someone else's". The wall stage was missed.
+
+  So: a `dice.wallTitleYou` in all three catalogs ("You roll for the wall break")
+  and the same ternary. The Chinese is unaffected — 掷骰 takes no agreement — but
+  the catalogs move together, so all three get the key.
+
+  Not practice-specific, though that is where it shows up most: East comes from
+  the seating throw and then rotates each round, so any table hits it whenever
+  the local player is dealer. **Small.**
 
 ---
 

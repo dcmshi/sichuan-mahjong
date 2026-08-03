@@ -38,8 +38,13 @@
     <meta property="og:image:alt" content="Sichuan Mahjong" />
     <meta name="twitter:card" content="summary" />
 
-    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
-    <link rel="icon" href="/icon-192.png" type="image/png" sizes="192x192" />
+    <!-- The tab icon is its own design, not the app icon scaled down: at 16px the
+         tile frame in icon.svg leaves no room for 中's counter and rasterises to a
+         blob. See icon-tab.svg. `sizes="any"` marks the SVG as scalable so it wins
+         the slot; the 32px PNG is the fallback for Safari, which ignores an SVG
+         favicon. icon.svg stays the install icon and is declared in the manifest. -->
+    <link rel="icon" href="/icon-tab.svg" type="image/svg+xml" sizes="any" />
+    <link rel="icon" href="/icon-tab-32.png" type="image/png" sizes="32x32" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <script>

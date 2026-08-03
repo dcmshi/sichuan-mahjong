@@ -48,15 +48,56 @@ describe('event feed mapping (F7)', () => {
   });
 
   it('every key it can emit exists in the catalog', () => {
-    const events: GameEvent[] = [
-      { e: 'claimed', seat: OPP, kind: 'pung', tile: 4 },
-      { e: 'claimed', seat: OPP, kind: 'kong', tile: 4 },
-      { e: 'kongDeclared', seat: OPP, subtype: 'concealed', tile: null },
-      { e: 'hu', seat: OPP, record: huRecord },
-    ];
-    for (const e of events) {
+    for (const e of ANNOUNCED) {
       const line = feedLineFor(e);
       if (line) expect(catalog.en[line.key], line.key).toBeDefined();
     }
+  });
+});
+
+const ANNOUNCED: GameEvent[] = [
+  { e: 'claimed', seat: OPP, kind: 'pung', tile: 4 },
+  { e: 'claimed', seat: OPP, kind: 'kong', tile: 4 },
+  { e: 'kongDeclared', seat: OPP, subtype: 'concealed', tile: null },
+  { e: 'hu', seat: OPP, record: huRecord },
+];
+
+/**
+ * The feed translates at render, not at announce. `EventFeed` used to store
+ * `t(key, …)` and so kept whatever language a line was announced in — while
+ * `PlayHistory` and the store's `history` both keep raw events precisely so a
+ * mid-round language switch takes the whole list with it. (N12)
+ *
+ * The component itself needs a DOM, so what is asserted here is the contract it
+ * depends on: `feedLineFor` yields a key rather than a sentence, and every key
+ * it can yield resolves in all three languages. A line that reaches state as
+ * text cannot switch, whatever the render does.
+ */
+describe('feed lines are language-independent (N12)', () => {
+  it('returns catalog keys, not formatted text', () => {
+    for (const e of ANNOUNCED) {
+      const line = feedLineFor(e);
+      if (!line) continue;
+      expect(line.key, line.key).toMatch(/^event\.[a-z]+$/);
+      // A key is not a sentence: no interpolated name, no spaces.
+      expect(line.key).not.toContain(' ');
+    }
+  });
+
+  it('resolves in every language, so a switch has somewhere to switch to', () => {
+    for (const e of ANNOUNCED) {
+      const line = feedLineFor(e);
+      if (!line) continue;
+      for (const lang of ['en', 'zh-Hans', 'zh-Hant'] as const) {
+        expect(catalog[lang][line.key], `${lang} ${line.key}`).toBeTruthy();
+      }
+    }
+  });
+
+  it('the languages actually differ, or nothing would be observable', () => {
+    const line = feedLineFor({ e: 'hu', seat: OPP, record: huRecord });
+    expect(line).not.toBeNull();
+    if (!line) return;
+    expect(catalog.en[line.key]).not.toBe(catalog['zh-Hans'][line.key]);
   });
 });

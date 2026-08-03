@@ -1,11 +1,14 @@
-// Rasterises packages/client/public/icon.svg into the PNG sizes a PWA install
-// actually needs. iOS home-screen and several Android launchers ignore an SVG
-// icon entirely, so the app used to install with a blank tile. (F18)
+// Rasterises the two source SVGs in packages/client/public into the PNG sizes
+// that need them. iOS home-screen and several Android launchers ignore an SVG
+// icon entirely, so the app used to install with a blank tile (F18) — and Safari
+// ignores an SVG favicon too, which is why the tab icon needs a raster fallback.
 //
 // Run: node scripts/icons/generate-icons.mjs
 //
-// No image dependency: the icon is a handful of primitives, so it is drawn directly and
-// encoded with node:zlib. Keep the geometry here in step with icon.svg.
+// No image dependency: both icons are a handful of primitives, so they are drawn
+// directly and encoded with node:zlib. There are two geometries here and each
+// mirrors one file — `sampleApp` is icon.svg, `sampleTab` is icon-tab.svg. Keep
+// them in step with their own SVG; they are deliberately different designs.
 
 import { writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -34,7 +37,7 @@ function insideRoundRect(px, py, x, y, w, h, r) {
  * the rounded background. `bleed` fills the corners too, for maskable icons
  * (the launcher applies its own mask) and for iOS, which dislikes alpha.
  */
-function sample(px, py, bleed) {
+function sampleApp(px, py, bleed) {
   const bg = bleed || insideRoundRect(px, py, 0, 0, 512, 512, 96);
   if (!bg) return null;
 
@@ -57,8 +60,23 @@ function sample(px, py, bleed) {
   return FELT;
 }
 
+/**
+ * The tab icon: no tile frame, 中 filling the canvas, bone on felt. Mirrors
+ * icon-tab.svg, and see that file for why it is a different design rather than
+ * the app icon scaled down — at 16px the framed version has no room for the 口
+ * counter and rasterises to a featureless blob.
+ */
+function sampleTab(px, py) {
+  if (!insideRoundRect(px, py, 0, 0, 512, 512, 96)) return null;
+  const inBox =
+    insideRoundRect(px, py, 106, 126, 300, 260, 0) &&
+    !insideRoundRect(px, py, 168, 188, 176, 136, 0);
+  const inStem = insideRoundRect(px, py, 225, 70, 62, 372, 0);
+  return inBox || inStem ? BONE : FELT;
+}
+
 /** RGBA pixel buffer for the icon at `size`, with `inset` design-space padding. */
-function render(size, { bleed = false, inset = 0 } = {}) {
+function render(size, { bleed = false, inset = 0, sample = sampleApp } = {}) {
   const rgba = Buffer.alloc(size * size * 4);
   const scale = (512 - inset * 2) / (size * SS);
   for (let y = 0; y < size; y++) {
@@ -141,6 +159,9 @@ const TARGETS = [
   { file: 'icon-maskable-512.png', size: 512, opts: { bleed: true, inset: -52 } },
   // iOS applies its own rounding and composites on white if there's alpha.
   { file: 'apple-touch-icon.png', size: 180, opts: { bleed: true } },
+  // Tab icon for Safari, which ignores an SVG favicon. 32 rather than 16: every
+  // browser downscales to the slot it wants, and 16 gives a 2× tab nothing.
+  { file: 'icon-tab-32.png', size: 32, opts: { sample: sampleTab } },
 ];
 
 for (const { file, size, opts } of TARGETS) {

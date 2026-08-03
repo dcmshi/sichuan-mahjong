@@ -11,6 +11,112 @@ file had reached 1,566 lines of which two were actually open.
 
 ---
 
+## ✅ Three small ones: the claim window, bot pace with no bots, and a feed stuck in one language (N6, N9, N12 — 2026-08-02)
+
+Picked up together because all three were filed as **Small** and none touches the
+board layout.
+
+**N12 — the feed kept the language a line was announced in.** `EventFeed` held
+`useState<{ id; text }[]>` and filled it with `t(key, …)` at announce time, so the
+translation was baked into state and nothing re-ran on a language change; only
+lines added *after* the switch used the new language. It now stores
+`{ id, key, seat }` and calls `t` in the JSX — which is what `PlayHistory` and the
+store's `history` already did, and the store's own comment says why: "a player
+switching language mid-round should see the whole list switch with them." The feed
+was the one place that didn't follow it.
+
+Resolving the player *name* moved to render too. It has to: `nameOf` needs the
+view, and the whole point is that nothing about the line is fixed at announce
+time. The effect got simpler as a result — it now reads only the sound function
+through a ref, so it stays keyed on the event batch alone, which is the property
+that stops it re-announcing on every push.
+
+**N6 — the claim window is the host's, as a preset.** `claimWindowMs` was already
+in `GameConfig`, already projected in `PlayerView`, and `ClaimPanel` already took
+`windowMs` as a prop; the server had simply never set it. So the work was a lobby
+control, a field on `startGame.rules`, and narrowing in `ws.ts`.
+
+**Narrowed to `quick | normal | relaxed`, never a number.** This is the one
+`rules` field where a raw integer is a denial of service in a single frame:
+`claimWindowMs: 86400000` freezes a table until the sweep reaps the room, and `0`
+closes the window before a human can see it. `claimWindowMsFrom` maps the three
+presets to 5000 / 10000 / 20000 and falls back to normal for everything else,
+including every raw number.
+
+The test that matters is not the mapping but the hop after it: `houseRules`
+returning the right value is no use if the room doesn't carry it into engine
+state, and a wrong window there looks exactly like a right one until somebody
+times a claim. So there is an assertion through `createRoom` to
+`GameState.config.claimWindowMs`. Normal is pinned to `DEFAULT_CONFIG` as well —
+otherwise touching nothing in the lobby would silently change the window every
+existing test was written against.
+
+**N9 — bot pace at a table of four people.** `HostSetup` rendered the selector
+unconditionally, so a host filling all four seats with humans was still asked how
+fast the bots should play. It changed nothing, which made it a control that read
+as broken. Now the group greys out and the hint says why.
+
+The condition is phrased as *unless we know every seat holds a human* rather than
+*if there are bots*, and that direction is deliberate: an empty seat can be filled
+with a bot right up to Start, and so can a lobby list that hasn't arrived yet
+(`lobbyPlayers` starts `[]`). Phrased the other way round, the control would flash
+disabled on first paint.
+
+**Verified in the running app, because two of the three are render-time and the
+client suite has no DOM.** N9 with four real browser contexts — three empty seats
+gave three live buttons, four humans gave three disabled ones and the hint — and
+N12 by catching an announced line in English and reading the same line back as
+Chinese immediately after the switch. Both probes were then deleted rather than
+committed: the N12 one has to catch a 3.5-second line, and this session already
+learned that an intermittent guard is worse than none.
+
+**One thing the guest contexts taught.** Extra *pages* in one browser context
+share `localStorage`, and the seat token lives there — so a second page rejoined
+the host's own seat and never showed a join form. Each simulated player needs its
+own context. Also worth knowing for any future lobby spec: `/j/CODE` rewrites to
+`/?code=CODE` and renders the landing screen with the code already on the Join
+button, so the form is one click further in than the URL suggests.
+
+---
+
+## ✅ A tab icon of its own, because 16px is a different problem (2026-08-02)
+
+Reported as "the favicon is a little bit weird looking, is it possible to use an
+SVG instead?" — and an SVG favicon was already what shipped: `icon.svg` has been
+first in the `<link rel="icon">` list all along. The format was never the problem.
+
+**Rasterising it at 16px showed what was.** `icon.svg` draws a mahjong tile with
+中 on its face. The tile frame takes about 40% of the canvas, which leaves the
+glyph roughly 6px, and its strokes land at 0.94px — so 口's counter closes
+completely and the icon resolves to a red blob with no character in it. Rendering
+the geometry at 16 / 24 / 32 / 48 and looking at it settled in one pass what
+reasoning about stroke widths had not.
+
+A bolder, tighter version of the same design was tried first and was worse: still
+a blob at 16px, and at 48px the counters had nearly closed, so it read as a solid
+block. **The framed design cannot be rescued at tab size** — there is no room for
+a frame and a counter in 16 pixels.
+
+So `icon-tab.svg` is a separate design: 中 alone, filling the canvas, bone on
+felt, no tile. At 16px the counter survives at about 2px and the character is
+legible. Bone-on-felt rather than the app icon's red-on-bone because at tab size a
+cream ground is indistinguishable from light browser chrome, and felt is the
+colour `theme-color` and the manifest already claim.
+
+`icon.svg` is untouched and stays the install icon — the four generated PNGs came
+back byte-identical, which is the check that the app icon really didn't move.
+`icon-tab-32.png` is the raster fallback for **Safari, which ignores an SVG
+favicon**; without it the fix would have left Safari showing the blob. Named
+`icon-tab` rather than `favicon` so it matches `sw.js`'s `/icon` prefix and is
+runtime-cached with the rest of the set.
+
+`generate-icons.mjs` now carries two geometries, `sampleApp` and `sampleTab`, one
+per SVG. That is a duplication the file already had for one icon and its header
+already warned about; it now names both and says they are deliberately different
+designs rather than one scaled.
+
+---
+
 ## ✅ Two overlays that never went away — one bug, twice (2026-08-02)
 
 Reported from play: "X ponged" / "X declared Hu!" staying up until round end, and

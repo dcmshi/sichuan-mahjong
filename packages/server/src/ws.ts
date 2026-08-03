@@ -77,7 +77,30 @@ function parseClientMsg(raw: Buffer): ClientMsg | null {
  */
 export function houseRules(rules: unknown): Partial<GameConfig> {
   const r = (rules ?? {}) as Record<string, unknown>;
-  return { enableHuanSanZhang: r.huanSanZhang === true };
+  return {
+    enableHuanSanZhang: r.huanSanZhang === true,
+    claimWindowMs: claimWindowMsFrom(r.claimWindow),
+  };
+}
+
+/**
+ * How long a discard stays claimable, as presets rather than the number itself.
+ *
+ * It has already moved twice — 3s, then 6s, then 10s — which is the tell that
+ * there is no single right value: a table of beginners wants longer and four
+ * people who know the game want the pause gone. But `claimWindowMs` is a
+ * deadline the whole table waits on, so a free integer off the wire is a denial
+ * of service in one field: `86400000` freezes a room until the sweep reaps it and
+ * `0` closes the window before a human can see it. Take an enum, map it here, and
+ * fall back to normal for anything unrecognised. (N6)
+ */
+export const CLAIM_WINDOWS = { quick: 5000, normal: 10_000, relaxed: 20_000 } as const;
+export type ClaimWindow = keyof typeof CLAIM_WINDOWS;
+
+export function claimWindowMsFrom(v: unknown): number {
+  return v === 'quick' || v === 'normal' || v === 'relaxed'
+    ? CLAIM_WINDOWS[v as ClaimWindow]
+    : CLAIM_WINDOWS.normal;
 }
 
 /**

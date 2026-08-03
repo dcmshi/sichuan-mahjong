@@ -238,13 +238,37 @@ globally — that is an accessibility signal, this is a taste.
 **Open** (see [TODO.md](./TODO.md), which is only the open list): a central discard
 pool (O3) is still held as a fallback — its redaction question is answered by
 `firstDiscardIsVoid`, but the middle is no longer the empty space that motivated
-it. Then N3 (winning hands in help), N5/N6/N9 (bot pace mid-match, the claim
-window as a lobby setting, and not offering bot pace at a table of four humans),
-and found in play: **N7** the turn indicator renders at zero width on a 320px
-phone, **N10** side seats draw upright and the across pile does not mirror, **N11**
-pre-selecting a discard while you wait, **N12** the event feed keeps its old
-language after a switch, and **N13** whose turn it is deserves more than 10px of
-text (fix with N7).
+it. Then N3 (winning hands in help), N5 (bot pace mid-match), and found in play:
+**N7** the turn indicator renders at zero width on a 320px phone, **N10** side
+seats draw upright and the across pile does not mirror, **N11** pre-selecting a
+discard while you wait, **N13** whose turn it is deserves more than 10px of text
+(fix with N7), **N14** the wall diagram empties from the top-left corner whatever
+the dice said, and off one end when kong draws take the other, and **N15** the dice
+overlay says "You rolls for the wall break".
+
+**The claim window is a lobby preset, and bot pace hides at a human table**
+(2026-08-02, N6/N9). `claimWindow: 'quick' | 'normal' | 'relaxed'` rides on
+`startGame.rules` and `claimWindowMsFrom` in `ws.ts` maps it to 5000/10000/20000 —
+**an enum and never a number**, because this is the one `rules` field where a raw
+integer is a denial of service in one frame: a day-long window freezes a table
+until the sweep reaps it and `0` closes before a human can see it. Unlike
+`botSpeed` it *is* a `GameConfig` field, so it lands in `GameState` and the
+snapshot, and the test that matters asserts it reaches `GameState.config` rather
+than only that the mapping is right.
+
+**The feed stores keys, not sentences** (2026-08-02, N12). `EventFeed` baked
+`t(key, …)` into state at announce time, so "X ponged" kept the language it was
+announced in. It now holds `{ id, key, seat }` and translates in the JSX — the rule
+`PlayHistory` and the store's `history` already followed. Anything rendering
+server-pushed text belongs on that side of the line.
+
+**The tab icon is not the app icon** (2026-08-02). `icon-tab.svg` is 中 alone on
+felt, filling the canvas; `icon.svg` keeps the tile and stays the install icon.
+Rasterised at 16px the framed design has no room for 口's counter and comes out a
+featureless blob, and a bolder version of it was worse at both ends.
+`icon-tab-32.png` exists because **Safari ignores an SVG favicon**.
+`generate-icons.mjs` therefore holds two geometries, one per SVG — keep each in
+step with its own file.
 
 **Measure the hand only after it settles** (2026-08-02, N8). `Reorder.Item`
 animates the hand on every layout change, so a `getBoundingClientRect` taken as

@@ -51,8 +51,14 @@ export type ClientMsg =
   | {
       t: 'startGame';
       /** Host-only lobby choices. `botSpeed` is a pace, not a rule — the server
-          keeps it out of GameConfig so a replay is identical at any value. */
-      rules?: { huanSanZhang?: boolean; botSpeed?: 'slow' | 'normal' | 'fast' };
+          keeps it out of GameConfig so a replay is identical at any value.
+          `claimWindow` is the opposite: a deadline in engine state, so it is a
+          preset the server maps to `claimWindowMs` rather than a raw number. */
+      rules?: {
+        huanSanZhang?: boolean;
+        botSpeed?: 'slow' | 'normal' | 'fast';
+        claimWindow?: 'quick' | 'normal' | 'relaxed';
+      };
     }
   | { t: 'nextRound' }
   | { t: 'endMatch' }

@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Tab icon: 中 alone, filling the canvas, on the board felt.
+
+       Separate from icon.svg on purpose, because 16px and 512px are different
+       problems. icon.svg draws a mahjong tile with 中 on its face, which is the
+       app's identity and reads well at install sizes — but at a browser tab's
+       16px the tile frame takes ~40% of the canvas and what is left cannot hold
+       a 口 counter: rasterised at 16 it came out a red blob with no glyph in it
+       at all. Dropping the frame buys the glyph the whole square, and at 16px
+       the counter survives at ~2px.
+
+       Bone on felt rather than icon.svg's red on bone: at tab size a cream
+       ground is indistinguishable from light browser chrome, and felt is the
+       colour theme-color and the manifest already claim.
+
+       Two rectangles, not <text>: a favicon renders without web fonts, so a
+       glyph would depend on the viewer having a CJK face installed.
+
+       Named icon-tab rather than favicon so it matches sw.js's `/icon` prefix
+       and is runtime-cached with the rest of the icon set. -->
+  <rect width="512" height="512" rx="96" fill="#0c5f57"/>
+  <!-- 口: stroke is centred on the path, so 238×198 at 62 wide spans
+       106..406 / 126..386 with a 168..344 / 188..324 counter. -->
+  <rect x="137" y="157" width="238" height="198" fill="none" stroke="#fdfaf3" stroke-width="62"/>
+  <!-- The vertical stroke, through the box and out both sides. -->
+  <rect x="225" y="70" width="62" height="372" fill="#fdfaf3"/>
+</svg>

@@ -51,10 +51,21 @@ export function feedLineFor(e: GameEvent): { key: string; seat: Seat } | null {
   }
 }
 
+/**
+ * One announced line, held as what it *means* rather than as the sentence it
+ * currently reads as.
+ *
+ * Storing `tr(key, …)` baked the language in at announce time, so "X ponged"
+ * stayed in the old language after a switch while lines added afterwards used
+ * the new one. `PlayHistory` and the store's own `history` already keep raw
+ * events for exactly this reason; the feed was the one place that didn't. (N12)
+ */
+type FeedLine = { id: number; key: string; seat: Seat };
+
 /** Transient log of what just happened, with sound for opponents' moves. (F7) */
 export function EventFeed({ view }: { view: PlayerView }) {
   const lastEvents = useStore(s => s.lastEvents);
-  const [lines, setLines] = useState<{ id: number; text: string }[]>([]);
+  const [lines, setLines] = useState<FeedLine[]>([]);
   const nextId = useRef(0);
   const timers = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
   const play = useSound();
@@ -63,22 +74,22 @@ export function EventFeed({ view }: { view: PlayerView }) {
   const you = view.you.seat;
   // Read through a ref so the effect stays keyed on the event batch alone —
   // a fresh view arrives with every server push and would otherwise re-announce.
-  const ctx = useRef({ view, play, t });
-  ctx.current = { view, play, t };
+  const soundRef = useRef(play);
+  soundRef.current = play;
+
+  const nameOf = (seat: Seat) =>
+    seat === view.you.seat ? view.you.name : (view.others.find(o => o.seat === seat)?.name ?? '');
 
   useEffect(() => {
     if (lastEvents.length === 0) return;
-    const { view: v, play: p, t: tr } = ctx.current;
-    const nameOf = (seat: Seat) =>
-      seat === v.you.seat ? v.you.name : (v.others.find(o => o.seat === seat)?.name ?? '');
+    const p = soundRef.current;
 
-    const added: { id: number; text: string }[] = [];
+    const added: FeedLine[] = [];
     for (const e of lastEvents) {
       const sound = soundForEvent(e, you);
       if (sound) p(sound);
       const line = feedLineFor(e);
-      if (line)
-        added.push({ id: nextId.current++, text: tr(line.key, { name: nameOf(line.seat) }) });
+      if (line) added.push({ id: nextId.current++, key: line.key, seat: line.seat });
     }
     if (added.length === 0) return;
 
@@ -130,7 +141,7 @@ export function EventFeed({ view }: { view: PlayerView }) {
             // second line once the side columns stop setting its height. (R1)
             className="event-feed-line px-2 py-1 rounded-lg bg-black/55 text-[11px] font-semibold text-green-100"
           >
-            {l.text}
+            {t(l.key, { name: nameOf(l.seat) })}
           </motion.div>
         ))}
       </AnimatePresence>
