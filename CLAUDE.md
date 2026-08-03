@@ -167,9 +167,15 @@ It rides on `startGame.rules.botSpeed`, is narrowed by `botSpeedFrom` in `ws.ts`
 and is a `GameRoom` field rather than `GameConfig`: it changes no rule and a
 replay of the same seed is identical at any value. `--bot-delay <ms>` and the
 `SM_BOT_DELAY_MS` seam pin the process and **outrank the lobby**, which is what
-keeps whole-round suites fast. The claim window defaults to 15s and is a lobby
-preset (N6) — it closes as soon as every eligible seat has acted, so the deadline
-is a backstop, not a pace.
+keeps whole-round suites fast. **The pace is on the wire as of N24** (2026-08-03):
+`botPace: { speed, pinned }` is a *sibling* of `view` on the `view` message —
+nothing to project, since the pace isn't in `GameState` — and it rides on every
+push because that is also what a reconnecting socket gets first. The ⚙ menu used
+to hold `useState('normal')`, so it was right only by coincidence; `pinned` says
+`--bot-delay` has overridden the room, and the control greys out rather than
+accepting taps the server discards. The claim window defaults to 15s and is a
+lobby preset (N6) — it closes as soon as every eligible seat has acted, so the
+deadline is a backstop, not a pace.
 The 🗒 control in the play well opens the round's move history, which is what the
 transient event feed can't be.
 

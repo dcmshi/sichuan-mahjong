@@ -115,6 +115,16 @@ export function botPaceMs(speed: BotSpeed = DEFAULT_BOT_SPEED): number {
 }
 
 /**
+ * Whether a process-wide override is in force, so a client can say the host's
+ * choice is not the pace rather than displaying it as if it were. The override
+ * is an arbitrary millisecond count and does not map onto the three presets, so
+ * this is a flag rather than a substituted speed. (N24)
+ */
+export function isBotPacePinned(): boolean {
+  return paceOverride !== null;
+}
+
+/**
  * Action types a client is allowed to originate over the WS. `claimWindowExpire`
  * and `draw` are driven by the server (claim timer / turn loop); everything a
  * human legitimately triggers is here. Keeps a crafted frame from invoking
@@ -750,7 +760,17 @@ export class GameRoom {
     const view = projectView(this.state, seat);
     // Events are shared across the broadcast; drawn tiles are only for the
     // seat that drew them. (A31)
-    this.send(ws, { t: 'view', view, events: redactEventsFor(seat, events) });
+    //
+    // The pace rides on every push rather than on a message of its own, because
+    // this is also the first thing a reconnecting socket receives — so it cannot
+    // drift out of step with the room, and there is no separate trigger to
+    // remember on join, on start, or on repace. (N24)
+    this.send(ws, {
+      t: 'view',
+      view,
+      events: redactEventsFor(seat, events),
+      botPace: { speed: this.botSpeed, pinned: isBotPacePinned() },
+    });
   }
 
   private buildRoundResult(): RoundResult {
@@ -820,10 +840,21 @@ export class GameRoom {
   setBotSpeed(speed: BotSpeed): boolean {
     this.botSpeed = speed;
     this.lastActivityAt = Date.now();
+    // Re-push so the host's menu reflects the new pace immediately. Without this
+    // the next view arrives with the next bot move — up to 1.8s away on slow,
+    // which is exactly the setting a host is most likely to be reaching for. No
+    // events, so nothing is added to any feed or history. (N24)
+    this.broadcastViews([]);
     return this.slots.some(s => s.isBot);
   }
 
-  /** Current pace, so a joining or reconnecting client can show the right one. */
+  /**
+   * Current pace. It was written for "so a joining or reconnecting client can
+   * show the right one" and then never called, which is why the ⚙ menu shipped
+   * displaying a hardcoded 'normal'. Every view push now carries the value off
+   * the field directly; this stays for tests and for the lobby message, which
+   * still does not carry the pace. (N24)
+   */
   getBotSpeed(): BotSpeed {
     return this.botSpeed;
   }

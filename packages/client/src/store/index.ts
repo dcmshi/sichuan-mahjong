@@ -1,4 +1,5 @@
 import type {
+  BotPace,
   GameEvent,
   LobbyPlayer,
   PlayerView,
@@ -112,6 +113,13 @@ export interface GameStore {
   animation: AnimationPrefs;
   setAnimationSpeed: (s: AnimationSpeed) => void;
   toggleSkipAnimations: () => void;
+  /**
+   * The table's bot pace, as the server reports it on every view push. Null until
+   * the first one arrives. **Not a preference** — it sits here rather than in
+   * `prefs.ts` because it is the room's value, not this device's, and the ⚙ menu
+   * used to hold a hardcoded copy that was right by coincidence. (N24)
+   */
+  botPace: BotPace | null;
 
   // Actions
   goTo: (s: Screen) => void;
@@ -149,6 +157,7 @@ export const useStore = create<GameStore>((set, get) => ({
   connectionLost: false,
   isPractice: false,
   lastError: null,
+  botPace: null,
   soundEnabled: true,
   lang: loadLang(),
   setLang: lang => {
@@ -222,6 +231,7 @@ export const useStore = create<GameStore>((set, get) => ({
           lastEvents: msg.events,
           history: appendHistory(get().history, msg.events),
           screen: 'game',
+          botPace: msg.botPace,
         });
         break;
 
@@ -320,6 +330,7 @@ export const useStore = create<GameStore>((set, get) => ({
       connectionLost: false,
       isPractice: false,
       lastError: null,
+      botPace: null,
     });
   },
 }));

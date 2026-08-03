@@ -82,10 +82,27 @@ export type ClientMsg =
   | { t: 'setBotSpeed'; botSpeed: 'slow' | 'normal' | 'fast' }
   | { t: 'action'; action: GameAction };
 
+/**
+ * The bots' current pace, so a client can show the one in force rather than a
+ * guess. (N24)
+ *
+ * A **sibling of `view` rather than a field on it**: the pace is a `GameRoom`
+ * field and deliberately not in `GameState` (N5 — it changes no rule, and a
+ * replay of the same seed is identical at any value), so there is nothing for
+ * `views.ts` to project. It carries no hidden information — everyone at the
+ * table watches the same moves land at the same pace — so there is no per-viewer
+ * redaction to make.
+ *
+ * `pinned` means `--bot-delay` / `SM_BOT_DELAY_MS` has overridden `speed` for
+ * every room in the process. `speed` is still what the host chose, so a client
+ * showing it must say it is not in force rather than present it as the pace.
+ */
+export type BotPace = { speed: 'slow' | 'normal' | 'fast'; pinned: boolean };
+
 export type ServerMsg =
   | { t: 'joined'; seat: Seat; token: string }
   | { t: 'lobby'; players: LobbyPlayer[]; canStart: boolean; isHost: boolean }
-  | { t: 'view'; view: PlayerView; events: GameEvent[] }
+  | { t: 'view'; view: PlayerView; events: GameEvent[]; botPace: BotPace }
   | { t: 'spectate'; view: SpectatorView; events: GameEvent[] }
   | { t: 'roundEnd'; results: RoundResult }
   | { t: 'matchEnd' }

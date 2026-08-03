@@ -856,7 +856,9 @@ so it isn't rediscovered as a bug.
   it is incomplete rather than at runtime. Extend the language lists in those
   tests along with `Lang`. **Medium-large, and mostly not a coding task.**
 
-- [ ] **N24 — the ⚙ menu says the bots are on Normal whatever the lobby chose.**
+- [x] **N24 — the ⚙ menu says the bots are on Normal whatever the lobby chose.**
+  *(Done — `botPace` rides on every view push, the menu reads it, and a pinned
+  process greys the control and says so. Verified in a browser at both settings.)*
   Reported 2026-08-03: practice set to **slow**, and the play screen's ⚙ shows
   **normal** highlighted.
 
@@ -905,6 +907,59 @@ so it isn't rediscovered as a bug.
 
   Testable without a DOM once the value is on the wire — a store slot is exactly
   the shape the client tests can reach. **Small.**
+
+  **Built as the first option, plus a push the item did not anticipate.**
+  `botPace: { speed, pinned }` is a sibling of `view` on the `view` message rather
+  than a field on `PlayerView`, since the pace is not in `GameState` for there to
+  be anything to project. It rides on **every** push because `sendViewTo` is also
+  what a reconnecting socket receives first — so there is no join / start / repace
+  trigger to remember and no way for it to drift.
+
+  What the item missed: `setBotSpeed` sent nothing back, so with the local copy
+  gone the host would tap and see nothing change until the next bot moved — up to
+  1.8s on slow, the setting most likely to be being reached for. It now
+  re-broadcasts views, measured at 68ms to reflect in the browser.
+
+  `botPaceControl` is a pure exported helper because **no automated test reaches
+  this control rendered honestly**: client tests have no DOM, and the Playwright
+  suite runs the server with `--bot-delay 150`, so every e2e run sees only the
+  pinned branch. That blind spot is how the hardcoded literal shipped.
+
+- [ ] **N25 — the dice overlay parks over the board for the rest of the round.**
+  Found 2026-08-03 while verifying N24 in a browser, and **not fixed there** — it
+  is a different component with its own history, and it deserves its own change.
+
+  Reproduced on a built client at 390×844: declare your void suit promptly and the
+  seating-roll overlay stays up — `bg-black/55 backdrop-blur-sm` over the whole
+  board — for the rest of the round. Measured still present at t+3s, t+8s and
+  t+20s after reaching the play phase, having taken 155ms to get there.
+
+  **The cause is the dependency array, and the comment directly above it already
+  describes this exact failure from a previous round of it.** `DiceOverlay`'s
+  effect has `isDealStart` (`phase === 'huan' || phase === 'voidDeclare'`) in its
+  deps. When the phase advances to `play`, React runs the previous effect's
+  cleanup — **which clears the two stage timers** — then re-enters the body and
+  returns at `if (skip || !isDealStart) return`. `stage` is left non-null with
+  nothing remaining to set it to null. The earlier fix made every dep a primitive
+  so a new `view.dice` reference could not tear the timers down; this is the same
+  teardown arriving through a primitive that legitimately changes mid-animation.
+
+  Two stages at 900+900ms scaled by the animation pace is 3.6s at medium, so any
+  player who declares faster than that hits it — which is most of them.
+
+  **Recommendation: move the timer handles into a ref and clear them on unmount
+  only.** Re-running the arming effect stays harmless, because `shown.current ===
+  key` already guards it; what must not happen is a phase change cancelling
+  timers that are mid-flight. Dropping `isDealStart` from the deps would also work
+  but needs a lint suppression, and the suppression is the thing that hides this
+  class of bug.
+
+  **Why nothing caught it.** The overlay is `pointer-events-none`, so it blocks no
+  tap and every e2e spec still passes with it sitting there. `viewport.spec.ts`
+  watches `.board-felt` overflow and tray clipping, neither of which a
+  `fixed inset-0` overlay affects. A guard wants to assert the overlay is *gone* a
+  known time after the deal — which is a state assertion, not a layout one.
+  **Small, and worth a guard.**
 
 ---
 

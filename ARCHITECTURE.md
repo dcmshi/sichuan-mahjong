@@ -728,7 +728,7 @@ Only `join` is queued client-side while the socket is down; see §8.4. (F21)
 export type ServerMsg =
   | { t: 'joined'; seat: Seat; token: string }              // seat assigned (or re-bound)
   | { t: 'lobby'; players: LobbyPlayer[]; canStart: boolean; isHost: boolean }
-  | { t: 'view'; view: PlayerView; events: GameEvent[] }    // sent after each state change
+  | { t: 'view'; view: PlayerView; events: GameEvent[]; botPace: BotPace }
   | { t: 'spectate'; view: SpectatorView; events: GameEvent[] }
   | { t: 'roundEnd'; results: RoundResult }
   | { t: 'matchEnd' }                                       // room torn down; sockets closed
@@ -740,6 +740,8 @@ Server pushes `view` to each player after every state-changing action (filtered 
 Both halves are per-viewer redacted before send: melds project as `PublicMeld` (a concealed kong's tile is `null` for everyone but its owner until round end — A27), the unflipped first discard projects as a bare `pendingFirstDiscard: boolean` (its owner alone gets the id, in `you.pendingFirstDiscardTile` — A37), and `redactEventsFor` nulls the tile on `drew`/`kongReplacement` events for everyone but the drawer; spectators never see drawn tiles (A31). It also nulls `voidDeclared.suit` for everyone but the declarer (A40) — the void phase resolves all four declarations in one batch, so an unredacted event handed each client the three suits its own view withholds. Anything added to `GameEvent` needs a redaction decision as much as anything added to `GameState` does: the event log is the second channel to a client, and two leaks have now reached it.
 
 `roundEnd` also goes to spectators — on broadcast and on a late join, mirroring the A9 player path — so the store keeps a spectating client on its own screen rather than navigating it to the player round-end screen. `RoundResult.players[]` carries each seat's revealed `hand` and `melds`, its `isReady` state, and its slice of the round's payment `ledger`; it is only ever built once the round has ended, which is what keeps the reveal out of `PlayerView` and out of the redaction rules above.
+
+`botPace: { speed, pinned }` is a **sibling of `view`, not a field on it** (N24). The bots' pace is a `GameRoom` field and deliberately not in `GameConfig` — it changes no rule, and a replay of the same seed is identical at any value — so there is nothing for `views.ts` to project, and it carries no hidden information, so there is no per-viewer redaction to make. It rides on every push because `sendViewTo` is also the first thing a reconnecting socket receives: no separate join/start/repace trigger to remember, and no way for it to drift out of step with the room. `pinned` means `--bot-delay` / `SM_BOT_DELAY_MS` has overridden `speed` process-wide; `speed` is still the host's choice, so a client showing it must say it is not in force rather than present it as the pace. `setBotSpeed` re-broadcasts views so a host's tap is reflected without waiting for the next bot move.
 
 `PlayerView.you` also carries `hasSubmittedHuan` / `hasDeclaredVoid`. A client that reconnects or refreshes has no memory of having acted, and legal actions are empty outside the play phase, so without these the declaration screens re-showed the picker to a player who had already chosen.
 

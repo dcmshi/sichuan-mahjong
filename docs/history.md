@@ -11,6 +11,71 @@ file had reached 1,566 lines of which two were actually open.
 
 ---
 
+## ✅ The ⚙ menu reports the pace the table is actually on (N24 — 2026-08-03)
+
+Reported from a real session: practice set to **slow**, and the play screen's ⚙
+showed **normal** highlighted. The report offered two explanations — the UI is
+wrong, or the setting is flipped on entry — and it was the first.
+
+**The pace was honoured end to end the whole time.** `PracticeSetup` sends
+`rules.botSpeed`, `ws.ts` narrows it through `botSpeedFrom` into `createRoom`, and
+`room.ts` schedules every bot turn at `botPaceMs(this.botSpeed)`. The bots really
+were slow. The lie was one line:
+
+```ts
+const [botSpeed, setBotSpeed] = useState<BotSpeed>('normal');  // SettingsMenu.tsx
+```
+
+Local component state seeded with the literal, so it was right only by
+coincidence — and because it reset on every remount it also lied after a
+reconnect, and to a host who had changed the pace mid-match and reopened the menu.
+
+**It was built that way because the client had no way to know.** `botSpeed` is a
+`GameRoom` field rather than `GameConfig` — deliberately, per N5: it changes no
+rule, and a replay of the same seed is identical at any value — so it is in
+neither `GameState` nor `PlayerView`, and no `ServerMsg` carried it.
+`GameRoom.getBotSpeed()` existed, its comment said it was there "so a joining or
+reconnecting client can show the right one", and it had **no callers anywhere**.
+
+So `botPace: { speed, pinned }` is now a **sibling of `view` on the `view`
+message**, not a field on `PlayerView` — there is nothing in `GameState` for
+`views.ts` to project, and the value carries no hidden information, so there is no
+per-viewer redaction to make. It rides on **every** push, because `sendViewTo` is
+also the first thing a reconnecting socket receives: no join / start / repace
+trigger to remember, and no way for it to drift out of step with the room.
+
+**Two things the diagnosis in TODO.md had not anticipated.**
+
+`setBotSpeed` sent nothing back. With the local copy gone, the host would tap and
+see nothing change until the next bot moved — up to 1.8s away on slow, which is
+precisely the setting a host is most likely to be reaching for. It now
+re-broadcasts views; measured at 68ms to reflect in the browser.
+
+And `--bot-delay` / `SM_BOT_DELAY_MS` outrank both the lobby and the menu, so on a
+pinned process the menu was showing a pace the server ignores entirely. `pinned`
+is a flag rather than a substituted speed, because the override is an arbitrary
+millisecond count that does not map onto the three presets. The control greys out
+and says the choice is not in force, rather than accepting taps the server
+discards.
+
+**`botPaceControl` is a pure exported helper for a specific reason: no automated
+test reaches this control rendered honestly.** Client tests have no DOM, and the
+Playwright suite starts the server with `--bot-delay 150` — so every e2e run sees
+only the pinned branch. The unpinned case, which is every real deployment, is
+reachable nowhere but a unit test on the helper. That blind spot is how a
+hardcoded literal shipped in the first place.
+
+Verified in a browser at 390×844 against two servers, one pinned and one not: a
+lobby choice of slow reads back as `Slow` selected and enabled with the table
+hint; tapping Fast reflects in 68ms; and the pinned server greys all three and
+shows "This server pins the bot pace, so this choice is not in force."
+
+**Found while verifying, and filed rather than fixed: [N25](../TODO.md).** The
+dice overlay parks over the board for the rest of the round if you declare your
+void suit before its two stages finish.
+
+---
+
 ## ✅ The rules are readable before you sit down (2026-08-03)
 
 `HowToPlay` was only reachable from the `?` in `PlayTopBar`, which renders during
