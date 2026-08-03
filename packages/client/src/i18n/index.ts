@@ -47,6 +47,8 @@ const en: Dict = {
   'landing.practiceName': 'You',
   'landing.practiceSetup': 'Bot settings',
   'landing.practiceSetupHint': 'Remembered on this device, so next time is two taps.',
+  'landing.support': '❤️ Support this project',
+  'landing.source': 'View source on GitHub',
 
   'practice.title': 'Practice vs Bots',
   'practice.hint':
@@ -339,6 +341,8 @@ const zhHans: Dict = {
   'landing.practiceName': '你',
   'landing.practiceSetup': '机器人设置',
   'landing.practiceSetupHint': '设置保存在本机，下次两下即可开局。',
+  'landing.support': '❤️ 支持本项目',
+  'landing.source': '在 GitHub 上查看源码',
 
   'practice.title': '人机练习',
   'practice.hint': '你坐第四家，对手是三个机器人。这里的设置不会发给任何人。',
@@ -605,6 +609,8 @@ const zhHant: Dict = {
   'landing.practiceName': '你',
   'landing.practiceSetup': '機器人設定',
   'landing.practiceSetupHint': '設定儲存在本機，下次兩下即可開局。',
+  'landing.support': '❤️ 支持本專案',
+  'landing.source': '在 GitHub 上查看原始碼',
 
   'practice.title': '人機練習',
   'practice.hint': '你坐第四家，對手是三個機器人。這裡的設定不會發給任何人。',
@@ -877,6 +883,8 @@ const fr: Dict = {
   'landing.practiceSetup': 'Réglages des bots',
   'landing.practiceSetupHint':
     'Mémorisés sur cet appareil : la prochaine fois, deux touches suffisent.',
+  'landing.support': '❤️ Soutenir ce projet',
+  'landing.source': 'Voir le code source sur GitHub',
 
   'practice.title': 'Entraînement contre des bots',
   'practice.hint':
@@ -1156,6 +1164,8 @@ const es: Dict = {
   'landing.practiceName': 'Tú',
   'landing.practiceSetup': 'Ajustes de bots',
   'landing.practiceSetupHint': 'Se guardan en este dispositivo: la próxima vez bastan dos toques.',
+  'landing.support': '❤️ Apoya este proyecto',
+  'landing.source': 'Ver el código fuente en GitHub',
 
   'practice.title': 'Práctica contra bots',
   'practice.hint':
@@ -1451,6 +1461,8 @@ const ja: Dict = {
   'landing.practiceName': 'あなた',
   'landing.practiceSetup': 'CPU設定',
   'landing.practiceSetupHint': 'この端末に保存されるので、次回は2タップで始められます。',
+  'landing.support': '❤️ このプロジェクトを応援する',
+  'landing.source': 'GitHubでソースコードを見る',
 
   'practice.title': 'CPU戦の練習',
   'practice.hint': '3人のCPUを相手に4人目の席に座ります。ここの設定は誰にも送信されません。',

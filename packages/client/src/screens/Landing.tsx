@@ -162,6 +162,30 @@ export function Landing() {
         >
           {t('htp.title')}
         </button>
+        {/* Below About & Credits on purpose, not beside it. Sponsorship covers
+            the code and not the tile art — somebody else's work under CC-BY-SA —
+            and there is no room in a link to say so, so the qualification lives
+            one row up and one tap away, on the screen that carries the
+            attribution. Ordering is the whole of that decision. (N35) */}
+        <div className="flex items-center gap-2 text-[11px] text-green-600 mt-1">
+          <a
+            href="https://github.com/sponsors/dcmshi"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-green-300 hover:underline"
+          >
+            {t('landing.support')}
+          </a>
+          <span aria-hidden="true">·</span>
+          <a
+            href="https://github.com/dcmshi/sichuan-mahjong"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-green-300 hover:underline"
+          >
+            {t('landing.source')}
+          </a>
+        </div>
       </div>
 
       {showHowToPlay && <HowToPlay onClose={() => setShowHowToPlay(false)} />}

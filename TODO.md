@@ -16,14 +16,15 @@ so it isn't rediscovered as a bug.
 
 ## Open
 
-Four items. **N19 is the only one that is gameplay work** rather than plumbing,
+Three items. **N19 is the only one that is gameplay work** rather than plumbing,
 layout or research.
 
-N23 (French, Spanish, Japanese) and N31 (the lobby's Start button) closed
-2026-08-03 — both in [docs/history.md](./docs/history.md). N23 left one thing
-open that is not a task: the four Japanese terms it had to coin, because Sichuan
-has them and riichi does not — 欠け色, 金鉤釣, 槓上放銃, 花豚 — **want a native
-speaker's eye**. The borrowed ones do not.
+N23 (French, Spanish, Japanese), N31 (the lobby's Start button) and N35 (the
+support/source links) all closed 2026-08-03 — each in
+[docs/history.md](./docs/history.md). N23 left one thing open that is not a task:
+the four Japanese terms it had to coin, because Sichuan has them and riichi does
+not — 欠け色, 金鉤釣, 槓上放銃, 花豚 — **want a native speaker's eye**. The borrowed
+ones do not.
 
 ### N19 — a hard bot, so the ladder has three rungs
 
@@ -101,33 +102,6 @@ So the shape is: `dealer` on `RoundResult` (and the winds in play can come off
 `PlayerView.dealer`, which is already projected), one shared helper, and a
 decision about the lobby. **Small-medium** — the sweep is what makes it more
 than the one-line fix it looks like.
-
-### N35 — a support link and a source link on the landing screen
-
-Requested 2026-08-03, pointing at the same change in the Set repo
-([`4e6f8dc`](https://github.com/dcmshi/set-game/commit/4e6f8dc6478963650e937afeb3668532f54e95a1)):
-a subtle secondary link row under the button stack, one link to
-`https://github.com/sponsors/dcmshi` and one to the repository, separated by a
-`·` and styled well below the primary actions so it competes with nothing.
-
-**Here it goes on `screens/Landing.tsx`**, which already has the right visual
-class to join: "About & Credits" is a 12px underlined link at the bottom, and
-N17 is the standing lesson that this screen's secondary row is where a player
-does or does not find something. So the row belongs *beside* that link rather
-than as a fourth button.
-
-**Two things this repo has that Set did not.** N20 already shipped
-`.github/FUNDING.yml` and a README **Sponsorship** section, and both say the
-same careful thing: sponsorship supports the code and **not the tile artwork**,
-which is somebody else's work under CC-BY-SA with `credits.json` as the
-attribution. A one-word "Support" link on the landing screen makes a claim the
-README then has to qualify — so either the link text carries it, or it points
-somewhere that does. The About & Credits screen already holds the attribution
-and is one tap away, which is probably the answer.
-
-And the catalogs: two new keys × the six languages N23 shipped (en, zh-Hans,
-zh-Hant, fr, es, ja), all enforced by `catalog.test.ts`. Set's commit carries the
-wording for five of them and is the model for the sixth. **Small.**
 
 ### O3 — a central discard pool
 

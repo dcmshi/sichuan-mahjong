@@ -262,7 +262,6 @@ is a deliberately accepted granularity cost. Free tier, so persistence stays off
 [docs/design-hosted-server.md](./docs/design-hosted-server.md).
 
 **Open** — see [TODO.md](./TODO.md), which is only the open list: **N19** a hard
-bot so the ladder has three rungs, **N26** the nine wind call sites above,
-**N35** a support/source link row on the landing screen, and **O3** a central
-discard pool, still held as a fallback. N19 is the only one that is gameplay work
-rather than plumbing, layout or research.
+bot so the ladder has three rungs, **N26** the nine wind call sites above, and
+**O3** a central discard pool, still held as a fallback. N19 is the only one that
+is gameplay work rather than plumbing, layout or research.

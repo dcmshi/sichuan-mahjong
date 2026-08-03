@@ -11,6 +11,42 @@ file had reached 1,566 lines of which two were actually open.
 
 ---
 
+## ✅ A support link and a source link, under the fold on purpose (N35 — 2026-08-03)
+
+Two links in the landing screen's secondary cluster, modelled on the same change
+in the Set repo ([`4e6f8dc`](https://github.com/dcmshi/set-game/commit/4e6f8dc6478963650e937afeb3668532f54e95a1)):
+`github.com/sponsors/dcmshi` and the repository, separated by a `·`, at 11px in a
+muted green that only brightens on hover.
+
+**The one real decision was ordering, and it is load-bearing.** N20 shipped
+`.github/FUNDING.yml` and a README section that both say the same careful thing:
+sponsorship supports the code and **not the tile art**, which is somebody else's
+work under CC-BY-SA with `credits.json` as the attribution. There is no room in a
+link to carry that qualification, and padding the label until it fits would make a
+12px footnote into a paragraph. So the row sits **below** About & Credits rather
+than beside it — the screen holding the attribution is encountered first and is one
+tap away. That is the whole of the answer the item was filed for, and it is written
+into the component rather than left to be rediscovered.
+
+**Not a fourth button.** The landing screen already learned this the hard way: N17
+put practice settings behind a 12px underline here, nobody found them, and the
+feature was reported as never deployed. The lesson cuts both ways, though — the
+reason *these* two belong in the quiet row is that neither is a way into a game,
+which is what the button stack is for. An affordance nobody finds has failed only
+if someone needed to find it.
+
+Two keys × six languages, which is the first thing to land since N23 that the
+parity test guards across all of them. Set's commit already carried the wording for
+five; zh-Hant is the sixth (`支持本專案` / `在 GitHub 上查看原始碼`).
+
+Verified at 390×844 and 320×568: both links carry `target="_blank"` and
+`rel="noopener noreferrer"`, both resolve, all six languages translate, and
+`docScrollX` is 0 at both sizes. The landing page does scroll vertically at 320px —
+64px before this change and 93px after — which is pre-existing and unguarded, the
+vertical-overflow spec being about the play screen. 12/12 e2e green.
+
+---
+
 ## ✅ Six languages, and the parity guard that now scales (N23 — 2026-08-03)
 
 French, Spanish and Japanese. The plumbing was as cheap as the item predicted — a
