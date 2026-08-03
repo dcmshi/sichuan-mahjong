@@ -33,18 +33,32 @@ Priority: Hu > Kong > Pung. No chow claims in Sichuan.`,
 • 7 distinct pairs — all in non-voided suits.
 
 Chows (3 consecutive) can only be built in your concealed hand, not claimed off discards.`,
+  'htp.shape.standard': 'Four sets + a pair — here a chow, a pung, a chow, a pung, and the pair.',
+  'htp.shape.sevenPairs': 'Seven pairs, and nothing claimed. A four-of-a-kind counts as two pairs.',
+  'htp.shape.fullFlush':
+    'Every tile in one suit. You void a suit before the first turn, so a flush is one suit away from where every hand starts.',
+  'htp.shape.voided': 'Voided: {suit}',
   'htp.scoring.title': 'Scoring (Fan)',
   'htp.scoring.body': `Hand value = 2^fan, capped at 2^3 = 8 points.
 
-Notable fans:
-• Full Flush (清一色): all one suit — 2 fan
-• Seven Pairs (七对): 2 fan
-• All Pungs: 1 fan
-• Each Kong: 1 fan
-• Under the Sea / Win after Kong: 1 fan
-
 Self-draw Hu: each other player pays hand value + 1.
 Discard Hu: discarder pays hand value.`,
+  'htp.fan.title': 'What you can win with',
+  'htp.fan.value': '{n} fan',
+  'htp.fan.stack': 'up to ×{n}',
+  'htp.fan.cap':
+    'Fan add up and then cap at 3, so 8 points is the most any hand pays. Not every pair combines: seven pairs rules out kongs, all pungs and the golden wait.',
+  'htp.fan.FullFlush':
+    'Every tile in one suit — the void suit already gets you a third of the way.',
+  'htp.fan.SevenPairs': 'Seven pairs with nothing claimed; a four-of-a-kind counts as two of them.',
+  'htp.fan.AllPungs': 'Four pungs or kongs and a pair — no chow anywhere in the hand.',
+  'htp.fan.GoldenWait': 'An all-pung hand won on the tile that completes the pair.',
+  'htp.fan.Kong': 'Each kong you declare, concealed or exposed.',
+  'htp.fan.Root': 'Each four-of-a-kind standing in a seven-pairs hand as two pairs.',
+  'htp.fan.WinAfterKong': 'You self-draw the replacement tile after your own kong, and it wins.',
+  'htp.fan.ShootAfterKong': 'You win on the tile discarded straight after a kong.',
+  'htp.fan.RobbingTheKong': 'You win on the tile another player was adding to their pung.',
+  'htp.fan.UnderTheSea': 'You win on the last tile the wall has to give.',
   'htp.kongs.title': 'Kongs',
   'htp.kongs.body': `Concealed Kong: 4-of-a-kind in hand. Each non-Hu player pays 2.
 Exposed Kong (off discard): discarder pays 2.
@@ -97,18 +111,30 @@ const zhHans: Dict = {
 • 七对——均为非缺门花色。
 
 顺子（三张连续）只能在自己的暗手中组成，不能吃别人打出的牌。`,
+  'htp.shape.standard': '四副面子 + 一对将：这里是顺子、刻子、顺子、刻子，再加一对将。',
+  'htp.shape.sevenPairs': '七组对子，且没有任何副露。四张相同算作两对。',
+  'htp.shape.fullFlush': '全部牌为同一花色。开局就要定缺，所以清一色只差再舍掉一门。',
+  'htp.shape.voided': '缺门：{suit}',
   'htp.scoring.title': '算番',
   'htp.scoring.body': `番数对应分值 = 2的番数次方，封顶 2^3 = 8 分。
 
-常见番种：
-• 清一色：全为同一花色——2番
-• 七对：2番
-• 碰碰胡（全是刻子）：1番
-• 每个杠：1番
-• 海底捞月 / 杠上开花：1番
-
 自摸胡：其他每名玩家支付 番值 + 1。
 点炮胡：点炮者支付 番值。`,
+  'htp.fan.title': '可以做出的番种',
+  'htp.fan.value': '{n}番',
+  'htp.fan.stack': '最多 ×{n}',
+  'htp.fan.cap':
+    '番数相加后封顶3番，所以一副牌最多8分。部分番种不能同时成立：七对不能与杠、碰碰胡、金钩钓同时计算。',
+  'htp.fan.FullFlush': '全部牌为同一花色。反正开局要定缺，起手就已经少一门。',
+  'htp.fan.SevenPairs': '七组对子，且没有任何副露；四张相同算作其中两对。',
+  'htp.fan.AllPungs': '四副刻子或杠 + 一对将，全手没有顺子。',
+  'htp.fan.GoldenWait': '碰碰胡，且胡的那张牌正好补上将牌。',
+  'htp.fan.Kong': '每杠一次计一番，暗杠明杠皆可。',
+  'htp.fan.Root': '七对中每有一组四张相同（算作两对）计一番。',
+  'htp.fan.WinAfterKong': '杠后补摸的那张牌自摸胡。',
+  'htp.fan.ShootAfterKong': '杠后打出的那张牌被你胡。',
+  'htp.fan.RobbingTheKong': '别人补杠时，你胡他加上去的那张牌。',
+  'htp.fan.UnderTheSea': '胡牌墙最后一张牌。',
   'htp.kongs.title': '杠',
   'htp.kongs.body': `暗杠：手中四张相同。每名未胡玩家支付 2。
 明杠（碰别人打出的牌）：点杠者支付 2。
@@ -161,18 +187,30 @@ const zhHant: Dict = {
 • 七對——均為非缺門花色。
 
 順子（三張連續）只能在自己的暗手中組成，不能吃別人打出的牌。`,
+  'htp.shape.standard': '四副面子 + 一對將：這裡是順子、刻子、順子、刻子，再加一對將。',
+  'htp.shape.sevenPairs': '七組對子，且沒有任何副露。四張相同算作兩對。',
+  'htp.shape.fullFlush': '全部牌為同一花色。開局就要定缺，所以清一色只差再捨掉一門。',
+  'htp.shape.voided': '缺門：{suit}',
   'htp.scoring.title': '算番',
   'htp.scoring.body': `番數對應分值 = 2的番數次方，封頂 2^3 = 8 分。
 
-常見番種：
-• 清一色：全為同一花色——2番
-• 七對：2番
-• 碰碰胡（全是刻子）：1番
-• 每個槓：1番
-• 海底撈月 / 槓上開花：1番
-
 自摸胡：其他每名玩家支付 番值 + 1。
 點炮胡：點炮者支付 番值。`,
+  'htp.fan.title': '可以做出的番種',
+  'htp.fan.value': '{n}番',
+  'htp.fan.stack': '最多 ×{n}',
+  'htp.fan.cap':
+    '番數相加後封頂3番，所以一副牌最多8分。部分番種不能同時成立：七對不能與槓、碰碰胡、金鉤釣同時計算。',
+  'htp.fan.FullFlush': '全部牌為同一花色。反正開局要定缺，起手就已經少一門。',
+  'htp.fan.SevenPairs': '七組對子，且沒有任何副露；四張相同算作其中兩對。',
+  'htp.fan.AllPungs': '四副刻子或槓 + 一對將，全手沒有順子。',
+  'htp.fan.GoldenWait': '碰碰胡，且胡的那張牌正好補上將牌。',
+  'htp.fan.Kong': '每槓一次計一番，暗槓明槓皆可。',
+  'htp.fan.Root': '七對中每有一組四張相同（算作兩對）計一番。',
+  'htp.fan.WinAfterKong': '槓後補摸的那張牌自摸胡。',
+  'htp.fan.ShootAfterKong': '槓後打出的那張牌被你胡。',
+  'htp.fan.RobbingTheKong': '別人補槓時，你胡他加上去的那張牌。',
+  'htp.fan.UnderTheSea': '胡牌牆最後一張牌。',
   'htp.kongs.title': '槓',
   'htp.kongs.body': `暗槓：手中四張相同。每名未胡玩家支付 2。
 明槓（碰別人打出的牌）：點槓者支付 2。
