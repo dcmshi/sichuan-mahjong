@@ -719,7 +719,9 @@ so it isn't rediscovered as a bug.
   separate. **Medium-large** — this is the only item on this list that is real
   gameplay work rather than plumbing or layout.
 
-- [ ] **N20 — turn on the repository's sponsor button.** Requested 2026-08-02.
+- [x] **N20 — turn on the repository's sponsor button.** *(Done — `.github/FUNDING.yml`
+  pointing at the profile, plus a Sponsorship section in the README saying what it
+  does and does not cover.)* Requested 2026-08-02.
   GitHub Sponsors is already live on the `dcmshi` *profile*; a
   **`.github/FUNDING.yml`** puts the Sponsor button on this repository too, and
   the file is the only thing standing between the two.
@@ -737,6 +739,17 @@ so it isn't rediscovered as a bug.
   repository that ships it is worth a deliberate answer rather than a default
   one. Mention the tile authors in the sponsor blurb if the answer is yes.
   **Small.**
+
+  **Both answered.** The profile, not a project tier — there are no tiers to point
+  at, and inventing them would promise a fulfilment story this repo does not have.
+  And yes, it sits right beside the CC-BY-SA obligation: a funding button neither
+  restricts redistribution nor discharges attribution, so it conflicts with nothing.
+  What it *could* do is imply the art is ours, so the answer is stated rather than
+  assumed — `FUNDING.yml` carries the reasoning as a comment, and the README gained
+  a **Sponsorship** section saying sponsorship supports the code and not the
+  artwork, pointing at `credits.json` for anyone wanting to support the art itself.
+  There is no free-text field in `FUNDING.yml`, which is why the note lives in the
+  README rather than "in the blurb".
 
 - [ ] **N21 — check the round's *payments* against sources other than the PDF.**
   Reported 2026-08-02: a player at a real table said a hand was settled wrong, and

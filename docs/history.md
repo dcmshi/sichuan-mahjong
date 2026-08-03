@@ -11,6 +11,21 @@ file had reached 1,566 lines of which two were actually open.
 
 ---
 
+## ✅ The sponsor button, and the two questions it was held for (N20 — 2026-08-03)
+
+The profile rather than a project tier: there are no tiers to point at, and
+inventing them would promise a fulfilment story this repo does not have. And a
+funding button does sit right beside the CC-BY-SA obligation — it neither restricts
+redistribution nor discharges attribution, so it conflicts with nothing. What it
+could do is imply the tile art is ours. So that is stated rather than assumed:
+`FUNDING.yml` carries the reasoning as a comment, and the README gained a
+**Sponsorship** section saying sponsorship supports the code and not the artwork,
+pointing at `credits.json` for anyone wanting to support the art itself.
+`FUNDING.yml` has no free-text field, which is why the note is in the README
+rather than "in the blurb" as the item put it.
+
+---
+
 ## ✅ The dice overlay clears itself (N25 — 2026-08-03)
 
 Found while verifying N24 in a browser: declare your void suit promptly and the

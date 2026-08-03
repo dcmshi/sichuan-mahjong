@@ -1,0 +1,13 @@
+# Puts the Sponsor button on this repository. GitHub Sponsors is already live on
+# the dcmshi profile; this file is the only thing that surfaces it here. (N20)
+#
+# It points at the personal profile rather than a project tier: there are no
+# project-specific tiers to point at, and inventing them would promise a
+# fulfilment story this repo does not have.
+#
+# **Sponsorship supports the code, not the tile art.** The SVGs in
+# packages/client/public/tiles/ are other people's work under CC BY-SA 4.0 —
+# attributed per file in credits.json, surfaced at /about and by
+# `sichuan-mahjong --credits`. Nothing here changes that, and nothing here is a
+# claim on it; see the Sponsorship note in README.md and LICENSE §3.
+github: dcmshi

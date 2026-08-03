@@ -211,3 +211,16 @@ it. Pass on a binary and you are passing on the artwork with it; run
 `sichuan-mahjong --credits` for the attribution that has to go along. Details in
 [LICENSE §3](./LICENSE). The npm package serves the tiles from disk as ordinary
 files.
+
+### Sponsorship
+
+The repository carries a Sponsor button ([`.github/FUNDING.yml`](./.github/FUNDING.yml)),
+pointing at the author's GitHub Sponsors profile.
+
+**It supports the code, not the artwork.** The tiles are other people's work,
+used under CC BY-SA 4.0 — a share-alike licence, whose terms sponsorship neither
+alters nor discharges. The attribution in
+[`credits.json`](./packages/client/public/tiles/credits.json) is the obligation,
+and it travels with every copy: in the app at `/about`, and inside each binary at
+`--credits`. If you want to support the art itself, the per-file credits name the
+authors and where their work came from.
