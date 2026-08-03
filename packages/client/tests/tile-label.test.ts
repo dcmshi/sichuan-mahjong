@@ -13,11 +13,13 @@ const idOf = (suit: 'man' | 'pin' | 'sou', rank: number) =>
 describe('tile accessible names (F16)', () => {
   // The glyph is part of the English name, not a translation of it (N34): the
   // screen used to call one suit "Man" in one sentence and "Characters" in the
-  // next, and neither was the character printed on the tile being named.
+  // next, and neither was the character printed on the tile being named. The
+  // reading is pinyin — Man / Pin / Sou are Japanese, and belong to a Japanese
+  // catalog rather than the English one.
   it('reads as a localized name, not the internal id', () => {
-    expect(tileLabel(idOf('man', 3), bound('en'))).toBe('3 of 万 Man');
-    expect(tileLabel(idOf('pin', 7), bound('en'))).toBe('7 of 饼 Pin');
-    expect(tileLabel(idOf('sou', 1), bound('en'))).toBe('1 of 条 Sou');
+    expect(tileLabel(idOf('man', 3), bound('en'))).toBe('3 of 万 Wàn');
+    expect(tileLabel(idOf('pin', 7), bound('en'))).toBe('7 of 饼 Bǐng');
+    expect(tileLabel(idOf('sou', 1), bound('en'))).toBe('1 of 条 Tiáo');
   });
 
   it('follows the selected language', () => {

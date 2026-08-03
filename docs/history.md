@@ -130,14 +130,23 @@ man/pin/sou.
 `void.confirm` read `suit.man` → "Man" while `tile.label` read `tile.man` →
 "Characters", so one sentence pair named a single suit twice, differently, and
 **neither was the character printed on the tile the player is looking at.** Every
-English suit string now leads with the glyph: `suit.*` and `tile.*` are `万 Man` /
-`饼 Pin` / `条 Sou`, giving "Void 万 Man" and "7 of 万 Man discarded first". The
-`.full` form carries the pinyin — `万 Man (wàn)`, `饼 Pin (bǐng)`, `条 Sou (tiáo)` —
-and is what the void screen's three big buttons draw, which is the one place with
-room for it and the screen where you are choosing a suit rather than reading one
-back. Worth stating plainly: **"Pin" and "Sou" are not pinyin at all** but Japanese
-(pinzu / souzu), which is exactly why the tone-marked reading is worth having
-somewhere. The Chinese catalogs already showed the glyph alone and are unchanged.
+English suit string now leads with the glyph.
+
+**The reading beside it is pinyin, and Man / Pin / Sou are gone.** The first cut
+kept them and appended the pinyin — `万 Man (wàn)` — which prompted the obvious
+follow-up: if they are Japanese, leave them off. They are. Man / Pin / Sou are not
+readings of these characters at all but manzu / pinzu / souzu, borrowed into English
+mahjong writing from a different game, and this is a Sichuan ruleset whose UI has
+Chinese as a first-class language. So `suit.*` and `tile.*` are `万 Wàn` / `饼 Bǐng` /
+`条 Tiáo`, giving "Void 万 Wàn" and "7 of 万 Wàn discarded first". They belong to a
+Japanese catalog when N23 adds one, and a test asserts "Man" appears in none of the
+three keys so a revert is visible rather than quiet.
+
+`suit.*.full` keeps the **plain-English gloss** — `万 Wàn (Characters)` — which is
+not the Japanese part, and is the only thing left in the UI saying what a suit
+depicts. It is what the void screen's three big buttons draw, the one place with
+room and the screen where you are choosing a suit rather than reading one back. The
+Chinese catalogs already showed the glyph alone and are unchanged.
 
 This also changes what a screen reader announces, since `tileLabel` is the tile's
 `aria-label`, and what the kong buttons read — both for the better: the label now
@@ -167,8 +176,8 @@ The two null cases are untouched, and are still why this is a function rather th
 none of, and null while holding the suit is what the engine rejects as
 `void_indicator_not_allowed` (A36).
 
-Verified in a browser: tapping the 万 button alone gives an enabled "Void 万 Man /
-1 of 万 Man discarded first" with `man-1` lifted and ringed; tapping `man-2` moves
+Verified in a browser: tapping the 万 button alone gives an enabled "Void 万 Wàn /
+1 of 万 Wàn discarded first" with `man-1` lifted and ringed; tapping `man-2` moves
 both the mark and the sentence to it. `ui-clicks.spec.ts` now asserts one
 `data-void-first` **before** any tile is tapped, which is the assertion the silent
 version would fail.

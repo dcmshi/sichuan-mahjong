@@ -557,10 +557,17 @@ so it isn't rediscovered as a bug.
     English.
 
   **Two things to settle before starting.** Whether the tile *names* localise at
-  all (`tile.man` is "Characters" in English and 万 in both Chinese catalogs —
-  Japanese would presumably want 萬子, French probably keeps the Chinese
-  character); and whether `suit.*.full`, which currently pairs the glyph with a
-  romanisation, is right for a Japanese reader who reads the glyph directly.
+  all (`tile.man` is `万 Wàn` in English and 万 in both Chinese catalogs — Japanese
+  would presumably want 萬子, French probably keeps the Chinese character); and
+  whether `suit.*.full`, which pairs the glyph with a romanisation, is right for a
+  Japanese reader who reads the glyph directly.
+
+  **Man / Pin / Sou come back here, and nowhere else.** N34 took them out of the
+  English catalog because they are manzu / pinzu / souzu — Japanese, borrowed into
+  English mahjong writing from a different game — and replaced them with pinyin.
+  They are the right words for a Japanese catalog, which is the point: this is the
+  language where the established vocabulary is already Japanese and where picking
+  "the riichi word" is a decision with a wrong answer rather than a lookup.
 
   **Cheap to guard, once written.** `catalog.test.ts` already fails on any missing
   or extra key, and `help-examples.test.ts` and `dice-overlay.test.ts` assert that
@@ -916,18 +923,27 @@ so it isn't rediscovered as a bug.
   and consumes the suppression rather than leaving it standing.
 
 - [x] **N34 — one name per suit, and it is the character on the tile.** *(Done —
-  every English suit string leads with the glyph; the `.full` form carries the
-  pinyin.)* Reported 2026-08-03 against N30's own confirm button: "Void Man /
-  7 of Characters goes out first" reads awkwardly.
+  the glyph plus its pinyin, everywhere; the `.full` form keeps the English gloss.)*
+  Reported 2026-08-03 against N30's own confirm button: "Void Man / 7 of Characters
+  goes out first" reads awkwardly.
 
   It named one suit twice, differently — `void.confirm` read `suit.man` ("Man")
   and `tile.label` read `tile.man` ("Characters") — and **neither was the character
-  printed on the tile being named**. `suit.*` and `tile.*` are now `万 Man` /
-  `饼 Pin` / `条 Sou`, and `suit.*.full` adds the tone-marked reading:
-  `万 Man (wàn)`, `饼 Pin (bǐng)`, `条 Sou (tiáo)`. That is the void screen's three
-  big buttons — the one place with room, and the screen where you are choosing a
-  suit rather than reading one back. Note **"Pin" and "Sou" are not pinyin** but
-  Japanese (pinzu / souzu), which is why the reading is worth stating somewhere.
+  printed on the tile being named**.
+
+  **Man / Pin / Sou are gone rather than kept beside the pinyin**, which is where
+  the first cut left them. They are not readings of these characters at all but
+  Japanese (manzu / pinzu / souzu), borrowed into English mahjong writing from a
+  different game. So `suit.*` and `tile.*` are `万 Wàn` / `饼 Bǐng` / `条 Tiáo`, and
+  they come back with the Japanese catalog in **N23** — which is also where the
+  question of whether `suit.*.full`'s glyph-plus-romanisation suits a reader who
+  reads the glyph directly already sits. A test asserts "Man" appears in none of
+  the three keys, so a revert is visible rather than quiet.
+
+  `suit.*.full` keeps the plain-English gloss — `万 Wàn (Characters)` — which is not
+  the Japanese part and is the only thing left saying what a suit depicts. It is
+  what the void screen's three big buttons draw: the one place with room, and the
+  screen where you are choosing a suit rather than reading one back.
 
 ---
 

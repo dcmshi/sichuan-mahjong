@@ -108,25 +108,31 @@ const en: Dict = {
   'wind.2': 'West',
   'wind.3': 'North',
 
-  // The glyph leads and the roman name follows, in every English string that
-  // names a suit. "Void Man" and "7 of Characters" were two different names for
-  // one thing, and neither was the character printed on the tile the player is
-  // looking at. The `.full` form adds the pinyin, and is what the void screen's
-  // three big buttons draw — the one place with room for it, and the screen
-  // where you are choosing a suit rather than reading one back. Note "Pin" and
-  // "Sou" are not pinyin at all but Japanese (pinzu / souzu), which is exactly
-  // why the tone-marked reading is worth stating somewhere. (N34)
-  'suit.man': '万 Man',
-  'suit.pin': '饼 Pin',
-  'suit.sou': '条 Sou',
+  // The glyph leads and the reading follows, in every English string that names a
+  // suit. "Void Man" and "7 of Characters" were two different names for one thing,
+  // and neither was the character printed on the tile the player is looking at.
+  //
+  // The reading is **pinyin**, because Man / Pin / Sou are not readings of these
+  // characters at all — they are Japanese (manzu / pinzu / souzu), borrowed into
+  // English mahjong writing, and this is a Sichuan ruleset whose UI has Chinese as
+  // a first-class language. They belong to a Japanese catalog (N23) rather than to
+  // the English one.
+  //
+  // `.full` keeps the plain-English gloss, which is not the Japanese part and is
+  // the only thing left saying what the suit depicts. It is what the void screen's
+  // three big buttons draw — the one place with room, and the screen where you are
+  // choosing a suit rather than reading one back. (N34)
+  'suit.man': '万 Wàn',
+  'suit.pin': '饼 Bǐng',
+  'suit.sou': '条 Tiáo',
   'tile.label': '{rank} of {suit}',
-  'tile.man': '万 Man',
-  'tile.pin': '饼 Pin',
-  'tile.sou': '条 Sou',
+  'tile.man': '万 Wàn',
+  'tile.pin': '饼 Bǐng',
+  'tile.sou': '条 Tiáo',
 
-  'suit.man.full': '万 Man (wàn)',
-  'suit.pin.full': '饼 Pin (bǐng)',
-  'suit.sou.full': '条 Sou (tiáo)',
+  'suit.man.full': '万 Wàn (Characters)',
+  'suit.pin.full': '饼 Bǐng (Dots)',
+  'suit.sou.full': '条 Tiáo (Bamboo)',
 
   'huan.title': 'Huan San Zhang — Select 3 tiles to swap',
   'huan.hint': 'Tap 3 tiles of the same suit. They will be passed to the next player.',

@@ -97,9 +97,20 @@ describe('the discard-pile strings', () => {
     }
   });
 
-  it('carry the pinyin on the full form, which is what the void screen draws', () => {
-    expect(translate('en', 'suit.man.full')).toContain('wàn');
-    expect(translate('en', 'suit.pin.full')).toContain('bǐng');
-    expect(translate('en', 'suit.sou.full')).toContain('tiáo');
+  // The reading is pinyin, not the Japanese manzu / pinzu / souzu that English
+  // mahjong writing borrowed — those belong to a Japanese catalog (N23).
+  it('read a suit in pinyin, and gloss it in plain English on the full form', () => {
+    for (const [suit, reading, gloss] of [
+      ['man', 'Wàn', 'Characters'],
+      ['pin', 'Bǐng', 'Dots'],
+      ['sou', 'Tiáo', 'Bamboo'],
+    ] as const) {
+      expect(translate('en', `suit.${suit}`)).toContain(reading);
+      expect(translate('en', `tile.${suit}`)).toContain(reading);
+      expect(translate('en', `suit.${suit}.full`)).toContain(gloss);
+    }
+    for (const key of ['suit.man', 'tile.man', 'suit.man.full'] as const) {
+      expect(translate('en', key), key).not.toContain('Man');
+    }
   });
 });

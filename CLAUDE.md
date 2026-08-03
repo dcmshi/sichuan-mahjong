@@ -328,12 +328,15 @@ wrongly. Both side columns still grow downward, deliberately.
 **One name per suit, and it is the character on the tile** (2026-08-03, N34).
 `void.confirm` read `suit.man` ("Man") while `tile.label` read `tile.man`
 ("Characters"), so one sentence pair named a single suit twice and neither name was
-printed on the tile. Every English suit string leads with the glyph now — `万 Man`,
-`饼 Pin`, `条 Sou` — and `suit.*.full` carries the tone-marked reading
-(`万 Man (wàn)`), which is what the void screen's three buttons draw. "Pin" and "Sou"
-are Japanese (pinzu / souzu) rather than pinyin, which is why the reading is worth
-stating somewhere. It also changes what a screen reader announces, `tileLabel` being
-the tile's `aria-label`.
+printed on the tile. Every English suit string leads with the glyph now, and the
+reading beside it is **pinyin** — `万 Wàn`, `饼 Bǐng`, `条 Tiáo`. Man / Pin / Sou are
+not readings of these characters at all: they are Japanese (manzu / pinzu / souzu)
+borrowed into English mahjong writing, and they belong to a Japanese catalog (N23)
+rather than to the English one. `suit.*.full` keeps the plain-English gloss —
+`万 Wàn (Characters)` — which is not the Japanese part and is the only thing left
+saying what a suit depicts; it is what the void screen's three buttons draw. This
+also changes what a screen reader announces, `tileLabel` being the tile's
+`aria-label`.
 
 **A control has to say what it does, not what it is called** (2026-08-03, N28/N29).
 The kong button read `Kong M3 (promoted)` — a tile code no other screen uses, in a
