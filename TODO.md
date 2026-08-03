@@ -1128,45 +1128,6 @@ so it isn't rediscovered as a bug.
   `PlayerView.dealer`, which is already projected), one shared helper, and a
   decision about the lobby. **Small-medium** - the sweep is what makes it more
   than the one-line fix it looks like.
-- [ ] **N28 - the kong button names its tile in a code no other screen uses, and
-  never says what it will do.** Reported 2026-08-03: "it looks like it adds an
-  additional tile to my hand, but it's not super clear in the UI which one it is."
-
-  **Both halves of that are right, and the second one is the app's fault twice
-  over.**
-
-  `KongButtons.tsx` builds its label as
-  `` `${suit[0]?.toUpperCase()}${rank}` `` - so the button reads **"Kong M3
-  (promoted)"**. `M3` appears nowhere else in the app: every other tile is named
-  through `tileLabel`, which renders "3 Characters" and is translated. So the one
-  control that asks a player to give up a specific tile is the one that names it in
-  untranslated shorthand, and in Chinese the `{label}` slot stays Latin.
-
-  **And a promoted kong really does add a tile, which is why it looks confusing.**
-  You already hold an exposed pung; the button moves the fourth copy out of your
-  hand onto that meld, and then you draw a **replacement** off the far end of the
-  wall (`kongDrawIndex`). So one tile leaves and one arrives, and the button says
-  neither. The three subtypes differ in exactly this way and all three read as one
-  purple button:
-
-  - **concealed** (暗杠): all four are in hand; they leave hand and become a meld.
-    Pays 2 from each non-Hu player.
-  - **promoted** (补杠): one leaves hand and joins an existing exposed pung. Pays 1
-    from each - *and it can be robbed*, which is a risk the button does not mention.
-  - **postponed** (迟杠): same shape as promoted but the fourth tile was already in
-    hand rather than freshly drawn, and **it pays nothing at all**. A player has no
-    way to tell from the UI that one of these two identical-looking buttons is worth
-    points and the other is not.
-
-  So: name the tile with `tileLabel`, and say what happens. Recommend also marking
-  the hand tile the kong would consume - the question asked was "which one is it",
-  and `data-discardable` already shows there is a per-tile marking mechanism. The
-  robbing risk on a promoted kong is worth a word too, since it is the only kong
-  that can lose you the hand.
-
-  Cheap to test without a DOM: the label belongs in a pure helper beside
-  `tileLabel`, which is exactly what `armedDiscard.ts` and `feedLineFor` do.
-  **Small.**
 - [ ] **N30 - the void screen chooses your first discard for you.** Reported
   2026-08-03: the player should pick which tile goes first, "since discard order
   might matter here".
@@ -1198,35 +1159,7 @@ so it isn't rediscovered as a bug.
   `usedIndicator` case: the button has to stay tappable on its own for that, so the
   two paths are "tap a tile" and "tap an empty suit", not one replacing the other.
   **Small-medium.**
-- [ ] **N29 - your own hand still shows 13 tiles after you Hu on a discard.** Found
-  2026-08-03 by asking whether the "extra tile not showing in the hand" bug had been
-  fixed. **It was - in one of the two places it appears.**
 
-  The round-end reveal was fixed earlier (see [docs/history.md](./docs/history.md)):
-  a tile claimed off a discard never enters `hand`, because `applyHuStatus` scores
-  with `[...player.hand, actualWinTile]` and leaves the tile in the discarder's
-  pile - moving it would double-count it against the 108-tile conservation
-  property. `separateWinningTile` returns it for a discard win and `RoundEndRow`
-  draws it, and `revealedTileCount === 14 + kongs` guards it against nine real
-  recorded wins.
-
-  **`OwnZone` never got the same treatment.** It renders `view.you.hand` and
-  nothing else, so between declaring Hu on a discard and the round actually ending
-  - which in Bloody Rules can be many turns, while you sit out and watch - your own
-  hand shows **13 tiles that plainly do not win**, under a banner saying the hand is
-  complete. That is the identical symptom the round-end fix was for, and it is the
-  same tell: a self-drawn win looks right because the tile *is* in hand, and a
-  discard win looks broken.
-
-  `separateWinningTile` takes a `RoundPlayer`, but it only reads `hu.byDiscard` and
-  `hu.winningTile`, both of which are on `PlayerView.you` - so widen its parameter
-  rather than writing a second copy.
-
-  **The trap is the overflow guard, not the logic.** The hand is the bottom-most row
-  of an exactly-fitting column and `viewport.spec.ts` asserts on rendered geometry;
-  N8 and N13 both had fixes rejected for adding a box to that column. So the tile
-  wants to go where the banner already is, or replace it - "Hand complete - 4
-  points" plus the tile ringed beside it is one row, not two. **Small.**
 ---
 
 ## Shelved, with reasons

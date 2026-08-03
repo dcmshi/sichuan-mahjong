@@ -1,4 +1,11 @@
-import type { FanEntry, LedgerEntry, RoundResult, Seat, TileId } from '@sichuan-mahjong/engine';
+import type {
+  FanEntry,
+  HuRecord,
+  LedgerEntry,
+  RoundResult,
+  Seat,
+  TileId,
+} from '@sichuan-mahjong/engine';
 import { tileTypeOf } from '@sichuan-mahjong/engine';
 import type { useT } from './i18n/useT.js';
 
@@ -50,7 +57,7 @@ export function ledgerLines(ledger: LedgerEntry[], seat: Seat): LedgerLine[] {
 }
 
 /**
- * The winning tile, when the reveal has to draw it itself.
+ * The winning tile, when the hand on screen has to draw it itself.
  *
  * A tile claimed off a discard never enters `hand`: the engine scores with it
  * but leaves it in the discarder's pile, because moving it would double-count
@@ -59,8 +66,14 @@ export function ledgerLines(ledger: LedgerEntry[], seat: Seat): LedgerLine[] {
  * that plainly do not win — which reads as the engine having accepted an
  * invalid Hu. A self-drawn winner already holds the tile, hence the byDiscard
  * test rather than an unconditional append.
+ *
+ * Takes anything carrying a `HuRecord`, not just a `RoundPlayer`: the round-end
+ * reveal was fixed for this and the play screen was not, so from declaring Hu on
+ * a discard until the round actually ended — many turns, while you sit out — your
+ * own hand showed the same 13 tiles under a banner saying it was complete.
+ * `PlayerView.you` carries both fields this reads. (N29)
  */
-export function separateWinningTile(player: RoundPlayer): TileId | null {
+export function separateWinningTile(player: { hu: HuRecord | null }): TileId | null {
   if (!player.hu?.byDiscard) return null;
   return player.hu.winningTile;
 }

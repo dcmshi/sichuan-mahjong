@@ -191,6 +191,12 @@ body {
   z-index: 2;
 }
 
+/* Same reason, one level up: the mark is on the hand's list item rather than on the
+   tile, and without this the next tile in the run laps over the glow. */
+.tile-lap .tile-kong-mark {
+  z-index: 2;
+}
+
 /* The void-suit tile each seat flipped on turn 1 — the one public statement of
    what they declared, and worth being able to read back off the pile.
 
@@ -202,6 +208,20 @@ body {
 .tile-void-discard:not(.tile-last-discard) .tile-face {
   filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.95))
     drop-shadow(0 0 4px rgba(255, 255, 255, 0.55)) drop-shadow(0 2px 2px rgba(0, 0, 0, 0.45));
+}
+
+/* The tiles a kong offer would take out of the hand. "It's not super clear in the
+   UI which one it is" was half the report, and the hand is where the answer is.
+
+   A glow rather than the void screen's ring, for the reason above it: the hand is a
+   lapped run, so its boxes are pitches and `.tile-mark` would sit narrow and
+   offset — that class is right on the void screen only because that screen spaces
+   its tiles. Purple, matching the button, so the control and the tiles read as one
+   choice. Static, unlike the void mark's pulse: a kong is only ever offered on your
+   own turn, and the hand block already carries a pulsing amber ring then (N13). */
+.tile-kong-mark .tile-face {
+  filter: drop-shadow(0 0 2px rgba(192, 132, 252, 0.95))
+    drop-shadow(0 0 5px rgba(168, 85, 247, 0.6)) drop-shadow(0 2px 2px rgba(0, 0, 0, 0.45));
 }
 
 /* The wall: four walls round the rim of the well, two tiles deep, which is where

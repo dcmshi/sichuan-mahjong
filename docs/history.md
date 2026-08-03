@@ -11,6 +11,79 @@ file had reached 1,566 lines of which two were actually open.
 
 ---
 
+## ✅ The kong button names its tile, and says what it will do (N28 — 2026-08-03)
+
+Reported: "it looks like it adds an additional tile to my hand, but it's not super
+clear in the UI which one it is." **Both halves of that were right, and the second
+was the app's fault twice over.**
+
+The button built its label as `` `${suit[0]?.toUpperCase()}${rank}` ``, so it read
+**`Kong M3 (promoted)`**. `M3` appears nowhere else in the app — every other tile is
+named through `tileLabel`, which says "3 Characters" and is translated — so the one
+control asking a player to give up a specific tile was the one naming it in
+untranslated shorthand, and in Chinese the `{label}` slot stayed Latin.
+
+**And a promoted kong really does add a tile.** One copy leaves your hand onto the
+exposed pung and a replacement comes off the far end of the wall, so the player's
+reading of the screen was correct and the screen just never said so. The three
+subtypes differ in exactly what a player would want to know and all three drew one
+purple button: concealed pays 2 from each, promoted pays 1 from each *and can be
+robbed*, and postponed **pays nothing at all** — two identical-looking buttons where
+that is the difference.
+
+Each offer is now a row of its own: **the tile, drawn**, its translated name, and one
+line saying what happens to it. Same shape as the first-discard flip block a few
+lines below it in `OwnZone` — a tile, and a sentence about that tile. `kongOffers`
+is a pure helper because the client suite has no DOM, and it pins the trap that bit
+before: `action.tile` is a `Tile` (`{suit, rank}`), not a `TileId`, and reading it as
+an id used to crash the app whenever a kong was offered.
+
+The hand marks the copies a kong would consume, which is the literal question that
+was asked. **A glow on the art, not a ring on the box** — the hand is a lapped run,
+so its layout boxes are pitches and the art hangs a fifth of a tile past them; the
+void screen's `.tile-mark` ring is right there only because that screen spaces its
+tiles. Purple, matching the button, so the control and the tiles read as one choice,
+and static rather than pulsing: a kong is only ever offered on your own turn, and the
+hand block already carries N13's pulsing amber ring then.
+
+The extra line costs no vertical budget. The middle row is `flex-1 min-h-0`, so the
+well gives up the height rather than the hand — which is the whole point of the
+layout R1–R7 arrived at.
+
+---
+
+## ✅ Your own hand shows the tile you won on (N29 — 2026-08-03)
+
+Found by asking whether the "extra tile not showing in the hand" bug had been fixed.
+**It had been — in one of the two places it appears.**
+
+A tile claimed off a discard never enters `hand`: `applyHuStatus` scores with
+`[...player.hand, actualWinTile]` and leaves the tile in the discarder's pile,
+because moving it would double-count it against the 108-tile conservation property.
+The round-end reveal was fixed for this with `separateWinningTile`, guarded by
+`revealedTileCount === 14 + kongs` against nine real recorded wins.
+
+**`OwnZone` never got the same treatment.** It renders `view.you.hand` and nothing
+else, so between declaring Hu on a discard and the round actually ending — which in
+Bloody Rules is many turns, while you sit out and watch — your own hand showed **13
+tiles that plainly do not win**, under a banner saying the hand was complete. The
+identical symptom, and the same tell: a self-drawn win looked right because the tile
+really is in hand, and a discard win looked broken.
+
+`separateWinningTile` was widened from `RoundPlayer` to anything carrying a
+`HuRecord` rather than copied — it only ever read `hu.byDiscard` and
+`hu.winningTile`, both of which are on `PlayerView.you`. The tile is drawn ringed on
+the banner's **own row**, not appended to the hand: the hand is the bottom-most row
+of an exactly-fitting column and both N8 and N13 had fixes rejected for adding a box
+to it.
+
+**The lesson is about where a fix stops.** The round-end fix was correct, tested
+against real recorded wins, and documented — and it left the screen a player looks at
+for the rest of the round untouched, because the bug was reported from the reveal and
+the reveal is where it was hunted.
+
+---
+
 ## ✅ The table chooses the fan cap (N27 — 2026-08-03)
 
 N21's audit found one real divergence from the ruleset and it was not a payment:

@@ -264,10 +264,26 @@ pool (O3) is still held as a fallback — its redaction question is answered by
 `firstDiscardIsVoid`, but the middle is no longer the empty space that motivated
 it. Then **N10** side seats draw upright and the across pile does not mirror,
 **N19** a hard bot so the ladder has three rungs, **N23** French, Spanish and
-Japanese, **N26** nine call sites label a seat's wind from its absolute index,
-**N28** the kong button names its tile in a code no other screen uses, and **N29**
-your own hand still shows 13 tiles after you Hu on a discard. N19 is the only open
-item that is gameplay work rather than plumbing, layout or research.
+Japanese, **N26** nine call sites label a seat's wind from its absolute index, and
+**N30** the void screen picks your first discard for you by sort order. N19 is the
+only open item that is gameplay work rather than plumbing, layout or research.
+
+**A control has to say what it does, not what it is called** (2026-08-03, N28/N29).
+The kong button read `Kong M3 (promoted)` — a tile code no other screen uses, in a
+`{label}` slot the Chinese catalogs also filled, and the *name* of the subtype rather
+than any account of the tap. Reported as "it looks like it adds an additional tile to
+my hand, but it's not super clear which one it is", and **both halves were right**: a
+promoted kong does add a tile, and the button never said so. Each offer now draws its
+tile, names it through `tileLabel`, and carries one line of consequence — the three
+subtypes differ in what leaves, what arrives, and what they pay, and **postponed pays
+nothing** while promoted **can be robbed**. `kongOffers` is a pure helper because the
+client suite has no DOM, and it pins that `action.tile` is a `Tile` and not a
+`TileId`. The hand marks the copies a kong would consume with a **glow on the art,
+never a ring on the box**: the hand is a lapped run, so its boxes are pitches and the
+void screen's `.tile-mark` would sit narrow and offset. N29 is the same lesson about
+where a fix stops — `separateWinningTile` fixed the round-end reveal and left the play
+screen showing 13 tiles under "Hand complete" for the rest of the round, because the
+bug was reported from the reveal and hunted there.
 
 **The payments are right; the cap is a variant we never surfaced** (2026-08-03,
 N21). Three sources outside the PDF confirm every payment rule — winner sits out,

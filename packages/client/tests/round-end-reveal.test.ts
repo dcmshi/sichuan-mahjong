@@ -80,6 +80,33 @@ describe('separateWinningTile', () => {
   it('returns nothing for a seat that did not win', () => {
     expect(separateWinningTile(playerWith(13, [], null))).toBeNull();
   });
+
+  /**
+   * It also has to work on `PlayerView.you`, which is the half that was missed:
+   * the round-end reveal was fixed, the play screen was not, so from declaring Hu
+   * on a discard until the round ended your own hand showed 13 tiles under a
+   * banner saying it was complete. Same symptom, same tell — a self-draw looked
+   * right because the tile really is in hand. (N29)
+   */
+  it('reads a live view seat, not only a finished round', () => {
+    const you = {
+      seat: 0 as Seat,
+      hand: [1, 2, 3] as TileId[],
+      status: 'hu' as const,
+      hu: {
+        seat: 0 as Seat,
+        subtype: 'normal' as const,
+        fans: [],
+        handValue: 4,
+        winningTile: 66 as TileId,
+        byDiscard: true,
+        discarder: 2 as Seat,
+      },
+    };
+    expect(separateWinningTile(you)).toBe(66);
+    expect(separateWinningTile({ ...you, hu: { ...you.hu, byDiscard: false } })).toBeNull();
+    expect(separateWinningTile({ ...you, hu: null })).toBeNull();
+  });
 });
 
 describe('the reveal draws a complete hand for every real NDRV win', () => {

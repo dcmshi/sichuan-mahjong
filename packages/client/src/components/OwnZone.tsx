@@ -1,10 +1,12 @@
-import type { PlayerView, TileId } from '@sichuan-mahjong/engine';
+import { type PlayerView, type TileId, tileTypeOf } from '@sichuan-mahjong/engine';
 import { AnimatePresence, Reorder, motion } from 'framer-motion';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { type StandDownReason, armedDiscardOutcome } from '../armedDiscard.js';
 import { useAnimationPace } from '../hooks/useAnimation.js';
 import { useSound } from '../hooks/useSound.js';
 import { useT } from '../i18n/useT.js';
+import { kongOffers, kongTileTypes } from '../kongOffers.js';
+import { separateWinningTile } from '../roundEnd.js';
 import { sendAction } from '../ws/client.js';
 import { KongButtons } from './KongButtons.js';
 import { MeldDisplay } from './MeldDisplay.js';
@@ -292,6 +294,14 @@ export function OwnZone({ view }: { view: PlayerView }) {
     [view.yourLegalActions],
   );
 
+  // "It's not super clear in the UI which one it is" — so the tiles a kong would
+  // take out of the hand say so, in the hand. Marked rather than dimmed: dimming
+  // already means "not discardable this turn" two lines down. (N28)
+  const kongTypes = useMemo(() => kongTileTypes(kongOffers(view)), [view]);
+
+  // The tile that won, when the hand can't show it. (N29)
+  const huTile = separateWinningTile(view.you);
+
   return (
     <>
       {/* Hu celebration */}
@@ -353,7 +363,7 @@ export function OwnZone({ view }: { view: PlayerView }) {
       {/* Kong buttons */}
       {isMyTurn && !inClaimWindow && (
         <div className="px-3 py-1">
-          <KongButtons view={view} seat={seat} />
+          <KongButtons view={view} />
         </div>
       )}
 
@@ -502,10 +512,17 @@ export function OwnZone({ view }: { view: PlayerView }) {
               // to key off the dimming class itself, which silently stopped
               // matching the moment that class changed value.
               data-discardable={legalDiscards.has(id) ? 'true' : undefined}
+              data-kong-tile={kongTypes.has(tileTypeOf(id)) ? 'true' : undefined}
               // 75, not 60: early in a hand the void suit is the only legal
               // discard, so most of the hand is dimmed at once and 60 read as
               // "these tiles are barely here" rather than "not this turn".
-              className={`flex-1 min-w-0 max-w-[42px] ${legalDiscards.has(id) ? '' : 'opacity-75'}`}
+              className={[
+                'flex-1 min-w-0 max-w-[42px]',
+                legalDiscards.has(id) ? '' : 'opacity-75',
+                kongTypes.has(tileTypeOf(id)) ? 'tile-kong-mark' : '',
+              ]
+                .filter(Boolean)
+                .join(' ')}
               onPointerDown={e => {
                 tapStart.current = { x: e.clientX, y: e.clientY };
               }}
@@ -552,13 +569,25 @@ export function OwnZone({ view }: { view: PlayerView }) {
             about what the hand was worth. One line, because this column fits
             exactly on a 320px phone and a second would fail the overflow guard. */}
         {view.you.status === 'hu' && (
-          <motion.p
+          <motion.div
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
-            className="text-center text-amber-400 font-bold mt-2"
+            className="flex items-center justify-center gap-2 text-amber-400 font-bold mt-2"
           >
-            {t('play.youHu', { n: view.you.hu?.handValue ?? 1 })}
-          </motion.p>
+            {/* The tile that won, when it is not in the hand above. A claimed tile
+                stays in the discarder's pile, so a discard win drew 13 tiles that
+                plainly do not win — the same fault the round-end reveal was fixed
+                for, in the screen you sit and look at for the rest of the round.
+                On the banner's own row and ringed, rather than in the hand: the
+                hand is the bottom row of an exactly-fitting column, and both N8
+                and N13 had fixes rejected for adding a box to it. (N29) */}
+            {huTile !== null && (
+              <span className="tile-run tile-lap rounded-lg ring-2 ring-amber-400">
+                <Tile id={huTile} size="sm" interactive={false} />
+              </span>
+            )}
+            <span>{t('play.youHu', { n: view.you.hu?.handValue ?? 1 })}</span>
+          </motion.div>
         )}
       </div>
     </>

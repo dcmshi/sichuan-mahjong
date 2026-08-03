@@ -149,7 +149,13 @@ const en: Dict = {
   'play.furiten': 'Furiten — can only Hu on self-draw until your next draw',
   'play.heavenly': 'Heavenly Hand!',
   'play.huSelfDraw': 'Hu! (self-draw)',
-  'play.kong': 'Kong {label} ({subtype})',
+  'play.kong': '{subtype} · {label}',
+  'play.kong.hint.concealed':
+    'All four leave your hand as one set · 2 points from each player still in',
+  'play.kong.hint.promoted':
+    'This tile joins your pung, then you draw a replacement · 1 from each · another seat can Hu on it',
+  'play.kong.hint.postponed':
+    'This tile joins your pung, then you draw a replacement · pays nothing: it is not the tile you just drew',
   'play.tapDiscard': 'Tap again to discard',
   'play.armed': 'Ready — plays on your turn',
   'play.standDown.claim': 'Held back — you can claim this tile',
@@ -181,9 +187,9 @@ const en: Dict = {
   'play.rotateHint':
     'This screen needs more height than landscape gives it — turn your phone upright to keep your hand on screen.',
 
-  'kong.concealed': 'concealed',
-  'kong.promoted': 'promoted',
-  'kong.postponed': 'postponed',
+  'kong.concealed': 'Concealed kong',
+  'kong.promoted': 'Promoted kong',
+  'kong.postponed': 'Postponed kong',
 
   'claim.hu': 'Hu!',
   'claim.kong': 'Kong',
@@ -408,7 +414,11 @@ const zhHans: Dict = {
   'play.furiten': '振听 — 在下次摸牌前只能自摸胡',
   'play.heavenly': '天胡！',
   'play.huSelfDraw': '胡！（自摸）',
-  'play.kong': '杠 {label}（{subtype}）',
+  'play.kong': '{subtype} · {label}',
+  'play.kong.hint.concealed': '四张一起从手牌成为一副 · 未胡的每家各付 2 点',
+  'play.kong.hint.promoted':
+    '这张牌加到你的碰上，然后从牌尾补一张 · 每家各付 1 点 · 别家可以抢杠胡',
+  'play.kong.hint.postponed': '这张牌加到你的碰上，然后从牌尾补一张 · 不计分：它不是你刚摸到的那张',
   'play.tapDiscard': '再次点击打出',
   'play.armed': '已备好 —— 轮到你时自动打出',
   'play.standDown.claim': '已取消 —— 这张牌你可以吃碰杠胡',
@@ -661,7 +671,11 @@ const zhHant: Dict = {
   'play.furiten': '振聽 — 在下次摸牌前只能自摸胡',
   'play.heavenly': '天胡！',
   'play.huSelfDraw': '胡！（自摸）',
-  'play.kong': '槓 {label}（{subtype}）',
+  'play.kong': '{subtype} · {label}',
+  'play.kong.hint.concealed': '四張一起從手牌成為一副 · 未胡的每家各付 2 點',
+  'play.kong.hint.promoted':
+    '這張牌加到你的碰上，然後從牌尾補一張 · 每家各付 1 點 · 別家可以搶槓胡',
+  'play.kong.hint.postponed': '這張牌加到你的碰上，然後從牌尾補一張 · 不計分：它不是你剛摸到的那張',
   'play.tapDiscard': '再次點擊打出',
   'play.armed': '已備好 —— 輪到你時自動打出',
   'play.standDown.claim': '已取消 —— 這張牌你可以吃碰槓胡',
