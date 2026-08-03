@@ -1195,6 +1195,35 @@ so it isn't rediscovered as a bug.
   Cheap to test without a DOM: the label belongs in a pure helper beside
   `tileLabel`, which is exactly what `armedDiscard.ts` and `feedLineFor` do.
   **Small.**
+- [ ] **N29 - your own hand still shows 13 tiles after you Hu on a discard.** Found
+  2026-08-03 by asking whether the "extra tile not showing in the hand" bug had been
+  fixed. **It was - in one of the two places it appears.**
+
+  The round-end reveal was fixed earlier (see [docs/history.md](./docs/history.md)):
+  a tile claimed off a discard never enters `hand`, because `applyHuStatus` scores
+  with `[...player.hand, actualWinTile]` and leaves the tile in the discarder's
+  pile - moving it would double-count it against the 108-tile conservation
+  property. `separateWinningTile` returns it for a discard win and `RoundEndRow`
+  draws it, and `revealedTileCount === 14 + kongs` guards it against nine real
+  recorded wins.
+
+  **`OwnZone` never got the same treatment.** It renders `view.you.hand` and
+  nothing else, so between declaring Hu on a discard and the round actually ending
+  - which in Bloody Rules can be many turns, while you sit out and watch - your own
+  hand shows **13 tiles that plainly do not win**, under a banner saying the hand is
+  complete. That is the identical symptom the round-end fix was for, and it is the
+  same tell: a self-drawn win looks right because the tile *is* in hand, and a
+  discard win looks broken.
+
+  `separateWinningTile` takes a `RoundPlayer`, but it only reads `hu.byDiscard` and
+  `hu.winningTile`, both of which are on `PlayerView.you` - so widen its parameter
+  rather than writing a second copy.
+
+  **The trap is the overflow guard, not the logic.** The hand is the bottom-most row
+  of an exactly-fitting column and `viewport.spec.ts` asserts on rendered geometry;
+  N8 and N13 both had fixes rejected for adding a box to that column. So the tile
+  wants to go where the banner already is, or replace it - "Hand complete - 4
+  points" plus the tile ringed beside it is one row, not two. **Small.**
 ---
 
 ## Shelved, with reasons
