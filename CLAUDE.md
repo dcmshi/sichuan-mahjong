@@ -282,9 +282,11 @@ pool (O3) is still held as a fallback — its redaction question is answered by
 `firstDiscardIsVoid`, but the middle is no longer the empty space that motivated
 it. Then **N19** a hard bot so the ladder has three rungs, **N23** French, Spanish
 and Japanese, **N26** nine call sites label a seat's wind from its absolute index,
-**N30** the void screen picks your first discard for you by sort order, and **N31**
-the lobby's Start button sits below the fold. N19 is the only open item that is
-gameplay work rather than plumbing, layout or research.
+**N31** the lobby's Start button sits below the fold, **N32** the right-hand seat's
+tiles are turned the same way as the left seat's and so face off the screen rather
+than toward the table, and **N33** tapping a seat's pile should open all of it.
+N19 is the only open item that is gameplay work rather than plumbing, layout or
+research.
 
 **You pick the tile that leads** (2026-08-03, N30). The void screen submitted
 `counts[chosenSuit][0]` — the first tile of the suit in whatever order the hand

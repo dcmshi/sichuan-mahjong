@@ -805,6 +805,77 @@ so it isn't rediscovered as a bug.
   Worth folding in while there: the share-URL and watch-link blocks are ~290px of
   the scroll, and they matter most in the first few seconds and never again. **Small.**
 
+- [ ] **N32 — the right-hand seat's tiles face away from the table.** Reported
+  2026-08-03: "the top of the tile is facing the right of the screen but it should
+  face towards the center", for the seat to your right — the East chair as a player
+  looking at the board names it — covering both their discard pile and the void
+  declaration set above it.
+
+  **Reproduced, and it is one hard-coded sign.** N10 turned the side seats' tiles a
+  quarter turn, and `.tile-sideways .tile-face` does it with a single
+  `rotate(90deg)` that **both** columns share. Measured on a 390px phone mid-play,
+  the two side trays report an identical `matrix(0, 1, -1, 0, …)`: the left tray at
+  x 8–64 and the right tray at x 326–382, turned the same way. That matrix sends the
+  tile's top edge to the screen's **right** in both.
+
+  Which is correct for exactly one of them. A discard's top points away from its
+  owner and toward the middle of the table — that is what your own upright pile
+  does. The left seat sits with the middle to its right, so top-facing-right is
+  right; the right seat sits with the middle to its *left*, so it is drawn facing
+  off the edge of the screen. The bug reads as "the tiles are turned" rather than
+  "one column is mirrored", which is why it was reported as the whole seat.
+
+  **The fix is a per-side sign and nothing else.** `rotate(-90deg)` for the right
+  column: a 255×210 box occupies the same landscape footprint turned either way, so
+  `getBoundingClientRect` reports the same rectangle and `viewport.spec.ts`'s tray
+  geometry is untouched. `OpponentSide` already takes `side`, so the prop exists —
+  what does not exist is a way for `Tile` to say *which* quarter turn, since
+  `sideways` is a boolean. Widening it to `sideways?: 'cw' | 'ccw'` or adding a
+  class on the run are both fine; the run is the cheaper one, since the whole column
+  turns together.
+
+  **Decide the pile's growth direction in the same change**, or this comes back as
+  a second report. N10 reversed the *across* pile so it grows the way theirs does,
+  and deliberately left the side columns growing downward without checking whether
+  down is that seat's forward. Whichever way it goes, say so in the comment: the
+  reversal is order only and never a 180° turn, because these are face up so that
+  you can read them. **Small.**
+
+- [ ] **N33 — tap a seat's pile to see all of it.** Requested 2026-08-03: tapping
+  another player's discard pile opens a modal titled with their name showing every
+  tile they have discarded, and a second tap dismisses it.
+
+  **The information is already being withheld, which is what makes this worth
+  building.** The side trays draw the last **10** and the across tray the last
+  **9**, each with a `+N` counter for the rest (R1 capped them for height; the
+  counter exists because silently dropping the earliest discards hid what a player
+  needs to read a hand). A full pile runs to 20-odd tiles. So the modal is where the
+  cap stops costing anything, rather than a new view of data already on screen.
+
+  **No redaction question** — `PublicPlayer.discards` is the whole array and
+  `views.ts` already projects it to every seat. One thing to carry over though:
+  `firstDiscardIsVoid` says whether `discards[0]` is the tile that seat declared,
+  and the tray marks it and holds it out above the pile. The modal has to mark it
+  too, or the one tile in the list that means something different looks like an
+  ordinary discard.
+
+  **Two traps, both already paid for once.** `viewport.spec.ts` asserts no `.tile`
+  inside a `.discard-tray` ever has a box outside that tray's, sampling for 90s
+  across five viewports — so the modal must render **outside** the tray subtree and
+  must not transform tray tiles, the same constraint that made N1's claim animation
+  an overlay. And tray tiles are already `interactive`: they attach `useLongPress`,
+  so a long press opens the 2× tile preview today. A pile-level tap handler has to
+  cooperate with that rather than race it — `pointerHandledRef` is the existing
+  seam.
+
+  Worth settling before building: whether **your own** pile opens too (the request
+  says another player's, but a control that works on three of four seats reads as
+  broken); whether the modal draws the tiles **upright**, since in a list they are
+  being read rather than placed on a table; and whether `Spectate.tsx` gets it,
+  which is where the shelved spectator-parity items already sit. It also inherits
+  the shelved modal focus-trapping gap in
+  [frontend_todo.md](./frontend_todo.md). **Small-medium.**
+
 ---
 
 ## Shelved, with reasons
