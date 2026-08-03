@@ -11,6 +11,170 @@ file had reached 1,566 lines of which two were actually open.
 
 ---
 
+## ✅ Tap a seat's pile to see all of it (N33 — 2026-08-03)
+
+Requested: tapping another player's discard pile opens a view titled with their
+name showing every tile they have discarded, and a second tap dismisses it.
+
+**What made it worth building is that the trays were already withholding
+information.** The side trays draw the last **10** and the across tray the last
+**9**, each with a `+N` counter for the rest — R1 capped them for height, and the
+counter exists because silently dropping the earliest discards hid what a player
+needs to read a hand. A full pile runs past twenty. So the modal is where that cap
+stops costing anything rather than a second view of what is already on screen.
+
+**No redaction question** — `PublicPlayer.discards` is the whole array and
+`views.ts` already projects it to every seat. What did carry over is
+`firstDiscardIsVoid`: it says whether `discards[0]` is the tile that seat declared,
+and the trays hold it out above the pile. The modal gives it its own labelled row,
+because in a flat list the one tile that means something other than "discarded"
+would read as an ordinary first discard. That split is `splitPile` in
+`discardPile.ts` now — it was the same two lines copied into all four trays, and
+this was going to be the fifth.
+
+**Three decisions the filing left open, and what each came out as.**
+
+- **Your own pile opens too.** It is the one tray that is never capped (furiten is
+  decided by what you have discarded, so truncating it would remove information you
+  need), but a control that works on three seats of four reads as broken — and that
+  tray falls back on an internal scroll when the board runs out of height, so the
+  modal is a genuinely better read there as well.
+- **The tiles are drawn upright and unlapped**, unlike every tray. A lap is what a
+  pile on a table looks like; these are being *read*, so each tile gets its own
+  space, at `md` rather than the tray's `sm`.
+- **`Spectate.tsx` does not get it**, and the reason is not the shelved
+  spectator-parity item: that screen draws every discard already, uncapped, so there
+  is nothing withheld for a modal to open. It gets `splitPile` and nothing else.
+
+**Both traps the filing named were real and both are paid.** `viewport.spec.ts`
+asserts no `.tile` inside a `.discard-tray` has a box outside that tray's, sampled
+across five viewports — so the modal renders from `PlayPhase`, never from inside a
+tray, the same constraint that made N1's claim animation an overlay. And tray tiles
+already attach `useLongPress` for the 2× preview, so a press long enough to open the
+preview **still ends in a `click`** on the way back up, which would bubble to the
+pile and leave a modal sitting behind it. `usePileTap` swallows that click on the
+same threshold — `LONG_PRESS_MS`, now exported for exactly this — and consumes the
+suppression rather than leaving it standing, so the press after a long one is not
+also eaten. Keyboard activation fires no pointer events and is never suppressed,
+which is why each tray is a real `<button>` with an `aria-label` rather than a div
+with a handler.
+
+Verified in a browser at 390×844: tapping Bot 3's tray opens "Bot 3 — discards / 9
+tiles" with the declaration marked and eight upright tiles below it; a second tap
+where the pile is lands on the backdrop and dismisses it; a 750ms press on a tray
+tile shows the preview and leaves the pile closed; your own tray opens "You —
+discards / 11 tiles"; Escape closes. The tray guard's own check ran clean at the
+same moment, and 320×568 still fits in 568 of 568 with no document scroll.
+
+---
+
+## ✅ Every seat's tiles face the middle of the table (N32 — 2026-08-03)
+
+Reported in two parts. First: "the top of the tile is facing the right of the screen
+but it should face towards the center", for the seat on your right — covering its
+discard pile and the void declaration above it. Then, after the fix was filed: the
+across seat should be **facing in / upside down** as well, and the left seat already
+looks right.
+
+**The right seat was one hard-coded sign.** N10 turned the side seats' tiles a
+quarter turn with a single `rotate(90deg)` that **both** columns shared. Measured
+mid-play on a 390px phone, the two side trays reported an identical
+`matrix(0, 1, -1, 0, …)` — the left tray at x 8–64 and the right at x 326–382,
+turned the same way. That matrix sends the tile's top edge to the screen's right,
+which is correct for exactly one of them: a discard's top points away from its owner
+and toward the middle of the table, the left seat has the middle on its right, and
+the right seat has it on its *left*. So the right column was drawn facing off the
+edge of the screen.
+
+`.tiles-face-left` is `rotate(-90deg)` and sits on the seat's **column**, not on the
+tile: the pile and the void declaration both turn, and only the pile is a run. A
+255×210 box occupies the same landscape footprint turned either way, so every rect
+the overflow guard reads is unchanged — measured after, the two side trays report
+`matrix(0, 1, -1, 0, …)` and `matrix(0, -1, 1, 0, …)` at the same x ranges as
+before, and the tray guard is clean.
+
+**The across seat reverses an N10 decision, deliberately.** N10 mirrored that pile's
+*order* so it grows the way theirs does and stopped short of 180° on the grounds
+that "the reason these are drawn face up at all is so you can read them". That
+reasoning was sound and the report still came in: a seat that faces you whose tiles
+face you back is the same "four copies of one viewpoint" the order fixed half of.
+What changed is that the readability it was protecting is now a tap away (N33) — so
+the tiles sit the way they would on a table.
+
+It is **one rotation on the tray** rather than one per tile, which turns order, lap
+direction and the bleed padding together — that *is* the pile seen from the other
+side, so the explicit `.reverse()` is gone, being what the rotation now does. The
+`+N` counter moved to first in DOM (it stands for tiles dropped off the *old* end,
+and the rotation puts what comes first on the right) and is turned back upright,
+since a number is read rather than placed on a table. A 180° turn about a box's own
+centre maps that box onto itself, so `viewport.spec.ts` reads the same rects; note
+Tailwind v4 emits `rotate: 180deg` as the standalone property, so
+`getComputedStyle(el).transform` reports `none` — a probe that reads only
+`transform` will wrongly conclude nothing happened.
+
+**The pile's growth direction is settled as "no change", not left open.** Both side
+columns still grow downward. N10 reversed the across row because a horizontal run of
+readable faces shows its own direction; a column of sideways tiles does not, and
+reversing only the right one would make the two side seats disagree more visibly
+than either would agree with its owner.
+
+---
+
+## ✅ A suit is named one way, and the name is what is on the tile (N34 — 2026-08-03)
+
+Reported against N30's own confirm button: "Void Man / 7 of Characters goes out
+first" reads awkwardly — use the character plus the English, and put the pinyin on
+man/pin/sou.
+
+**Both halves were right, and the awkwardness was two names for one thing.**
+`void.confirm` read `suit.man` → "Man" while `tile.label` read `tile.man` →
+"Characters", so one sentence pair named a single suit twice, differently, and
+**neither was the character printed on the tile the player is looking at.** Every
+English suit string now leads with the glyph: `suit.*` and `tile.*` are `万 Man` /
+`饼 Pin` / `条 Sou`, giving "Void 万 Man" and "7 of 万 Man discarded first". The
+`.full` form carries the pinyin — `万 Man (wàn)`, `饼 Pin (bǐng)`, `条 Sou (tiáo)` —
+and is what the void screen's three big buttons draw, which is the one place with
+room for it and the screen where you are choosing a suit rather than reading one
+back. Worth stating plainly: **"Pin" and "Sou" are not pinyin at all** but Japanese
+(pinzu / souzu), which is exactly why the tone-marked reading is worth having
+somewhere. The Chinese catalogs already showed the glyph alone and are unchanged.
+
+This also changes what a screen reader announces, since `tileLabel` is the tile's
+`aria-label`, and what the kong buttons read — both for the better: the label now
+names the character drawn beside it.
+
+---
+
+## ✅ Choosing a suit is enough again, but the default is visible (N30, amended — 2026-08-03)
+
+Reported the same day N30 shipped: keep the suit button active, and have it discard
+the first tile of the chosen suit.
+
+**N30 over-corrected, and this is the honest version of it.** The bug it fixed was
+that `counts[suit][0]` was computed inside `submit`, where nothing on screen ever
+named it — the fix that mattered was making the choice *visible*, not making it
+compulsory. Forcing a tile tap cost the two-tap path for the player who does not
+care which of their void tiles leads, which is most of them on most deals.
+
+So `voidChoice` returns the default like any other answer: the `needTile` state is
+gone, the suit button alone submits, and the screen **marks and names whichever tile
+`firstDiscard` holds** — the amber lift and the confirm line read off the choice
+rather than off `picked`, so a default looks exactly like a pick, and tapping
+another tile replaces it. The one thing that cannot come back is the silent version.
+
+The two null cases are untouched, and are still why this is a function rather than a
+`??`: `firstDiscard: null` is the indicator, legal only for a suit the hand holds
+none of, and null while holding the suit is what the engine rejects as
+`void_indicator_not_allowed` (A36).
+
+Verified in a browser: tapping the 万 button alone gives an enabled "Void 万 Man /
+1 of 万 Man discarded first" with `man-1` lifted and ringed; tapping `man-2` moves
+both the mark and the sentence to it. `ui-clicks.spec.ts` now asserts one
+`data-void-first` **before** any tile is tapped, which is the assertion the silent
+version would fail.
+
+---
+
 ## ✅ You pick the tile that leads (N30 — 2026-08-03)
 
 Reported as a subtlety: the player should choose which tile goes out first, "since

@@ -765,13 +765,19 @@ so it isn't rediscovered as a bug.
   **Small-medium.**
 
   **Both landed as filed, and the two null cases are the whole of it.** `voidChoice`
-  returns `needTile` for a suit you hold and `ready` with `firstDiscard: null` only
-  for a suit you hold none of — the same distinction the engine enforces as
-  `void_indicator_not_allowed` (A36), which is why it is a pure function with a test
-  rather than a `&&` in the component. The buttons stayed live: they carry the
-  per-suit counts, they are the only way to reach the indicator case, and a suit
-  chosen without a tile is now a *visible* half-answer rather than a silent one —
-  Confirm greys out and reads "Tap the tile to discard first".
+  returns `ready` with `firstDiscard: null` only for a suit you hold none of — the
+  same distinction the engine enforces as `void_indicator_not_allowed` (A36), which
+  is why it is a pure function with a test rather than a `??` in the component. The
+  buttons stayed live: they carry the per-suit counts, and they are the only way to
+  reach the indicator case.
+
+  **Amended the same day, on report: the suit button alone submits again**, taking
+  the first tile of the suit as the default. This over-corrected — the bug was that
+  `counts[suit][0]` was chosen where nothing on screen named it, so the fix that
+  mattered was making the choice *visible*, not compulsory, and forcing a tap cost
+  the two-tap path for the player who does not care which void tile leads. The
+  screen now marks and names whichever tile `firstDiscard` holds, so a default looks
+  exactly like a pick and tapping another replaces it. `needTile` is gone.
 
   The picked tile takes amber and **stops pulsing** instead of gaining a second
   ring; the suit's pulse means "all of these go", and two rings on one tile would
@@ -805,7 +811,10 @@ so it isn't rediscovered as a bug.
   Worth folding in while there: the share-URL and watch-link blocks are ~290px of
   the scroll, and they matter most in the first few seconds and never again. **Small.**
 
-- [ ] **N32 — the right-hand seat's tiles face away from the table.** Reported
+- [x] **N32 — the right-hand seat's tiles face away from the table.** *(Done —
+  `.tiles-face-left` is the other quarter turn for the right column, and the across
+  seat is turned all the way round, which reverses an N10 decision on purpose. See
+  [docs/history.md](./docs/history.md).)* Reported
   2026-08-03: "the top of the tile is facing the right of the screen but it should
   face towards the center", for the seat to your right — the East chair as a player
   looking at the board names it — covering both their discard pile and the void
@@ -841,7 +850,24 @@ so it isn't rediscovered as a bug.
   reversal is order only and never a 180° turn, because these are face up so that
   you can read them. **Small.**
 
-- [ ] **N33 — tap a seat's pile to see all of it.** Requested 2026-08-03: tapping
+  **The second half of the report is what made the across seat move too**, and it
+  overturns the sentence above: "have the north/bot3 position facing in/upside
+  down". N10's reason for stopping at a mirrored order — that these are face up so
+  you can read them — was sound and the report still came, because a seat facing
+  you whose tiles face you back is the same one-viewpoint board the order fixed
+  half of. **N33 is what paid for it**: the readability that argument protected is
+  now a tap away. So the across tray takes one 180° rotation, which turns order,
+  lap direction and bleed together and makes the explicit `.reverse()` redundant.
+
+  **Growth direction settled as no change.** Both side columns still grow downward:
+  N10's reversal was right for a horizontal run of readable faces, which shows its
+  own direction, and a column of sideways tiles does not — reversing only the right
+  one would make the two side seats disagree more visibly than either agrees with
+  its owner.
+
+- [x] **N33 — tap a seat's pile to see all of it.** *(Done — `DiscardPileModal`,
+  opened from all four trays including your own; `usePileTap` is what stops the
+  tiles' own long press from opening it too.)* Requested 2026-08-03: tapping
   another player's discard pile opens a modal titled with their name showing every
   tile they have discarded, and a second tap dismisses it.
 
@@ -875,6 +901,33 @@ so it isn't rediscovered as a bug.
   which is where the shelved spectator-parity items already sit. It also inherits
   the shelved modal focus-trapping gap in
   [frontend_todo.md](./frontend_todo.md). **Small-medium.**
+
+  **All three answered.** Your own pile opens too — it is the one uncapped tray,
+  but a control that works on three seats of four reads as broken, and that tray
+  falls back on an internal scroll when the board runs short. The tiles are drawn
+  **upright and unlapped** at `md`, because a lap is what a pile on a table looks
+  like and these are being read. `Spectate.tsx` does **not** get it, and not for
+  the shelved-parity reason: it already draws every discard uncapped, so there is
+  nothing withheld to open. It takes `splitPile` and nothing else.
+
+  Both traps were real. The modal renders from `PlayPhase`, never inside a tray.
+  And a press long enough to open the 2× preview still ends in a `click` on the way
+  back up — `usePileTap` swallows that one on the same `LONG_PRESS_MS` threshold,
+  and consumes the suppression rather than leaving it standing.
+
+- [x] **N34 — one name per suit, and it is the character on the tile.** *(Done —
+  every English suit string leads with the glyph; the `.full` form carries the
+  pinyin.)* Reported 2026-08-03 against N30's own confirm button: "Void Man /
+  7 of Characters goes out first" reads awkwardly.
+
+  It named one suit twice, differently — `void.confirm` read `suit.man` ("Man")
+  and `tile.label` read `tile.man` ("Characters") — and **neither was the character
+  printed on the tile being named**. `suit.*` and `tile.*` are now `万 Man` /
+  `饼 Pin` / `条 Sou`, and `suit.*.full` adds the tone-marked reading:
+  `万 Man (wàn)`, `饼 Pin (bǐng)`, `条 Sou (tiáo)`. That is the void screen's three
+  big buttons — the one place with room, and the screen where you are choosing a
+  suit rather than reading one back. Note **"Pin" and "Sou" are not pinyin** but
+  Japanese (pinzu / souzu), which is why the reading is worth stating somewhere.
 
 ---
 

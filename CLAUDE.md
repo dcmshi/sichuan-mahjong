@@ -191,8 +191,10 @@ portrait while drawing landscape, and `viewport.spec.ts` asserts on rendered
 geometry. The vertical lap is a **negative margin on the box**, not the horizontal
 lap's shrink-the-box trick, so each tile's box stays its true footprint. It buys
 height: pitch 24.8px against 38.8 upright, so ten fit where six wrapped and
-scrolled. The across pile is reversed so it grows the way *theirs* does — order
-only, never 180°, because these are face up so you can read them. N10 also exposed
+scrolled. The across pile was reversed so it grows the way *theirs* does — order
+only, never 180°, because these are face up so you can read them; **N32 overturned
+that half** and turns the across tray all the way round, the readability it was
+protecting now being one tap away (N33). N10 also exposed
 that **a guard reading two frames and comparing them measures its own latency**: the
 viewport spec asked the turn cue and the claim panel in two `page.evaluate` calls,
 and heavier rendering widened the gap until the pair straddled a claim opening. Both
@@ -282,26 +284,56 @@ pool (O3) is still held as a fallback — its redaction question is answered by
 `firstDiscardIsVoid`, but the middle is no longer the empty space that motivated
 it. Then **N19** a hard bot so the ladder has three rungs, **N23** French, Spanish
 and Japanese, **N26** nine call sites label a seat's wind from its absolute index,
-**N31** the lobby's Start button sits below the fold, **N32** the right-hand seat's
-tiles are turned the same way as the left seat's and so face off the screen rather
-than toward the table, and **N33** tapping a seat's pile should open all of it.
-N19 is the only open item that is gameplay work rather than plumbing, layout or
-research.
+and **N31** the lobby's Start button sits below the fold. N19 is the only open item
+that is gameplay work rather than plumbing, layout or research.
 
-**You pick the tile that leads** (2026-08-03, N30). The void screen submitted
-`counts[chosenSuit][0]` — the first tile of the suit in whatever order the hand
-happened to be in — so the one discard a player is told they do not choose *was*
-chosen, silently, by sort order, and it is the tile three opponents get their first
-claim window on. Tapping a tile now answers both halves at once. `voidChoice` in
-`voidSelection.ts` is a pure helper because **the two null cases are not
-interchangeable**: `firstDiscard: null` is the indicator, legal only for a suit the
-hand holds none of, and null while holding the suit is what the engine rejects as
-`void_indicator_not_allowed` (A36). The three suit buttons stayed live — they carry
-the counts the choice is made on, and they are the only route to the indicator case —
-but a suit with no tile named is now a visible half-answer rather than a silent one.
-The picked tile takes **amber and stops pulsing** instead of gaining a second ring,
-and the lift is on the wrapper rather than the `Tile`, because `.tile-mark-flash`
-draws its ring on that box.
+**You can pick the tile that leads, and you can always see which one it is**
+(2026-08-03, N30 + its amendment). The void screen submitted `counts[chosenSuit][0]`
+— the first tile of the suit in whatever order the hand happened to be in — so the
+one discard a player is told they do not choose *was* chosen, silently, by sort
+order, and it is the tile three opponents get their first claim window on. **The fix
+that mattered was making the choice visible, not compulsory**: N30 first required a
+tile tap, which cost the two-tap path, so the suit button alone submits again and
+`voidChoice` returns the same first-of-suit default — but the screen now **marks and
+names whichever tile `firstDiscard` holds**, so a default looks exactly like a pick
+and tapping another replaces it. `voidChoice` in `voidSelection.ts` is a pure helper
+because **the two null cases are not interchangeable**: `firstDiscard: null` is the
+indicator, legal only for a suit the hand holds none of, and null while holding the
+suit is what the engine rejects as `void_indicator_not_allowed` (A36). The leading
+tile takes **amber and stops pulsing** instead of gaining a second ring, and the lift
+is on the wrapper rather than the `Tile`, because `.tile-mark-flash` draws its ring
+on that box.
+
+**A pile is tappable, and every seat's tiles face the middle** (2026-08-03,
+N33 + N32). Tapping any tray — including your own — opens `DiscardPileModal`: the
+whole pile at `md`, upright and unlapped because these are being *read*, with the
+void declaration on its own labelled row. It exists because the trays already
+withheld: 10 a side, 9 across, `+N` for the rest. Two traps, both known in advance —
+the modal renders from `PlayPhase` and **never inside a `.discard-tray`**, since
+`viewport.spec.ts` asserts no tile's box escapes its tray; and a press long enough
+to open the tiles' own 2× preview **still ends in a `click`**, so `usePileTap`
+swallows that one on the same `LONG_PRESS_MS` threshold. `splitPile` in
+`discardPile.ts` is the declaration/pile split that was copied into four trays.
+N32 then turned the seats the way a table does: `.tiles-face-left` gives the **right**
+column the other quarter turn (a discard's top points away from its owner, toward
+the middle — the left seat has the middle on its right, the right seat on its left),
+and the across tray takes **one 180° rotation**, which turns order, lap direction and
+bleed together and makes N10's explicit `.reverse()` redundant. That reverses N10's
+"never 180°, you have to read them" — sound at the time, and paid for by N33. A 180°
+turn about a box's own centre maps that box onto itself, so the overflow guard reads
+the same rects; **Tailwind v4 emits `rotate: 180deg` as the standalone property**, so
+a probe reading only `getComputedStyle().transform` reports `none` and concludes
+wrongly. Both side columns still grow downward, deliberately.
+
+**One name per suit, and it is the character on the tile** (2026-08-03, N34).
+`void.confirm` read `suit.man` ("Man") while `tile.label` read `tile.man`
+("Characters"), so one sentence pair named a single suit twice and neither name was
+printed on the tile. Every English suit string leads with the glyph now — `万 Man`,
+`饼 Pin`, `条 Sou` — and `suit.*.full` carries the tone-marked reading
+(`万 Man (wàn)`), which is what the void screen's three buttons draw. "Pin" and "Sou"
+are Japanese (pinzu / souzu) rather than pinyin, which is why the reading is worth
+stating somewhere. It also changes what a screen reader announces, `tileLabel` being
+the tile's `aria-label`.
 
 **A control has to say what it does, not what it is called** (2026-08-03, N28/N29).
 The kong button read `Kong M3 (promoted)` — a tile code no other screen uses, in a

@@ -436,9 +436,12 @@ suit — otherwise the frame is rejected with `void_indicator_not_allowed`, sinc
 "using the indicator" while holding the suit would keep a tile that should have
 been separated and falsely grant Heavenly/Earthly eligibility (A36).
 
-**Which tile is the player's choice, and the client asks** (N30). The screen used to
-send `counts[suit][0]`, so hand order chose the one discard three opponents get their
-first claim window on. Tapping a tile now names the suit and the tile in one gesture;
+**Which tile leads is the player's, and the client shows it either way** (N30). The
+screen used to send `counts[suit][0]` from inside `submit`, so hand order chose the
+one discard three opponents get their first claim window on, and nothing on screen
+named it. Tapping a tile names the suit and the tile in one gesture; choosing a suit
+alone still submits, and takes the same first-of-suit default — but the tile it
+lands on is marked and named, so a default is visible rather than silent.
 `voidChoice` in `packages/client/src/voidSelection.ts` is what keeps the two null
 cases apart, since only one of them is legal above.
 
