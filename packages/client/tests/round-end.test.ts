@@ -1,6 +1,6 @@
 import type { LedgerEntry } from '@sichuan-mahjong/engine';
 import { describe, expect, it } from 'vitest';
-import { type Lang, catalog, translate } from '../src/i18n/index.js';
+import { LANGS, type Lang, catalog, translate } from '../src/i18n/index.js';
 import { formatFan, ledgerLines } from '../src/roundEnd.js';
 
 const bound = (lang: Lang) => (key: string, vars?: Record<string, string | number>) =>
@@ -62,7 +62,7 @@ describe('ledger lines', () => {
     for (const d of details) {
       const [line] = ledgerLines([{ reason: 'kong', from: 0, to: 1, amount: 2, detail: d }], 0);
       expect(line?.detail).toBe(`ledgerDetail.${d}`);
-      for (const lang of ['en', 'zh-Hans', 'zh-Hant'] as const) {
+      for (const lang of LANGS.map(l => l.code)) {
         expect(catalog[lang][`ledgerDetail.${d}`], `${lang} ${d}`).toBeDefined();
       }
     }

@@ -2,7 +2,7 @@ import { COMPATIBILITY, isWinningHand } from '@sichuan-mahjong/engine';
 import type { FanType } from '@sichuan-mahjong/engine';
 import { describe, expect, it } from 'vitest';
 import { HELP_FAN_ORDER, SHAPE_EXAMPLES, helpFanRows } from '../src/helpExamples.js';
-import { catalog, translate } from '../src/i18n/index.js';
+import { LANGS, catalog, translate } from '../src/i18n/index.js';
 import type { Lang } from '../src/i18n/index.js';
 
 // The one failure mode a screenshot cannot catch: a help screen confidently
@@ -54,16 +54,16 @@ describe('How to Play fan table', () => {
     }
   });
 
-  it('has a note for every fan in all three languages', () => {
-    for (const lang of ['en', 'zh-Hans', 'zh-Hant'] as Lang[]) {
+  it('has a note for every fan in every language', () => {
+    for (const lang of LANGS.map(l => l.code)) {
       for (const fan of HELP_FAN_ORDER) {
         expect(catalog[lang][`htp.fan.${fan}`], `${lang} htp.fan.${fan}`).toBeTruthy();
       }
     }
   });
 
-  it('has a caption for every drawn example in all three languages', () => {
-    for (const lang of ['en', 'zh-Hans', 'zh-Hant'] as Lang[]) {
+  it('has a caption for every drawn example in every language', () => {
+    for (const lang of LANGS.map(l => l.code)) {
       for (const ex of SHAPE_EXAMPLES) {
         expect(catalog[lang][`htp.shape.${ex.key}`], `${lang} htp.shape.${ex.key}`).toBeTruthy();
       }
@@ -75,7 +75,7 @@ describe('How to Play fan table', () => {
   // languages, and a 4-fan table would have read a confident wrong number — the
   // same failure `HELP_FAN_ORDER` exists to prevent one row further down.
   it('states the fan cap as a substitution rather than a number', () => {
-    for (const lang of ['en', 'zh-Hans', 'zh-Hant'] as Lang[]) {
+    for (const lang of LANGS.map(l => l.code)) {
       for (const key of ['htp.fan.cap', 'htp.scoring.body']) {
         const s = catalog[lang][key]!;
         expect(s, `${lang} ${key} cap`).toContain('{cap}');

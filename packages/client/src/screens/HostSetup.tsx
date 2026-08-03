@@ -176,13 +176,18 @@ export function HostSetup() {
 
   return (
     <div className="min-h-dvh bg-green-900 flex flex-col p-4 text-white gap-4">
-      <div className="flex items-center gap-3 mt-2">
-        <span className="text-2xl font-mono font-bold text-amber-400 tracking-widest">{code}</span>
-        <span className="text-green-300 text-sm">{t('host.shareCode')}</span>
-      </div>
-
-      <div className="bg-black/30 rounded-xl p-3">
-        <p className="text-green-300 text-xs mb-1">{t('host.shareUrl')}</p>
+      {/* The code and the share URL are one invitation, so they are one card.
+          They were two, with the code in a bare row above — 40px and a gap
+          spent saying the same thing twice on the screen whose problem is
+          length. (N31) */}
+      <div className="bg-black/30 rounded-xl p-3 mt-2">
+        <div className="flex items-baseline gap-3">
+          <span className="text-2xl font-mono font-bold text-amber-400 tracking-widest">
+            {code}
+          </span>
+          <span className="text-green-300 text-sm">{t('host.shareCode')}</span>
+        </div>
+        <p className="text-green-300 text-xs mt-2 mb-1">{t('host.shareUrl')}</p>
         <p className="font-mono text-sm break-all text-amber-300">{shareUrl}</p>
         <button
           type="button"
@@ -394,32 +399,40 @@ export function HostSetup() {
         })}
       </div>
 
-      <button
-        type="button"
-        className="w-full py-4 bg-amber-500 hover:bg-amber-400 active:bg-amber-600 rounded-xl font-bold text-lg mt-auto disabled:opacity-40"
-        onClick={() =>
-          sendAction({ t: 'startGame', rules: { huanSanZhang, botSpeed, claimWindow, fanCap } })
-        }
-        disabled={!canStart}
-      >
-        {canStart ? t('host.start') : t('host.waitingPlayers')}
-      </button>
+      {/* Sticky, so Start is reachable from any scroll position — it sat at
+          y=1044 in a 1180px document on a 390px phone, and a host who has just
+          filled four seats had no on-screen way to know the game could start.
+          Same shape R3 gave RoundEnd: full-bleed via a negative margin
+          cancelling the root's padding, with a felt gradient so the rules
+          above fade out rather than clipping hard. (N31) */}
+      <div className="sticky bottom-0 w-full -mx-4 px-4 pt-6 pb-4 mt-auto bg-gradient-to-t from-green-900 via-green-900/90 to-transparent">
+        <button
+          type="button"
+          className="w-full py-4 bg-amber-500 hover:bg-amber-400 active:bg-amber-600 rounded-xl font-bold text-lg disabled:opacity-40"
+          onClick={() =>
+            sendAction({ t: 'startGame', rules: { huanSanZhang, botSpeed, claimWindow, fanCap } })
+          }
+          disabled={!canStart}
+        >
+          {canStart ? t('host.start') : t('host.waitingPlayers')}
+        </button>
 
-      {/* Cancelling a hosted lobby used to require closing the tab, leaving the
-          host's socket open until then. (F10) */}
-      <button
-        type="button"
-        className="w-full py-2 min-h-11 text-white/60 hover:text-white"
-        onClick={() => resetSession()}
-      >
-        {t('nav.leave')}
-      </button>
+        {/* Cancelling a hosted lobby used to require closing the tab, leaving the
+            host's socket open until then. (F10) */}
+        <button
+          type="button"
+          className="w-full py-2 min-h-11 text-white/60 hover:text-white"
+          onClick={() => resetSession()}
+        >
+          {t('nav.leave')}
+        </button>
 
-      {reconnecting && (
-        <p className="text-center text-amber-400 text-sm animate-pulse">
-          {t('common.reconnecting')}
-        </p>
-      )}
+        {reconnecting && (
+          <p className="text-center text-amber-400 text-sm animate-pulse">
+            {t('common.reconnecting')}
+          </p>
+        )}
+      </div>
     </div>
   );
 }

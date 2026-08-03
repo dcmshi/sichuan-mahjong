@@ -1,7 +1,7 @@
 import type { GameEvent, HuRecord, Seat } from '@sichuan-mahjong/engine';
 import { describe, expect, it } from 'vitest';
 import { historyRowFor, historyRows } from '../src/components/PlayHistory.js';
-import { catalog } from '../src/i18n/index.js';
+import { LANGS, catalog } from '../src/i18n/index.js';
 
 const YOU: Seat = 0;
 const OPP: Seat = 2;
@@ -91,7 +91,7 @@ describe('play history (O2)', () => {
       { e: 'hu', seat: OPP, record: huRecord },
       { e: 'falseHu', seat: OPP },
     ];
-    for (const lang of ['en', 'zh-Hans', 'zh-Hant'] as const) {
+    for (const lang of LANGS.map(l => l.code)) {
       for (const e of events) {
         const row = historyRowFor(e);
         if (row) expect(catalog[lang][row.key], `${lang} ${row.key}`).toBeDefined();

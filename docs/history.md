@@ -11,6 +11,96 @@ file had reached 1,566 lines of which two were actually open.
 
 ---
 
+## ✅ Six languages, and the parity guard that now scales (N23 — 2026-08-03)
+
+French, Spanish and Japanese. The plumbing was as cheap as the item predicted — a
+`Dict` and a `LANGS` row, no component changed — and the writing was the job.
+~290 UI keys plus ~44 help keys, three times over.
+
+**Both questions the item held this for are settled, and they went opposite ways.**
+
+*Do the tile names localise?* For French and Spanish, no: `suit.*` and `tile.*`
+stay `万 Wàn` / `饼 Bǐng` / `条 Tiáo`, because N34's reasoning was never about
+English. The character is what is printed on the tile in front of the player, and
+a French reader has no more claim on "Man" than an English one had. Only the
+`.full` gloss localises — `万 Wàn (Caractères)`, `(Cercles)`, `(Bambous)`.
+
+*Is glyph-plus-romanisation right for a Japanese reader?* No, and that is the one
+place the shape changes. Japanese is `萬子` / `筒子` / `索子` with **no
+romanisation at all**, because the reader reads the glyph directly; the slot that
+holds pinyin in English holds the **katakana reading** instead —
+`萬子（マンズ）`. `tile.man` is the bare `萬` so `tile.label`'s `{rank}{suit}`
+renders `3萬`, which is Japanese mahjong notation rather than a translation of it.
+Man / Pin / Sou land here and nowhere else, which is what N34 said would happen.
+
+**The Japanese rule vocabulary is the part with a wrong answer.** Riichi already
+has a word for most of these mechanics, and that is the trap rather than the
+shortcut. Taken from riichi because the mechanic is genuinely the same: ポン, カン,
+フリテン, チョンボ, ノーテン罰符, 清一色, 七対子, 対々和, 嶺上開花, 搶槓, 海底摸月.
+**胡 is split the way Japanese splits it** — ロン off a discard, ツモ on a draw,
+アガリ for the abstract — because one transliterated フー would be opaque to exactly
+the reader this catalog is for. Coined here, because Sichuan has them and riichi
+does not: 欠け色 (定缺), 金鉤釣, 槓上放銃, 花豚, each keeping the Chinese term beside
+it on the screen where it is introduced. **These four are the ones a native speaker
+should still review**; the borrowed ones are safe.
+
+**Three things the item did not anticipate, all found by building it.**
+
+**The parity guard only covered two languages, by literal.** `catalog.test.ts`
+looped `['zh-Hans', 'zh-Hant']` and eleven other tests looped
+`['en', 'zh-Hans', 'zh-Hant']` — so a new catalog could have shipped half-written
+and every one of them would have passed. All twelve now derive from `LANGS`, which
+is the durable half of this change: the guard extends itself. That is also why the
+client suite went 212 → 215 tests without a new test being written.
+
+**`loadLang` rejected its own catalog.** It validated against the same three
+hard-coded codes, so a stored `fr` fell back to English on every reload — the
+language switch would have worked and then forgotten. It checks `LANGS` now.
+
+**The English help still said "Man 万, Pin 饼, Sou 条".** N34's test reached
+`suit.*`, `tile.*` and `suit.*.full`, and `htp.overview.body` is none of those, so
+the sentence N34 was about survived in the one screen that explains the game. Fixed
+in the same pass.
+
+**Two layout consequences, one real.** `LangSwitch` is six 40px buttons now — 242px
+of a 320px phone, measured, and it wraps rather than overflowing because the row
+also sits inside a ⚙ popover. And French found a genuine bug: the
+flip-first-discard prompt is a tile, a hint and a `flex-shrink-0` button, so the
+hint was the only shrinkable child and absorbed the entire shortfall, drawing **one
+word per line**. That is N7's exact shape, three months on. The row wraps now, with
+`basis-40` on the hint — without a width it would shrink to nothing before wrapping
+ever triggered. English never showed it because English fits.
+
+Verified in a browser at 390×844 and 320×568: all six switch, `<html lang>`
+follows, and the void and play screens read correctly in Japanese and French with
+`docScrollX: 0` and no felt overflow. 12/12 e2e green.
+
+---
+
+## ✅ The lobby's Start button stays on screen (N31 — 2026-08-03)
+
+Measured at y=1044 in a 1180px document on a 390×844 phone: reachable, never
+clipped, and simply not *visible* to a host who had just filled four seats.
+
+The fix is the shape R3 gave `RoundEnd` — `sticky bottom-0`, full-bleed via a
+negative margin cancelling the root's padding, felt gradient so the rules above
+fade rather than clipping hard. Copied rather than reinvented, which is what the
+item asked for.
+
+**The density half went the other way from the item's suggestion.** It proposed
+folding the share-URL and watch-link blocks, ~290px of scroll that matter for a few
+seconds and never again — but hiding them is what N17 already recorded as the wrong
+call, and the watch link is the one a host will not think to look for. So nothing
+was hidden: the room code merged into the share card it was duplicating, which is
+40px and a gap spent saying the same thing twice.
+
+Measured after: Start is in the viewport at `scrollY: 0`, at the scroll position
+filling the seats leaves you at, and at the bottom of the document.
+`docScrollX: 0` — the negative margin spans the parent's padding exactly and adds
+no sideways scroll.
+
+---
+
 ## ✅ Tap a seat's pile to see all of it (N33 — 2026-08-03)
 
 Requested: tapping another player's discard pile opens a view titled with their

@@ -7,7 +7,10 @@ type Dict = Record<string, string>;
 const en: Dict = {
   'htp.title': 'How to Play',
   'htp.overview.title': 'Overview',
-  'htp.overview.body': `Sichuan Mahjong (Bloody Rules / 血战到底) is a 4-player tile game played with 108 tiles: 1–9 in three suits (Man 万, Pin 饼, Sou 条). No winds or dragons.
+  // N34 took Man / Pin / Sou out of the suit keys as Japanese borrowings and
+  // left them standing here, because its test only reached `suit.*` and
+  // `tile.*`. This is the same sentence the rest of the catalog stopped saying.
+  'htp.overview.body': `Sichuan Mahjong (Bloody Rules / 血战到底) is a 4-player tile game played with 108 tiles: 1–9 in three suits (万 Wàn, 饼 Bǐng, 条 Tiáo). No winds or dragons.
 
 Each round continues until 3 players have won or the wall is exhausted — winning players sit out but the game goes on.`,
   'htp.setup.title': 'Setup',
@@ -234,4 +237,249 @@ const zhHant: Dict = {
   'about.license.body': 'MIT',
 };
 
-export const HELP_STRINGS: Record<Lang, Dict> = { en, 'zh-Hans': zhHans, 'zh-Hant': zhHant };
+const fr: Dict = {
+  'htp.title': 'Comment jouer',
+  'htp.overview.title': 'Vue d’ensemble',
+  'htp.overview.body': `Le mahjong du Sichuan (règles sanglantes / 血战到底) se joue à 4 avec 108 tuiles : 1 à 9 dans trois couleurs (万 Wàn, 饼 Bǐng, 条 Tiáo). Ni vents, ni dragons.
+
+Chaque manche continue jusqu’à ce que 3 joueurs aient gagné ou que le mur soit épuisé — les gagnants se retirent, mais la partie continue.`,
+  'htp.setup.title': 'Mise en place',
+  'htp.setup.body': `• Huan San Zhang : chaque joueur passe en secret 3 tuiles d’une même couleur au joueur suivant.
+• Couleur nulle (定缺) : chaque joueur déclare une couleur définitivement nulle. Vous devrez en défausser toutes les tuiles.
+• La tuile mise de côté au moment de la déclaration est posée face cachée — c’est votre première défausse. À votre premier tour, vous piochez normalement et la retournez au lieu de défausser depuis votre main. (Si votre main n’en contenait aucune, vous prenez l’indicateur et défaussez normalement.)`,
+  'htp.turn.title': 'Votre tour',
+  'htp.turn.body': `• Piochez une tuile dans le mur.
+• Vous pouvez déclarer un Kong (4 identiques) et piocher une tuile de remplacement.
+• Annoncez Hu si votre main est complète, sinon défaussez une tuile.
+
+Ordre du jeu : dans le sens antihoraire (Est → Sud → Ouest → Nord).`,
+  'htp.claims.title': 'Réclamations',
+  'htp.claims.body': `Quand un autre joueur défausse, vous pouvez réclamer :
+• Pung (碰) : 3 identiques en utilisant la défausse.
+• Kong (杠) : 4 identiques en utilisant la défausse.
+• Hu (胡) : compléter votre main gagnante.
+
+Priorité : Hu > Kong > Pung. Pas de chow réclamé au Sichuan.`,
+  'htp.winning.title': 'Main gagnante',
+  'htp.winning.body': `Une main gagnante est soit :
+• 4 combinaisons (pung/kong/suite) + 1 paire — toutes hors de la couleur nulle.
+• 7 paires distinctes — toutes hors de la couleur nulle.
+
+Les suites (3 tuiles consécutives) ne se forment que dans votre main cachée ; elles ne se réclament pas sur une défausse.`,
+  'htp.shape.standard':
+    'Quatre combinaisons + une paire — ici une suite, un pung, une suite, un pung, et la paire.',
+  'htp.shape.sevenPairs': 'Sept paires, sans rien avoir réclamé. Un carré compte pour deux paires.',
+  'htp.shape.fullFlush':
+    'Toutes les tuiles dans une seule couleur. Vous annulez une couleur avant le premier tour : la couleur pure n’est donc qu’à une couleur du point de départ de chaque main.',
+  'htp.shape.voided': 'Couleur nulle : {suit}',
+  'htp.scoring.title': 'Décompte (fan)',
+  'htp.scoring.body': `Valeur de la main = 2^fan, plafonnée à 2^{cap} = {max} points.
+
+Hu sur pioche : chaque autre joueur paie la valeur de la main + 1.
+Hu sur défausse : le joueur qui a défaussé paie la valeur de la main.`,
+  'htp.fan.title': 'Ce avec quoi vous pouvez gagner',
+  'htp.fan.value': '{n} fan',
+  'htp.fan.stack': 'jusqu’à ×{n}',
+  'htp.fan.cap':
+    'Les fan s’additionnent puis plafonnent à {cap}, donc {max} points est le maximum que paie une main à cette table. Toutes les combinaisons ne s’additionnent pas : les sept paires excluent les kongs, le tout-en-pungs et l’attente dorée.',
+  'htp.fan.FullFlush':
+    'Toutes les tuiles dans une seule couleur — la couleur nulle vous en rapproche déjà d’un tiers.',
+  'htp.fan.SevenPairs': 'Sept paires sans rien avoir réclamé ; un carré en compte pour deux.',
+  'htp.fan.AllPungs': 'Quatre pungs ou kongs et une paire — aucune suite dans la main.',
+  'htp.fan.GoldenWait': 'Une main tout en pungs gagnée sur la tuile qui complète la paire.',
+  'htp.fan.Kong': 'Chaque kong que vous déclarez, caché ou exposé.',
+  'htp.fan.Root': 'Chaque carré qui tient lieu de deux paires dans une main de sept paires.',
+  'htp.fan.WinAfterKong':
+    'Vous piochez vous-même la tuile de remplacement après votre kong, et elle vous fait gagner.',
+  'htp.fan.ShootAfterKong': 'Vous gagnez sur la tuile défaussée juste après un kong.',
+  'htp.fan.RobbingTheKong':
+    'Vous gagnez sur la tuile qu’un autre joueur était en train d’ajouter à son pung.',
+  'htp.fan.UnderTheSea': 'Vous gagnez sur la dernière tuile que le mur avait à donner.',
+  'htp.kongs.title': 'Les kongs',
+  'htp.kongs.body': `Kong caché : 4 identiques en main. Chaque joueur n’ayant pas fait Hu paie 2.
+Kong exposé (sur défausse) : celui qui a défaussé paie 2.
+Kong promu : ajoutez la tuile piochée à un pung existant. Chacun paie 1.
+
+Après tout kong, piochez une tuile de remplacement à l’autre bout du mur.`,
+  'htp.furiten.title': 'Furiten',
+  'htp.furiten.body':
+    'Si vous laissez passer une défausse qui vous faisait gagner, vous entrez en Furiten — vous ne pouvez plus gagner sur défausse jusqu’à votre prochaine pioche. Vous pouvez toujours gagner sur pioche, ou sur une main de valeur supérieure.',
+
+  'about.title': 'À propos',
+  'about.app.title': 'Mahjong du Sichuan',
+  'about.app.body':
+    'Une implémentation multijoueur locale du mahjong du Sichuan (règles sanglantes / 血战到底). Hébergez sur votre machine ; vos amis rejoignent par LAN ou Tailscale. Le code est sous licence MIT.',
+  'about.tiles.title': 'Graphismes des tuiles',
+  'about.tiles.body':
+    'Les faces des tuiles sont des SVG provenant de Wikimedia Commons, sous licence CC-BY-SA 4.0. L’attribution fichier par fichier figure dans public/tiles/credits.json. Le dos de tuile est une création originale. La licence CC-BY-SA ne couvre que les SVG fournis ; le code reste sous MIT.',
+  'about.rules.title': 'Référence des règles',
+  'about.rules.body': 'Règles de référence : Vitaly Novikov, Sichuan Mahjong? It’s that simple!',
+  'about.license.title': 'Licence',
+  'about.license.body': 'MIT',
+};
+
+const es: Dict = {
+  'htp.title': 'Cómo jugar',
+  'htp.overview.title': 'Resumen',
+  'htp.overview.body': `El mahjong de Sichuan (reglas sangrientas / 血战到底) es un juego de fichas para 4 jugadores con 108 fichas: del 1 al 9 en tres palos (万 Wàn, 饼 Bǐng, 条 Tiáo). Sin vientos ni dragones.
+
+Cada ronda sigue hasta que 3 jugadores hayan ganado o se agote el muro — quien gana se retira, pero la partida continúa.`,
+  'htp.setup.title': 'Preparación',
+  'htp.setup.body': `• Huan San Zhang: cada jugador pasa en secreto 3 fichas de un mismo palo al jugador siguiente.
+• Palo nulo (定缺): cada jugador declara un palo que queda anulado para siempre. Tendrás que descartar todas sus fichas.
+• La ficha que apartas al declarar se coloca boca abajo — es tu primer descarte. En tu primer turno robas como siempre y le das la vuelta en lugar de descartar de la mano. (Si tu mano no tenía ninguna de ese palo, usas el indicador y descartas con normalidad.)`,
+  'htp.turn.title': 'Tu turno',
+  'htp.turn.body': `• Roba una ficha del muro.
+• Si quieres, declara un Kong (4 iguales) y roba una ficha de reemplazo.
+• Canta Hu si tu mano está completa; si no, descarta una ficha.
+
+Orden de juego: en sentido antihorario (Este → Sur → Oeste → Norte).`,
+  'htp.claims.title': 'Reclamaciones',
+  'htp.claims.body': `Cuando otro jugador descarta, puedes reclamar:
+• Pung (碰): 3 iguales usando el descarte.
+• Kong (杠): 4 iguales usando el descarte.
+• Hu (胡): completar tu mano ganadora.
+
+Prioridad: Hu > Kong > Pung. En Sichuan no se reclaman escaleras.`,
+  'htp.winning.title': 'Mano ganadora',
+  'htp.winning.body': `Una mano ganadora es una de estas dos:
+• 4 grupos (pung/kong/escalera) + 1 pareja — todos fuera del palo nulo.
+• 7 parejas distintas — todas fuera del palo nulo.
+
+Las escaleras (3 consecutivas) solo se forman en tu mano oculta; no se reclaman sobre un descarte.`,
+  'htp.shape.standard':
+    'Cuatro grupos + una pareja — aquí una escalera, un pung, una escalera, un pung y la pareja.',
+  'htp.shape.sevenPairs':
+    'Siete parejas, sin haber reclamado nada. Un cuarteto cuenta como dos parejas.',
+  'htp.shape.fullFlush':
+    'Todas las fichas de un mismo palo. Anulas un palo antes del primer turno, así que el color puro está a solo un palo de donde empieza cualquier mano.',
+  'htp.shape.voided': 'Palo nulo: {suit}',
+  'htp.scoring.title': 'Puntuación (fan)',
+  'htp.scoring.body': `Valor de la mano = 2^fan, con un tope de 2^{cap} = {max} puntos.
+
+Hu robando: cada uno de los demás paga el valor de la mano + 1.
+Hu por descarte: paga solo quien descartó, el valor de la mano.`,
+  'htp.fan.title': 'Con qué puedes ganar',
+  'htp.fan.value': '{n} fan',
+  'htp.fan.stack': 'hasta ×{n}',
+  'htp.fan.cap':
+    'Los fan se suman y luego topan en {cap}, así que {max} puntos es lo máximo que paga una mano en esta mesa. No todo se combina: las siete parejas excluyen kongs, todo pungs y la espera dorada.',
+  'htp.fan.FullFlush': 'Todas las fichas de un mismo palo — el palo nulo ya te acerca un tercio.',
+  'htp.fan.SevenPairs':
+    'Siete parejas sin haber reclamado nada; un cuarteto cuenta como dos de ellas.',
+  'htp.fan.AllPungs': 'Cuatro pungs o kongs y una pareja — ninguna escalera en la mano.',
+  'htp.fan.GoldenWait': 'Una mano de todo pungs ganada con la ficha que completa la pareja.',
+  'htp.fan.Kong': 'Cada kong que declaras, oculto o expuesto.',
+  'htp.fan.Root': 'Cada cuarteto que hace de dos parejas en una mano de siete parejas.',
+  'htp.fan.WinAfterKong': 'Robas tú mismo la ficha de reemplazo tras tu kong, y con ella ganas.',
+  'htp.fan.ShootAfterKong': 'Ganas con la ficha descartada justo después de un kong.',
+  'htp.fan.RobbingTheKong': 'Ganas con la ficha que otro jugador estaba añadiendo a su pung.',
+  'htp.fan.UnderTheSea': 'Ganas con la última ficha que quedaba en el muro.',
+  'htp.kongs.title': 'Kongs',
+  'htp.kongs.body': `Kong oculto: 4 iguales en la mano. Cada jugador que no haya hecho Hu paga 2.
+Kong expuesto (sobre descarte): quien descartó paga 2.
+Kong promovido: añades la ficha robada a un pung que ya tenías. Cada uno paga 1.
+
+Después de cualquier kong, roba una ficha de reemplazo del otro extremo del muro.`,
+  'htp.furiten.title': 'Furiten',
+  'htp.furiten.body':
+    'Si dejas pasar un descarte con el que podrías haber ganado, entras en Furiten — no puedes ganar por descarte hasta tu siguiente robo. Sí puedes ganar robando, o con una mano de más valor.',
+
+  'about.title': 'Acerca de',
+  'about.app.title': 'Mahjong de Sichuan',
+  'about.app.body':
+    'Una implementación multijugador local del mahjong de Sichuan (reglas sangrientas / 血战到底). Aloja la partida en tu propia máquina; tus amigos se unen por LAN o Tailscale. El código está bajo licencia MIT.',
+  'about.tiles.title': 'Gráficos de las fichas',
+  'about.tiles.body':
+    'Las caras de las fichas son SVG obtenidos de Wikimedia Commons bajo licencia CC-BY-SA 4.0. La atribución archivo por archivo está en public/tiles/credits.json. El reverso es obra original. La licencia CC-BY-SA se aplica solo a los SVG incluidos; el resto del código sigue siendo MIT.',
+  'about.rules.title': 'Referencia de reglas',
+  'about.rules.body': 'Reglas de referencia: Vitaly Novikov, Sichuan Mahjong? It’s that simple!',
+  'about.license.title': 'Licencia',
+  'about.license.body': 'MIT',
+};
+
+const ja: Dict = {
+  'htp.title': '遊び方',
+  'htp.overview.title': '概要',
+  'htp.overview.body': `四川麻雀（血戦到底）は108枚の牌で遊ぶ4人打ちのゲームです。三色の1〜9（萬子・筒子・索子）のみで、字牌はありません。
+
+1局は3人がアガるか牌山が尽きるまで続きます。アガった人は抜けますが、局はそのまま続きます。`,
+  'htp.setup.title': '準備',
+  'htp.setup.body': `• 換三張：各自が同じ色の3枚を伏せたまま下家に渡します。
+• 定缺（欠け色）：各自が1色を選び、その色は最後まで使えません。その色の牌はすべて打ち切る必要があります。
+• 宣言のときに脇へ置いた1枚は伏せられ、それがあなたの最初の捨て牌になります。最初の番では普通にツモり、手牌から打つ代わりにその牌をめくります。（その色を1枚も持っていなければ標示牌を使い、普通に打牌します。）`,
+  'htp.turn.title': 'あなたの番',
+  'htp.turn.body': `• 牌山から1枚ツモります。
+• カン（同じ牌4枚）を宣言して嶺上牌を補充することもできます。
+• 手が完成していればアガリを宣言し、そうでなければ1枚打ちます。
+
+進行方向：反時計回り（東 → 南 → 西 → 北）。`,
+  'htp.claims.title': '鳴きとアガリ',
+  'htp.claims.body': `他家が牌を捨てたとき、次の宣言ができます：
+• ポン（碰）：捨て牌を使って同じ牌3枚。
+• カン（杠）：捨て牌を使って同じ牌4枚。
+• ロン（胡）：その牌で手を完成させる。
+
+優先順位：ロン > カン > ポン。四川麻雀にチーはありません。`,
+  'htp.winning.title': 'アガリの形',
+  'htp.winning.body': `アガリの形は次のどちらかです：
+• 4面子（刻子・槓子・順子）+ 1雀頭 — すべて欠け色以外で。
+• 七対子 — すべて欠け色以外で。
+
+順子（3枚の連番）は自分の手の内でしか作れません。捨て牌から鳴いて作ることはできません。`,
+  'htp.shape.standard': '4面子と1雀頭 — ここでは順子・刻子・順子・刻子、そして雀頭です。',
+  'htp.shape.sevenPairs': '7つの対子で、鳴きは一切なし。同じ牌4枚は2つの対子として数えます。',
+  'htp.shape.fullFlush':
+    'すべて同じ色の牌。最初の番の前に1色を捨てるので、清一色はどの手からもあと1色分の距離です。',
+  'htp.shape.voided': '欠け色：{suit}',
+  'htp.scoring.title': '点数（翻）',
+  'htp.scoring.body': `手の点数 = 2の翻数乗、2^{cap} = {max}点で頭打ちです。
+
+ツモアガリ：他の各家が 点数 + 1 を支払います。
+ロンアガリ：放銃者だけが点数を支払います。`,
+  'htp.fan.title': 'アガれる役',
+  'htp.fan.value': '{n}翻',
+  'htp.fan.stack': '最大 ×{n}',
+  'htp.fan.cap':
+    '翻は加算され{cap}翻で頭打ちになるので、この卓では1回のアガリで最大{max}点です。すべてが複合するわけではなく、七対子は槓・対々和・金鉤釣とは複合しません。',
+  'htp.fan.FullFlush': 'すべて同じ色の牌 — 欠け色の分だけ、はじめから三分の一近づいています。',
+  'htp.fan.SevenPairs': '鳴きなしの7対子。同じ牌4枚はそのうちの2組として数えます。',
+  'htp.fan.AllPungs': '刻子か槓子が4つと雀頭ひとつ — 手のどこにも順子がない形です。',
+  'htp.fan.GoldenWait': '対々和を、雀頭を埋める牌でアガった形（単騎待ち）。',
+  'htp.fan.Kong': '宣言した槓ごとに1翻。暗槓でも明槓でも同じです。',
+  'htp.fan.Root': '七対子の中で、同じ牌4枚が2対として立っているごとに1翻。',
+  'htp.fan.WinAfterKong': '自分の槓のあとに補充した嶺上牌でツモアガリすること。',
+  'htp.fan.ShootAfterKong': '槓の直後に捨てられた牌でアガること。',
+  'htp.fan.RobbingTheKong': '他家がポンに加えようとした牌を横取りしてアガること。',
+  'htp.fan.UnderTheSea': '牌山の最後の1枚でアガること。',
+  'htp.kongs.title': '槓',
+  'htp.kongs.body': `暗槓：手の内に同じ牌4枚。まだアガっていない各家が2点ずつ支払います。
+明槓（捨て牌から）：捨てた人が2点支払います。
+加槓：ツモった牌を既にあるポンに加えます。各家が1点ずつ支払います。
+
+どの槓のあとも、牌山の反対側から嶺上牌を1枚補充します。`,
+  'htp.furiten.title': 'フリテン',
+  'htp.furiten.body':
+    'アガれたはずの捨て牌を見逃すとフリテンになり、次に自分がツモるまでロンアガリができません。ツモアガリ、または点数の高い手でのアガリは引き続き可能です。',
+
+  'about.title': 'このアプリについて',
+  'about.app.title': '四川麻雀',
+  'about.app.body':
+    '四川麻雀（血戦到底）のローカル対戦実装です。自分の端末でホストを立て、友だちはLANやTailscale経由で参加します。コードはMITライセンスです。',
+  'about.tiles.title': '牌の画像',
+  'about.tiles.body':
+    '牌の絵柄はWikimedia CommonsのSVG素材で、CC-BY-SA 4.0ライセンスです。ファイルごとの表示は public/tiles/credits.json にあります。牌の裏面はオリジナルです。CC-BY-SAが適用されるのは同梱のSVGだけで、周囲のコードはMITのままです。',
+  'about.rules.title': 'ルールの出典',
+  'about.rules.body': '準拠ルール：Vitaly Novikov『Sichuan Mahjong? It’s that simple!』',
+  'about.license.title': 'ライセンス',
+  'about.license.body': 'MIT',
+};
+
+export const HELP_STRINGS: Record<Lang, Dict> = {
+  en,
+  'zh-Hans': zhHans,
+  'zh-Hant': zhHant,
+  fr,
+  es,
+  ja,
+};

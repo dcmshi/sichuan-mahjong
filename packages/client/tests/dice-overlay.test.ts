@@ -2,7 +2,7 @@ import type { PlayerView } from '@sichuan-mahjong/engine';
 import { describe, expect, it } from 'vitest';
 import { decidingRound, diceKey, throwerKey } from '../src/components/DiceOverlay.js';
 import { faceRotation } from '../src/components/Die.js';
-import { catalog } from '../src/i18n/index.js';
+import { LANGS, catalog } from '../src/i18n/index.js';
 
 const pair = (a: number, b: number) => ({ a, b });
 
@@ -132,14 +132,14 @@ describe('throwerKey (N15)', () => {
 
   // The second-person keys must exist in every catalog, or the fix renders a raw
   // key where the sentence used to be — worse than the grammar it replaced.
-  it('every key it can return resolves in all three languages', () => {
+  it('every key it can return resolves in every language', () => {
     const keys = new Set<string>();
     for (const stage of ['seating', 'wall'] as const) {
       for (const dealer of [0, 1] as const) keys.add(throwerKey(stage, dealer, 0));
     }
     expect(keys.size).toBe(4);
     for (const key of keys) {
-      for (const lang of ['en', 'zh-Hans', 'zh-Hant'] as const) {
+      for (const lang of LANGS.map(l => l.code)) {
         expect(catalog[lang][key], `${lang} ${key}`).toBeTruthy();
       }
     }
@@ -150,7 +150,7 @@ describe('throwerKey (N15)', () => {
   // "{name}" would render "You roll" as "{name} roll".
   it('the second-person strings interpolate nothing', () => {
     for (const key of ['dice.youAreEast', 'dice.wallTitleYou']) {
-      for (const lang of ['en', 'zh-Hans', 'zh-Hant'] as const) {
+      for (const lang of LANGS.map(l => l.code)) {
         expect(catalog[lang][key], `${lang} ${key}`).not.toContain('{name}');
       }
     }

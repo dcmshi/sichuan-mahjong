@@ -367,11 +367,16 @@ export function OwnZone({ view, onOpenPile }: { view: PlayerView; onOpenPile: ()
         </div>
       )}
 
-      {/* First-discard flip — the one discard the player doesn't get to choose (A35) */}
+      {/* First-discard flip — the one discard the player doesn't get to choose (A35).
+          The row wraps because the button is `flex-shrink-0` and the hint is the
+          only shrinkable child — N7's exact shape. English fits on one line and
+          French does not, so the hint absorbed the whole shortfall and drew one
+          word per line. `basis-40` is what makes the row break instead: with no
+          width the hint would shrink to nothing before wrapping ever triggers. */}
       {canFlip && !inClaimWindow && (
-        <div className="mx-3 my-1 p-2 rounded-xl bg-black/30 flex items-center gap-3">
+        <div className="mx-3 my-1 p-2 rounded-xl bg-black/30 flex flex-wrap items-center gap-3">
           {pendingFlipTile !== null && <Tile id={pendingFlipTile} size="md" interactive={false} />}
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 basis-40 min-w-0">
             <p className="text-[11px] text-green-300 leading-snug">{t('play.flipHint')}</p>
           </div>
           <motion.button

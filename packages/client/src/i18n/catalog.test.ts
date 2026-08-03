@@ -1,13 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { type Lang, catalog } from './index.js';
+import { LANGS, type Lang, catalog } from './index.js';
 
 // Guards against silent translation drift: a key present in English but missing
-// from a Chinese catalog would fall back to English at runtime with no error. (A18)
+// from another catalog would fall back to English at runtime with no error. (A18)
+//
+// Driven off LANGS rather than a literal list, so a seventh language is covered
+// the moment it is registered — the list was two hard-coded codes, which is the
+// shape that lets a new catalog ship half-written. (N23)
 describe('i18n catalog completeness', () => {
   const keysOf = (lang: Lang) => new Set(Object.keys(catalog[lang]));
   const en = keysOf('en');
 
-  for (const lang of ['zh-Hans', 'zh-Hant'] as const) {
+  for (const lang of LANGS.map(l => l.code).filter(c => c !== 'en')) {
     it(`${lang} defines exactly the same keys as English`, () => {
       const other = keysOf(lang);
       const missing = [...en].filter(k => !other.has(k)).sort();

@@ -16,8 +16,14 @@ so it isn't rediscovered as a bug.
 
 ## Open
 
-Five items. **N19 is the only one that is gameplay work** rather than plumbing,
+Four items. **N19 is the only one that is gameplay work** rather than plumbing,
 layout or research.
+
+N23 (French, Spanish, Japanese) and N31 (the lobby's Start button) closed
+2026-08-03 — both in [docs/history.md](./docs/history.md). N23 left one thing
+open that is not a task: the four Japanese terms it had to coin, because Sichuan
+has them and riichi does not — 欠け色, 金鉤釣, 槓上放銃, 花豚 — **want a native
+speaker's eye**. The borrowed ones do not.
 
 ### N19 — a hard bot, so the ladder has three rungs
 
@@ -56,49 +62,6 @@ Also worth deciding: whether hard should be **slower to decide**. Bot pace is th
 host's (`botSpeed`), and a bot that thinks visibly longer reads as stronger — but
 conflating strength with pace would take the host's setting away. Keep them
 separate. **Medium-large.**
-
-### N23 — French, Spanish and Japanese
-
-Requested 2026-08-02. The catalog is three languages today (`en`, `zh-Hans`,
-`zh-Hant`) and the machinery is already language-agnostic: `Lang` is a union,
-`LANGS` drives the switch, and `catalog.test.ts` enforces key parity across every
-entry. Adding a language is a new `Dict` and a `LANGS` row — no component changes
-at all.
-
-**The work is the writing, not the plumbing**, and there is more of it than the
-key count suggests:
-
-- **~330 keys**, of which `help.ts` is the long-form half — the whole of How to
-  Play plus the About screen. That part needs prose, not glossing.
-- **The tile and rule vocabulary has no settled translation in any of the
-  three.** 碰 / 杠 / 胡 / 定缺 / 清一色 are the words the game is played in; French,
-  Spanish and Japanese mahjong communities each borrow differently, and
-  Japanese has its *own* established riichi vocabulary (ポン, カン, 和了) whose
-  terms mean subtly different things in a Sichuan ruleset. Picking "the riichi
-  word" is a decision with a wrong answer, not a lookup.
-- **A speaker has to review each one.** N12 (the feed that stored sentences
-  instead of keys) is the standing reminder that this catalog is user-facing text
-  in a game people play together — a machine-translated 定缺 that reads as
-  "missing suit" would be worse than English.
-
-**Two things to settle before starting.** Whether the tile *names* localise at
-all (`tile.man` is `万 Wàn` in English and 万 in both Chinese catalogs — Japanese
-would presumably want 萬子, French probably keeps the Chinese character); and
-whether `suit.*.full`, which pairs the glyph with a romanisation, is right for a
-Japanese reader who reads the glyph directly.
-
-**Man / Pin / Sou come back here, and nowhere else.** N34 took them out of the
-English catalog because they are manzu / pinzu / souzu — Japanese, borrowed into
-English mahjong writing from a different game — and replaced them with pinyin.
-They are the right words for a Japanese catalog, which is the point: this is the
-language where the established vocabulary is already Japanese and where picking
-"the riichi word" is a decision with a wrong answer rather than a lookup.
-
-**Cheap to guard, once written.** `catalog.test.ts` already fails on any missing
-or extra key, and `help-examples.test.ts` and `dice-overlay.test.ts` assert that
-specific keys resolve in every language — so a new catalog is caught the moment
-it is incomplete rather than at runtime. Extend the language lists in those
-tests along with `Lang`. **Medium-large, and mostly not a coding task.**
 
 ### N26 — the round-end rows label every seat with the wrong wind
 
@@ -139,26 +102,32 @@ So the shape is: `dealer` on `RoundResult` (and the winds in play can come off
 decision about the lobby. **Small-medium** — the sweep is what makes it more
 than the one-line fix it looks like.
 
-### N31 — the lobby's Start button is below the fold
+### N35 — a support link and a source link on the landing screen
 
-Measured 2026-08-03 while verifying N27: on a 390×844 phone the primary action
-sits at **y=1044** in a 1180px-tall document. It was already off screen before
-the fan-limit row — roughly y=944 — so this is not a regression, but it is now
-200px down rather than 100.
+Requested 2026-08-03, pointing at the same change in the Set repo
+([`4e6f8dc`](https://github.com/dcmshi/set-game/commit/4e6f8dc6478963650e937afeb3668532f54e95a1)):
+a subtle secondary link row under the button stack, one link to
+`https://github.com/sponsors/dcmshi` and one to the repository, separated by a
+`·` and styled well below the primary actions so it competes with nothing.
 
-`HostSetup`'s lobby is `min-h-dvh flex flex-col`, so the page grows and the
-document scrolls: nothing is clipped and the button is reachable. It is simply not
-*visible*, and a host who has just filled four seats has no on-screen way to know
-the game can start.
+**Here it goes on `screens/Landing.tsx`**, which already has the right visual
+class to join: "About & Credits" is a 12px underlined link at the bottom, and
+N17 is the standing lesson that this screen's secondary row is where a player
+does or does not find something. So the row belongs *beside* that link rather
+than as a fourth button.
 
-**The fix already exists one screen over.** R3 solved exactly this on `RoundEnd`
-with a `sticky bottom-0` block, full-bleed via a negative margin cancelling the
-root padding, and a felt gradient so the scrolled content fades rather than
-clipping hard. Copy that shape rather than inventing one.
+**Two things this repo has that Set did not.** N20 already shipped
+`.github/FUNDING.yml` and a README **Sponsorship** section, and both say the
+same careful thing: sponsorship supports the code and **not the tile artwork**,
+which is somebody else's work under CC-BY-SA with `credits.json` as the
+attribution. A one-word "Support" link on the landing screen makes a claim the
+README then has to qualify — so either the link text carries it, or it points
+somewhere that does. The About & Credits screen already holds the attribution
+and is one tap away, which is probably the answer.
 
-Worth folding in while there: the share-URL and watch-link blocks are ~290px of
-the scroll, and they matter most in the first few seconds and never again.
-**Small.**
+And the catalogs: two new keys × the six languages N23 shipped (en, zh-Hans,
+zh-Hant, fr, es, ja), all enforced by `catalog.test.ts`. Set's commit carries the
+wording for five of them and is the model for the sixth. **Small.**
 
 ### O3 — a central discard pool
 

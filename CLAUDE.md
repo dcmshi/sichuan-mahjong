@@ -203,6 +203,22 @@ The long form, with the measurements behind each, is in
 - **Never put a Tailwind class in an e2e selector.** Add a `data-` hook instead;
   `data-discardable`, `data-void-tile`, `data-void-first`, `data-pile-modal` and
   `data-dice-overlay` all exist because a class rename silently broke four projects.
+- **A `flex-shrink-0` control beside one shrinkable sibling crushes that sibling.**
+  The sibling absorbs the entire shortfall while its text stays in the DOM, so
+  nothing errors — it just renders at zero (N7's turn indicator) or one word per
+  line (N23's French flip prompt). Give the text a `basis-*` and let the row wrap.
+
+**Languages**
+
+- **Six catalogs: `en`, `zh-Hans`, `zh-Hant`, `fr`, `es`, `ja`.** Adding one is a
+  `Dict` plus a `LANGS` row — no component changes. **Everything that enumerates
+  languages derives from `LANGS`**: the parity test, eleven other test loops, and
+  `loadLang`'s validation. They were hard-coded literals until N23, which is the
+  shape that lets a new catalog ship half-written and every guard still pass.
+- **Suit names lead with the glyph, and the reading is pinyin** — `万 Wàn` — in
+  every catalog but Japanese, because the character is what is printed on the tile.
+  Japanese is `萬子` / `筒子` / `索子` with a katakana reading and no romanisation;
+  Man / Pin / Sou belong there and nowhere else, being Japanese to begin with.
 
 **Process**
 
@@ -246,7 +262,7 @@ is a deliberately accepted granularity cost. Free tier, so persistence stays off
 [docs/design-hosted-server.md](./docs/design-hosted-server.md).
 
 **Open** — see [TODO.md](./TODO.md), which is only the open list: **N19** a hard
-bot so the ladder has three rungs, **N23** French/Spanish/Japanese catalogs,
-**N26** the nine wind call sites above, **N31** the lobby's Start button below the
-fold, and **O3** a central discard pool, still held as a fallback. N19 is the only
-one that is gameplay work rather than plumbing, layout or research.
+bot so the ladder has three rungs, **N26** the nine wind call sites above,
+**N35** a support/source link row on the landing screen, and **O3** a central
+discard pool, still held as a fallback. N19 is the only one that is gameplay work
+rather than plumbing, layout or research.

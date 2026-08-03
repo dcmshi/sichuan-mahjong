@@ -1,12 +1,21 @@
 import { LANGS } from '../i18n/index.js';
 import { useStore } from '../store/index.js';
 
-/** Compact EN / 简 / 繁 language toggle. */
+/**
+ * Compact language toggle, one button per entry in LANGS.
+ *
+ * `flex-wrap` because the row is no longer three buttons: six 40px minimums is
+ * 240px, and this sits inside a ⚙ popover on a 320px phone. Wrapping to a
+ * second line costs height in a menu that scrolls; overflowing costs the
+ * sideways document scroll `ui-clicks.spec.ts` fails on. (N23)
+ */
 export function LangSwitch({ className = '' }: { className?: string }) {
   const lang = useStore(s => s.lang);
   const setLang = useStore(s => s.setLang);
   return (
-    <div className={`inline-flex rounded-lg overflow-hidden border border-white/20 ${className}`}>
+    <div
+      className={`inline-flex flex-wrap rounded-lg overflow-hidden border border-white/20 ${className}`}
+    >
       {LANGS.map(({ code, label }) => (
         <button
           type="button"

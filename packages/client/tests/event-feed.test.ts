@@ -1,7 +1,7 @@
 import type { GameEvent, HuRecord, Seat } from '@sichuan-mahjong/engine';
 import { describe, expect, it } from 'vitest';
 import { feedLineFor, soundForEvent } from '../src/components/EventFeed.js';
-import { catalog } from '../src/i18n/index.js';
+import { LANGS, catalog } from '../src/i18n/index.js';
 
 const YOU: Seat = 0;
 const OPP: Seat = 2;
@@ -70,7 +70,7 @@ const ANNOUNCED: GameEvent[] = [
  *
  * The component itself needs a DOM, so what is asserted here is the contract it
  * depends on: `feedLineFor` yields a key rather than a sentence, and every key
- * it can yield resolves in all three languages. A line that reaches state as
+ * it can yield resolves in every language. A line that reaches state as
  * text cannot switch, whatever the render does.
  */
 describe('feed lines are language-independent (N12)', () => {
@@ -88,7 +88,7 @@ describe('feed lines are language-independent (N12)', () => {
     for (const e of ANNOUNCED) {
       const line = feedLineFor(e);
       if (!line) continue;
-      for (const lang of ['en', 'zh-Hans', 'zh-Hant'] as const) {
+      for (const lang of LANGS.map(l => l.code)) {
         expect(catalog[lang][line.key], `${lang} ${line.key}`).toBeTruthy();
       }
     }

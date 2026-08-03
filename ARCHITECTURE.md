@@ -106,7 +106,7 @@ sichuan-mahjong/
 │   │   │   ├── store/
 │   │   │   ├── ws/
 │   │   │   ├── hooks/           # useSound, useAnimation (per-player pace), useDismissable
-│   │   │   ├── i18n/            # EN / zh-Hans / zh-Hant string catalogs
+│   │   │   ├── i18n/            # EN / zh-Hans / zh-Hant / FR / ES / JA catalogs
 │   │   │   ├── session.ts       # seat token in localStorage — survives a refresh
 │   │   │   ├── prefs.ts         # per-player display prefs in localStorage (animation pace)
 │   │   │   ├── index.css        # Tailwind entry
@@ -1065,7 +1065,7 @@ helpers behind the components rather than rendered output:
 - `DiceOverlay`'s two pure helpers: `diceKey`, which is what stops the overlay re-showing on every one of the dozens of views a round pushes, and `decidingRound`. Plus `faceRotation`, asserted on the property that makes a cube read as a die — opposite faces sum to 7, so they must be half a turn apart on exactly one axis (N2).
 - `WsClient`: the retry cap and budget reset (F6), and that only the `join` handshake survives a closed socket (F21).
 - Pure helpers extracted for exactly this reason — `tileLabel` (F16), the event-feed sound/announcement mapping (F7), `joinErrorForStatus` (F22), the claim countdown's skew handling (F25) — each also asserted against the catalog so a rendered key can't go missing.
-- i18n catalog parity across the three languages (A18).
+- i18n catalog parity across every language in LANGS (A18, N23).
 - Round-end display helpers in `src/roundEnd.ts`: `formatFan` localizes a `FanEntry` and only shows a multiplier above 1; `ledgerLines` signs each entry from the viewing seat's perspective, since a redistributive entry appears in both the payer's and the payee's ledger.
 - `tests/sw.test.ts` runs the real `public/sw.js` in a stubbed worker global. Three of its four cases fail against the pre-F5 file, which is the point: the worker ships as a plain asset and nothing else type-checks or exercises it.
 

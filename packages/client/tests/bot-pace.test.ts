@@ -1,7 +1,7 @@
 import type { BotPace, PlayerView } from '@sichuan-mahjong/engine';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { botPaceControl } from '../src/components/SettingsMenu.js';
-import { type Lang, catalog } from '../src/i18n/index.js';
+import { LANGS, catalog } from '../src/i18n/index.js';
 import { useStore } from '../src/store/index.js';
 
 /**
@@ -59,7 +59,7 @@ describe('botPaceControl', () => {
   it('uses hint keys that exist in every catalog', () => {
     // The parity test covers the catalogs against each other; this covers the
     // two keys this control can name against all of them.
-    for (const lang of ['en', 'zh-Hans', 'zh-Hant'] as Lang[]) {
+    for (const lang of LANGS.map(l => l.code)) {
       expect(catalog[lang]['settings.botSpeedTable']).toBeTruthy();
       expect(catalog[lang]['settings.botSpeedPinned']).toBeTruthy();
     }

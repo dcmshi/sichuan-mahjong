@@ -1,7 +1,7 @@
 import type { GameAction, PlayerView, Seat, Tile, TileType } from '@sichuan-mahjong/engine';
 import { tileFromType, tileToType } from '@sichuan-mahjong/engine';
 import { describe, expect, it } from 'vitest';
-import { catalog, translate } from '../src/i18n/index.js';
+import { LANGS, catalog, translate } from '../src/i18n/index.js';
 import type { Lang } from '../src/i18n/index.js';
 import { kongOffers, kongTileTypes } from '../src/kongOffers.js';
 
@@ -86,8 +86,8 @@ describe('kongTileTypes', () => {
 });
 
 describe('the strings the button renders', () => {
-  it('has a hint for every subtype in all three languages', () => {
-    for (const lang of ['en', 'zh-Hans', 'zh-Hant'] as Lang[]) {
+  it('has a hint for every subtype in every language', () => {
+    for (const lang of LANGS.map(l => l.code)) {
       for (const s of ['concealed', 'promoted', 'postponed']) {
         expect(catalog[lang][`play.kong.hint.${s}`], `${lang} ${s}`).toBeTruthy();
         expect(catalog[lang][`kong.${s}`], `${lang} kong.${s}`).toBeTruthy();
@@ -99,7 +99,7 @@ describe('the strings the button renders', () => {
   // slot the Chinese catalogs also filled. The label now comes from `tileLabel`,
   // which is translated — so the button must have no untranslated leftovers.
   it('leaves nothing unsubstituted in any language', () => {
-    for (const lang of ['en', 'zh-Hans', 'zh-Hant'] as Lang[]) {
+    for (const lang of LANGS.map(l => l.code)) {
       const out = translate(lang, 'play.kong', {
         subtype: translate(lang, 'kong.promoted'),
         label: translate(lang, 'tile.label', { rank: 3, suit: translate(lang, 'tile.man') }),
