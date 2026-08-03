@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { HowToPlay } from '../components/HowToPlay.js';
 import { LangSwitch } from '../components/LangSwitch.js';
 import { useT } from '../i18n/useT.js';
 import { clearSession, loadSession } from '../session.js';
@@ -16,6 +17,7 @@ const REJOIN_TIMEOUT_MS = 6000;
 
 export function Landing() {
   const [rejoining, setRejoining] = useState(false);
+  const [showHowToPlay, setShowHowToPlay] = useState(false);
   // Read once on mount: resetSession() clears storage but shouldn't make the
   // button vanish under the finger mid-render.
   const [saved] = useState(loadSession);
@@ -141,13 +143,28 @@ export function Landing() {
 
       <p className="text-green-400 text-xs text-center max-w-xs">{t('landing.hostHint')}</p>
 
-      <button
-        type="button"
-        className="text-green-500 hover:text-green-300 text-xs underline"
-        onClick={() => goTo('about')}
-      >
-        {t('landing.about')}
-      </button>
+      {/* The same overlay the play screen's ? opens, reached before a game exists:
+          the rules were only readable from inside a round, which is the one place
+          you already have something else to do. Reuses `htp.title` rather than a
+          new key — it is the name of the thing being opened. */}
+      <div className="flex flex-col items-center gap-2">
+        <button
+          type="button"
+          className="text-green-500 hover:text-green-300 text-xs underline"
+          onClick={() => goTo('about')}
+        >
+          {t('landing.about')}
+        </button>
+        <button
+          type="button"
+          className="text-green-500 hover:text-green-300 text-xs underline"
+          onClick={() => setShowHowToPlay(true)}
+        >
+          {t('htp.title')}
+        </button>
+      </div>
+
+      {showHowToPlay && <HowToPlay onClose={() => setShowHowToPlay(false)} />}
     </div>
   );
 }

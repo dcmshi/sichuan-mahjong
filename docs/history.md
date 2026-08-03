@@ -11,6 +11,26 @@ file had reached 1,566 lines of which two were actually open.
 
 ---
 
+## ✅ The rules are readable before you sit down (2026-08-03)
+
+`HowToPlay` was only reachable from the `?` in `PlayTopBar`, which renders during
+the `play` phase — so the one place you could read the rules was the one place you
+already had a turn to take, and a new player deciding *whether* to play could not
+see them at all. It is now also a footer link on the landing screen, under
+"About & Credits".
+
+The overlay needed no change: it takes only `onClose` and reads `SHAPE_EXAMPLES`,
+`helpFanRows()` and the catalog, none of which touch `PlayerView`. The link reuses
+`htp.title` rather than adding a `landing.howToPlay` — it is the name of the thing
+being opened, and it is already translated in all three catalogs, so the parity
+test had nothing new to enforce.
+
+Verified in a browser at 390×844: the link opens the dialog over the landing
+screen with all 8 sections and 42 tiles drawn, Escape closes it, and switching to
+简 renders 玩法说明 from the catalog rather than a baked-in string.
+
+---
+
 ## ✅ Help that shows a hand, a discard you can arm early, and a wall that reads the dice (N3, N11, N14 — 2026-08-02)
 
 Three items, plus a design correction a real user forced and a pile of tests the
