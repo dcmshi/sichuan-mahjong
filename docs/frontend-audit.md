@@ -4,10 +4,10 @@ Findings from a frontend / UI-UX audit of `packages/client` (2026-08-02).
 Grouped by severity; each entry names the file and the diagnosis. This is an
 audit log, not a commitment — triage before picking up. Already-tracked items
 (landscape layout R4 Phase 2, central discard pool O3) live in
-[TODO.md](./TODO.md) and are not repeated here.
+[TODO.md](../TODO.md) and are not repeated here.
 
 **Shelved 2026-08-02, with 17 of 20 done.** The remainder is deliberately
-parked in favour of the feature work in [TODO.md](./TODO.md) — none of the
+parked in favour of the feature work in [TODO.md](../TODO.md) — none of the
 three is user-facing breakage, which is why they are the ones left:
 
 - **Keyboard hand reordering** (Low) — the hand is draggable with a pointer and

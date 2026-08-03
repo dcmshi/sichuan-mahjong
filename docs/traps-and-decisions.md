@@ -1,41 +1,16 @@
-# Handoff — the viewport/density session, and the two days of fine-tuning after it
+# Traps and settled decisions
 
-Started as "debug a CI failure", became a mobile-layout pass, then a fine-tuning
-pass driven by actually playing the thing. This is the state, the decisions
-already made (so they are not relitigated), what is open, and the traps that cost
-time. Per-item detail is in [history.md](./history.md), newest first.
+The things that cost real time in this repo, and the decisions already made so
+they are not relitigated. It began as a handoff from the viewport/density session
+(2026-08-01) and outlived it, because the traps kept applying.
 
-**How tiles are drawn now has its own document**, and it is the one to read before
+Nothing here is a status report — for what shipped and when, read
+[history.md](./history.md), newest first; for what is open, [TODO.md](../TODO.md).
+The short form of the traps below is in [CLAUDE.md](../CLAUDE.md); this is where
+the measurements behind each one live.
+
+**How tiles are drawn has its own document**, and it is the one to read before
 touching a tile: [handoff-tile-rendering.md](./handoff-tile-rendering.md).
-
----
-
-## Where it stands
-
-The layout work (R1–R7) and the audits (A1–A40, F1–F25) are closed. Since then,
-in order:
-
-- **A40 — a void declaration leaked to every client.** `redactEventsFor` stripped
-  `drew`/`kongReplacement` and nothing else, but the void phase emits
-  `voidDeclared { seat, suit }` for all four seats at once. `suit` is now nulled
-  for everyone but the declarer. **The lesson worth keeping: `views.ts` redacts two
-  channels, the view and the event log, and this was the second leak via the log.**
-- **Tiles are the untouched art, and a run laps.** This replaced a `.tile-cell`
-  that rebuilt the art's body out of six CSS gradients, and the whole
-  measure/flatten pipeline that fed it. Same 299px hand, 23.0px a tile before and
-  29.0px now. All of it in
-  [handoff-tile-rendering.md](./handoff-tile-rendering.md).
-- **The wall is drawn**, as four walls round the rim of the well — seven stacks a
-  side, two tiles high, flush and lapped. 4 × 7 × 2 = 56, exactly what the deal
-  leaves, so it is the wall rather than a picture of one. Emptied slots stay drawn
-  and go dark, which is the part that makes it readable.
-- **Each seat's void declaration sits above their pile**, glowing white. It is the
-  one public statement of what they declared. `PublicPlayer.firstDiscardIsVoid` is
-  derived, and false until the flip.
-- **Bot pace is a host setting** — Slow / Normal / Fast, 1800 / 900 / 400ms — and
-  the claim window went 3s → 6s → 10s over a day of play.
-- **A move-history panel** (🗒 in the play well), discards that fly from hand to
-  tray, and both melds gaps R7 left.
 
 ---
 
@@ -79,33 +54,6 @@ in order:
 - ~~Tiles are flush with a bottom bevel.~~ The art has no green on the bottom at
   all; that edge was R7's own invention.
 - ~~Singletons keep the 3D art.~~ Everything does.
-
----
-
-## Open
-
-Recorded as O1–O5 in
-[ARCHITECTURE.md §12](../ARCHITECTURE.md#12-open-questions--explicit-deferrals).
-O1, O2 and O4 are done and O5 is a tested, accepted trade-off — **O3 is the only
-one left**. The app has also shipped since this document was written: it is live
-at `https://sichuan-mahjong.onrender.com`, and what that deploy taught is in
-[history.md](./history.md).
-
-O1 (the binary embedding the CC-BY-SA tile SVGs while §13 forbade exactly that)
-was closed on 2026-08-02 by **accepting the merge**: the repo now has a
-[LICENSE](../LICENSE) whose §3 says a binary is a combined work carrying both
-licences, and `--credits` makes the attribution reachable from the executable
-itself. The rule was what was wrong, not the build.
-
-**O3. Central discard pool.** Show every discard in the middle, mark the last one,
-and show each player's void suit. **The redaction question it needed is now
-answered:** `PublicPlayer.firstDiscardIsVoid` says whether a seat's `discards[0]`
-is their declaration, and is false until the flip — which is exactly when a real
-table learns it. Note the PDF edge case it already handles: a player may declare a
-suit they hold none of, in which case a card indicator stands in and no tile ever
-reveals it (`usedIndicator`). What is left is a layout question, and it got harder
-rather than easier: the middle now holds the wall diagram, the last discard and the
-history control.
 
 ---
 
@@ -180,18 +128,18 @@ history control.
 
 ## Verifying
 
+The commands are in [CLAUDE.md](../CLAUDE.md#dev-commands). What matters here is
+the order and the trust level:
+
 ```bash
-pnpm --filter @sichuan-mahjong/engine build       # required before typecheck/test
-pnpm lint && pnpm typecheck && pnpm test          # 355 unit tests (174/76/105)
-pnpm tiles:sandbox                                # tile CSS, without the game
+pnpm --filter @sichuan-mahjong/engine build   # required before typecheck/test
+pnpm lint && pnpm typecheck && pnpm test
 VITE_E2E=1 pnpm --filter @sichuan-mahjong/client build
 pnpm --filter sichuan-mahjong build
-pnpm e2e                                          # 12 tests, needs 8080 free
-pnpm shots                                        # regenerates docs/*.png
+pnpm e2e                                      # needs 8080 free
 ```
 
-Push to `main` runs the same in CI. Poll the run rather than assuming — the e2e
-suite is where the layout guards live, and a local pass has been wrong before.
-
-`games.db` fills up from automation; clear it at
-`%APPDATA%\sichuan-mahjong\games.db` with the server stopped.
+Push to `main` runs the same in CI. **Poll the run rather than assuming** — the
+e2e suite is where the layout guards live, the specs' game is unseeded, and a
+local pass has been wrong before (R6 passed locally three times running while
+failing CI three times running).
