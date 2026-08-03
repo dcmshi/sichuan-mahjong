@@ -2,7 +2,7 @@ import { COMPATIBILITY, isWinningHand } from '@sichuan-mahjong/engine';
 import type { FanType } from '@sichuan-mahjong/engine';
 import { describe, expect, it } from 'vitest';
 import { HELP_FAN_ORDER, SHAPE_EXAMPLES, helpFanRows } from '../src/helpExamples.js';
-import { catalog } from '../src/i18n/index.js';
+import { catalog, translate } from '../src/i18n/index.js';
 import type { Lang } from '../src/i18n/index.js';
 
 // The one failure mode a screenshot cannot catch: a help screen confidently
@@ -67,6 +67,29 @@ describe('How to Play fan table', () => {
       for (const ex of SHAPE_EXAMPLES) {
         expect(catalog[lang][`htp.shape.${ex.key}`], `${lang} htp.shape.${ex.key}`).toBeTruthy();
       }
+    }
+  });
+
+  // The fan limit is a house rule now (N27), so the two strings that state it have
+  // to take it as a substitution. Both said "3" and "8" in prose in all three
+  // languages, and a 4-fan table would have read a confident wrong number — the
+  // same failure `HELP_FAN_ORDER` exists to prevent one row further down.
+  it('states the fan cap as a substitution rather than a number', () => {
+    for (const lang of ['en', 'zh-Hans', 'zh-Hant'] as Lang[]) {
+      for (const key of ['htp.fan.cap', 'htp.scoring.body']) {
+        const s = catalog[lang][key]!;
+        expect(s, `${lang} ${key} cap`).toContain('{cap}');
+        expect(s, `${lang} ${key} max`).toContain('{max}');
+      }
+    }
+  });
+
+  it('renders both documented caps from the same string', () => {
+    for (const cap of [3, 4]) {
+      const out = translate('en', 'htp.fan.cap', { cap, max: 2 ** cap });
+      expect(out).toContain(`cap at ${cap}`);
+      expect(out).toContain(`${2 ** cap} points`);
+      expect(out, 'nothing left unsubstituted').not.toContain('{');
     }
   });
 });

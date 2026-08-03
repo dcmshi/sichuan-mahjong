@@ -65,11 +65,15 @@ export type ClientMsg =
       /** Host-only lobby choices. `botSpeed` is a pace, not a rule — the server
           keeps it out of GameConfig so a replay is identical at any value.
           `claimWindow` is the opposite: a deadline in engine state, so it is a
-          preset the server maps to `claimWindowMs` rather than a raw number. */
+          preset the server maps to `claimWindowMs` rather than a raw number.
+          `fanCap` is a literal union and never `number`: it is the exponent in
+          `2 ** fanCap`, so an unnarrowed integer off the wire is a scoring
+          exploit rather than a bad setting. (N27) */
       rules?: {
         huanSanZhang?: boolean;
         botSpeed?: 'slow' | 'normal' | 'fast';
         claimWindow?: 'quick' | 'normal' | 'relaxed';
+        fanCap?: 3 | 4;
       };
     }
   | { t: 'nextRound' }

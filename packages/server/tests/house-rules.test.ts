@@ -6,6 +6,7 @@ import {
   CLAIM_WINDOWS,
   botDifficultyFrom,
   claimWindowMsFrom,
+  fanCapFrom,
   houseRules,
   isSeat,
 } from '../src/ws.js';
@@ -18,7 +19,7 @@ const BOT_SLOTS: RoomSlot[] = [0, 1, 2, 3].map(i => ({
 }));
 
 /** What `houseRules` returns when the host asks for nothing. */
-const DEFAULTS = { enableHuanSanZhang: false, claimWindowMs: CLAIM_WINDOWS.normal };
+const DEFAULTS = { enableHuanSanZhang: false, claimWindowMs: CLAIM_WINDOWS.normal, fanCap: 3 };
 
 /**
  * The `rules` payload on `startGame` is the first thing a client gets to say
@@ -50,7 +51,9 @@ describe('houseRules', () => {
   });
 
   it('ignores fields it does not know, rather than passing them to the engine', () => {
-    expect(houseRules({ huanSanZhang: true, fanCap: 99, enableFlowerPig: true })).toEqual({
+    expect(
+      houseRules({ huanSanZhang: true, enableFlowerPig: true, voidDiscardRule: 'lax' }),
+    ).toEqual({
       ...DEFAULTS,
       enableHuanSanZhang: true,
     });
@@ -67,6 +70,53 @@ describe('houseRules', () => {
   it('carries the host claim-window preset through as milliseconds', () => {
     expect(houseRules({ claimWindow: 'quick' }).claimWindowMs).toBe(CLAIM_WINDOWS.quick);
     expect(houseRules({ claimWindow: 'relaxed' }).claimWindowMs).toBe(CLAIM_WINDOWS.relaxed);
+  });
+
+  it('carries the host fan cap through', () => {
+    expect(houseRules({ fanCap: 4 }).fanCap).toBe(4);
+    expect(houseRules({ fanCap: 3 }).fanCap).toBe(3);
+  });
+});
+
+/**
+ * The fan limit is a documented variant with two values, so it is the host's to
+ * choose — but it is also the exponent in `2 ** fanCap`, which makes it the one
+ * `rules` field where a raw integer decides the match rather than the play. (N27)
+ */
+describe('fanCapFrom', () => {
+  it('accepts the two values the ruleset documents', () => {
+    expect(fanCapFrom(3)).toBe(3);
+    expect(fanCapFrom(4)).toBe(4);
+  });
+
+  // 2^30 is not a large hand, it is the whole match. Nothing but a literal 4 may
+  // raise the cap.
+  it('refuses every other number, however it is dressed up', () => {
+    for (const junk of [0, 1, 2, 5, 30, 99, '4', 4.5, -4, Number.POSITIVE_INFINITY, Number.NaN]) {
+      expect(fanCapFrom(junk), String(junk)).toBe(3);
+    }
+  });
+
+  it('falls back for anything that is not a number at all', () => {
+    for (const junk of [undefined, null, {}, [], 'four', true]) {
+      expect(fanCapFrom(junk), String(junk)).toBe(3);
+    }
+  });
+
+  // The fallback has to stay the engine default, or a host who touches nothing
+  // gets a different scoring table from practice mode.
+  it('falls back to the engine default', () => {
+    expect(fanCapFrom(undefined)).toBe(DEFAULT_CONFIG.fanCap);
+  });
+
+  // Same hop as the claim window: narrowing correctly is no use if the room does
+  // not carry it into engine state, and a wrong cap looks right until a hand caps.
+  it('reaches GameState.config through createRoom', () => {
+    const four = createRoom('FC41', BOT_SLOTS, houseRules({ fanCap: 4 }));
+    expect(four.getState().config.fanCap).toBe(4);
+
+    const dflt = createRoom('FC42', BOT_SLOTS, houseRules(undefined));
+    expect(dflt.getState().config.fanCap).toBe(DEFAULT_CONFIG.fanCap);
   });
 });
 

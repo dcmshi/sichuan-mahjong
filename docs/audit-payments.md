@@ -109,16 +109,18 @@ So the cap is **explicitly a variant**, and both values are canonical. A calls 3
 fan / 8 points "the general cap … for competitive rules", which is the ground for
 our default.
 
-**Decision: keep 3 as the default, and file exposing it — see [N27](../TODO.md).**
-It is already a `GameConfig` field, so nothing in the engine has to change; it is
-simply not reachable from the lobby, and there is no way for a table to say which
-variant they play.
+**Decision: keep 3 as the default, and expose it. Shipped as N27 the same day.**
+Nothing in the engine had to change — `fanCap` was already a `GameConfig` field —
+so it was a lobby control, a `3 | 4` field on `startGame.rules`, and narrowing in
+`ws.ts`. The help screen reads the value now instead of restating it, and the
+round-end screen names the limit the round was settled at.
 
 **This is the finding that best fits the original report.** At the cap, every
 payment is exactly half of what a 4-fan table expects: an 8-point hand becomes 16,
 and self-drawn it collects 51 rather than 27. A player who learned the game on the
-Russian/MahjongSoft variant would read every large hand as short-paid, and neither
-the round-end screen nor the help says which limit is in force.
+Russian/MahjongSoft variant would read every large hand as short-paid, and when this
+was written neither the round-end screen nor the help said which limit was in force.
+Both do now.
 
 ## Comprehension bugs found by this audit, and fixed
 

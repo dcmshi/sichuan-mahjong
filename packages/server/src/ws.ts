@@ -80,7 +80,25 @@ export function houseRules(rules: unknown): Partial<GameConfig> {
   return {
     enableHuanSanZhang: r.huanSanZhang === true,
     claimWindowMs: claimWindowMsFrom(r.claimWindow),
+    fanCap: fanCapFrom(r.fanCap),
   };
+}
+
+/**
+ * The fan limit, as the two values the rules document rather than a number. (N27)
+ *
+ * Novikov states it as a variant — "3 (as in MIL's version of rules) or 4 (as
+ * played in Russia and on the MahjongSoft site)" — so both are canonical and a
+ * table needs to be able to say which it plays. But `fanCap` is the exponent in
+ * `2 ** fanCap`: `30` off the wire makes one hand worth 2^30 and settles the
+ * whole match, which is why this takes a literal union and not an integer. Same
+ * reasoning as `claimWindow`, and the same fallback discipline.
+ */
+export const FAN_CAPS = [3, 4] as const;
+export type FanCap = (typeof FAN_CAPS)[number];
+
+export function fanCapFrom(v: unknown): FanCap {
+  return v === 4 ? 4 : 3;
 }
 
 /**

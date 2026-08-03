@@ -264,9 +264,10 @@ pool (O3) is still held as a fallback — its redaction question is answered by
 `firstDiscardIsVoid`, but the middle is no longer the empty space that motivated
 it. Then **N10** side seats draw upright and the across pile does not mirror,
 **N19** a hard bot so the ladder has three rungs, **N23** French, Spanish and
-Japanese, **N26** nine call sites label a seat's wind from its absolute index, and
-**N27** let the table choose the fan cap. N19 is the only open item that is
-gameplay work rather than plumbing, layout or research.
+Japanese, **N26** nine call sites label a seat's wind from its absolute index,
+**N28** the kong button names its tile in a code no other screen uses, and **N29**
+your own hand still shows 13 tiles after you Hu on a discard. N19 is the only open
+item that is gameplay work rather than plumbing, layout or research.
 
 **The payments are right; the cap is a variant we never surfaced** (2026-08-03,
 N21). Three sources outside the PDF confirm every payment rule — winner sits out,
@@ -274,7 +275,11 @@ self-draw `handValue + 1` from each, discard win `handValue` from the discarder
 alone, kongs 2/2/1, false Hu a flat 8 per player still in the deal, wall end on TMV.
 The divergence is `fanCap`: Novikov calls the limit "3 (as in MIL's version) or 4
 (as played in Russia)", so at the cap every payment is *half* what a 4-fan table
-expects. Default stays 3; exposing it is N27. Findings in
+expects. **It is the host's now** (N27) — `fanCap: 3 | 4` on `startGame.rules`,
+narrowed by `fanCapFrom`, default still 3. A literal union for a harder reason than
+`claimWindow`'s: it is the exponent in `2 ** fanCap`, so `30` off the wire settles
+the match. The help reads the value rather than restating it, and the round-end
+screen names the limit it settled at. Findings in
 [docs/audit-payments.md](./docs/audit-payments.md). **A screen that mislabels the
 basis of a payment causes the same dispute as a wrong payment** — the Chinese
 round-end screen was calling the point value 番数, "number of fan".

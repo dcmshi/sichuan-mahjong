@@ -13,6 +13,7 @@ export function RoundEnd() {
   const countedRounds = useStore(s => s.countedRounds);
   const isHost = useStore(s => s.isHost);
   const resetSession = useStore(s => s.resetSession);
+  const fanCap = useStore(s => s.view?.config.fanCap ?? null);
 
   if (!result) return null;
 
@@ -36,6 +37,15 @@ export function RoundEnd() {
         🏆
       </motion.div>
       <h2 className="text-2xl font-bold">{t('end.title')}</h2>
+      {/* Which limit these payments were settled at. Both values are canonical
+          and at the cap every payment is exactly half of the other one's, so a
+          screen full of numbers that never names the basis is where the dispute
+          starts. (N27) */}
+      {fanCap !== null && (
+        <p className="-mt-4 text-xs text-white/50">
+          {t('end.fanCap', { cap: fanCap, max: 2 ** fanCap })}
+        </p>
+      )}
 
       {/* This round. Two columns from `sm` up so a tablet/landscape viewport
           spends its extra width on this instead of extra height. */}

@@ -1,7 +1,9 @@
+import { DEFAULT_CONFIG } from '@sichuan-mahjong/engine';
 import { AnimatePresence, motion } from 'framer-motion';
 import { SHAPE_EXAMPLES, helpFanRows } from '../helpExamples.js';
 import { useEscapeToClose } from '../hooks/useDismissable.js';
 import { useT } from '../i18n/useT.js';
+import { useStore } from '../store/index.js';
 import { Tile, TileRun } from './Tile.js';
 
 const SECTION_KEYS = [
@@ -48,7 +50,7 @@ function WinningShapes() {
 }
 
 /** Every fan the scorer can award, with its value read out of `COMPATIBILITY`. */
-function FanTable() {
+function FanTable({ cap }: { cap: number }) {
   const t = useT();
   return (
     <div className="mt-3 flex flex-col gap-2">
@@ -65,7 +67,9 @@ function FanTable() {
           </span>
         </div>
       ))}
-      <p className="text-white/50 text-xs leading-relaxed">{t('htp.fan.cap')}</p>
+      <p className="text-white/50 text-xs leading-relaxed">
+        {t('htp.fan.cap', { cap, max: 2 ** cap })}
+      </p>
     </div>
   );
 }
@@ -73,6 +77,11 @@ function FanTable() {
 export function HowToPlay({ onClose }: { onClose: () => void }) {
   useEscapeToClose(true, onClose);
   const t = useT();
+  // The fan limit is a house rule now, so the two places the help states it read
+  // the table's value — the same trap `HELP_FAN_ORDER` exists to avoid. This
+  // screen also opens off the landing page with no game to read, which is what
+  // the engine default is for. (N27)
+  const cap = useStore(s => s.view?.config.fanCap ?? DEFAULT_CONFIG.fanCap);
   return (
     <AnimatePresence>
       <motion.div
@@ -116,10 +125,10 @@ export function HowToPlay({ onClose }: { onClose: () => void }) {
               <div key={k}>
                 <h3 className="text-amber-400 font-semibold mb-1">{t(`htp.${k}.title`)}</h3>
                 <p className="text-green-100 text-sm leading-relaxed whitespace-pre-line">
-                  {t(`htp.${k}.body`)}
+                  {t(`htp.${k}.body`, { cap, max: 2 ** cap })}
                 </p>
                 {k === 'winning' && <WinningShapes />}
-                {k === 'scoring' && <FanTable />}
+                {k === 'scoring' && <FanTable cap={cap} />}
               </div>
             ))}
           </div>

@@ -93,6 +93,10 @@ const en: Dict = {
   'host.huanSanZhang': 'Swap three tiles',
   'host.huanSanZhangHint':
     'Chengdu house rule: before choosing your void suit, pass three tiles of one suit to a neighbour. Off by default — the standard rules have no swap.',
+  'host.fanCap': 'Fan limit',
+  'host.fanCapHint':
+    'Fan double the hand and then stop counting at this limit. Both values are standard: 3 is the competition limit, 4 is played in Russia and on MahjongSoft.',
+  'host.fanCap.option': '{n} fan · {max} points',
 
   'lobby.title': 'Lobby',
   'lobby.waiting': 'waiting…',
@@ -207,6 +211,7 @@ const en: Dict = {
   'end.notReady': 'not ready',
   'end.ready': 'ready',
   'end.handValue': 'Hand value {n}',
+  'end.fanCap': 'Settled at a {cap}-fan limit · {max} points maximum',
 
   'fan.Kong': 'Kong',
   'fan.Root': 'Root',
@@ -347,6 +352,10 @@ const zhHans: Dict = {
   'host.huanSanZhang': '换三张',
   'host.huanSanZhangHint':
     '成都玩法：定缺之前，把同一门的三张牌传给邻家。默认关闭 —— 标准规则没有换牌。',
+  'host.fanCap': '番数上限',
+  'host.fanCapHint':
+    '番数翻倍到此上限为止。两种都是通行的：3 番是比赛用的上限，4 番在俄罗斯和 MahjongSoft 上流行。',
+  'host.fanCap.option': '{n} 番 · {max} 点',
 
   'lobby.title': '房间',
   'lobby.waiting': '等待中…',
@@ -459,6 +468,7 @@ const zhHans: Dict = {
   'end.notReady': '未听牌',
   'end.ready': '已听牌',
   'end.handValue': '点数 {n}',
+  'end.fanCap': '按 {cap} 番封顶结算 · 最高 {max} 点',
 
   'fan.Kong': '杠',
   'fan.Root': '根',
@@ -595,6 +605,10 @@ const zhHant: Dict = {
   'host.huanSanZhang': '換三張',
   'host.huanSanZhangHint':
     '成都玩法：定缺之前，把同一門的三張牌傳給鄰家。預設關閉 —— 標準規則沒有換牌。',
+  'host.fanCap': '番數上限',
+  'host.fanCapHint':
+    '番數翻倍到此上限為止。兩種都是通行的：3 番是比賽用的上限，4 番在俄羅斯和 MahjongSoft 上流行。',
+  'host.fanCap.option': '{n} 番 · {max} 點',
 
   'lobby.title': '房間',
   'lobby.waiting': '等待中…',
@@ -707,6 +721,7 @@ const zhHant: Dict = {
   'end.notReady': '未聽牌',
   'end.ready': '已聽牌',
   'end.handValue': '點數 {n}',
+  'end.fanCap': '按 {cap} 番封頂結算 · 最高 {max} 點',
 
   'fan.Kong': '槓',
   'fan.Root': '根',

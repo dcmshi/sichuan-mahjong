@@ -11,6 +11,42 @@ file had reached 1,566 lines of which two were actually open.
 
 ---
 
+## ✅ The table chooses the fan cap (N27 — 2026-08-03)
+
+N21's audit found one real divergence from the ruleset and it was not a payment:
+Novikov states the fan limit as a *variant* — "3 (as in MIL's version of rules) or 4
+(as played in Russia and on the MahjongSoft site)" — and draws his own Table 5 at 4.
+Both values are canonical. We shipped 3 with no way to say otherwise, so **at the
+cap every payment is exactly half** what a 4-fan table expects: an 8-point hand is
+16, and self-drawn it collects 51 rather than 27. That is the best candidate for the
+hand a real table disputed, and nothing on screen named the basis.
+
+`fanCap: 3 | 4` now rides on `startGame.rules` with a lobby control beside the claim
+window, narrowed by `fanCapFrom` in `ws.ts`. **A literal union rather than a number,
+for a harder reason than `claimWindow`'s.** A bad claim window costs the table time;
+`fanCap` is the *exponent* in `2 ** fanCap`, so one frame carrying `30` is a hand
+worth 2^30 and a match decided. The engine needed no change at all — `fanCap` was
+already a `GameConfig` field that `calcHandScore` and `calcTMV` both read, and
+`createRoom` already took a `Partial<GameConfig>`.
+
+**The help screen was the part that could have shipped wrong.** `htp.fan.cap` and
+`htp.scoring.body` both stated the cap in prose — "cap at 3, so 8 points" and
+"capped at 2^3 = 8 points" — in all three languages. A 4-fan table would have been
+reading a confidently wrong number off the rules screen, which is exactly the trap
+`HELP_FAN_ORDER` exists to prevent one section further down. Both now take `{cap}`
+and `{max}` as substitutions and `HowToPlay` reads `view.config.fanCap`, falling
+back to `DEFAULT_CONFIG.fanCap` because the screen also opens off the landing page
+with no game to read. A test asserts the substitution is still there in every
+language, so re-hardcoding it fails rather than merely being wrong.
+
+The round-end screen now says which limit settled the round. **A screen full of
+payments that never names their basis is where the dispute starts** — the same
+lesson as N21's 番数 mislabelling, one level up: there the word was wrong, here the
+number was missing. Each lobby option is labelled with the points it implies
+(`3 fan · 8 points`) rather than the fan count alone, for the same reason.
+
+---
+
 ## ✅ The payments check out; the fan cap does not (N21 — 2026-08-03)
 
 A player at a real table said a hand had been settled wrongly, and on being asked

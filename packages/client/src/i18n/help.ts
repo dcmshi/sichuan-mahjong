@@ -39,7 +39,7 @@ Chows (3 consecutive) can only be built in your concealed hand, not claimed off 
     'Every tile in one suit. You void a suit before the first turn, so a flush is one suit away from where every hand starts.',
   'htp.shape.voided': 'Voided: {suit}',
   'htp.scoring.title': 'Scoring (Fan)',
-  'htp.scoring.body': `Hand value = 2^fan, capped at 2^3 = 8 points.
+  'htp.scoring.body': `Hand value = 2^fan, capped at 2^{cap} = {max} points.
 
 Self-draw Hu: each other player pays hand value + 1.
 Discard Hu: discarder pays hand value.`,
@@ -47,7 +47,7 @@ Discard Hu: discarder pays hand value.`,
   'htp.fan.value': '{n} fan',
   'htp.fan.stack': 'up to ×{n}',
   'htp.fan.cap':
-    'Fan add up and then cap at 3, so 8 points is the most any hand pays. Not every pair combines: seven pairs rules out kongs, all pungs and the golden wait.',
+    'Fan add up and then cap at {cap}, so {max} points is the most any hand pays at this table. Not every pair combines: seven pairs rules out kongs, all pungs and the golden wait.',
   'htp.fan.FullFlush':
     'Every tile in one suit — the void suit already gets you a third of the way.',
   'htp.fan.SevenPairs': 'Seven pairs with nothing claimed; a four-of-a-kind counts as two of them.',
@@ -116,7 +116,7 @@ const zhHans: Dict = {
   'htp.shape.fullFlush': '全部牌为同一花色。开局就要定缺，所以清一色只差再舍掉一门。',
   'htp.shape.voided': '缺门：{suit}',
   'htp.scoring.title': '算番',
-  'htp.scoring.body': `番数对应分值 = 2的番数次方，封顶 2^3 = 8 分。
+  'htp.scoring.body': `番数对应分值 = 2的番数次方，封顶 2^{cap} = {max} 分。
 
 自摸胡：其他每名玩家支付 番值 + 1。
 点炮胡：点炮者支付 番值。`,
@@ -124,7 +124,7 @@ const zhHans: Dict = {
   'htp.fan.value': '{n}番',
   'htp.fan.stack': '最多 ×{n}',
   'htp.fan.cap':
-    '番数相加后封顶3番，所以一副牌最多8分。部分番种不能同时成立：七对不能与杠、碰碰胡、金钩钓同时计算。',
+    '番数相加后封顶{cap}番，所以本桌一副牌最多{max}分。部分番种不能同时成立：七对不能与杠、碰碰胡、金钩钓同时计算。',
   'htp.fan.FullFlush': '全部牌为同一花色。反正开局要定缺，起手就已经少一门。',
   'htp.fan.SevenPairs': '七组对子，且没有任何副露；四张相同算作其中两对。',
   'htp.fan.AllPungs': '四副刻子或杠 + 一对将，全手没有顺子。',
@@ -192,7 +192,7 @@ const zhHant: Dict = {
   'htp.shape.fullFlush': '全部牌為同一花色。開局就要定缺，所以清一色只差再捨掉一門。',
   'htp.shape.voided': '缺門：{suit}',
   'htp.scoring.title': '算番',
-  'htp.scoring.body': `番數對應分值 = 2的番數次方，封頂 2^3 = 8 分。
+  'htp.scoring.body': `番數對應分值 = 2的番數次方，封頂 2^{cap} = {max} 分。
 
 自摸胡：其他每名玩家支付 番值 + 1。
 點炮胡：點炮者支付 番值。`,
@@ -200,7 +200,7 @@ const zhHant: Dict = {
   'htp.fan.value': '{n}番',
   'htp.fan.stack': '最多 ×{n}',
   'htp.fan.cap':
-    '番數相加後封頂3番，所以一副牌最多8分。部分番種不能同時成立：七對不能與槓、碰碰胡、金鉤釣同時計算。',
+    '番數相加後封頂{cap}番，所以本桌一副牌最多{max}分。部分番種不能同時成立：七對不能與槓、碰碰胡、金鉤釣同時計算。',
   'htp.fan.FullFlush': '全部牌為同一花色。反正開局要定缺，起手就已經少一門。',
   'htp.fan.SevenPairs': '七組對子，且沒有任何副露；四張相同算作其中兩對。',
   'htp.fan.AllPungs': '四副刻子或槓 + 一對將，全手沒有順子。',

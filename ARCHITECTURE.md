@@ -235,7 +235,7 @@ export type GameConfig = {
   enableHeavenlyEarthly: boolean;    // default true (HOUSE RULE — not in canonical PDF; see §5.8)
   voidDiscardRule: 'strict' | 'lenient';   // default 'strict'; lenient = Novikov canonical
   enableFlowerPig: boolean;          // default false (HOUSE RULE — see §5.9)
-  fanCap: number;                    // default 3 → max payment 2^3 = 8
+  fanCap: number;                    // default 3 → max payment 2^3 = 8 (host preset 3|4, N27)
   claimWindowMs: number;             // default 15000 (lobby preset, N6)
   enableSeatingThrow: boolean;       // default TRUE — everyone throws, highest is East (§4.3.1)
 };
@@ -576,6 +576,16 @@ export function ukeire(tiles: TileId[], melds: Meld[], voidedSuit: Suit | null, 
 ### 5.8 Scoring (fan-based, multiplicative, capped)
 
 Hand value = `2^totalFan`, capped at `2^config.fanCap` (default 3 → max 8 base points).
+
+**The cap is a host preset, not a constant (N27).** Novikov states it as a variant —
+"3 (as in MIL's version of rules) or 4 (as played in Russia and on the MahjongSoft
+site)" — and his own Table 5 is drawn at 4, so both are canonical and a table that
+plays the other one read every capped hand as paying half. `fanCap: 3 | 4` rides on
+`startGame.rules` and `fanCapFrom` in `ws.ts` narrows it. **A literal union and
+never `number`**, for a harder reason than `claimWindow`: this is the exponent in
+`2 ** fanCap`, so `30` off the wire is one hand worth 2^30 and a settled match.
+Default stays 3, and the help screen now reads the value rather than restating it —
+both places it appeared said "3" and "8" in prose, in all three languages.
 
 Fan combinations per Novikov SBR canonical Table 4:
 

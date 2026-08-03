@@ -45,6 +45,7 @@ export function HostSetup() {
   const [huanSanZhang, setHuanSanZhang] = useState(false);
   const [botSpeed, setBotSpeed] = useState<'slow' | 'normal' | 'fast'>('normal');
   const [claimWindow, setClaimWindow] = useState<'quick' | 'normal' | 'relaxed'>('normal');
+  const [fanCap, setFanCap] = useState<3 | 4>(3);
   // Which copy button last fired. The clipboard write is silent — on a phone
   // there is no cursor, no selection and no toast, so without this the tap is
   // indistinguishable from a dead button.
@@ -296,6 +297,32 @@ export function HostSetup() {
         </div>
       </div>
 
+      {/* The fan limit. Novikov states it as a variant with two common values, so
+          a table that plays the 4-fan one had no way to say so and read every
+          capped hand as paying half. Each option names the points it implies
+          rather than only the fan count, because the points are what a dispute is
+          about. (N27) */}
+      <div className="bg-black/20 rounded-xl px-3 py-2.5 text-sm">
+        <div className="font-semibold">{t('host.fanCap')}</div>
+        <div className="text-xs text-green-300 leading-snug mb-2">{t('host.fanCapHint')}</div>
+        <div className="flex gap-1.5">
+          {([3, 4] as const).map(cap => (
+            <button
+              key={cap}
+              type="button"
+              aria-pressed={fanCap === cap}
+              onClick={() => setFanCap(cap)}
+              className={[
+                'flex-1 min-h-10 rounded-lg font-semibold transition-colors',
+                fanCap === cap ? 'bg-amber-400 text-black' : 'bg-black/30 text-white/70',
+              ].join(' ')}
+            >
+              {t('host.fanCap.option', { n: cap, max: 2 ** cap })}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Bot level is per seat, not one setting for the table. The protocol always
           carried it per bot (`addBot.difficulty`, `RoomSlot.difficulty`) — only the
           lobby forced them all to match, which made mixing impossible and turned
@@ -371,7 +398,7 @@ export function HostSetup() {
         type="button"
         className="w-full py-4 bg-amber-500 hover:bg-amber-400 active:bg-amber-600 rounded-xl font-bold text-lg mt-auto disabled:opacity-40"
         onClick={() =>
-          sendAction({ t: 'startGame', rules: { huanSanZhang, botSpeed, claimWindow } })
+          sendAction({ t: 'startGame', rules: { huanSanZhang, botSpeed, claimWindow, fanCap } })
         }
         disabled={!canStart}
       >
