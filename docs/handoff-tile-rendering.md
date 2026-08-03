@@ -100,6 +100,25 @@ Both rules use `.tile-sideways + .tile-sideways` rather than `:not(:first-child)
 because the tray's first child is the "+N more" label — it marks the old end of
 the pile, and it is not a tile to lap over.
 
+**The horizontal bleed padding is wrong for these trays**, and
+`.discard-tray.tile-run-v` takes it back off. `.discard-tray`'s asymmetric
+`padding-left: 0.75rem` pays for the first tile of a `.tile-lap` run hanging 29%
+of a pitch off its left edge. A column of sideways tiles has no horizontal bleed
+at all, so the two side trays were spending 7.2px of an 80px column on a geometry
+they don't have — which is most of what the void declaration needed to sit beside
+the pile rather than above it. (N38)
+
+**A tray tile's box shrinks and its art does not**, which is what sets the side
+trays' cap. Tray tiles are flex items in a column, so a short column squeezes the
+box while `.tile-sideways .tile-face` stays sized off `--tile-w`. The art then
+overflows and the lap eats past the body band into the face; at the extreme the
+pile draws as a stack of black outlines. `SIDE_TRAY_CAP` is 6 because a side
+column gets 135–179px and `1 + (h − 9.6 − 32) / 24.8` is five to seven tiles at
+full size — N10's ten was true of the boxes only. Fitting the count to the
+measured height is **N39** in [TODO.md](../TODO.md). The alternative, making the
+art shrink with the box, has no CSS: the art is rotated, so its on-screen height
+is its pre-rotation *width*, and a width cannot be set from a box's height.
+
 Percentages throughout, because the hand's tiles are flex-sized and no length is
 known in CSS. That is also why sizes are `--tile-w` on `.tile-sm`/`-md`/`-lg`/`-xl`
 rather than Tailwind's `w-*`: a lapped run has to scale a width down to the pitch,

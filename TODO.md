@@ -16,12 +16,45 @@ so it isn't rediscovered as a bug.
 
 ## Open
 
-**Nothing.** The two tray-geometry items filed on 2026-08-03 — **N36** (the
-right-hand seat's pile ran downward and lapped over ink) and **N37** (the across
-seat's void declaration sat on the near side of its pile) — both shipped the same
-day, along with N19 (a hard bot, and the ladder guard that found medium losing to
-easy) and N26 (the nine wind call sites). Each is written up in
+One, and it is a **design call rather than a bug** — see below. Everything filed
+on 2026-08-03 shipped the same day: N19 (a hard bot, and the ladder guard that
+found medium losing to easy), N26 (the nine wind call sites), **N36** (the
+right-hand seat's pile ran downward and lapped over ink), **N37** (the across
+seat's void declaration sat on the near side of its pile), and **N38** (the side
+seats' declarations moved beside their piles, and the board stopped rebuilding
+itself when a pile opens). Each is written up in
 [docs/history.md](./docs/history.md).
+
+### N39 — fit a side tray's count to the height it actually has
+
+A tray tile is a flex item in a column, so when the column runs short its **box**
+shrinks. The art does not: `.tile-sideways .tile-face` is sized off `--tile-w`,
+so it overflows the box and the lap eats past the 22.5% body band into the face.
+At the extreme — late in a round, on a seat holding melds — the pile drew as a
+stack of black outlines with no tile visible between them.
+
+N38 took the mitigation: the cap is **6**, which is what a side column can draw
+at full size, and `+N` plus N33's tap-to-open carry the rest. Measured on a
+390×844 phone with the cap in place, both columns render six tiles at 32px with
+no shrink at all. What is left open is that **6 is a constant and the space is
+not**: a column gets 179px with no melds and ~135px with two meld chips, so six
+still squashes a little on a seat that has ponged twice, and wastes room on one
+that hasn't.
+
+The fix is to compute the count from the height:
+`1 + floor((h − padding − 32) / 24.8)`. The reason it is not already done is that
+the height has to come from something that doesn't move — the tray is
+content-sized, so dropping a tile shrinks the tray, which frees the space that
+let you drop it, and a `ResizeObserver` on the tray's own box oscillates. Making
+the discard row `flex-1 min-h-0` and measuring **that** breaks the loop, since
+its height is set by the column rather than by the pile; the tray then anchors
+inside it with `self-start` (left) / `self-end` (right).
+
+The alternative — making the art shrink with the box — is the honest fix and the
+hard one: the art is rotated, so its on-screen height is its pre-rotation
+*width*, and CSS has no way to set a width from a box's height.
+
+Reported 2026-08-03, from N38's measurements.
 
 N23 left one thing open that is not a task: the four Japanese terms it had to
 coin, because Sichuan has them and riichi does not — 欠け色, 金鉤釣, 槓上放銃,

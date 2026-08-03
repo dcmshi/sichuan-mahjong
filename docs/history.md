@@ -3,12 +3,93 @@
 This is the record of work already done: the phase log (1–9), six full-repo audit
 passes (A1–A40), the frontend/design pass (F1–F25), the mobile viewport work
 (R1–R7), the tile-rendering change, the hosting work (C1–C10), and the feature
-run N1–N37. Each entry keeps its diagnosis, not just its fix — that is the part
+run N1–N38. Each entry keeps its diagnosis, not just its fix — that is the part
 worth having later.
 
 **Live work lives in [TODO.md](../TODO.md).** This file only grows at the top, and
 nothing in it is outstanding. It was split out of TODO.md on 2026-08-02, when that
 file had reached 1,566 lines of which two were actually open.
+
+---
+
+## ✅ The declaration beside the pile, and a board that stops rebuilding itself (N38 — 2026-08-03)
+
+Two asks in one pass, and one measurement each.
+
+**The side seats' declarations moved beside their piles.** Height is the scarce
+dimension in an 80px column — it is what makes those tiles shrink and what caps
+the pile at ten — and stacked above the tray, the declaration was spending a
+whole tile of it on one tile of information. Beside, it spends none.
+
+Two sideways tiles are 77.7px and the column is 80, so this only fits once the
+tray stops paying `padding-left: 0.75rem`. That padding is the **horizontal**
+lap's bleed: the first tile in a `.tile-lap` run has no neighbour to lap over and
+hangs 29% of a pitch off its left. A column of sideways tiles has no horizontal
+bleed at all, so the side trays had been paying 7.2px of an 80px column for a
+geometry they don't have. `.discard-tray.tile-run-v` sets it symmetric.
+
+It takes the **inner** side, nearest the wall drawn round the well — the far side
+from its owner, which is where every other seat's declaration sits — and aligns
+with the pile's **oldest** end, the top of the left column and the bottom of the
+reversed right one, because it is that seat's first discard rather than a header.
+The wrapper is `flex` rather than a block: a `.tile` is `inline-flex`, so in a
+block it sat on a text baseline and carried ~6px of descender, which put the right
+column's declaration 6px above the bottom it was aligned to.
+
+The hand-count chip lapped tighter with it. The two orientations were the same
+*length* rather than the same *fraction*: a back is 32 × 38.9, so `-mt-7` left
+10.9px of each vertical tile showing against the horizontal chip's 4px — a third
+of a tile against an eighth, in the column where height is scarce and width is
+not. `-mt-8` matches, and returns another 8px.
+
+**Opening a discard pile was slow on a phone, and the board was why.** Measured
+at 4× CPU throttle on a 390px viewport: 126–236ms from the tap to a painted
+modal, for a pile of eight tiles. The tiles were not the cost. `openPile` is a
+`useState` in `PlayPhase`, so the tap re-rendered every zone on the board — ~80
+tiles, each a framer-motion `motion.div` with its own `useState`, `useLongPress`
+and `AnimatePresence` — before the modal's own eight ever mounted.
+
+Three changes, each verified against that number rather than assumed:
+
+- **`Tile` and `TileBack` are memoised.** Their props are primitives plus an
+  optional handler, so this is exact rather than a guess.
+- **A tile is a plain `<div>` unless it has something to animate.** `animate` is
+  the constant `y: 0` on any tile that cannot be selected, and `whileHover` /
+  `whileTap` were already conditional on `onClick` — so framer-motion was earning
+  nothing on the trays, the melds, the opponents' zones or the modal. *Being
+  passed* `selected` is what opts a tile in, not its value: swapping the element
+  type mid-lift would remount the tile and make it jump rather than spring. The
+  per-tile `AnimatePresence` for the long-press preview is likewise mounted only
+  where a long press can happen.
+- **The four zones are memoised, and their `onOpenPile` handlers keyed on the
+  seat number.** `view` is a fresh object on every server push, which is exactly
+  when a zone should redraw; the seat is fixed for the round, so the handler keeps
+  its identity across the one toggle memo is there to absorb. Without that
+  `useCallback` the memo does nothing at all.
+
+Median tap-to-modal went 225ms → 96ms, and the worst of three runs 236ms → 106ms.
+
+**And the side trays' cap came back down to six**, which is the part of this that
+was found by regenerating a screenshot rather than by any test. A tray tile is a
+flex item in a column, so once the content exceeds the space the *boxes* shrink —
+and the art, sized off `--tile-w`, does not. It overflows, the lap eats past the
+22.5% body band into the face, and late in a round on a seat holding melds the
+pile drew as **a stack of black outlines with no tile visible between them**. I
+first put that down to the last-discard glow caught mid-pulse; zooming in showed
+it was the pile itself.
+
+N10 raised this cap to ten on the arithmetic that a sideways tile is 32px against
+38.9px upright with a 24.8px pitch, so ten fit in less room than the old six did.
+That is true of the boxes and false of the tiles. A side column gets 179px of tray
+with no melds and ~135px with two meld chips; `1 + (h − 9.6 − 32) / 24.8` is five
+to seven tiles at full size, and ten was never among them. At six, both columns
+now measure 32px per tile with no shrink at all.
+
+Six is a constant and the space is not, so a seat that has ponged twice still
+squashes a little. Fitting the count to the measured height is **N39**, left open
+with the loop that makes it awkward written down: the tray is content-sized, so
+dropping a tile frees the space that let you drop it, and the measurement has to
+come from the row rather than the tray.
 
 ---
 

@@ -7,7 +7,7 @@ import { Tile } from './Tile.js';
 /**
  * Every tile a seat has discarded, at a size you can read. (N33)
  *
- * The trays cap at 10 a side and 9 across and count the rest, so this is where
+ * The trays cap at 6 a side and 9 across and count the rest, so this is where
  * that cap stops costing anything rather than a second view of what is already
  * on screen. Three things it has to keep:
  *

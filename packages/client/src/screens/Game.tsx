@@ -1,7 +1,7 @@
 import { tileFromType, tileTypeOf } from '@sichuan-mahjong/engine';
 import type { PlayerView, Seat, Suit, TileId } from '@sichuan-mahjong/engine';
 import { motion } from 'framer-motion';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ClaimFlight } from '../components/ClaimFlight.js';
 import { ClaimPanel } from '../components/ClaimPanel.js';
 import { DiceOverlay } from '../components/DiceOverlay.js';
@@ -329,6 +329,22 @@ function PlayPhase({ view }: { view: PlayerView }) {
   const t = useT();
   const seat = view.you.seat;
 
+  // Opening a pile is a `useState` up here, so the tap re-rendered every zone on
+  // the board before the modal's own tiles even mounted — measured at 126–236ms
+  // to a painted modal on a 4×-throttled phone. The four zones are memoised, and
+  // memo only bites if the handler keeps its identity across that toggle: keyed
+  // on the *seat number*, which is fixed for the round, rather than on `view`,
+  // which is a fresh object on every server push. (N38)
+  const [rightSeat, topSeat, leftSeat] = [
+    view.others[0].seat,
+    view.others[1].seat,
+    view.others[2].seat,
+  ];
+  const openRightPile = useCallback(() => setOpenPile(rightSeat), [rightSeat]);
+  const openTopPile = useCallback(() => setOpenPile(topSeat), [topSeat]);
+  const openLeftPile = useCallback(() => setOpenPile(leftSeat), [leftSeat]);
+  const openOwnPile = useCallback(() => setOpenPile(seat), [seat]);
+
   const inClaimWindow = view.claimDeadline !== null;
   const lastDiscardTile = view.lastDiscard?.tile ?? null;
   // "You discarded", not "David discarded" — your own rows read the way the top
@@ -358,7 +374,7 @@ function PlayPhase({ view }: { view: PlayerView }) {
 
       {/* Opponent across */}
       <div className="py-2 px-3">
-        <OpponentTop view={view} relSeat={1} onOpenPile={() => setOpenPile(view.others[1].seat)} />
+        <OpponentTop view={view} relSeat={1} onOpenPile={openTopPile} />
       </div>
 
       {/* Middle row — the row's height used to be set entirely by the side
@@ -368,12 +384,7 @@ function PlayPhase({ view }: { view: PlayerView }) {
           this row fall to what the well actually needs. */}
       <div className="flex flex-1 min-h-0 gap-2 px-2">
         <div className="w-20 flex-shrink-0">
-          <OpponentSide
-            view={view}
-            relSeat={2}
-            side="left"
-            onOpenPile={() => setOpenPile(view.others[2].seat)}
-          />
+          <OpponentSide view={view} relSeat={2} side="left" onOpenPile={openLeftPile} />
         </div>
         <div className="relative flex-1 flex flex-col items-center justify-center gap-1 play-well p-2 min-h-0">
           {/* What just happened, plus sound for opponents' moves — inside the
@@ -433,16 +444,11 @@ function PlayPhase({ view }: { view: PlayerView }) {
             against 211.6px instead of this column's 80px and spilled across the
             well. The left column never had the bug because it was always a block. */}
         <div className="w-20 flex-shrink-0">
-          <OpponentSide
-            view={view}
-            relSeat={0}
-            side="right"
-            onOpenPile={() => setOpenPile(view.others[0].seat)}
-          />
+          <OpponentSide view={view} relSeat={0} side="right" onOpenPile={openRightPile} />
         </div>
       </div>
 
-      <OwnZone view={view} onOpenPile={() => setOpenPile(seat)} />
+      <OwnZone view={view} onOpenPile={openOwnPile} />
 
       {/* Claim panel */}
       {inClaimWindow && view.claimDeadline !== null && (

@@ -500,6 +500,16 @@ body {
   padding: 0.3rem 0.3rem 0.3rem 0.75rem;
 }
 
+/* The side seats' trays lap vertically, so the extra left padding above buys
+   them nothing — it is the *horizontal* lap's bleed, and there is no horizontal
+   bleed in a column of sideways tiles. It cost 7.2px of an 80px column, which is
+   most of what the declaration needs to sit beside the pile rather than above
+   it. Symmetric and thin instead: the frame still reads, and 38.9 + 38.9 now
+   fits the column. (N38) */
+.discard-tray.tile-run-v {
+  padding: 0.3rem 0;
+}
+
 /* ---------------------------------------------------------------------------
    Play well, short viewport (R1) — once the side columns stop setting the
    middle row's height (R2.3), the well's own minimum content is what the row

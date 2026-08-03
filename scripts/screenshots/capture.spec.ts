@@ -119,7 +119,15 @@ test('regenerate docs screenshots', async ({ page, browser }) => {
         .isVisible()
         .catch(() => false))
     ) {
-      await shot(page, 'screenshot.png');
+      // Settle first, then check *again* that the board is still up. Moving the
+      // shot inside this loop fixed capturing the round-end screen when a bot won
+      // early, but `shot()` waits 900ms for animations before it fires — and a
+      // bot can Hu inside that window, which is how a Round End image shipped as
+      // screenshot.png anyway. Re-reading the screen after the wait is what
+      // actually closes it; a round that ends here just rolls into the next one.
+      await page.waitForTimeout(900);
+      if ((await g.getScreen()) !== 'game') continue;
+      await page.screenshot({ path: `${OUT}/screenshot.png`, fullPage: true });
       captured = true;
       break;
     }

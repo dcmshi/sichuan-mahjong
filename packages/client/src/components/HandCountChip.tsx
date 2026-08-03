@@ -14,6 +14,12 @@ import { TileBack } from './Tile.js';
  * zone with the tightest height budget on the screen. The side seats face you
  * edge-on and keep the vertical stack, which is also all an 80px column has room
  * for.
+ *
+ * The two laps are the same *fraction* of the tile, not the same length. A back
+ * is 32px wide and 38.9px tall, so one -mt-7 left 10.9px of each vertical tile
+ * showing against the horizontal one's 4px — a third of a tile against an
+ * eighth, in the column where height is the scarce dimension and width is not.
+ * -mt-8 is the vertical match, and hands the side seats' trays 8px back. (N38)
  */
 export function HandCountChip({
   count,
@@ -25,7 +31,7 @@ export function HandCountChip({
     <div className="flex items-center gap-1">
       <div className={horizontal ? 'flex' : 'flex flex-col'}>
         {Array.from({ length: Math.min(count, 3) }, (_, i) => (
-          <div key={i} className={i > 0 ? (horizontal ? '-ml-7' : '-mt-7') : ''}>
+          <div key={i} className={i > 0 ? (horizontal ? '-ml-7' : '-mt-8') : ''}>
             <TileBack size="sm" />
           </div>
         ))}

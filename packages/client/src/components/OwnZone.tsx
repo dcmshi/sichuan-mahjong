@@ -1,6 +1,6 @@
 import { type PlayerView, type TileId, tileTypeOf } from '@sichuan-mahjong/engine';
 import { AnimatePresence, Reorder, motion } from 'framer-motion';
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { type StandDownReason, armedDiscardOutcome } from '../armedDiscard.js';
 import { splitPile } from '../discardPile.js';
 import { useAnimationPace } from '../hooks/useAnimation.js';
@@ -95,8 +95,12 @@ function HuCelebration() {
  * you may win on a discard — is decided by what you've already discarded, so
  * truncating it would remove information you need to reason about your own
  * hand. (see `docs/viewport-audit.md`, "Constraints a redesign has to respect")
+ *
+ * Memoised, and the heaviest of the four zones by some way: a `Reorder.Group`
+ * whose thirteen items are each a framer-motion `li`. It has no business
+ * rebuilding because a discard pile opened somewhere else on the board. (N38)
  */
-export function OwnZone({ view, onOpenPile }: { view: PlayerView; onOpenPile: () => void }) {
+function OwnZoneImpl({ view, onOpenPile }: { view: PlayerView; onOpenPile: () => void }) {
   const [selectedTile, setSelectedTile] = useState<TileId | null>(null);
   // The tile armed while you wait, and why the last one stood down. Kept separate
   // from `selectedTile` rather than folded into it: that one is cleared whenever
@@ -605,3 +609,5 @@ export function OwnZone({ view, onOpenPile }: { view: PlayerView; onOpenPile: ()
     </>
   );
 }
+
+export const OwnZone = memo(OwnZoneImpl);

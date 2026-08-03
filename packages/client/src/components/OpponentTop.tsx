@@ -1,4 +1,5 @@
 import type { PlayerView } from '@sichuan-mahjong/engine';
+import { memo } from 'react';
 import { splitPile } from '../discardPile.js';
 import { usePileTap } from '../hooks/usePileTap.js';
 import { useT } from '../i18n/useT.js';
@@ -6,8 +7,8 @@ import { HandCountChip } from './HandCountChip.js';
 import { MeldDisplay } from './MeldDisplay.js';
 import { Tile, TileBack } from './Tile.js';
 
-/** The opponent seated across the table. */
-export function OpponentTop({
+/** The opponent seated across the table. Memoised for the reason in `OpponentSide`. */
+function OpponentTopImpl({
   view,
   relSeat,
   onOpenPile,
@@ -120,3 +121,5 @@ export function OpponentTop({
     </div>
   );
 }
+
+export const OpponentTop = memo(OpponentTopImpl);

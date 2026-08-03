@@ -143,6 +143,14 @@ Full tree: [ARCHITECTURE.md §3](./ARCHITECTURE.md#3-repo-layout).
   the component calls — that's why `tileLabel`, `feedLineFor`, `voidChoice`,
   `kongOffers`, `splitPile` and the claim-countdown maths are exported. Add UI
   logic the same way.
+- **The board is memoised, and a stale handler silently undoes it.** `Tile`,
+  `TileBack` and the four zones are `memo`, because local state in `PlayPhase`
+  (opening a discard pile) would otherwise rebuild ~80 tiles before the modal
+  mounted — 225ms → 96ms, measured at 4× CPU throttle. Memo on a zone only bites
+  while `onOpenPile` keeps its identity, which is why those handlers are
+  `useCallback` keyed on the **seat number** and not on `view`. A tile is a plain
+  `<div>` unless it can lift (`selected` *passed*, whatever its value) or answer a
+  gesture (`onClick`); anything else gets no framer-motion at all. (N38)
 - **Screenshots are generated, not taken.** `docs/*.png` come from `pnpm shots`;
   regenerate them rather than hand-capturing, or they drift out of date again.
 
@@ -205,6 +213,17 @@ The long form, with the measurements behind each, is in
 - **A sideways tile carries the landscape footprint on its *box*** and rotates the
   art inside it. A tile rotated in place would measure portrait while drawing
   landscape, and `viewport.spec.ts` asserts on rendered geometry.
+- **A tray tile's box shrinks and its art does not.** Tray tiles are flex items in
+  a column, so a short column squeezes the box while `.tile-sideways .tile-face`
+  stays sized off `--tile-w` — the art overflows, the lap eats past the body band
+  into the face, and at the extreme the pile draws as a stack of black outlines.
+  That is why `SIDE_TRAY_CAP` is **6**: a side column gets 135–179px, and
+  `1 + (h − 9.6 − 32) / 24.8` is five to seven tiles at full size. N10's ten was
+  only ever true of the boxes. Fitting the count to the measured height is
+  **N39**, still open — and the measurement has to come from the *row*, since the
+  tray is content-sized and dropping a tile frees the space that let you drop it.
+  **Found by regenerating a screenshot, not by a test** — the tray guard reads
+  boxes, and the boxes were correct the whole time.
 - **The two side seats face opposite ways, so they lap opposite ways.** The band
   is measured in from the art's *right* edge, which `rotate(90deg)` puts at the
   bottom of the on-screen tile and `rotate(-90deg)` puts at the top — so the left
@@ -271,9 +290,9 @@ The long form, with the measurements behind each, is in
 
 ## Status
 
-Everything through **N37** is shipped: all v1 work, six full-repo audit passes
+Everything through **N38** is shipped: all v1 work, six full-repo audit passes
 (A1–A40), the frontend/design pass (F1–F25), the mobile viewport work (R1–R7),
-the hosting work (C1–C10), and the whole feature run N1–N37.
+the hosting work (C1–C10), and the whole feature run N1–N38.
 Per-item history, each with the diagnosis that made it worth writing down, is in
 [docs/history.md](./docs/history.md), newest first. Deferrals are recorded as
 O1–O5 in [ARCHITECTURE.md §12](./ARCHITECTURE.md#12-open-questions--explicit-deferrals).
@@ -290,14 +309,17 @@ is a deliberately accepted granularity cost. Free tier, so persistence stays off
 `getDb()` returns null and every caller handles it. Reasoning and measurements in
 [docs/design-hosted-server.md](./docs/design-hosted-server.md).
 
-**Open** — see [TODO.md](./TODO.md), which is only the open list, and is
-currently **empty**. Four items shipped 2026-08-03: **N19** (a hard bot, plus the
-medium regression the ladder guard caught), **N26** (the nine wind call sites),
-and the two tray-geometry bugs N32 left when it turned two seats' tiles round
-without turning what sits around them — **N36** the right-hand column ran
-backwards and lapped over ink rather than the body band, **N37** the across seat's
-void declaration sat on the near side of its pile. **O3, the central discard pool,
-was closed won't-do** on
+**Open** — see [TODO.md](./TODO.md), which is only the open list, and is one item:
+**N39**, a side tray showing ten tiles by squashing them, filed with the
+measurement and three candidate fixes because the choice between six readable
+tiles and ten squashed ones is a design call. Five items shipped 2026-08-03:
+**N19** (a hard bot, plus the medium regression the ladder guard caught), **N26**
+(the nine wind call sites), the two tray-geometry bugs N32 left when it turned two
+seats' tiles round without turning what sits around them — **N36** the right-hand
+column ran backwards and lapped over ink rather than the body band, **N37** the
+across seat's void declaration sat on the near side of its pile — and **N38**, the
+declaration beside the pile plus the render pass that made opening one 2.4× faster.
+**O3, the central discard pool, was closed won't-do** on
 2026-08-03: two of the three things it was for shipped by other means (N33 opens
 any seat's full pile with a tap; `firstDiscardIsVoid` puts each declaration above
 its own pile), and the third — an empty middle — expired when the well filled with

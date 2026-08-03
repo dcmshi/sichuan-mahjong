@@ -868,7 +868,7 @@ Mobile-first. Portrait phone is the design target; tablets and desktop scale up 
    - Huan and void declaration are whole screens of their own rather than states of this one, so there is no phase indicator here.
    - **Furiten badge:** visible to your own seat if you're in furiten state (skip-Hu locked until next self-draw). Tooltip explains the rule.
    - **First-discard flip panel:** on your first turn, if you separated a tile at void declaration (§5.4), the hand is not discardable and this panel shows that tile plus a "Flip your first discard" button — the one discard you don't get to choose.
-   - **The void declaration is drawn beside each seat's pond, not in it** — face down until its owner flips it, then face up with a white glow. It is the one public statement of what that seat declared, and `PublicPlayer.firstDiscardIsVoid` is what says so (false until the flip). Holding it out of the pile is also what keeps it from scrolling out of an opponent's capped tray. It sits on the **far** side of the pile as that seat sees it, the way a tile pushed out onto the table ends up: above your own tray, and *below* the across seat's, whose whole zone reads away from the top of the screen. The two side seats keep it above their piles as a header — an 80px column has no room to put a second sideways tile beside one, and their own far side is horizontal rather than vertical. (N37)
+   - **The void declaration is drawn beside each seat's pond, not in it** — face down until its owner flips it, then face up with a white glow. It is the one public statement of what that seat declared, and `PublicPlayer.firstDiscardIsVoid` is what says so (false until the flip). Holding it out of the pile is also what keeps it from scrolling out of an opponent's capped tray. It sits on the **far** side of the pile as that seat sees it, the way a tile pushed out onto the table ends up: above your own tray, *below* the across seat's, and for the two side seats *inboard* of theirs — nearest the wall drawn round the well, level with the pile's oldest end. Side-on that costs no height at all, which is the dimension an 80px column has none of. (N37, N38)
    - **Each side seat's pile runs the way that seat lays tiles down, and laps to match** — the left column downward, the right column upward, because the 22.5% band the lap hides is on opposite edges once the two quarter turns are opposite. `.tile-lap-v` and `.tile-lap-v-up`; see [docs/handoff-tile-rendering.md](./docs/handoff-tile-rendering.md). (N36)
 6. **Round end** — per-seat rank, wind, name, a Hu badge and this round's score delta, then match totals, then "Next round" / "End match" (host) or "Leave". Each row expands (`RoundEndRow`) to that seat's revealed hand and melds, its fan list and hand value if it won or its ready state if it didn't, and an itemised list of the payments that produced its delta. Winners' rows start expanded. Spectators get the same rows on their own screen once the round settles.
 7. **Match end** — final standings from the accumulated `matchScores`, then back to the menu. Reached on the server's `matchEnd` frame, which used to reset straight to Landing with no result shown. (F9)
@@ -910,6 +910,17 @@ App-root overlays, mounted alongside whichever screen is active:
 - Round-end: staggered score reveal — position and scale only. Rows used to mount at `opacity: 0`, so anywhere the animation didn't run the scoreboard never appeared. (F11)
 - **Reduced motion:** `MotionConfig reducedMotion="user"` at the root, plus a `prefers-reduced-motion` block in `index.css` that collapses CSS animations and freezes the last-discard pulse into a static glow. (F12)
 - **Event feed** — pungs, kongs and wins from the `view` frame's `events`, with sound for other seats' discards and claims. Before this, `lastEvents` was stored and read by nothing. (F7)
+- **Framer is opt-in per tile, not the default.** A board mid-round carries ~80 tiles, and a `motion.div` each was buying nothing on the ones that never move: `animate` is the constant `y: 0` unless the tile can be selected, and `whileHover`/`whileTap` were already gated on `onClick`. `Tile` renders a plain `<div>` unless `selected` is *passed* (whatever its value — swapping the element type mid-lift would remount and jump instead of spring) or `onClick` is. The per-tile `AnimatePresence` for the long-press 2× preview is mounted only where a long press can fire. (N38)
+
+### 8.6 Render cost
+
+The play screen holds local state — which discard pile is open, whether the history sheet is up — so a tap that changes it re-renders the whole board unless something stops it. Opening a pile measured **126–236ms** from tap to painted modal at 4× CPU throttle on a 390px viewport, for a pile of eight tiles; the modal's own tiles were not the cost, the ~80 already on screen were.
+
+- `Tile` and `TileBack` are `memo`. Their props are primitives plus an optional handler, so the comparison is exact.
+- `OpponentSide`, `OpponentTop` and `OwnZone` are `memo`. `view` is a fresh object on every server push, which is exactly when a zone should redraw.
+- **Their `onOpenPile` handlers are `useCallback` keyed on the seat number**, not on `view`. Without that the memo does nothing: a new handler identity on every render is a prop change. The seat is fixed for the round; `view` is not.
+
+Median tap-to-modal went 225ms → 96ms, worst-of-three 236ms → 106ms.
 
 ---
 
@@ -1185,7 +1196,7 @@ without being built, because everything it was *for* now arrives another way and
 the space it wanted is occupied.
 
 It was three wishes in one. **See every discard**, which the per-seat trays capped
-at 10 a side and 9 across — delivered by N33, where tapping any tray opens the
+at 6 a side and 9 across — delivered by N33, where tapping any tray opens the
 whole pile upright and unlapped, so the cap costs nothing. **See who declared
 what**, which needed a redaction decision — delivered by
 `PublicPlayer.firstDiscardIsVoid`, derived and false until that seat flips it,

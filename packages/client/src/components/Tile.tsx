@@ -1,7 +1,7 @@
 import { tileFromType, tileTypeOf } from '@sichuan-mahjong/engine';
 import type { TileId } from '@sichuan-mahjong/engine';
 import { AnimatePresence, motion } from 'framer-motion';
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import { useLongPress } from '../hooks/useLongPress.js';
 import { useT } from '../i18n/useT.js';
 
@@ -29,6 +29,11 @@ const SIZE_CLASSES = {
 
 export type TileProps = {
   id: TileId;
+  /**
+   * Raised, and animated on the way. Left `undefined` rather than defaulted,
+   * because *being passed at all* is what tells the tile it has a lift to
+   * animate — see `animated` below.
+   */
   selected?: boolean;
   lastDiscard?: boolean;
   onClick?: (id: TileId) => void;
@@ -67,9 +72,27 @@ export function TileRun({
   return <div className={`tile-run tile-lap ${className}`}>{children}</div>;
 }
 
-export function Tile({
+/**
+ * One tile.
+ *
+ * **Memoised, and a plain `<div>` unless it has something to animate.** A board
+ * mid-round carries ~80 of these, and every one of them used to be a
+ * `motion.div` that React re-rendered whenever any state above it changed —
+ * opening a discard pile is a `useState` in `PlayPhase`, so a tap on a tray
+ * rebuilt every tile on the screen before the modal's own tiles even mounted.
+ * Measured at 4× CPU throttle on a 390px viewport, that tap took 126–236ms to
+ * reach a painted modal.
+ *
+ * The props are all primitives (plus an optional handler), so `memo` is exact
+ * rather than a guess. And framer-motion is only earning its keep on a tile that
+ * lifts (`selected`) or answers a gesture (`onClick`): `animate` is otherwise the
+ * constant `y: 0`, and `whileHover`/`whileTap` are already conditional on
+ * `onClick`. Everything else — trays, melds, opponents' zones, the pile modal —
+ * is a static image and now says so.
+ */
+function TileImpl({
   id,
-  selected = false,
+  selected,
   lastDiscard = false,
   onClick,
   size = 'md',
@@ -83,6 +106,10 @@ export function Tile({
   const [preview, setPreview] = useState(false);
   const t = useT();
   const label = tileLabel(id, t);
+  // Passing `selected` at all — even `false` — opts a tile into the lift, and
+  // has to, because swapping the element type mid-lift would remount the tile
+  // and make it jump to its new position instead of springing there.
+  const animated = selected !== undefined || (interactive && onClick !== undefined);
 
   const longPress = useLongPress(() => setPreview(true), onClick ? () => onClick(id) : undefined);
 
@@ -125,63 +152,80 @@ export function Tile({
       }
     : {};
 
+  const className = [
+    // No overflow clipping: in a run the art is drawn wider than its box
+    // and bleeds left over the tile before it.
+    'tile select-none',
+    fill ? 'w-full' : SIZE_CLASSES[size],
+    sideways ? 'tile-sideways' : '',
+    selected ? 'is-selected' : '',
+    lastDiscard ? 'tile-last-discard' : '',
+    voidDiscard ? 'tile-void-discard' : '',
+    clickable ? 'cursor-pointer focus-visible:outline focus-visible:outline-2' : '',
+    clickable ? 'focus-visible:outline-amber-400' : 'cursor-default',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  // alt is the stable internal id, not a name: e2e selectors match on it, and
+  // the wrapper's aria-label is what gets announced.
+  const face = <img src={src} alt={`${suit}-${rank}`} className="tile-face" draggable={false} />;
+
   return (
     <>
-      <motion.div
-        className={[
-          // No overflow clipping: in a run the art is drawn wider than its box
-          // and bleeds left over the tile before it.
-          'tile select-none',
-          fill ? 'w-full' : SIZE_CLASSES[size],
-          sideways ? 'tile-sideways' : '',
-          selected ? 'is-selected' : '',
-          lastDiscard ? 'tile-last-discard' : '',
-          voidDiscard ? 'tile-void-discard' : '',
-          clickable ? 'cursor-pointer focus-visible:outline focus-visible:outline-2' : '',
-          clickable ? 'focus-visible:outline-amber-400' : 'cursor-default',
-        ]
-          .filter(Boolean)
-          .join(' ')}
-        animate={{ y: selected ? -10 : 0 }}
-        {...(interactive && onClick
-          ? { whileHover: { y: selected ? -10 : -3 }, whileTap: { scale: 0.93 } }
-          : {})}
-        transition={{ type: 'spring', stiffness: 500, damping: 22 }}
-        title={label}
-        {...a11yProps}
-        {...pointerProps}
-      >
-        {/* alt is the stable internal id, not a name: e2e selectors match on it,
-            and the wrapper's aria-label is what gets announced. */}
-        <img src={src} alt={`${suit}-${rank}`} className="tile-face" draggable={false} />
-      </motion.div>
+      {animated ? (
+        <motion.div
+          className={className}
+          animate={{ y: selected ? -10 : 0 }}
+          {...(interactive && onClick
+            ? { whileHover: { y: selected ? -10 : -3 }, whileTap: { scale: 0.93 } }
+            : {})}
+          transition={{ type: 'spring', stiffness: 500, damping: 22 }}
+          title={label}
+          {...a11yProps}
+          {...pointerProps}
+        >
+          {face}
+        </motion.div>
+      ) : (
+        <div className={className} title={label} {...a11yProps} {...pointerProps}>
+          {face}
+        </div>
+      )}
 
-      {/* Long-press 2× preview */}
-      <AnimatePresence>
-        {preview && (
-          <motion.div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onPointerUp={() => setPreview(false)}
-          >
+      {/* Long-press 2× preview. Mounted only where a long press can happen at
+          all — an `AnimatePresence` per tile is not free, and a tile with no
+          pointer handlers can never set this state. */}
+      {interactive && (
+        <AnimatePresence>
+          {preview && (
             <motion.div
-              initial={{ scale: 0.5 }}
-              animate={{ scale: 1 }}
-              exit={{ scale: 0.5 }}
-              className={`tile ${SIZE_CLASSES.xl}`}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onPointerUp={() => setPreview(false)}
             >
-              <img src={src} alt={`${suit}-${rank}`} className="tile-face" draggable={false} />
+              <motion.div
+                initial={{ scale: 0.5 }}
+                animate={{ scale: 1 }}
+                exit={{ scale: 0.5 }}
+                className={`tile ${SIZE_CLASSES.xl}`}
+              >
+                {face}
+              </motion.div>
             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>
+      )}
     </>
   );
 }
 
-export function TileBack({
+export const Tile = memo(TileImpl);
+
+/** Memoised for the same reason `Tile` is: a full board draws a lot of these. */
+export const TileBack = memo(function TileBack({
   size = 'md',
   fill = false,
   sideways = false,
@@ -195,4 +239,4 @@ export function TileBack({
       <img src="/tiles/back.svg" alt="" className="tile-face" draggable={false} />
     </div>
   );
-}
+});
