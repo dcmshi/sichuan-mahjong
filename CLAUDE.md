@@ -96,11 +96,15 @@ packages/server/src/
   ws.ts          WebSocket gateway (validates every inbound frame)
 packages/client/src/
   main.tsx       window.__e2e test helpers (VITE_E2E builds only)
+  armedDiscard.ts  N11's verdict: fire, hold, or stand down with a reason
+  helpExamples.ts  the hands How to Play draws, and the fan table it reads
+  screens/PracticeSetup.tsx  bot pace + a level per bot, before practice starts
   store/         Zustand store (mirrors PlayerView)
   session.ts     seat token in localStorage — what makes "Rejoin" work
   prefs.ts       per-player display prefs in localStorage (animation pace)
   ws/client.ts   WsClient singleton + sendAction
   components/DiceOverlay.tsx  the two throws, revealed at the deal
+  components/WallDiagram.tsx  the wall, opened where the dice said (N14)
   components/SettingsMenu.tsx the ⚙ popover: sound + animation pace
 e2e/
   game.spec.ts   full bot round      } chromium only (drive the game via __e2e)
@@ -241,12 +245,45 @@ globally — that is an accessibility signal, this is a taste.
 **Open** (see [TODO.md](./TODO.md), which is only the open list): a central discard
 pool (O3) is still held as a fallback — its redaction question is answered by
 `firstDiscardIsVoid`, but the middle is no longer the empty space that motivated
-it. Then N3 (winning hands in help), **N10** side seats draw upright and the across
-pile does not mirror, **N11** pre-selecting a discard while you wait, **N14** the
-wall diagram empties from the top-left corner whatever the dice said and off one end
-when kong draws take the other, **N16** group a winning hand into the sets that won
-it, and **N19** a hard bot so the ladder has three rungs — the only open item that
-is gameplay work rather than plumbing or layout.
+it. Then **N10** side seats draw upright and the across pile does not mirror,
+**N16** group a winning hand into the sets that won it, **N19** a hard bot so the
+ladder has three rungs, **N20** a `.github/FUNDING.yml` sponsor button, **N21**
+check the *payments* against sources other than the PDF (a real table disputed
+one), and **N22** the wall diagram walks the ring against the turn order because
+the engine does. N19 is the only open item that is gameplay work rather than
+plumbing, layout or research.
+
+**The help draws the hands, and the fan table reads the engine** (2026-08-02, N3).
+The example hands are checked by `isWinningHand` in a test, because a help screen
+confidently drawing a hand that does not win is the one failure a screenshot
+cannot catch — and `HELP_FAN_ORDER` is asserted equal to the keys of
+`COMPATIBILITY`, with the fan values read out of it, so a fan added to the scorer
+fails a test until the help learns about it.
+
+**You can arm a discard while you wait, and it refuses to fire on a real
+decision** (2026-08-02, N11). `armedDiscard.ts` decides; `OwnZone` carries it out.
+The server draws for you, so by the time a discard is legal the drawn tile is
+*already in hand and already in `yourLegalActions`* — an unconditional auto-fire
+would throw away a self-drawn winning tile before you were shown it. So it stands
+down on `declareHuOnDraw`, `declareHeavenly`, `declareKongOnTurn` and any claim,
+and says which. What still fires is the case that is pure latency: a strict void
+discard with no decision in it.
+
+**The wall diagram reads the dice, and empties from both ends** (2026-08-02, N14).
+`wallHead` maps `breakOffset` proportionally onto the 28-stack ring and rotates by
+the viewer's seat in one expression; the walk is a genuine closed ring, which it
+was not before. `PlayerView.wallDrawn` carries the two open ends, because
+`wallRemaining` is a total and cannot say *where* the gaps are — kong replacements
+come off `kongDrawIndex`, which walks back from the far end.
+
+**Practice has a setup screen, and each bot has its own level** (2026-08-02).
+N17 shipped the settings behind a 12px underlined link on the landing screen, in
+the same visual class as "About & Credits"; the first person who went looking did
+not find it and reported the feature as never deployed. It was deployed. **An
+affordance nobody finds has failed, whatever the code does** — so it is
+`screens/PracticeSetup.tsx` now, reached from the Practice button the way Host
+already worked. `PracticePrefs.botLevels` replaced `botLevel`, and
+`parsePracticePrefs` still reads the old shape, because the key is on real devices.
 
 **The bots are configurable per seat, from both entry points, and mid-match**
 (2026-08-02, N15/N17/N18/N5). Empty lobby seats offer **+ Easy / + Medium** directly

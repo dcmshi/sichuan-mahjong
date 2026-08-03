@@ -113,13 +113,30 @@ so it isn't rediscovered as a bug.
   `startNextRound` rotates it after, so the mechanism is cheap; it is the
   ruleset claim that needs to stay honest.
 
-- [ ] **N3 — a "what can I win with" section in How to play.** The help covers
+- [x] **N3 — a "what can I win with" section in How to play.** *(Done — three
+  drawn example hands under "Winning Hand" and the complete fan table under
+  "Scoring", each guarded by a test.)* The help covers
   the flow but never states the shape of a winning hand: four sets plus a pair,
   seven pairs, and which of the ten fan combinations are reachable given the
   void suit. Pure content plus `Tile` to draw examples — no engine, no state.
 
   Three catalogs move together (the parity test enforces it), and the Chinese
   needs a speaker rather than a gloss. **Small, but the writing is the job.**
+
+  **The premise above was half wrong, and that changed the shape of the fix.**
+  `htp.winning.body` already stated both shapes in prose, and `htp.scoring.body`
+  already listed five fans — so a new section would have been the *fourth*
+  restatement of how a hand wins. What was actually missing was the picture and
+  the other five fans. So the examples sit under the prose that already states
+  the rule, the table replaced the partial "Notable fans" list, and no heading
+  was added.
+
+  Two things are guarded rather than eyeballed. `isWinningHand` is run against
+  every drawn example, because a help screen confidently showing a hand that does
+  not win is the one failure a screenshot cannot catch. And `HELP_FAN_ORDER` is
+  asserted equal to the keys of the engine's own `COMPATIBILITY` table, with the
+  fan values read out of it rather than restated — so a fan added to the scorer
+  fails the test until the help learns about it.
 
 - [x] **N4 — put animation pace in the player's hands.** *(Done — `prefs.ts` +
   the ⚙ menu; see [docs/history.md](./docs/history.md) for why the gear replaced
@@ -340,8 +357,10 @@ so it isn't rediscovered as a bug.
   are rendered with a "+N more" indicator rather than silently truncated;
   rotation may free enough room to raise them. **Medium.**
 
-- [ ] **N11 — pre-select a discard while you wait, and back out if a claim
-  appears.** Requested 2026-08-02. Today the hand is inert until it is your
+- [x] **N11 — pre-select a discard while you wait, and back out if a claim
+  appears.** *(Done — `armedDiscard.ts` decides, `OwnZone` carries it out. It
+  fires only on a turn that offers nothing else, and says why when it doesn't.)*
+  Requested 2026-08-02. Today the hand is inert until it is your
   turn: `OwnZone.tsx:192` clears `selectedTile` whenever `canDiscard` goes
   false, so three bot turns pass with nothing to do but watch. Let a player
   arm a tile early; play it the moment it becomes legal.
@@ -378,6 +397,27 @@ so it isn't rediscovered as a bug.
   fired-once guard like `ClaimPanel`'s `sent`, or a slow connection re-arms and
   discards twice. And the mandatory first-discard flip (A35) is not a discard:
   on that turn there is nothing to arm. **Small-medium.**
+
+  **Built aggressive, but with one condition on firing: the turn must offer
+  nothing else.** The item recommends trying the aggressive version and seeing
+  whether it bites — it bites, and the worst bite is not the claim window this
+  item already names. The server draws for you, so by the time a discard is legal
+  the drawn tile is *already in hand and already in `yourLegalActions`*: an
+  unconditional auto-fire would throw away a self-drawn winning tile before you
+  were ever shown it. So `armedDiscardOutcome` stands down on `declareHuOnDraw`,
+  `declareHeavenly` and `declareKongOnTurn` as well as on any claim, and the
+  status line says which. What is left firing automatically is the case the item
+  identified as pure latency: a strict void discard with no decision in it.
+
+  `armedTile` is its own state rather than a flag on `selectedTile`, because that
+  one is cleared by the `canDiscard` effect — the exact condition an armed tile
+  exists to survive. Clearing it on arm is also the fired-once guard.
+
+  **Verified in the running app, both ways**, because the two paths that matter
+  are ones a unit test can only assert about a hand-built view: two automatic
+  discards (the tile left the hand, the tray grew, no tap, no error toast) and one
+  stand-down on a real claim window. The unit tests cover the eleven verdicts,
+  including the drawn-winning-tile case that a played round reaches only by luck.
 
 - [x] **N12 — the event feed keeps its old language after a switch.** *(Done —
   the feed stores `{ id, key, seat }` and calls `t` in the JSX, as `PlayHistory`
@@ -428,7 +468,10 @@ so it isn't rediscovered as a bug.
   actually present when `view.turn === you`, since the current one is a colour
   swap that no test asserts. **Small-medium.**
 
-- [ ] **N14 — the wall empties from the same corner whatever the dice said.**
+- [x] **N14 — the wall empties from the same corner whatever the dice said.**
+  *(Done — the head comes from `breakOffset`, the walk is a real ring, and
+  `wallDrawn` carries both open ends. Verified in a played round: the gap opened
+  at ring 20 and wrapped through the right wall into the bottom one.)*
   Reported 2026-08-02. N2 made the break real in the engine, and the diagram does
   not read it: the throw picks a wall and an indent, the tiles come off from
   there, but on screen the run always starts at the top-left.
@@ -483,6 +526,28 @@ so it isn't rediscovered as a bug.
   the walk a real ring first, and take the two-ended fix with it.** Polish, so
   it can wait — but it is polish that makes N2's dice mean something on screen,
   which is the only place a player can see them. **Small-medium.**
+
+  **Built as recommended, with one simplification.** The head is not derived from
+  `wallSeat` and `indent` separately — `breakOffset` already carries both, so
+  `wallHead` maps it proportionally onto the 28-stack ring and rotates by the
+  viewer's seat in one expression. That covers all three mappings the item
+  listed: the seat-to-side rotation falls out of the same subtraction, and the
+  108-to-56 scale difference is the proportion.
+
+  The ring is genuinely closed now. The old walk ran top left-to-right, right
+  top-to-bottom, bottom **left-to-right**, left top-to-bottom, so it jumped from
+  the bottom-right corner back to the bottom-left. Bottom and left are reversed,
+  which makes each side's exit corner the next side's entry.
+
+  The other end went with it: `wallDrawn: { head, tail }` is projected into both
+  views, so the diagram opens a second gap behind the break as kong replacements
+  come off `kongDrawIndex`. **The engine test asserts the hop into the view, not
+  only the sums** — a projected field that never arrives would just leave the
+  diagram drawing the old way, silently, which is the N6 lesson.
+
+  **Found on the way, and filed rather than fixed: [N22](#open).** With the head
+  pinned to a corner it was invisible that the engine walks the walls in the
+  opposite direction to the turn order.
 
 - [x] **N15 — "You rolls for the wall break".** *(Done — both dice stages now go
   through one `throwerKey` helper, unit-tested, because the browser reaches the
@@ -576,6 +641,23 @@ so it isn't rediscovered as a bug.
   suites fast. A practice pace setting must not change that precedence.
   **Small-medium.**
 
+  **The disclosure was the wrong shape, and a real user proved it (2026-08-02).**
+  The recommendation above — keep the one tap, hide the settings behind a small
+  affordance — shipped as a centred 12px underlined link between the Practice
+  button and "Watch a Game". That put it in the same visual class as
+  "About & Credits" at the foot of the page. The first person to go looking for
+  the feature did not find it and reported it as never deployed; it was deployed,
+  and the bundle on the live URL contained every string. **An affordance nobody
+  finds has failed, whatever the code does.**
+
+  It is now `screens/PracticeSetup.tsx`, a screen of its own reached from the
+  Practice button, matching the flow Host already had. Each of the three bots
+  carries its own level rather than one shared one — three easy opponents is the
+  ladder that teaches least — so `PracticePrefs.botLevel` became `botLevels`, and
+  `parsePracticePrefs` reads the old single-level shape as three of that level,
+  because the key is already on real devices and a pref that fails to parse
+  resets a choice without saying so.
+
 - [x] **N18 — bot difficulty is one setting for the whole table.** *(Done — per-seat
   "+ Easy"/"+ Medium", a level picker on each seated bot, and `addBot` now names
   its seat. Fixed a latent bug on the way: the per-row buttons filled whichever
@@ -636,6 +718,143 @@ so it isn't rediscovered as a bug.
   conflating strength with pace would take the host's setting away. Keep them
   separate. **Medium-large** — this is the only item on this list that is real
   gameplay work rather than plumbing or layout.
+
+- [ ] **N20 — turn on the repository's sponsor button.** Requested 2026-08-02.
+  GitHub Sponsors is already live on the `dcmshi` *profile*; a
+  **`.github/FUNDING.yml`** puts the Sponsor button on this repository too, and
+  the file is the only thing standing between the two.
+
+  It is one file and no code: `github: dcmshi` is the whole of it, and GitHub
+  reads the same keys for the other platforms if any are ever added. Nothing in
+  the build, the release binary or the deployment touches `.github/`, so this
+  cannot break anything that ships.
+
+  **Two things to decide rather than assume**, which is why this is filed instead
+  of done: whether the button should point at the personal profile or at a
+  project-specific tier, and whether a `FUNDING.yml` sits right beside
+  [LICENSE](./LICENSE)'s CC-BY-SA obligation for the tile art — the art is
+  somebody else's work under a share-alike licence, so a funding button on the
+  repository that ships it is worth a deliberate answer rather than a default
+  one. Mention the tile authors in the sponsor blurb if the answer is yes.
+  **Small.**
+
+- [ ] **N21 — check the round's *payments* against sources other than the PDF.**
+  Reported 2026-08-02: a player at a real table said a hand was settled wrong, and
+  on being asked, **it was the payment that was disputed rather than the fan.**
+  That narrows this a long way — the fan calculation and the payment matrix are
+  separate rules, and only the second is in question.
+
+  **Start here: a winner stops paying for the rest of the round.** Every payment
+  loop in `actions.ts` skips `status === 'hu'`, which is Bloody Rules — the round
+  continues past the first Hu and whoever has won sits out. The consequence is
+  that *the same hand is worth less the later it lands*: a self-drawn 8-point hand
+  collects 27 if nobody has won yet and 18 if one player has. That is the single
+  most surprising number on the round-end screen and the likeliest thing to be
+  reported as wrong, whether or not it is.
+
+  **This is a research task with a code deliverable, not a bug fix.** Nothing here
+  is known to be wrong. The engine encodes Novikov's Table 4 and Table 9
+  ([ARCHITECTURE.md §5.8](./ARCHITECTURE.md)), and the compatibility matrix is
+  already property-tested for self-consistency and symmetry. What has never been
+  done is checking our *reading* against an independent one.
+
+  **Where our reading of the payments is a choice rather than a derivation.**
+  The shortlist, in the order worth checking:
+
+  - **A seat that has won pays nothing more** (above). Some readings keep them
+    paying, or have them pay a reduced share.
+  - **Self-draw takes `handValue + 1` from each; a discard win takes `handValue`
+    from the discarder alone.** Two asymmetries in one rule — the `+ 1`, and the
+    fact that a discard win collects from one seat rather than three. An 8-point
+    hand is 27 self-drawn and 8 off a discard, which is a big enough gap that
+    getting either half wrong would be noticed immediately.
+  - **Kong payments: concealed 2 from each, exposed 2 from the discarder,
+    promoted 1 from each.** Plus the shoot-after-kong refund, which returns the
+    discarder's most recent kong group — an unusual rule, and one that makes a
+    round-end column look wrong if you are not expecting it.
+  - **False Hu is a flat 8 to each opponent**, deliberately not scaled by
+    `fanCap` (an earlier version scaled it; §5.9 records the fix).
+  - **Wall-end bu-ting payouts use TMV**, the theoretical max of a ready hand,
+    which is a computed number no player can check by eye.
+  - **`fanCap: 3`**, so no hand value exceeds 8. Several Sichuan variants cap at
+    4 or 5, which changes every payment above it. Cheapest thing to rule out.
+
+  **Method.** Work each disputed case as a worked example against at least two
+  outside sources — the secondary list in
+  [ARCHITECTURE.md §14](./ARCHITECTURE.md#14-references) is the starting set, and
+  [themahjong.guide](https://themahjong.guide/) is now beside the PDF. Record the
+  disagreements in `docs/` with a decision per item: match the source, or keep
+  ours and say why. A divergence that is *deliberate* is not a bug, but an
+  undocumented one is.
+
+  **The unit tests are done, and are the place to put the answers.** Two files,
+  both added 2026-08-02, both driving `applyAction` rather than restating
+  arithmetic:
+
+  - **`packages/engine/tests/payments.test.ts`** — every settlement path with all
+    four seats' net movement asserted: self-draw, self-draw with a seat already
+    out, discard win, the three kong subtypes, and the false-Hu penalty. This is
+    the file the report is about.
+  - **`packages/engine/tests/scoring-cases.test.ts`** — worked hands stated in
+    readable form with their fan and their points, so the other half of a dispute
+    can be checked too.
+
+  Both pin *current* behaviour. That is the point: none of it is known to be
+  wrong, so the tests exist to make a future change visible and to give the
+  research something concrete to disagree with. When a case is settled against an
+  outside source, it becomes a line in one of those files. **Medium.**
+
+- [ ] **N22 — the wall diagram walks the ring against the turn order.** Found
+  while building N14, and deliberately *not* fixed there. The engine dismantles
+  walls in increasing seat order (`breakOffset = wallSeat * 27 + …`, then forward
+  through the array), while `nextActiveSeat` advances the turn by `(from + 3) % 4`
+  — decreasing seat order. So on screen the wall opens up one way round the table
+  and play travels the other.
+
+  At a real table both go the same way. N14 made the diagram read the engine
+  faithfully, which was the right call for that item — the alternative was a
+  diagram that shows something the engine is not doing — but it means the
+  discrepancy is now visible rather than hidden behind a fixed corner.
+
+  **It changes no distribution**: the wall is a uniform shuffle and the break is a
+  rotation of it, so reversing the direction is ritual, not fairness. The cost is
+  the same one N2 paid — **the canned replay corpus has to be regenerated**,
+  because it changes which tiles a given seed deals. That is the whole reason this
+  is filed rather than done. **Small, with a deliberate test churn.**
+
+- [ ] **N23 — French, Spanish and Japanese.** Requested 2026-08-02. The catalog is
+  three languages today (`en`, `zh-Hans`, `zh-Hant`) and the machinery is already
+  language-agnostic: `Lang` is a union, `LANGS` drives the switch, and
+  `catalog.test.ts` enforces key parity across every entry. Adding a language is a
+  new `Dict` and a `LANGS` row — no component changes at all.
+
+  **The work is the writing, not the plumbing**, and there is more of it than the
+  key count suggests:
+
+  - **~330 keys**, of which `help.ts` is the long-form half — the whole of How to
+    Play plus the About screen. That part needs prose, not glossing.
+  - **The tile and rule vocabulary has no settled translation in any of the
+    three.** 碰 / 杠 / 胡 / 定缺 / 清一色 are the words the game is played in; French,
+    Spanish and Japanese mahjong communities each borrow differently, and
+    Japanese has its *own* established riichi vocabulary (ポン, カン, 和了) whose
+    terms mean subtly different things in a Sichuan ruleset. Picking "the riichi
+    word" is a decision with a wrong answer, not a lookup.
+  - **A speaker has to review each one.** [N12](#open) is the standing reminder
+    that this catalog is user-facing text in a game people play together — a
+    machine-translated 定缺 that reads as "missing suit" would be worse than
+    English.
+
+  **Two things to settle before starting.** Whether the tile *names* localise at
+  all (`tile.man` is "Characters" in English and 万 in both Chinese catalogs —
+  Japanese would presumably want 萬子, French probably keeps the Chinese
+  character); and whether `suit.*.full`, which currently pairs the glyph with a
+  romanisation, is right for a Japanese reader who reads the glyph directly.
+
+  **Cheap to guard, once written.** `catalog.test.ts` already fails on any missing
+  or extra key, and `help-examples.test.ts` and `dice-overlay.test.ts` assert that
+  specific keys resolve in every language — so a new catalog is caught the moment
+  it is incomplete rather than at runtime. Extend the language lists in those
+  tests along with `Lang`. **Medium-large, and mostly not a coding task.**
 
 ---
 

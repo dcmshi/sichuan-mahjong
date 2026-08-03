@@ -11,6 +11,124 @@ file had reached 1,566 lines of which two were actually open.
 
 ---
 
+## ✅ Help that shows a hand, a discard you can arm early, and a wall that reads the dice (N3, N11, N14 — 2026-08-02)
+
+Three items, plus a design correction a real user forced and a pile of tests the
+same user asked for.
+
+**N3 — the help never showed a winning hand, but it did describe one twice.**
+The item's premise was half wrong: `htp.winning.body` already stated both shapes
+in prose and `htp.scoring.body` already listed five of the ten fan. A new "what
+can I win with" section would have been the *fourth* restatement of how a hand
+wins. What was actually missing was the picture and the other five fan.
+
+So the illustrations sit under the prose that already states the rule, and the
+complete fan table replaced the partial "Notable fans" list. No heading was added.
+Three hands are drawn — four sets plus a pair, seven pairs, and a full flush —
+grouped by set rather than laid out flush, because the grouping *is* the lesson.
+
+Two things are guarded rather than eyeballed. `isWinningHand` runs against every
+drawn example, because **a help screen confidently drawing a hand that does not
+win is the one failure a screenshot cannot catch.** And `HELP_FAN_ORDER` is
+asserted equal to the keys of the engine's own `COMPATIBILITY` table, with the fan
+values read out of it rather than restated — so a fan added to the scorer fails a
+test until the help learns about it.
+
+**N11 — arming a discard, and the two ways it could silently cost you a hand.**
+The item recommended trying the aggressive version (fire the moment it is legal)
+and seeing whether it bites. It bites, and the worse bite is not the claim window
+the item already names.
+
+**The server draws for you.** By the time a discard is legal the drawn tile is
+already in hand and its consequences are already in `yourLegalActions` — so an
+unconditional auto-fire would throw away a self-drawn winning tile *before the
+player was ever shown it*. `armedDiscardOutcome` therefore stands down on
+`declareHuOnDraw`, `declareHeavenly` and `declareKongOnTurn` as well as on any
+claim, and the status line says which. What still fires automatically is exactly
+the case the item identified as pure latency: a strict void discard with no
+decision in it.
+
+`armedTile` is its own state rather than a flag on `selectedTile`, because that
+one is cleared by the `canDiscard` effect — the exact condition an armed tile
+exists to survive. Clearing it on arm is also the fired-once guard.
+
+Verified both ways in the running app, because the two paths that matter are ones
+a unit test can only assert about a hand-built view: two automatic discards (tile
+left the hand, tray grew, no tap, no error toast) and one stand-down on a real
+claim window. Eleven verdicts are unit-tested, including the drawn-winning-tile
+case a played round reaches only by luck.
+
+**N14 — the wall diagram now reads the dice, and empties from both ends.**
+`wallHead` maps `breakOffset` proportionally onto the 28-stack ring and rotates by
+the viewer's seat in one expression, which covers all three mappings the item
+listed at once — the seat-to-side rotation falls out of the same subtraction, and
+the 108-to-56 scale difference *is* the proportion.
+
+The ring is genuinely closed now. The old walk ran top left-to-right, right
+top-to-bottom, bottom **left-to-right**, left top-to-bottom, so it jumped from the
+bottom-right corner back to the bottom-left. That is invisible while the head is
+pinned to a corner and stops being invisible the moment the dice move it. Bottom
+and left are reversed, which makes each side's exit corner the next side's entry.
+
+`wallDrawn: { head, tail }` is projected into both views so the diagram opens a
+second gap behind the break as kong replacements come off `kongDrawIndex`. **The
+engine test asserts the hop into the view, not only the sums** — a projected field
+that never arrives would just leave the diagram drawing the old way, silently.
+Measured in a played round: the gap opened at ring 20 and wrapped through the
+right wall into the bottom one.
+
+Filed rather than fixed on the way out: **N22**, the engine dismantles the walls in
+the opposite direction to the turn order. Invisible while the head sat in a corner.
+
+---
+
+## ✅ An affordance nobody found, and the payments a real player disputed (2026-08-02)
+
+Two corrections that came from someone actually using the thing.
+
+**The practice bot settings shipped, and were reported as never deployed.**
+N17's recommendation — keep practice one tap, hide the settings behind a small
+affordance — shipped as a centred 12px underlined link between the Practice button
+and "Watch a Game". That put it in the same visual class as "About & Credits" at
+the foot of the page. The first person who went looking for the feature did not
+find it and said it was not live. It *was* live: the bundle on the public URL
+contained `Bot settings`, `sm-practice`, `setBotDifficulty` and `setBotSpeed`.
+
+**An affordance nobody finds has failed, whatever the code does.** It is now
+`screens/PracticeSetup.tsx`, a screen of its own reached from the Practice button,
+matching the flow Host already had. Each of the three bots carries its own level
+rather than one shared one — three easy opponents is the ladder that teaches least
+— so `PracticePrefs.botLevel` became `botLevels`, and `parsePracticePrefs` reads
+the old single-level shape as three of that level, because **the key is already on
+real devices and a pref that fails to parse resets a choice without saying so.**
+
+Two smaller things from the same pass: "Watch a Game" moved up beside Join as a
+real button rather than a low-contrast row under the hint, and the claim-window
+presets were reordered to Relaxed / Normal / Quick so the row runs
+slowest-to-fastest like Bot pace directly above it. Ordered the other way it read
+as the same kind of control running backwards, which is worse than either order on
+its own. The values did not change — only the row.
+
+**A payment was disputed at a real table, so the payments got tests.**
+The report was specifically about the *settlement*, not the fan.
+`packages/engine/tests/payments.test.ts` now carries every path through
+`applyAction` and asserts all four seats' net movement: self-draw, self-draw with
+a seat already out, a discard win, the three kong subtypes, and the false-Hu
+penalty. `scoring-cases.test.ts` does the same for fan and hand value, as worked
+hands a human can check against another source.
+
+**The rule most likely to be reported as wrong is that a winner stops paying.**
+Every payment loop in `actions.ts` skips `status === 'hu'` — Bloody Rules, the
+round continues past the first Hu — so *the same hand is worth less the later it
+lands*: a self-drawn 8-point hand collects 27 if nobody has won yet and 18 if one
+player has. Both are now asserted side by side.
+
+Nothing was changed in the engine. The tests pin current behaviour so the research
+in **N21** has something concrete to disagree with, and so a future change is
+visible.
+
+---
+
 ## ✅ Who controls the bots, and a sentence that agrees with itself (N15, N17, N18, N5 — 2026-08-02)
 
 Four items, three of them about the same thing: the bots were configured once, by
