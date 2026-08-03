@@ -37,6 +37,7 @@ function appendHistory(prev: HistoryItem[], events: GameEvent[]): HistoryItem[] 
 export type Screen =
   | 'landing'
   | 'hostSetup'
+  | 'practiceSetup'
   | 'joinForm'
   | 'lobby'
   | 'game'

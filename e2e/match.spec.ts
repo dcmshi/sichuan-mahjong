@@ -52,10 +52,13 @@ test('two-round match vs bots, then end match', async ({ page }) => {
   await page.setViewportSize({ width: 420, height: 820 });
   await page.goto(BASE);
 
-  // Practice mode creates the lobby, adds 3 bots, and starts — all server-side
-  // in one flow (no manual addBot clicks / lobby reconnect race). The practice
-  // host is seat 0, so the host-only Next Round / End Match controls apply.
-  await page.click('text=Practice (vs Bots)');
+  // Practice creates the lobby, adds 3 bots, and starts — all server-side in one
+  // flow (no manual addBot clicks / lobby reconnect race). The practice host is
+  // seat 0, so the host-only Next Round / End Match controls apply. It now has a
+  // setup screen in front of it, the way Host does; the defaults are what this
+  // suite wants, so it is one extra tap rather than a form to fill in.
+  await page.getByRole('button', { name: /Practice \(vs Bots\)/i }).click();
+  await page.getByRole('button', { name: /Start Practice/i }).click();
   await page.waitForFunction(
     () => (window as unknown as { __e2e: E2E }).__e2e.getScreen() === 'game',
     null,

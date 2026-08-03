@@ -25,6 +25,7 @@ const en: Dict = {
   'common.backToMenu': 'Back to menu',
   'common.tryAgain': 'Try again',
   'common.close': 'Close',
+  'common.back': 'Back',
 
   'landing.host': 'Host a Game',
   'landing.join': 'Join a Game',
@@ -36,12 +37,19 @@ const en: Dict = {
   'landing.hostHint':
     'Create a room and share the 4-letter code. Friends just open the link — nothing to install.',
   'landing.about': 'About & Credits',
-  'landing.rejoin': 'Rejoin {code}',
+  'landing.rejoin': 'Rejoin Room: {code}',
   'landing.rejoining': 'Rejoining…',
   'landing.practiceName': 'You',
   'landing.practiceSetup': 'Bot settings',
-  'landing.practiceSetupHint':
-    'Remembered on this device. Practice seats three bots at this level and pace.',
+  'landing.practiceSetupHint': 'Remembered on this device, so next time is two taps.',
+
+  'practice.title': 'Practice vs Bots',
+  'practice.hint':
+    'You take the fourth seat against three bots. Nothing here is sent to anyone else.',
+  'practice.opponents': 'Opponents',
+  'practice.opponentsHint': 'Each bot plays at its own level — mix them for a real ladder.',
+  'practice.botN': 'Bot {n}',
+  'practice.start': 'Start Practice',
 
   'join.title': 'Join a Game',
   'join.code': 'CODE',
@@ -272,6 +280,7 @@ const zhHans: Dict = {
   'common.backToMenu': '返回主菜单',
   'common.tryAgain': '重试',
   'common.close': '关闭',
+  'common.back': '返回',
 
   'landing.host': '创建房间',
   'landing.join': '加入游戏',
@@ -282,11 +291,18 @@ const zhHans: Dict = {
   'landing.watch': '👀 观战',
   'landing.hostHint': '创建房间并分享 4 位房间码。好友只需打开链接，无需安装任何东西。',
   'landing.about': '关于与致谢',
-  'landing.rejoin': '重新加入 {code}',
+  'landing.rejoin': '重新加入房间：{code}',
   'landing.rejoining': '重新加入中…',
   'landing.practiceName': '你',
   'landing.practiceSetup': '机器人设置',
-  'landing.practiceSetupHint': '保存在本机。练习会按此难度和节奏安排三个机器人。',
+  'landing.practiceSetupHint': '设置保存在本机，下次两下即可开局。',
+
+  'practice.title': '人机练习',
+  'practice.hint': '你坐第四家，对手是三个机器人。这里的设置不会发给任何人。',
+  'practice.opponents': '对手',
+  'practice.opponentsHint': '每个机器人各自设定难度——搭配着来才有梯度。',
+  'practice.botN': '机器人 {n}',
+  'practice.start': '开始练习',
 
   'join.title': '加入游戏',
   'join.code': '房间码',
@@ -511,6 +527,7 @@ const zhHant: Dict = {
   'common.backToMenu': '返回主選單',
   'common.tryAgain': '重試',
   'common.close': '關閉',
+  'common.back': '返回',
 
   'landing.host': '建立房間',
   'landing.join': '加入遊戲',
@@ -521,11 +538,18 @@ const zhHant: Dict = {
   'landing.watch': '👀 觀戰',
   'landing.hostHint': '建立房間並分享 4 位房間碼。好友只需開啟連結，無需安裝任何東西。',
   'landing.about': '關於與致謝',
-  'landing.rejoin': '重新加入 {code}',
+  'landing.rejoin': '重新加入房間：{code}',
   'landing.rejoining': '重新加入中…',
   'landing.practiceName': '你',
   'landing.practiceSetup': '機器人設定',
-  'landing.practiceSetupHint': '儲存在本機。練習會按此難度和節奏安排三個機器人。',
+  'landing.practiceSetupHint': '設定儲存在本機，下次兩下即可開局。',
+
+  'practice.title': '人機練習',
+  'practice.hint': '你坐第四家，對手是三個機器人。這裡的設定不會發給任何人。',
+  'practice.opponents': '對手',
+  'practice.opponentsHint': '每個機器人各自設定難度——搭配著來才有梯度。',
+  'practice.botN': '機器人 {n}',
+  'practice.start': '開始練習',
 
   'join.title': '加入遊戲',
   'join.code': '房間碼',

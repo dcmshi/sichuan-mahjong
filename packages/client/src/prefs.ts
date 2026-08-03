@@ -106,30 +106,51 @@ export function persistAnimationPrefs(prefs: AnimationPrefs): void {
  * silently took every default and a solo player had no way to slow the bots down
  * — which is the setting that matters most in the mode you learn in.
  */
+export type BotLevel = 'easy' | 'medium';
+
+/** One level per bot seat — seats 1, 2 and 3, in that order. */
+export type BotLevels = [BotLevel, BotLevel, BotLevel];
+
 export type PracticePrefs = {
   botSpeed: 'slow' | 'normal' | 'fast';
-  botLevel: 'easy' | 'medium';
+  botLevels: BotLevels;
 };
 
-export const DEFAULT_PRACTICE_PREFS: PracticePrefs = { botSpeed: 'normal', botLevel: 'easy' };
+export const DEFAULT_PRACTICE_PREFS: PracticePrefs = {
+  botSpeed: 'normal',
+  botLevels: ['easy', 'easy', 'easy'],
+};
 
 export function isBotSpeed(v: unknown): v is PracticePrefs['botSpeed'] {
   return v === 'slow' || v === 'normal' || v === 'fast';
 }
 
-export function isBotLevel(v: unknown): v is PracticePrefs['botLevel'] {
+export function isBotLevel(v: unknown): v is BotLevel {
   return v === 'easy' || v === 'medium';
 }
 
 const PRACTICE_KEY = 'sm-practice';
 
-/** Exported for the test: the loader needs a DOM, this doesn't. */
+/**
+ * Exported for the test: the loader needs a DOM, this doesn't.
+ *
+ * Reads the older single-`botLevel` shape too. That is not politeness — the key
+ * is already on real devices, and a stored pref that silently fails to parse
+ * resets a player's choice without telling them.
+ */
 export function parsePracticePrefs(value: unknown): PracticePrefs {
   if (typeof value !== 'object' || value === null) return DEFAULT_PRACTICE_PREFS;
   const v = value as Record<string, unknown>;
+
+  const fallback: BotLevel = isBotLevel(v.botLevel) ? v.botLevel : 'easy';
+  const stored = Array.isArray(v.botLevels) ? v.botLevels : [];
+  const botLevels = [0, 1, 2].map(i =>
+    isBotLevel(stored[i]) ? (stored[i] as BotLevel) : fallback,
+  ) as BotLevels;
+
   return {
     botSpeed: isBotSpeed(v.botSpeed) ? v.botSpeed : DEFAULT_PRACTICE_PREFS.botSpeed,
-    botLevel: isBotLevel(v.botLevel) ? v.botLevel : DEFAULT_PRACTICE_PREFS.botLevel,
+    botLevels,
   };
 }
 

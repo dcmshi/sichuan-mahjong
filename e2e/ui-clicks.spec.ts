@@ -38,10 +38,11 @@ test('opening played via real UI clicks (huan tiles, void suit, discard tap)', a
 
   await page.goto(BASE);
 
-  // Practice mode auto-creates a lobby + 3 bots and starts the game. Matched in
-  // full rather than on the word: the landing screen now also carries a bot-setup
-  // disclosure beside this button, and a loose match hit both.
+  // Practice has a setup screen in front of it now, the way Host does — pick the
+  // pace and each bot's level, then start. The defaults are what this suite
+  // wants, so it is one extra tap rather than a form to fill in.
   await page.getByRole('button', { name: /Practice \(vs Bots\)/i }).click();
+  await page.getByRole('button', { name: /Start Practice/i }).click();
   // Practice runs the canonical ruleset, where the deal opens on the void
   // declaration — 換三張 is a house rule and off by default, so the huan screen
   // only appears if a host turned it on. `house-rules.spec.ts` taps through it

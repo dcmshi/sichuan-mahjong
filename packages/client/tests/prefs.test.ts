@@ -101,34 +101,61 @@ describe('isAnimationSpeed', () => {
  * choice, and re-prompting would spend the one-tap start that makes it worth having.
  */
 describe('practice prefs (N17)', () => {
-  it('defaults to normal pace and easy bots', () => {
-    expect(DEFAULT_PRACTICE_PREFS).toEqual({ botSpeed: 'normal', botLevel: 'easy' });
-  });
-
-  it('round-trips a stored choice', () => {
-    expect(parsePracticePrefs({ botSpeed: 'slow', botLevel: 'medium' })).toEqual({
-      botSpeed: 'slow',
-      botLevel: 'medium',
+  it('defaults to normal pace and three easy bots', () => {
+    expect(DEFAULT_PRACTICE_PREFS).toEqual({
+      botSpeed: 'normal',
+      botLevels: ['easy', 'easy', 'easy'],
     });
   });
 
-  // Per field, not wholesale: a build that predates one key still restores the
-  // half it does carry.
+  it('round-trips a mixed table', () => {
+    expect(
+      parsePracticePrefs({ botSpeed: 'slow', botLevels: ['medium', 'easy', 'medium'] }),
+    ).toEqual({ botSpeed: 'slow', botLevels: ['medium', 'easy', 'medium'] });
+  });
+
+  // The key is already on real devices from the single-level build. A stored
+  // pref that silently fails to parse resets a player's choice without saying so,
+  // so the old shape has to still mean something.
+  it('reads the older single-level shape as three of that level', () => {
+    expect(parsePracticePrefs({ botSpeed: 'fast', botLevel: 'medium' })).toEqual({
+      botSpeed: 'fast',
+      botLevels: ['medium', 'medium', 'medium'],
+    });
+  });
+
   it('falls back field by field', () => {
     expect(parsePracticePrefs({ botSpeed: 'slow' })).toEqual({
       botSpeed: 'slow',
-      botLevel: 'easy',
+      botLevels: ['easy', 'easy', 'easy'],
     });
-    expect(parsePracticePrefs({ botLevel: 'medium' })).toEqual({
+    expect(parsePracticePrefs({ botLevels: ['medium', 'medium', 'medium'] })).toEqual({
       botSpeed: 'normal',
-      botLevel: 'medium',
+      botLevels: ['medium', 'medium', 'medium'],
     });
+  });
+
+  it('fills a short or ragged array rather than trusting its length', () => {
+    expect(parsePracticePrefs({ botLevels: ['medium'] }).botLevels).toEqual([
+      'medium',
+      'easy',
+      'easy',
+    ]);
+    expect(parsePracticePrefs({ botLevels: ['medium', 'hard', null] }).botLevels).toEqual([
+      'medium',
+      'easy',
+      'easy',
+    ]);
+    // A longer array is truncated to the three bot seats.
+    expect(parsePracticePrefs({ botLevels: Array(9).fill('medium') }).botLevels).toHaveLength(3);
   });
 
   it('rejects values the server would not accept anyway', () => {
     for (const junk of ['fastest', 'NORMAL', 0, null, true, {}, []]) {
       expect(parsePracticePrefs({ botSpeed: junk }).botSpeed, String(junk)).toBe('normal');
-      expect(parsePracticePrefs({ botLevel: junk }).botLevel, String(junk)).toBe('easy');
+      expect(parsePracticePrefs({ botLevels: [junk, junk, junk] }).botLevels, String(junk)).toEqual(
+        ['easy', 'easy', 'easy'],
+      );
     }
   });
 

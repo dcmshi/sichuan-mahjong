@@ -274,8 +274,12 @@ export function HostSetup() {
       <div className="bg-black/20 rounded-xl px-3 py-2.5 text-sm">
         <div className="font-semibold">{t('host.claimWindow')}</div>
         <div className="text-xs text-green-300 leading-snug mb-2">{t('host.claimWindowHint')}</div>
+        {/* Relaxed first, so this row runs slowest-to-fastest like Bot pace
+            directly above it. Ordered quick-first it read as the same kind of
+            control running the opposite way, which is worse than either order on
+            its own. The values are unchanged — this is the row, not the map. */}
         <div className="flex gap-1.5">
-          {(['quick', 'normal', 'relaxed'] as const).map(len => (
+          {(['relaxed', 'normal', 'quick'] as const).map(len => (
             <button
               key={len}
               type="button"

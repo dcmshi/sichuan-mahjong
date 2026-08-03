@@ -182,7 +182,11 @@ test('play fits the viewport, and the round-end controls stay reachable', async 
   const g = e2e(page);
 
   await page.goto(BASE);
-  await page.click('text=Practice (vs Bots)');
+  // Practice now has its own setup screen, the way Host does: pick the pace and
+  // each bot's level, then start. The defaults are what these suites want, so
+  // this is one extra tap rather than a form to fill in.
+  await page.getByRole('button', { name: /Practice \(vs Bots\)/i }).click();
+  await page.getByRole('button', { name: /Start Practice/i }).click();
   // Practice runs the canonical ruleset, which opens on the void declaration.
   // 換三張 is an opt-in house rule, so only submit through it if a host enabled it.
   await expect.poll(() => g.getPhase(), { timeout: 30_000 }).toMatch(/^(huan|voidDeclare)$/);

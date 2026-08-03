@@ -8,6 +8,7 @@ import { JoinForm } from './screens/JoinForm.js';
 import { Landing } from './screens/Landing.js';
 import { Lobby } from './screens/Lobby.js';
 import { MatchEnd } from './screens/MatchEnd.js';
+import { PracticeSetup } from './screens/PracticeSetup.js';
 import { RoundEnd } from './screens/RoundEnd.js';
 import { Spectate } from './screens/Spectate.js';
 import { SpectateForm } from './screens/SpectateForm.js';
@@ -21,6 +22,8 @@ function CurrentScreen() {
       return <Landing />;
     case 'hostSetup':
       return <HostSetup />;
+    case 'practiceSetup':
+      return <PracticeSetup />;
     case 'joinForm':
       return <JoinForm />;
     case 'lobby':
