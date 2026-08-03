@@ -1167,6 +1167,37 @@ so it isn't rediscovered as a bug.
   Cheap to test without a DOM: the label belongs in a pure helper beside
   `tileLabel`, which is exactly what `armedDiscard.ts` and `feedLineFor` do.
   **Small.**
+- [ ] **N30 - the void screen chooses your first discard for you.** Reported
+  2026-08-03: the player should pick which tile goes first, "since discard order
+  might matter here".
+
+  **It does, and the screen already sends a specific tile without asking.**
+  `declareVoid` carries `firstDiscard: TileId | null`, and the engine holds that
+  exact tile out of the hand as `pendingFirstDiscard` — it is set aside face down at
+  the declaration and flipped as your opening play (A35). `VoidDeclarePhase.submit`
+  fills it with `counts[chosenSuit][0]`: **the first tile of that suit in whatever
+  order the hand happens to be in.** So the one discard the player is told they do
+  not get to choose is in fact chosen, silently, by sort order.
+
+  It matters because a first discard is a real decision. It is the tile three
+  opponents get their first claim window on, and which void tile you shed first is
+  exactly the kind of choice the rest of the game lets you make. `9 man` and `2 man`
+  are not interchangeable openings.
+
+  **The shape asked for:** tap the tile, not the button. The tapped tile lifts
+  slightly, and its whole suit still marks the way it does today — so the tap says
+  both "this suit" and "this tile first" in one gesture. **Keep the three buttons as
+  a summary** rather than the control: they carry the per-suit counts, which is the
+  comparison the screen exists to support, and losing that would trade one problem
+  for another.
+
+  Two things to get right rather than assume. `data-void-tile` is what
+  `e2e/*.spec.ts` counts marked tiles with, and the buttons currently *are* the
+  selection mechanism there — check which specs drive this screen before changing
+  what a tap does. And a suit you hold none of has no tile to tap, which is the
+  `usedIndicator` case: the button has to stay tappable on its own for that, so the
+  two paths are "tap a tile" and "tap an empty suit", not one replacing the other.
+  **Small-medium.**
 - [ ] **N29 - your own hand still shows 13 tiles after you Hu on a discard.** Found
   2026-08-03 by asking whether the "extra tile not showing in the hand" bug had been
   fixed. **It was - in one of the two places it appears.**
