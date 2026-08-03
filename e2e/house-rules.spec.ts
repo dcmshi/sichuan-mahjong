@@ -35,11 +35,12 @@ test('a host can turn on Swap three tiles, and the deal then opens on huan', asy
   await toggle.click();
   await expect(toggle).toHaveAttribute('aria-checked', 'true');
 
-  // One "+ Bot" per empty seat, so take the first each time — the count drops as
-  // seats fill.
+  // Each empty seat offers its level directly ("+ Easy" / "+ Medium") rather than
+  // one "+ Bot" plus a shared mode selector, so the level a bot is added at is the
+  // tap itself. Take the first each time — the count drops as seats fill. (N18)
   for (let i = 0; i < 3; i++) {
     await page
-      .getByRole('button', { name: /\+ Bot/i })
+      .getByRole('button', { name: /\+ Easy/i })
       .first()
       .click();
     await page.waitForTimeout(200);

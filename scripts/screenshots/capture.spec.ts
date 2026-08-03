@@ -66,7 +66,10 @@ test('regenerate docs screenshots', async ({ page, browser }) => {
   expect(code).toHaveLength(4);
 
   for (let i = 0; i < 3; i++) {
-    await page.click('text=+ Bot');
+    await page
+      .getByRole('button', { name: /\+ Easy/i })
+      .first()
+      .click();
     await page.waitForTimeout(250);
   }
   await expect(page.locator('text=Start Game')).toBeEnabled({ timeout: 10_000 });

@@ -100,6 +100,20 @@ export function houseRules(rules: unknown): Partial<GameConfig> {
 export const CLAIM_WINDOWS = { quick: 8000, normal: 15_000, relaxed: 30_000 } as const;
 export type ClaimWindow = keyof typeof CLAIM_WINDOWS;
 
+/** A seat index off the wire: 0..3, and an actual integer. */
+export function isSeat(v: unknown): v is Seat {
+  return v === 0 || v === 1 || v === 2 || v === 3;
+}
+
+/**
+ * A bot level off the wire. Only the two that exist are accepted; anything else is
+ * easy, which is the gentler failure — a crafted frame must not be able to seat an
+ * opponent whose difficulty string no dispatch in `room.ts` recognises. (N18)
+ */
+export function botDifficultyFrom(v: unknown): 'easy' | 'medium' {
+  return v === 'medium' ? 'medium' : 'easy';
+}
+
 export function claimWindowMsFrom(v: unknown): number {
   return v === 'quick' || v === 'normal' || v === 'relaxed'
     ? CLAIM_WINDOWS[v as ClaimWindow]
@@ -424,21 +438,48 @@ function handleLobbyMessage(
       }
       const lobby = getLobby(code);
       if (!lobby) return;
-      const open = findOpenSeat(lobby);
-      if (open === null) {
+      // An asked-for seat is honoured only if it exists and is free; anything else
+      // falls back to the first open one, which is what this always did. Validated
+      // rather than trusted — `seat` is off the wire like every other field.
+      const asked = msg.t === 'addBot' ? msg.seat : undefined;
+      const wanted = isSeat(asked) && lobby.slots[asked] === null ? asked : findOpenSeat(lobby);
+      if (wanted === null) {
         send(_ws, { t: 'error', code: 'lobby_full', message: 'No open seats.' });
         return;
       }
-      const difficulty = msg.t === 'addBot' ? msg.difficulty : 'easy';
-      const botToken = issueToken(code, open, 'player');
-      const label = difficulty === 'medium' ? 'Bot (Hard)' : `Bot ${open + 1}`;
-      lobby.slots[open] = {
-        name: label,
+      const difficulty = msg.t === 'addBot' ? botDifficultyFrom(msg.difficulty) : 'easy';
+      const botToken = issueToken(code, wanted, 'player');
+      lobby.slots[wanted] = {
+        // Just the seat. The level used to be baked in as "Bot (Hard)" — for the
+        // *medium* bot, which was already wrong and gets wronger once N19 adds a
+        // real hard one. `LobbyPlayer.difficulty` is already on the wire, so the
+        // lobby shows the level from that and the name stays stable in the feed
+        // and the move history. (N18)
+        name: `Bot ${wanted + 1}`,
         isBot: true,
         token: botToken,
         connected: true,
         difficulty,
       };
+      broadcastLobbyTo(code, hostToken);
+      break;
+    }
+
+    case 'setBotDifficulty': {
+      if (!isHost) {
+        send(_ws, { t: 'error', code: 'not_host', message: 'Only the host can set bot level.' });
+        return;
+      }
+      const lobby = getLobby(code);
+      if (!lobby) return;
+      // Integer check before the index: `slots["0"]` reaches element 0 on a JS
+      // array, so a string seat off the wire would otherwise resolve.
+      const target = isSeat(msg.seat) ? lobby.slots[msg.seat] : undefined;
+      if (!target?.isBot) {
+        send(_ws, { t: 'error', code: 'not_bot', message: 'That seat is not a bot.' });
+        return;
+      }
+      target.difficulty = botDifficultyFrom(msg.difficulty);
       broadcastLobbyTo(code, hostToken);
       break;
     }
@@ -501,6 +542,19 @@ function handleGameMessage(_ws: WebSocket, room: GameRoom, seat: Seat, msg: Clie
       }
       room.endMatch();
       return;
+    case 'setBotSpeed': {
+      if (seat !== 0) {
+        send(_ws, { t: 'error', code: 'not_host', message: 'Only the host can set the bot pace.' });
+        return;
+      }
+      // Narrowed like every other value off the wire — `botSpeedFrom` takes the
+      // whole message shape, so hand it the field under the name it expects.
+      const paced = room.setBotSpeed(botSpeedFrom({ botSpeed: msg.botSpeed }));
+      if (!paced) {
+        send(_ws, { t: 'error', code: 'no_bots', message: 'No bots at this table.' });
+      }
+      return;
+    }
     default:
       return;
   }

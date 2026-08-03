@@ -11,6 +11,73 @@ file had reached 1,566 lines of which two were actually open.
 
 ---
 
+## ✅ Who controls the bots, and a sentence that agrees with itself (N15, N17, N18, N5 — 2026-08-02)
+
+Four items, three of them about the same thing: the bots were configured once, by
+one control, in one place, and never again.
+
+**N15 — "You rolls for the wall break".** `nameOf` returns the string "You" for the
+local seat, and the wall stage substituted it into a third-person template. The
+identical bug had been fixed eleven lines above when the dice shipped — the seating
+stage picks `dice.youAreEast` rather than putting a name in `dice.isEast` — and the
+wall stage was missed.
+
+Both stages now go through one `throwerKey(stage, dealer, youSeat)` helper, so they
+cannot drift apart again. **It is a pure exported function on purpose, and that is
+the lesson from verifying it:** I checked the fix against the running app and it
+passed while never rendering the second-person case at all — who throws comes from
+the seating dice, so the local player is East about a quarter of the time and the
+assertion was vacuous. The unit test covers all sixteen dealer/viewer pairings,
+checks the keys resolve in all three catalogs, and checks the second-person strings
+contain no `{name}` — since `t` is called with `name` whichever key comes back.
+
+**N17 — practice took no settings at all.** `startPractice` fired three
+`addBot{difficulty:'easy'}` and then `startGame` **bare**, with no `rules`, so
+practice silently inherited every default and a solo player had no way to slow the
+bots down — in the one mode where following what happened matters most. It now
+sends `rules.botSpeed` and seats the bots at the chosen level.
+
+Behind a disclosure that starts closed, because practice's whole appeal is one tap
+and a form in front of it spends that. The choice is remembered in `prefs.ts`, so it
+is a once-ever decision rather than a prompt every session. Labelled "Bot settings"
+rather than "Practice settings" after the first version collided with
+"Practice (vs Bots)" — a collision that broke five e2e projects on a loose name
+match, and would have read as ambiguous to players for the same reason.
+
+**N18 — one bot level for the whole table, and a latent bug underneath it.** The
+protocol always carried difficulty per bot (`addBot.difficulty`,
+`RoomSlot.difficulty`, read per slot in `bot.ts`); only the lobby forced them to
+match, via a shared selector you had to remember to set *before* each tap. Empty
+seats now offer "+ Easy" / "+ Medium" directly — the level is the tap — and each
+seated bot carries a picker, on a new `setBotDifficulty` message so re-levelling
+doesn't mean kick-and-re-add with a window for a human to take the seat.
+
+**The bug found on the way:** `addBot` carried no seat and the server called
+`findOpenSeat`, so the per-row "+ Bot" buttons were lying — tapping North's filled
+South if South was empty. `addBot` now names its seat, validated and falling back to
+the first open one. Verified in the browser: adding Medium to North left South and
+West empty, which the old code could not have done.
+
+Also dropped the name `Bot (Hard)`, which the *medium* bot wore. It was already
+wrong and N19 will make it wronger; the level is shown from
+`LobbyPlayer.difficulty`, which was already on the wire, so the name stays `Bot N`
+and stays stable in the feed and the move history.
+
+**N5 — the pace can change mid-match.** `botSpeed` was already a `GameRoom` field
+rather than `GameConfig`, precisely because it changes no rule and a replay of the
+same seed is identical at any value — so it only had to stop being `readonly`. It is
+read when a bot turn is scheduled, so a change lands on the next move with nothing
+to cancel.
+
+The control is a host-only section in the play screen's ⚙ menu, **hidden** rather
+than disabled when the table has no bots — unlike the lobby's version (N9), where a
+seat can gain a bot right up to Start, a table mid-round cannot, so the control
+would never become useful. `--bot-delay` still outranks it, which is what keeps the
+suites fast. `setBotSpeed` returns whether anything was actually paced, so the
+server can answer rather than silently accept.
+
+---
+
 ## ✅ Whose turn it is, at both ends of the screen (N7 + N13 — 2026-08-02)
 
 Filed as two items and fixed as one, because they were the same sentence failing

@@ -80,7 +80,7 @@ export function PlayTopBar({ view }: { view: PlayerView }) {
             {formatDelta(view.you.scoreDelta)}
           </span>
         </button>
-        <SettingsMenu />
+        <SettingsMenu view={view} />
         <button
           type="button"
           className="min-h-10 min-w-10 flex items-center justify-center text-white/50 hover:text-white"

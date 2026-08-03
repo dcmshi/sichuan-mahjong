@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_ANIMATION_PREFS,
+  DEFAULT_PRACTICE_PREFS,
   animMs,
   isAnimationSpeed,
   parseAnimationPrefs,
+  parsePracticePrefs,
   scaleFor,
 } from '../src/prefs.js';
 
@@ -87,5 +89,52 @@ describe('isAnimationSpeed', () => {
     expect(['slow', 'medium', 'fast'].every(isAnimationSpeed)).toBe(true);
     expect(isAnimationSpeed('normal')).toBe(false);
     expect(isAnimationSpeed(undefined)).toBe(false);
+  });
+});
+
+/**
+ * Practice setup (N17). Practice used to send `startGame` with no `rules` at all,
+ * so it silently took every default and a solo player had no way to slow the bots
+ * down — in the one mode where following what happened matters most.
+ *
+ * Stored rather than asked each session because practice has no lobby to hold the
+ * choice, and re-prompting would spend the one-tap start that makes it worth having.
+ */
+describe('practice prefs (N17)', () => {
+  it('defaults to normal pace and easy bots', () => {
+    expect(DEFAULT_PRACTICE_PREFS).toEqual({ botSpeed: 'normal', botLevel: 'easy' });
+  });
+
+  it('round-trips a stored choice', () => {
+    expect(parsePracticePrefs({ botSpeed: 'slow', botLevel: 'medium' })).toEqual({
+      botSpeed: 'slow',
+      botLevel: 'medium',
+    });
+  });
+
+  // Per field, not wholesale: a build that predates one key still restores the
+  // half it does carry.
+  it('falls back field by field', () => {
+    expect(parsePracticePrefs({ botSpeed: 'slow' })).toEqual({
+      botSpeed: 'slow',
+      botLevel: 'easy',
+    });
+    expect(parsePracticePrefs({ botLevel: 'medium' })).toEqual({
+      botSpeed: 'normal',
+      botLevel: 'medium',
+    });
+  });
+
+  it('rejects values the server would not accept anyway', () => {
+    for (const junk of ['fastest', 'NORMAL', 0, null, true, {}, []]) {
+      expect(parsePracticePrefs({ botSpeed: junk }).botSpeed, String(junk)).toBe('normal');
+      expect(parsePracticePrefs({ botLevel: junk }).botLevel, String(junk)).toBe('easy');
+    }
+  });
+
+  it('survives a stored value that is not an object', () => {
+    for (const junk of [null, 'nope', 42, [], undefined]) {
+      expect(parsePracticePrefs(junk), String(junk)).toEqual(DEFAULT_PRACTICE_PREFS);
+    }
   });
 });

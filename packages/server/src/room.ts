@@ -173,8 +173,16 @@ export class GameRoom {
    * "a rejection is unexpected" contract treats as bugs. (A26)
    */
   private botPendingSeats: Set<Seat> = new Set();
-  /** The host's lobby choice. `--bot-delay` outranks it — see `botPaceMs`. */
-  private readonly botSpeed: BotSpeed;
+  /**
+   * The host's choice. `--bot-delay` outranks it — see `botPaceMs`.
+   *
+   * Not readonly: the host can change it mid-match (N5). Safe to reassign because
+   * it changes no rule and a replay of the same seed is identical at any value,
+   * which is exactly why it lives here and not in `GameConfig`. It is read fresh
+   * each time a bot turn is scheduled, so a change lands on the next move rather
+   * than needing anything rescheduled.
+   */
+  private botSpeed: BotSpeed;
   private started = false;
   /**
    * Last time anything happened here (state change or a connection). A room can
@@ -799,6 +807,30 @@ export class GameRoom {
 
   getState(): GameState {
     return this.state;
+  }
+
+  /**
+   * Repace the bots mid-match (N5). Takes effect on the next bot turn — the pace
+   * is read when a turn is scheduled, so nothing in flight needs cancelling.
+   *
+   * Returns false when there is nothing to pace: at a table of four humans this is
+   * a no-op, and reporting that lets the caller say so instead of silently
+   * accepting. `--bot-delay` still outranks the value either way.
+   */
+  setBotSpeed(speed: BotSpeed): boolean {
+    this.botSpeed = speed;
+    this.lastActivityAt = Date.now();
+    return this.slots.some(s => s.isBot);
+  }
+
+  /** Current pace, so a joining or reconnecting client can show the right one. */
+  getBotSpeed(): BotSpeed {
+    return this.botSpeed;
+  }
+
+  /** Whether any seat is a bot — the same "is there anything to pace" test. */
+  hasBots(): boolean {
+    return this.slots.some(s => s.isBot);
   }
 
   getLobbyPlayers(): Array<{ seat: Seat; name: string; isBot: boolean; connected: boolean }> {

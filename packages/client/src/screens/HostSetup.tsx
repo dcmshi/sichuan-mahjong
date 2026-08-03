@@ -4,6 +4,35 @@ import { useT } from '../i18n/useT.js';
 import { useStore } from '../store/index.js';
 import { connectGame, makeWatchLink, makeWsUrl, sendAction } from '../ws/client.js';
 
+/** A seated bot's level, and the control that changes it. (N18) */
+function BotLevelPicker({
+  value,
+  onPick,
+}: {
+  value: 'easy' | 'medium';
+  onPick: (level: 'easy' | 'medium') => void;
+}) {
+  const t = useT();
+  return (
+    <div className="inline-flex rounded-lg overflow-hidden border border-white/20 flex-shrink-0">
+      {(['easy', 'medium'] as const).map(level => (
+        <button
+          key={level}
+          type="button"
+          aria-pressed={value === level}
+          onClick={() => onPick(level)}
+          className={[
+            'px-2 py-1 text-xs font-semibold transition-colors',
+            value === level ? 'bg-amber-400 text-black' : 'bg-black/20 text-white/60',
+          ].join(' ')}
+        >
+          {t(level === 'easy' ? 'host.easy' : 'host.medium')}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export function HostSetup() {
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
@@ -13,7 +42,6 @@ export function HostSetup() {
   const [inLobby, setInLobby] = useState(
     () => useStore.getState().seat !== null && useStore.getState().code !== '',
   );
-  const [botLevel, setBotLevel] = useState<'easy' | 'medium'>('easy');
   const [huanSanZhang, setHuanSanZhang] = useState(false);
   const [botSpeed, setBotSpeed] = useState<'slow' | 'normal' | 'fast'>('normal');
   const [claimWindow, setClaimWindow] = useState<'quick' | 'normal' | 'relaxed'>('normal');
@@ -179,28 +207,6 @@ export function HostSetup() {
         </div>
       )}
 
-      {/* Difficulty for newly added bots */}
-      <div className="flex items-center gap-2 text-sm">
-        <span className="text-green-300">{t('host.botLevel')}:</span>
-        <div className="inline-flex rounded-lg overflow-hidden border border-white/20">
-          {(['easy', 'medium'] as const).map(level => (
-            <button
-              type="button"
-              key={level}
-              onClick={() => setBotLevel(level)}
-              className={[
-                'px-3 py-1 font-semibold transition-colors',
-                botLevel === level
-                  ? 'bg-amber-400 text-black'
-                  : 'bg-black/20 text-white/70 hover:text-white',
-              ].join(' ')}
-            >
-              {t(level === 'easy' ? 'host.easy' : 'host.medium')}
-            </button>
-          ))}
-        </div>
-      </div>
-
       {/* House rules. 換三張 is a Sichuan favourite but not part of SBR (see
           GameConfig), so it is offered and starts off — the canonical ruleset is
           what you get if you touch nothing. Only the host sees this, and the
@@ -286,6 +292,12 @@ export function HostSetup() {
         </div>
       </div>
 
+      {/* Bot level is per seat, not one setting for the table. The protocol always
+          carried it per bot (`addBot.difficulty`, `RoomSlot.difficulty`) — only the
+          lobby forced them all to match, which made mixing impossible and turned
+          the shared selector into a mode you had to remember to set before each
+          tap. `addBot` now names its seat too, because the per-row buttons used to
+          fill whichever chair was open first. (N18) */}
       <div className="flex flex-col gap-2">
         {[0, 1, 2, 3].map(i => {
           const p = lobbyPlayers[i];
@@ -295,35 +307,55 @@ export function HostSetup() {
               <span className="text-green-400 text-sm w-14">{t(`wind.${i}`)}</span>
               {p?.name ? (
                 <>
-                  <span className="font-semibold flex-1">
+                  <span className="font-semibold flex-1 min-w-0 truncate">
                     {p.name}
                     {isMe && <span className="ml-1 text-xs text-amber-400">{t('common.you')}</span>}
                   </span>
                   {p.isBot && (
-                    <button
-                      type="button"
-                      className="text-xs bg-red-700 hover:bg-red-600 px-2 py-1 rounded"
-                      onClick={() => sendAction({ t: 'kickBot', seat: i as Seat })}
-                    >
-                      {t('host.kick')}
-                    </button>
+                    <>
+                      <BotLevelPicker
+                        value={p.difficulty ?? 'easy'}
+                        onPick={level =>
+                          sendAction({ t: 'setBotDifficulty', seat: i as Seat, difficulty: level })
+                        }
+                      />
+                      <button
+                        type="button"
+                        className="text-xs bg-red-700 hover:bg-red-600 px-2 py-1 rounded flex-shrink-0"
+                        onClick={() => sendAction({ t: 'kickBot', seat: i as Seat })}
+                      >
+                        {t('host.kick')}
+                      </button>
+                    </>
                   )}
                   {!p.isBot && (
-                    <span className={`text-xs ${p.connected ? 'text-green-400' : 'text-white/40'}`}>
+                    <span
+                      className={`text-xs flex-shrink-0 ${p.connected ? 'text-green-400' : 'text-white/40'}`}
+                    >
                       {p.connected ? '●' : `○ ${t('lobby.disconnected')}`}
                     </span>
                   )}
                 </>
               ) : (
                 <>
-                  <span className="text-white/40 italic text-sm flex-1">{t('host.empty')}</span>
-                  <button
-                    type="button"
-                    className="text-xs bg-blue-700 hover:bg-blue-600 px-2 py-1 rounded"
-                    onClick={() => sendAction({ t: 'addBot', difficulty: botLevel })}
-                  >
-                    {t('host.addBot')}
-                  </button>
+                  <span className="text-white/40 italic text-sm flex-1 min-w-0">
+                    {t('host.empty')}
+                  </span>
+                  {/* Two buttons rather than one plus a mode: the level a bot is
+                      added at is the only thing being chosen, so choosing it *is*
+                      the tap. */}
+                  {(['easy', 'medium'] as const).map(level => (
+                    <button
+                      key={level}
+                      type="button"
+                      className="text-xs bg-blue-700 hover:bg-blue-600 px-2 py-1 rounded flex-shrink-0"
+                      onClick={() =>
+                        sendAction({ t: 'addBot', difficulty: level, seat: i as Seat })
+                      }
+                    >
+                      + {t(level === 'easy' ? 'host.easy' : 'host.medium')}
+                    </button>
+                  ))}
                 </>
               )}
             </div>

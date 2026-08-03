@@ -41,8 +41,20 @@ export type RoundResult = {
 export type ClientMsg =
   | { t: 'join'; name: string }
   | { t: 'leave' }
-  | { t: 'addBot'; difficulty: 'easy' | 'medium' }
+  /**
+   * `seat` asks for a specific chair. Optional because it used to be absent and
+   * the server filled the first open seat regardless — which made the per-row
+   * "+ Bot" buttons lie, since tapping North's filled South if South was empty.
+   * Still falls back to the first open seat when omitted or already taken. (N18)
+   */
+  | { t: 'addBot'; difficulty: 'easy' | 'medium'; seat?: Seat }
   | { t: 'kickBot'; seat: Seat }
+  /**
+   * Re-level a bot already sitting down. Without it, changing a bot's difficulty
+   * meant kicking and re-adding — two round trips, with a window in which a human
+   * could take the seat. Host-only, and rejected for a seat holding a person. (N18)
+   */
+  | { t: 'setBotDifficulty'; seat: Seat; difficulty: 'easy' | 'medium' }
   /**
    * `rules` carries the host's house-rule choices for the match. Optional so an
    * older client (or a rejoining one) still starts a game on the defaults, and
@@ -62,6 +74,12 @@ export type ClientMsg =
     }
   | { t: 'nextRound' }
   | { t: 'endMatch' }
+  /**
+   * Repace the bots without ending the match. Host-only. A pace, not a rule — the
+   * server keeps it out of `GameConfig`, so reassigning it mid-game touches no
+   * state and leaves a replay of the same seed identical. (N5)
+   */
+  | { t: 'setBotSpeed'; botSpeed: 'slow' | 'normal' | 'fast' }
   | { t: 'action'; action: GameAction };
 
 export type ServerMsg =

@@ -240,14 +240,29 @@ globally — that is an accessibility signal, this is a taste.
 **Open** (see [TODO.md](./TODO.md), which is only the open list): a central discard
 pool (O3) is still held as a fallback — its redaction question is answered by
 `firstDiscardIsVoid`, but the middle is no longer the empty space that motivated
-it. Then N3 (winning hands in help), N5 (bot pace mid-match), **N10** side seats
-draw upright and the across pile does not mirror, **N11** pre-selecting a discard
-while you wait, **N14** the wall diagram empties from the top-left corner whatever
-the dice said and off one end when kong draws take the other, **N15** the dice
-overlay says "You rolls for the wall break", **N16** group a winning hand into the
-sets that won it, **N17/N18** practice mode takes no settings and bot difficulty is
-one setting for the whole table, and **N19** a hard bot so the ladder has three
-rungs — the only open item that is gameplay work rather than plumbing or layout.
+it. Then N3 (winning hands in help), **N10** side seats draw upright and the across
+pile does not mirror, **N11** pre-selecting a discard while you wait, **N14** the
+wall diagram empties from the top-left corner whatever the dice said and off one end
+when kong draws take the other, **N16** group a winning hand into the sets that won
+it, and **N19** a hard bot so the ladder has three rungs — the only open item that
+is gameplay work rather than plumbing or layout.
+
+**The bots are configurable per seat, from both entry points, and mid-match**
+(2026-08-02, N15/N17/N18/N5). Empty lobby seats offer **+ Easy / + Medium** directly
+and each seated bot carries a level picker on a `setBotDifficulty` message — the
+protocol always carried difficulty per bot, only the lobby forced them to match.
+`addBot` now names its **seat**: it didn't, so the per-row buttons filled whichever
+chair was open first. Practice sends `rules.botSpeed` and its chosen level from a
+"Bot settings" disclosure remembered in `prefs.ts` — it used to send `startGame`
+bare and inherit every default. Pace is changeable mid-match from the play screen's
+⚙ (host-only, hidden with no bots), which needed only dropping `readonly` from
+`GameRoom.botSpeed`. `--bot-delay` still outranks all of it.
+
+**A sentence about you needs its own sentence** (2026-08-02, N15). `nameOf` returns
+"You", so third-person templates rendered "You rolls for the wall break". Both dice
+stages now go through `throwerKey`. It is a pure exported helper because **the
+browser check passed vacuously** — the local player is East only about a quarter of
+the time, so an e2e assertion never reached the case it was written for.
 
 **Whose turn it is, said at both ends of the screen** (2026-08-02, N7+N13). The
 indicator rendered at **zero width** on a 320px phone: the icon cluster is

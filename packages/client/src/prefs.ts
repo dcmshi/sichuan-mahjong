@@ -87,3 +87,66 @@ export function persistAnimationPrefs(prefs: AnimationPrefs): void {
     /* ignore — private mode, or storage full. The preference just won't stick. */
   }
 }
+
+// ---------------------------------------------------------------------------
+// Practice setup (N17)
+// ---------------------------------------------------------------------------
+
+/**
+ * What practice mode deals you.
+ *
+ * Unlike the animation prefs above these *are* table settings — they ride on
+ * `startGame.rules` and `addBot` exactly as the lobby's do. They are stored here
+ * anyway because practice has no lobby to hold them: there is one player, so
+ * "the table's choice" and "this player's choice" are the same thing, and asking
+ * again every session would spend the one-tap start that makes practice worth
+ * having.
+ *
+ * `startPractice` used to send `startGame` with no `rules` at all, so practice
+ * silently took every default and a solo player had no way to slow the bots down
+ * — which is the setting that matters most in the mode you learn in.
+ */
+export type PracticePrefs = {
+  botSpeed: 'slow' | 'normal' | 'fast';
+  botLevel: 'easy' | 'medium';
+};
+
+export const DEFAULT_PRACTICE_PREFS: PracticePrefs = { botSpeed: 'normal', botLevel: 'easy' };
+
+export function isBotSpeed(v: unknown): v is PracticePrefs['botSpeed'] {
+  return v === 'slow' || v === 'normal' || v === 'fast';
+}
+
+export function isBotLevel(v: unknown): v is PracticePrefs['botLevel'] {
+  return v === 'easy' || v === 'medium';
+}
+
+const PRACTICE_KEY = 'sm-practice';
+
+/** Exported for the test: the loader needs a DOM, this doesn't. */
+export function parsePracticePrefs(value: unknown): PracticePrefs {
+  if (typeof value !== 'object' || value === null) return DEFAULT_PRACTICE_PREFS;
+  const v = value as Record<string, unknown>;
+  return {
+    botSpeed: isBotSpeed(v.botSpeed) ? v.botSpeed : DEFAULT_PRACTICE_PREFS.botSpeed,
+    botLevel: isBotLevel(v.botLevel) ? v.botLevel : DEFAULT_PRACTICE_PREFS.botLevel,
+  };
+}
+
+export function loadPracticePrefs(): PracticePrefs {
+  try {
+    const raw = localStorage.getItem(PRACTICE_KEY);
+    if (raw === null) return DEFAULT_PRACTICE_PREFS;
+    return parsePracticePrefs(JSON.parse(raw));
+  } catch {
+    return DEFAULT_PRACTICE_PREFS;
+  }
+}
+
+export function persistPracticePrefs(prefs: PracticePrefs): void {
+  try {
+    localStorage.setItem(PRACTICE_KEY, JSON.stringify(prefs));
+  } catch {
+    /* ignore — same as above. */
+  }
+}

@@ -37,8 +37,13 @@ test('full round to round-end with 3 bots', async ({ page }) => {
   // Wait for any 4-char lobby code to appear in the lobby screen
   await expect(page.locator('text=/^[A-HJ-NP-Z2-9]{4}$/')).toBeVisible({ timeout: 10_000 });
 
+  // "+ Easy" / "+ Medium" per empty seat — the level is chosen by which button you
+  // tap rather than by a shared selector set beforehand. (N18)
   for (let i = 0; i < 3; i++) {
-    await page.click('text=+ Bot');
+    await page
+      .getByRole('button', { name: /\+ Easy/i })
+      .first()
+      .click();
     await page.waitForTimeout(300);
   }
   await expect(page.locator('text=Start Game')).toBeEnabled({ timeout: 10_000 });

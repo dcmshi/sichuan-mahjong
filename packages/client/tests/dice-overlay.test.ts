@@ -1,7 +1,8 @@
 import type { PlayerView } from '@sichuan-mahjong/engine';
 import { describe, expect, it } from 'vitest';
-import { decidingRound, diceKey } from '../src/components/DiceOverlay.js';
+import { decidingRound, diceKey, throwerKey } from '../src/components/DiceOverlay.js';
 import { faceRotation } from '../src/components/Die.js';
+import { catalog } from '../src/i18n/index.js';
 
 const pair = (a: number, b: number) => ({ a, b });
 
@@ -91,5 +92,67 @@ describe('decidingRound', () => {
   it('is null when the seating throw did not run', () => {
     expect(decidingRound(viewWith({ seating: null }))).toBeNull();
     expect(decidingRound(viewWith({ seating: [] }))).toBeNull();
+  });
+});
+
+/**
+ * Who threw, in a sentence that agrees with its subject. (N15)
+ *
+ * `nameOf` returns "You" for the local seat, so substituting it into a
+ * third-person template produced "You is East" and "You rolls for the wall
+ * break". The seating stage was fixed when the dice shipped; the wall stage was
+ * missed, and both now go through one helper so they cannot drift apart again.
+ *
+ * Tested here rather than in the browser because who throws is decided by the
+ * seating dice: the local player is East roughly a quarter of the time, so an e2e
+ * check passes vacuously most runs — which is exactly what happened when this was
+ * verified against the running app.
+ */
+describe('throwerKey (N15)', () => {
+  it('gives your own seat its own sentence, at both stages', () => {
+    expect(throwerKey('seating', 2, 2)).toBe('dice.youAreEast');
+    expect(throwerKey('wall', 2, 2)).toBe('dice.wallTitleYou');
+  });
+
+  it('names anyone else, at both stages', () => {
+    expect(throwerKey('seating', 1, 0)).toBe('dice.isEast');
+    expect(throwerKey('wall', 1, 0)).toBe('dice.wallTitle');
+  });
+
+  it('covers every seat pairing', () => {
+    for (const dealer of [0, 1, 2, 3] as const) {
+      for (const you of [0, 1, 2, 3] as const) {
+        const key = throwerKey('wall', dealer, you);
+        expect(key, `dealer ${dealer}, you ${you}`).toBe(
+          dealer === you ? 'dice.wallTitleYou' : 'dice.wallTitle',
+        );
+      }
+    }
+  });
+
+  // The second-person keys must exist in every catalog, or the fix renders a raw
+  // key where the sentence used to be — worse than the grammar it replaced.
+  it('every key it can return resolves in all three languages', () => {
+    const keys = new Set<string>();
+    for (const stage of ['seating', 'wall'] as const) {
+      for (const dealer of [0, 1] as const) keys.add(throwerKey(stage, dealer, 0));
+    }
+    expect(keys.size).toBe(4);
+    for (const key of keys) {
+      for (const lang of ['en', 'zh-Hans', 'zh-Hant'] as const) {
+        expect(catalog[lang][key], `${lang} ${key}`).toBeTruthy();
+      }
+    }
+  });
+
+  // The second-person form must not still contain the placeholder: `t` is called
+  // with `name` regardless of which key comes back, so a template that kept
+  // "{name}" would render "You roll" as "{name} roll".
+  it('the second-person strings interpolate nothing', () => {
+    for (const key of ['dice.youAreEast', 'dice.wallTitleYou']) {
+      for (const lang of ['en', 'zh-Hans', 'zh-Hant'] as const) {
+        expect(catalog[lang][key], `${lang} ${key}`).not.toContain('{name}');
+      }
+    }
   });
 });

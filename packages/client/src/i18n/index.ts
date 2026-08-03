@@ -39,6 +39,9 @@ const en: Dict = {
   'landing.rejoin': 'Rejoin {code}',
   'landing.rejoining': 'Rejoining…',
   'landing.practiceName': 'You',
+  'landing.practiceSetup': 'Bot settings',
+  'landing.practiceSetupHint':
+    'Remembered on this device. Practice seats three bots at this level and pace.',
 
   'join.title': 'Join a Game',
   'join.code': 'CODE',
@@ -123,6 +126,7 @@ const en: Dict = {
   'dice.youAreEast': 'You are East',
   'dice.afterTie': 'after a tie',
   'dice.wallTitle': '{name} rolls for the wall break',
+  'dice.wallTitleYou': 'You roll for the wall break',
   'dice.wallResult': '{wind} wall, {n} stacks in',
 
   'play.wall': 'Wall: {n}',
@@ -144,6 +148,7 @@ const en: Dict = {
   'play.settings': 'Settings',
   'settings.language': 'Language',
   'settings.sound': 'Sound',
+  'settings.botSpeedTable': "The table's setting — it changes the pace for everyone.",
   'settings.animSpeed': 'Animation speed',
   'settings.animSpeed.slow': 'Slow',
   'settings.animSpeed.medium': 'Medium',
@@ -275,6 +280,8 @@ const zhHans: Dict = {
   'landing.rejoin': '重新加入 {code}',
   'landing.rejoining': '重新加入中…',
   'landing.practiceName': '你',
+  'landing.practiceSetup': '机器人设置',
+  'landing.practiceSetupHint': '保存在本机。练习会按此难度和节奏安排三个机器人。',
 
   'join.title': '加入游戏',
   'join.code': '房间码',
@@ -359,6 +366,7 @@ const zhHans: Dict = {
   'dice.youAreEast': '你是庄家',
   'dice.afterTie': '平局重掷后',
   'dice.wallTitle': '{name} 掷骰决定从哪里开牌',
+  'dice.wallTitleYou': '你掷骰决定从哪里开牌',
   'dice.wallResult': '{wind}家牌墙，第 {n} 墩',
 
   'play.wall': '牌墙：{n}',
@@ -380,6 +388,7 @@ const zhHans: Dict = {
   'play.settings': '设置',
   'settings.language': '语言',
   'settings.sound': '音效',
+  'settings.botSpeedTable': '这是全桌的设置 —— 会改变所有人的节奏。',
   'settings.animSpeed': '动画速度',
   'settings.animSpeed.slow': '慢',
   'settings.animSpeed.medium': '中',
@@ -505,6 +514,8 @@ const zhHant: Dict = {
   'landing.rejoin': '重新加入 {code}',
   'landing.rejoining': '重新加入中…',
   'landing.practiceName': '你',
+  'landing.practiceSetup': '機器人設定',
+  'landing.practiceSetupHint': '儲存在本機。練習會按此難度和節奏安排三個機器人。',
 
   'join.title': '加入遊戲',
   'join.code': '房間碼',
@@ -589,6 +600,7 @@ const zhHant: Dict = {
   'dice.youAreEast': '你是莊家',
   'dice.afterTie': '平局重擲後',
   'dice.wallTitle': '{name} 擲骰決定從哪裡開牌',
+  'dice.wallTitleYou': '你擲骰決定從哪裡開牌',
   'dice.wallResult': '{wind}家牌牆，第 {n} 墩',
 
   'play.wall': '牌牆：{n}',
@@ -610,6 +622,7 @@ const zhHant: Dict = {
   'play.settings': '設定',
   'settings.language': '語言',
   'settings.sound': '音效',
+  'settings.botSpeedTable': '這是全桌的設定 —— 會改變所有人的節奏。',
   'settings.animSpeed': '動畫速度',
   'settings.animSpeed.slow': '慢',
   'settings.animSpeed.medium': '中',

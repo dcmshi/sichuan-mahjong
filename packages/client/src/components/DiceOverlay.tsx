@@ -29,6 +29,26 @@ export function decidingRound(view: PlayerView): (DiePair | null)[] | null {
 }
 
 /**
+ * Which catalog key names the thrower, for each of the two stages.
+ *
+ * Your own case needs its own *sentence*, not your name substituted into someone
+ * else's: `nameOf` returns the string "You", so the third-person templates came
+ * out as "You is East" and "You rolls for the wall break". The seating stage was
+ * fixed when it shipped and the wall stage was missed (N15) — so both live here
+ * now, together, where the next stage added has an obvious place to join them and
+ * a test that covers it.
+ *
+ * Exported and pure because the client suite runs without a DOM: the browser
+ * cannot be relied on to *reach* the case, since who throws is decided by the
+ * seating dice and the local player is East only a quarter of the time.
+ */
+export function throwerKey(stage: 'seating' | 'wall', dealer: Seat, youSeat: Seat): string {
+  const yours = dealer === youSeat;
+  if (stage === 'seating') return yours ? 'dice.youAreEast' : 'dice.isEast';
+  return yours ? 'dice.wallTitleYou' : 'dice.wallTitle';
+}
+
+/**
  * The dice, thrown where the table can see them.
  *
  * Two stages, the first only on the round that ran the seating throw: everyone
@@ -127,13 +147,12 @@ export function DiceOverlay({
                     ),
                   )}
                 </div>
-                {/* `nameOf` returns "You" for your own seat, which made this
-                    read "You is East". Your own case needs its own sentence,
-                    not a name substituted into someone else's. */}
+                {/* See `throwerKey`: your own seat needs its own sentence, because
+                    `nameOf` returns "You" and this template reads third-person. */}
                 <div className="text-lg font-semibold text-amber-300">
-                  {view.dealer === view.you.seat
-                    ? t('dice.youAreEast')
-                    : t('dice.isEast', { name: nameOf(view.dealer) })}
+                  {t(throwerKey('seating', view.dealer, view.you.seat), {
+                    name: nameOf(view.dealer),
+                  })}
                 </div>
                 {seatingRounds > 1 && (
                   <div className="text-xs text-white/50">{t('dice.afterTie')}</div>
@@ -144,7 +163,9 @@ export function DiceOverlay({
             {stage === 'wall' && (
               <>
                 <div className="text-sm text-white/70">
-                  {t('dice.wallTitle', { name: nameOf(view.dealer) })}
+                  {t(throwerKey('wall', view.dealer, view.you.seat), {
+                    name: nameOf(view.dealer),
+                  })}
                 </div>
                 <div className="flex items-center gap-3">
                   <Die value={view.dice.wall.a} durationMs={rollMs} />

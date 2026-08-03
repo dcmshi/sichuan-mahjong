@@ -149,7 +149,9 @@ so it isn't rediscovered as a bug.
 
   Nothing about this touches the lobby. **Small.**
 
-- [ ] **N5 — let the pace change once the game has started.** Bot pace is already
+- [x] **N5 — let the pace change once the game has started.** *(Done — a host-only
+  Bot pace section in the play screen's ⚙ menu, on a new `setBotSpeed` message.
+  `--bot-delay` still outranks it.)* Bot pace is already
   a host setting in the lobby (slow 1800 / normal 900 / fast 400, on
   `startGame.rules.botSpeed`, narrowed by `botSpeedFrom` in `ws.ts`) — but it is
   chosen once and then fixed for the match. The table that picks Normal and finds
@@ -482,7 +484,9 @@ so it isn't rediscovered as a bug.
   it can wait — but it is polish that makes N2's dice mean something on screen,
   which is the only place a player can see them. **Small-medium.**
 
-- [ ] **N15 — "You rolls for the wall break".** Reported 2026-08-02. The dice
+- [x] **N15 — "You rolls for the wall break".** *(Done — both dice stages now go
+  through one `throwerKey` helper, unit-tested, because the browser reaches the
+  second-person case only a quarter of the time.)* Reported 2026-08-02. The dice
   overlay's wall stage is `t('dice.wallTitle', { name: nameOf(view.dealer) })`
   (`DiceOverlay.tsx:147`), and `nameOf` returns the string "You" for your own
   seat — so whenever you are East the sentence takes a second-person subject with
@@ -542,7 +546,9 @@ so it isn't rediscovered as a bug.
   "any finished hands", but a losing hand has no decomposition — that is what
   makes it losing — so there is nothing to group. Winners only. **Medium.**
 
-- [ ] **N17 — practice mode takes no settings at all.** Requested 2026-08-02.
+- [x] **N17 — practice mode takes no settings at all.** *(Done — a "Bot settings"
+  disclosure on the landing screen carrying pace and level, remembered in
+  `prefs.ts`; practice now sends `rules.botSpeed`.)* Requested 2026-08-02.
   "Practice (vs Bots)" goes straight from tap to deal: `startPractice` in
   `Landing.tsx:84` posts a lobby, fires three `addBot{difficulty:'easy'}`, and
   sends a bare `sendAction({ t: 'startGame' })` with **no `rules` at all**
@@ -570,7 +576,10 @@ so it isn't rediscovered as a bug.
   suites fast. A practice pace setting must not change that precedence.
   **Small-medium.**
 
-- [ ] **N18 — bot difficulty is one setting for the whole table.** Requested
+- [x] **N18 — bot difficulty is one setting for the whole table.** *(Done — per-seat
+  "+ Easy"/"+ Medium", a level picker on each seated bot, and `addBot` now names
+  its seat. Fixed a latent bug on the way: the per-row buttons filled whichever
+  seat was open first.)* Requested
   2026-08-02. The lobby has a single easy/medium selector and it applies to
   whichever bot is added next: `HostSetup` sends
   `addBot{difficulty: botLevel}` per empty seat, so filling three seats with the

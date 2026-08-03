@@ -1,12 +1,17 @@
+import type { PlayerView } from '@sichuan-mahjong/engine';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useCallback, useState } from 'react';
 import { useEscapeToClose } from '../hooks/useDismissable.js';
 import { useT } from '../i18n/useT.js';
 import type { AnimationSpeed } from '../prefs.js';
 import { useStore } from '../store/index.js';
+import { sendAction } from '../ws/client.js';
 import { LangSwitch } from './LangSwitch.js';
 
 const SPEEDS: AnimationSpeed[] = ['slow', 'medium', 'fast'];
+
+type BotSpeed = 'slow' | 'normal' | 'fast';
+const BOT_SPEEDS: BotSpeed[] = ['slow', 'normal', 'fast'];
 
 /**
  * Per-player display settings: sound, and the animation pace added by N4.
@@ -21,14 +26,29 @@ const SPEEDS: AnimationSpeed[] = ['slow', 'medium', 'fast'];
  * Muting costs a second tap now. That is the right trade: it is a once-a-session
  * action, and it arrives with a label instead of an emoji you have to interpret.
  */
-export function SettingsMenu() {
+export function SettingsMenu({ view }: { view?: PlayerView }) {
   const [open, setOpen] = useState(false);
   const soundEnabled = useStore(s => s.soundEnabled);
   const toggleSound = useStore(s => s.toggleSound);
   const animation = useStore(s => s.animation);
   const setAnimationSpeed = useStore(s => s.setAnimationSpeed);
   const toggleSkipAnimations = useStore(s => s.toggleSkipAnimations);
+  const isHost = useStore(s => s.isHost);
   const t = useT();
+
+  // Bot pace, mid-match (N5). Host-only, because bots move on the server and
+  // everyone watches the same move land — unlike everything else in this menu,
+  // which is local rendering. Hidden rather than disabled when there is nothing to
+  // pace: unlike the lobby's version (N9) a seat can't gain a bot mid-round, so the
+  // control would never become useful and there is no state change to explain.
+  const [botSpeed, setBotSpeed] = useState<BotSpeed>('normal');
+  const tableHasBots = view ? view.others.some(o => o.isBot) : false;
+  const canPaceBots = isHost && tableHasBots;
+
+  function pickBotSpeed(speed: BotSpeed) {
+    setBotSpeed(speed);
+    sendAction({ t: 'setBotSpeed', botSpeed: speed });
+  }
 
   const close = useCallback(() => setOpen(false), []);
   useEscapeToClose(open, close);
@@ -110,6 +130,36 @@ export function SettingsMenu() {
                   ))}
                 </div>
               </div>
+
+              {canPaceBots && (
+                <div className="border-t border-white/10 px-3 py-2">
+                  <div className="text-white/80 mb-1.5">{t('host.botSpeed')}</div>
+                  <div className="flex gap-1">
+                    {BOT_SPEEDS.map(speed => (
+                      <button
+                        key={speed}
+                        type="button"
+                        aria-pressed={botSpeed === speed}
+                        onClick={() => pickBotSpeed(speed)}
+                        className={[
+                          'flex-1 min-h-10 rounded-lg text-xs font-semibold transition-colors',
+                          botSpeed === speed
+                            ? 'bg-amber-400 text-black'
+                            : 'bg-black/30 text-white/70',
+                        ].join(' ')}
+                      >
+                        {t(`host.botSpeed.${speed}`)}
+                      </button>
+                    ))}
+                  </div>
+                  {/* Says it is the table's, not yours — every other control in
+                      this menu is local, and this one moves the game for
+                      everybody. */}
+                  <p className="text-xs text-white/40 leading-snug mt-1">
+                    {t('settings.botSpeedTable')}
+                  </p>
+                </div>
+              )}
 
               <button
                 type="button"

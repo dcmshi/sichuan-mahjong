@@ -2,7 +2,13 @@ import { DEFAULT_CONFIG } from '@sichuan-mahjong/engine';
 import { describe, expect, it } from 'vitest';
 import { createRoom } from '../src/room.js';
 import type { RoomSlot } from '../src/room.js';
-import { CLAIM_WINDOWS, claimWindowMsFrom, houseRules } from '../src/ws.js';
+import {
+  CLAIM_WINDOWS,
+  botDifficultyFrom,
+  claimWindowMsFrom,
+  houseRules,
+  isSeat,
+} from '../src/ws.js';
 
 const BOT_SLOTS: RoomSlot[] = [0, 1, 2, 3].map(i => ({
   name: `bot${i}`,
@@ -104,5 +110,39 @@ describe('claimWindowMsFrom', () => {
 
     const dflt = createRoom('CWQ2', BOT_SLOTS, houseRules(undefined));
     expect(dflt.getState().config.claimWindowMs).toBe(CLAIM_WINDOWS.normal);
+  });
+});
+
+/**
+ * Bot level and seat, both now arriving on their own messages rather than only
+ * inside `startGame.rules` — so both get the same narrowing every other inbound
+ * field gets. (N18)
+ */
+describe('botDifficultyFrom', () => {
+  it('accepts the two levels that exist', () => {
+    expect(botDifficultyFrom('easy')).toBe('easy');
+    expect(botDifficultyFrom('medium')).toBe('medium');
+  });
+
+  // A level no dispatch in room.ts recognises would seat an opponent that never
+  // acts, so an unknown string has to become a real level rather than pass through.
+  it('turns anything else into easy rather than passing it on', () => {
+    for (const junk of ['hard', 'MEDIUM', '', 0, 1, null, undefined, {}, [], true]) {
+      expect(botDifficultyFrom(junk), String(junk)).toBe('easy');
+    }
+  });
+});
+
+describe('isSeat', () => {
+  it('accepts the four seats', () => {
+    for (const s of [0, 1, 2, 3]) expect(isSeat(s), String(s)).toBe(true);
+  });
+
+  // `slots["0"]` reaches element 0 on a JS array, so a string seat would resolve
+  // if the index were used unchecked — which is why this rejects rather than coerces.
+  it('rejects strings, out-of-range and non-integers', () => {
+    for (const junk of ['0', '3', -1, 4, 1.5, Number.NaN, null, undefined, {}, []]) {
+      expect(isSeat(junk), String(junk)).toBe(false);
+    }
   });
 });

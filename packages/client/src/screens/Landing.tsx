@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { LangSwitch } from '../components/LangSwitch.js';
 import { useT } from '../i18n/useT.js';
+import type { PracticePrefs } from '../prefs.js';
+import { loadPracticePrefs, persistPracticePrefs } from '../prefs.js';
 import { clearSession, loadSession } from '../session.js';
 import { useStore } from '../store/index.js';
 import {
@@ -17,9 +19,63 @@ const REJOIN_TIMEOUT_MS = 6000;
 /** Backstop for a practice socket that opens and then says nothing. */
 const PRACTICE_TIMEOUT_MS = 8000;
 
+/** One row of the practice setup: a label and a segmented choice. (N17) */
+function PracticeChoice<T extends string>({
+  label,
+  hint,
+  options,
+  value,
+  labelFor,
+  onPick,
+}: {
+  label: string;
+  hint?: string;
+  options: readonly T[];
+  value: T;
+  labelFor: (v: T) => string;
+  onPick: (v: T) => void;
+}) {
+  return (
+    <div>
+      <div className="font-semibold">{label}</div>
+      {hint && <div className="text-xs text-green-300 leading-snug mb-1.5">{hint}</div>}
+      <div className="flex gap-1.5">
+        {options.map(option => (
+          <button
+            key={option}
+            type="button"
+            aria-pressed={value === option}
+            onClick={() => onPick(option)}
+            className={[
+              'flex-1 min-h-10 rounded-lg font-semibold transition-colors',
+              value === option ? 'bg-amber-400 text-black' : 'bg-black/30 text-white/70',
+            ].join(' ')}
+          >
+            {labelFor(option)}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function Landing() {
   const [practiceLoading, setPracticeLoading] = useState(false);
   const [practiceError, setPracticeError] = useState('');
+  // Practice settings, remembered. Behind a disclosure that starts closed: the
+  // whole appeal of practice is one tap, and a form in front of it spends that.
+  // (N17)
+  const [practice, setPractice] = useState(loadPracticePrefs);
+  const [showPracticeSetup, setShowPracticeSetup] = useState(false);
+
+  function updatePractice(patch: Partial<PracticePrefs>) {
+    setPractice(prev => {
+      const next = { ...prev, ...patch };
+      persistPracticePrefs(next);
+      return next;
+    });
+  }
+
   const [rejoining, setRejoining] = useState(false);
   // Read once on mount: resetSession() clears storage but shouldn't make the
   // button vanish under the finger mid-render.
@@ -95,13 +151,17 @@ export function Landing() {
 
       const ws = connectGame(makeWsUrl(code, hostToken), msg => {
         if (msg.t === 'joined') {
-          // Add 3 easy bots then start
-          sendAction({ t: 'addBot', difficulty: 'easy' });
-          sendAction({ t: 'addBot', difficulty: 'easy' });
-          sendAction({ t: 'addBot', difficulty: 'easy' });
+          // The three bots, at the level the player chose. Seats named explicitly
+          // so this doesn't depend on `findOpenSeat` order. (N17/N18)
+          for (const s of [1, 2, 3] as const) {
+            sendAction({ t: 'addBot', difficulty: practice.botLevel, seat: s });
+          }
         }
         if (msg.t === 'lobby' && msg.canStart) {
-          sendAction({ t: 'startGame' });
+          // Practice used to send `startGame` bare, so it silently took every
+          // default and there was no way to slow the bots down in the one mode
+          // where that matters most. (N17)
+          sendAction({ t: 'startGame', rules: { botSpeed: practice.botSpeed } });
         }
         // Only now is the lobby real. Releasing the button when the POST
         // resolved re-armed it while the socket was still opening, and a second
@@ -169,6 +229,34 @@ export function Landing() {
         >
           {practiceLoading ? t('landing.starting') : t('landing.practice')}
         </button>
+        <button
+          type="button"
+          className="self-center text-green-400 hover:text-green-200 text-xs underline"
+          onClick={() => setShowPracticeSetup(v => !v)}
+          aria-expanded={showPracticeSetup}
+        >
+          {t('landing.practiceSetup')}
+        </button>
+        {showPracticeSetup && (
+          <div className="bg-black/25 rounded-xl p-3 flex flex-col gap-3 text-sm">
+            <PracticeChoice
+              label={t('host.botSpeed')}
+              hint={t('host.botSpeedHint')}
+              options={['slow', 'normal', 'fast'] as const}
+              value={practice.botSpeed}
+              labelFor={s => t(`host.botSpeed.${s}`)}
+              onPick={botSpeed => updatePractice({ botSpeed })}
+            />
+            <PracticeChoice
+              label={t('host.botLevel')}
+              options={['easy', 'medium'] as const}
+              value={practice.botLevel}
+              labelFor={l => t(l === 'easy' ? 'host.easy' : 'host.medium')}
+              onPick={botLevel => updatePractice({ botLevel })}
+            />
+            <p className="text-white/40 text-xs leading-snug">{t('landing.practiceSetupHint')}</p>
+          </div>
+        )}
         {practiceError && <p className="text-red-400 text-sm text-center">{t(practiceError)}</p>}
         <button
           type="button"
