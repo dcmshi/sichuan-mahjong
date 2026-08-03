@@ -1177,6 +1177,7 @@ Full text: [LICENSE](./LICENSE). In short:
 
 **Primary (canonical for v1):**
 - Vitaly Novikov, *Sichuan Mahjong? It's that simple!* — authoritative ruleset reference.
+- *Mahjong: a Visual Guide* — [themahjong.guide](https://themahjong.guide/) — used alongside the PDF, and the site the tile SVGs were obtained from. It is a route to the art, not the licence for it: the CC BY-SA chain runs to Wikimedia Commons / Cangjie6 and is evidenced per file in `credits.json` (see §13 and LICENSE §2).
 
 **Secondary (used to validate ambiguities; some house-rule layers reflect their popular interpretations):**
 - World Mahjong Tour — *Sichuan Mahjong Blood Battle Rules* (worldmahjongtour.live) — Heavenly/Earthly tournament scoring; Flower Pig casual rule.

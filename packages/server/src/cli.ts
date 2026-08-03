@@ -38,6 +38,7 @@ They are renamed for this project and otherwise used as published.
 
   Licence     https://creativecommons.org/licenses/by-sa/4.0/
   Source      https://commons.wikimedia.org/wiki/Category:SVG_Planar_illustrations_of_Mahjong_tiles
+  Obtained    https://themahjong.guide/  (route to the files, not the licence)
   Per-file    /tiles/credits.json on a running server
 
 The tile back is an original work for this project, and is MIT. This binary

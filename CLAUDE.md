@@ -23,6 +23,7 @@ Keep this file short. New documentation goes in one of these instead:
 | **[docs/design-hosted-server.md](./docs/design-hosted-server.md)** | The Render deployment: deploy steps, why it needs no client change, the nine things a public URL forces (C1–C7/C9 built), and why the hardening is *not* conditional on `--hosted` | …you are working on hosting, or on anything the tailnet used to protect |
 | **[LICENSE](./LICENSE)** | MIT for code, CC-BY-SA 4.0 for the tile art, and the binary as a combined work carrying both | …you add or change a tile, or change what the release build embeds |
 | `SBR_ENG_part_1.pdf` | Novikov, *Sichuan Mahjong? It's that simple!* — the canonical ruleset | (read-only; extract with `pdftotext` when a rule is in question) |
+| [themahjong.guide](https://themahjong.guide/) | *Mahjong: a Visual Guide* — the second reference used alongside the PDF, and **where the tile SVGs were obtained**. The licence chain itself is Commons/Cangjie6, evidenced per file in `credits.json` | (external; cite it beside the PDF when a rule or a tile's provenance is in question) |
 
 ---
 

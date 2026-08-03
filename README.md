@@ -152,7 +152,7 @@ never turns a control on. The reasoning is in
 
 Sichuan Bloody Rules — each player voids a suit and must discard it. The tile you set aside when declaring is placed face down and is your first discard: on your first turn you draw as usual and flip it rather than discarding from hand. The round continues after the first Hu until three players have won or the wall is exhausted.
 
-For the full ruleset see **[ARCHITECTURE.md §5](./ARCHITECTURE.md#5-sichuan-rules-the-engine-encodes)** (based on Vitaly Novikov's *Sichuan Mahjong? It's that simple!*) or tap **?** in the top-right corner of the game screen.
+For the full ruleset see **[ARCHITECTURE.md §5](./ARCHITECTURE.md#5-sichuan-rules-the-engine-encodes)** (based on Vitaly Novikov's *Sichuan Mahjong? It's that simple!*, alongside [*Mahjong: a Visual Guide*](https://themahjong.guide/)) or tap **?** in the top-right corner of the game screen.
 
 ---
 

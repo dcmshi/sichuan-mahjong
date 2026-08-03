@@ -45,6 +45,10 @@ The 27 suit tiles in `packages/client/public/tiles/` — `man-1`…`man-9`,
   are otherwise used as published. Per-file attribution, including each file's
   upstream name and Commons URL, is in
   [`packages/client/public/tiles/credits.json`](packages/client/public/tiles/credits.json).
+- **Obtained via:** [*Mahjong: a Visual Guide*](https://themahjong.guide/), which
+  is where the files were downloaded from. That is provenance, not licensing —
+  the attribution above is owed to the Commons authors, and each file's
+  `wikimediaUrl` in `credits.json` is the evidence for it.
 
 `back.svg` is an original work for this project, drawn to match the dimensions
 and border of the Cangjie6 set. It is MIT, like the code.
