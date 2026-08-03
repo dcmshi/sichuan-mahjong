@@ -3,7 +3,6 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useState } from 'react';
 import { useT } from '../i18n/useT.js';
 import { HowToPlay } from './HowToPlay.js';
-import { LangSwitch } from './LangSwitch.js';
 import { SettingsMenu } from './SettingsMenu.js';
 
 /** Sign-prefixed score delta, e.g. "+12" / "-3" / "0". */
@@ -46,8 +45,21 @@ export function PlayTopBar({ view }: { view: PlayerView }) {
   return (
     <div className="relative flex items-center justify-between gap-2 px-3 bg-black/30 text-xs">
       <span className="flex-shrink-0">{t('play.wall', { n: view.wallRemaining })}</span>
+      {/* flex-1, not just shrinkable: the icon cluster is flex-shrink-0, so this
+          was the only child that could absorb a shortfall and on a 320px phone it
+          truncated to nothing — "Your turn" simply did not render on the smallest
+          supported screen. The cluster gave up 122px when the language switch
+          moved into the ⚙ menu; flex-1 is what claims it. (N7)
+
+          A filled pill on your turn rather than a colour swap on 10px text: the
+          amber-vs-white distinction was the entire cue, and it was invisible at
+          this size. `data-your-turn` is what the guard reads. (N13) */}
       <span
-        className={`font-semibold min-w-0 truncate ${view.turn === seat ? 'text-amber-400' : 'text-white/60'}`}
+        data-turn-indicator="true"
+        data-your-turn={view.turn === seat ? 'true' : undefined}
+        className={`flex-1 min-w-0 truncate text-center font-semibold rounded-full px-2 py-0.5 ${
+          view.turn === seat ? 'bg-amber-400 text-black' : 'text-white/60'
+        }`}
       >
         {view.turn === seat
           ? t('play.yourTurn')
@@ -68,7 +80,6 @@ export function PlayTopBar({ view }: { view: PlayerView }) {
             {formatDelta(view.you.scoreDelta)}
           </span>
         </button>
-        <LangSwitch />
         <SettingsMenu />
         <button
           type="button"

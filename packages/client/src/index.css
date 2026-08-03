@@ -421,3 +421,46 @@ body {
     transform: rotate(-90deg);
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Whose turn it is, said where the player is looking. (N7/N13)
+
+   The only cue used to be `play.yourTurn` in the top bar: 10px amber text, at
+   the opposite end of the screen from the hand you act with — and on a 320px
+   phone it rendered at *zero* width, because the icon cluster is flex-shrink-0
+   and the indicator was the only shrinkable child. N7 gave the row its width
+   back by moving the language switch into the ⚙ menu; this is the other half.
+
+   An inset ring on the hand block, because that is where the decision is taken
+   and where the eye already is. Drawn on a pseudo-element with `inset: 0` and an
+   *inset* box-shadow, so it changes no layout box — `viewport.spec.ts` fails the
+   play screen for a single extra row, and the hand is the bottom-most one.
+
+   The base state is the fully-lit ring and the animation only dims it, so under
+   prefers-reduced-motion — where the global rule collapses this to one instant
+   frame with no fill-mode — the ring reverts to visible rather than to nothing.
+   Same reasoning as `.rotate-overlay-icon`.
+   --------------------------------------------------------------------------- */
+.hand-your-turn {
+  position: relative;
+}
+
+.hand-your-turn::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 0.75rem;
+  box-shadow: inset 0 0 0 2px rgba(251, 191, 36, 0.9);
+  animation: hand-turn-pulse 1.9s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes hand-turn-pulse {
+  0%,
+  100% {
+    box-shadow: inset 0 0 0 2px rgba(251, 191, 36, 0.9);
+  }
+  50% {
+    box-shadow: inset 0 0 0 2px rgba(251, 191, 36, 0.35);
+  }
+}

@@ -108,6 +108,30 @@ async function settledClaimOverlap(page: Page) {
 }
 
 /**
+ * The turn indicator, and the hand cue that goes with it. (N7/N13)
+ *
+ * N7 was the indicator rendering at **zero width** on this viewport: the icon
+ * cluster is `flex-shrink-0` and the indicator was the only shrinkable child, so
+ * it absorbed the whole shortfall and truncated away. Nothing caught it — this
+ * spec watched vertical overflow, and `ui-clicks` fails on document-level sideways
+ * scroll, which a shortfall inside a clipped row never causes.
+ *
+ * So the check is on the rendered width, not on the text being in the DOM: the
+ * text was always there, which is exactly why it went unnoticed.
+ */
+function turnCue(page: Page): Promise<{ width: number; yours: boolean; handRing: boolean } | null> {
+  return page.evaluate(() => {
+    const el = document.querySelector('[data-turn-indicator]');
+    if (!el) return null;
+    return {
+      width: Math.round(el.getBoundingClientRect().width),
+      yours: el.getAttribute('data-your-turn') === 'true',
+      handRing: document.querySelector('.hand-your-turn') !== null,
+    };
+  });
+}
+
+/**
  * Discard trays drawing outside where they belong. Two distinct faults, both live
  * before the density pass and each invisible to the other's check:
  *
@@ -174,6 +198,9 @@ test('play fits the viewport, and the round-end controls stay reachable', async 
   let claimWindows = 0;
   let worstClaim = 0;
   let worstClaimDetail = '';
+  let narrowestTurnCue = Number.POSITIVE_INFINITY;
+  let yourTurns = 0;
+  let yourTurnsWithoutRing = 0;
   const deadline = Date.now() + 90_000;
   while (Date.now() < deadline) {
     if ((await g.getScreen()) === 'roundEnd') break;
@@ -184,6 +211,17 @@ test('play fits the viewport, and the round-end controls stay reachable', async 
         worstRows = s.rows;
       }
       for (const problem of await trayProblems(page)) clipped.add(problem);
+
+      const cue = await turnCue(page);
+      if (cue) {
+        narrowestTurnCue = Math.min(narrowestTurnCue, cue.width);
+        // The claim bar is the cue during a claim window, so the ring stands down
+        // there on purpose — don't count those samples against it.
+        if (cue.yours && (await claimOverlap(page)) === null) {
+          yourTurns++;
+          if (!cue.handRing) yourTurnsWithoutRing++;
+        }
+      }
 
       // Sampled before autoPlay resolves the claim, which is the only moment the
       // bar is up. Polled to a stable pair rather than waited out on a fixed
@@ -218,6 +256,19 @@ test('play fits the viewport, and the round-end controls stay reachable', async 
   expect(
     worstClaim,
     `no hand tile may sit under the claim bar — whether to pung is a judgement about the hand it would cover (${worstClaimDetail})`,
+  ).toBe(0);
+  // N7: it rendered at exactly 0 here, with the text present the whole time. 40px
+  // is well under a fitting indicator and well over a truncated one.
+  expect(
+    narrowestTurnCue,
+    'the turn indicator must have real width on the narrowest phone — it truncated to nothing',
+  ).toBeGreaterThan(40);
+  expect(yourTurns, 'the round should have given this seat a turn').toBeGreaterThan(0);
+  // N13: the top-bar text is at the opposite end of the screen from the hand, so
+  // the ring on the hand is the cue that actually gets seen.
+  expect(
+    yourTurnsWithoutRing,
+    `the hand must be ringed while the turn is yours (${yourTurnsWithoutRing} of ${yourTurns} samples were not)`,
   ).toBe(0);
 
   await expect(page.locator('text=Round End')).toBeVisible({ timeout: 20_000 });

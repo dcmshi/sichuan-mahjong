@@ -380,8 +380,14 @@ export function OwnZone({ view }: { view: PlayerView }) {
         </div>
       )}
 
-      {/* Your hand — drag tiles to rearrange; Sort resets to the standard order */}
-      <div className="px-2 py-2">
+      {/* Your hand — drag tiles to rearrange; Sort resets to the standard order.
+          `hand-your-turn` rings this block while the turn is yours: the top bar's
+          amber text is at the far end of the screen from the tiles you act with,
+          and the ring costs no layout box (inset box-shadow on a pseudo-element),
+          which the bottom-most row of an exactly-fitting column cannot afford.
+          Not shown during a claim window — the claim bar is the cue then, and two
+          competing amber prompts is worse than one. (N13) */}
+      <div className={`px-2 py-2 ${isMyTurn && !inClaimWindow ? 'hand-your-turn' : ''}`}>
         <div className="flex items-center justify-between mb-1">
           <span className="text-xs text-amber-300 h-4">
             {selectedTile !== null ? t('play.tapDiscard') : ''}

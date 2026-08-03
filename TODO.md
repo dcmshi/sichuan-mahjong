@@ -207,7 +207,10 @@ so it isn't rediscovered as a bug.
   N5's mid-match control: reassigning a room field is not the same as mutating
   engine config underneath a live game. **Small.**
 
-- [ ] **N7 — the turn indicator is invisible on a 320px phone.** Found while
+- [x] **N7 — the turn indicator is invisible on a 320px phone.** *(Done with N13
+  — the language switch moved into the ⚙ menu, freeing the 122px, and the
+  indicator is `flex-1` so it claims it. Guarded on rendered width, which is the
+  only thing that was ever wrong.)* Found while
   measuring the top bar for N4, and **pre-existing** — N4 swapped one 40px
   control for another and changed the arithmetic not at all.
 
@@ -398,7 +401,10 @@ so it isn't rediscovered as a bug.
   component throws that structure away, so a test asserting the stored shape
   carries no rendered text is enough. **Small.**
 
-- [ ] **N13 — whose turn it is deserves more than 10px of text.** Reported
+- [x] **N13 — whose turn it is deserves more than 10px of text.** *(Done with N7
+  — a filled amber pill in the bar, plus a pulsing inset ring on the hand block,
+  which is the recommendation below. Stands down during a claim window so two
+  amber prompts never compete.)* Reported
   2026-08-02. The only indication is `t('play.yourTurn')` in the top bar, in the
   `text-xs` row, coloured amber (`PlayTopBar.tsx:50`). Nothing else on the board
   changes: `isMyTurn` in `OwnZone` gates which buttons exist and whether tiles
@@ -495,6 +501,132 @@ so it isn't rediscovered as a bug.
   Not practice-specific, though that is where it shows up most: East comes from
   the seating throw and then rotates each round, so any table hits it whenever
   the local player is dealer. **Small.**
+
+- [ ] **N16 — group a winning hand into the sets that won it.** Requested
+  2026-08-02. The round-end reveal draws a winner's concealed tiles as one flush
+  run with the declared melds beside it and the winning tile ringed
+  (`RoundEndRow.tsx:76`), so the hand is all *there* but you still have to parse
+  it yourself to see why it wins. Showing it as four sets plus a pair says how.
+
+  **The engine already decomposes it.** `findAllWinningShapes(tiles, melds,
+  voidedSuit)` returns `WinShape[]`, and both `SetShape` and `WinShape` are
+  exported from `hand.ts` — `{ kind: 'chow' | 'pung' | 'kong' }` and
+  `{ kind: 'standard', sets, pair }` / `{ kind: 'sevenPairs', pairs }`. So this is
+  a rendering task over an existing pure function, not new engine work. Seven
+  pairs falls out for free, which is the case that most needs it.
+
+  **The trap is that a hand parses more than one way, and the scored shape is not
+  recorded.** `findAllWinningShapes` returns *every* decomposition — 111222333 is
+  three pungs or three chows — and `scoring.ts:163` iterates all of them and keeps
+  the best-scoring one. But `HuRecord` carries `fans`, `handValue`, `winningTile`
+  and `subtype`, and **not the shape those fans came from**. Pick a different
+  decomposition in the UI and the breakdown will contradict the fan list printed
+  directly beneath it, which is worse than not grouping at all.
+
+  Two ways out, and the second is the recommendation:
+
+  - Re-run the same selection in the client. No protocol change, but it duplicates
+    the tie-break in `scoring.ts` and the two will drift.
+  - **Put the chosen shape on `HuRecord`.** Scoring already has it in hand at the
+    moment it picks the winner, so it is a field, not a computation. This is the
+    honest one: the reveal should show the shape that *was scored*, not a shape
+    that also happens to win.
+
+  If the shape goes on `HuRecord` it needs a redaction decision like everything
+  else reaching a client (**[ARCHITECTURE.md §5.2]**) — it is public, since it
+  describes a hand that has just been revealed to the table — and it lands in the
+  snapshot, so old saved games will not have it. The renderer must therefore treat
+  it as optional and fall back to today's flat run.
+
+  Also worth deciding: whether to group **non-winning** hands. The request says
+  "any finished hands", but a losing hand has no decomposition — that is what
+  makes it losing — so there is nothing to group. Winners only. **Medium.**
+
+- [ ] **N17 — practice mode takes no settings at all.** Requested 2026-08-02.
+  "Practice (vs Bots)" goes straight from tap to deal: `startPractice` in
+  `Landing.tsx:84` posts a lobby, fires three `addBot{difficulty:'easy'}`, and
+  sends a bare `sendAction({ t: 'startGame' })` with **no `rules` at all**
+  (`Landing.tsx:104`). So practice silently takes every default — easy bots,
+  normal pace, the default claim window, no 換三張 — and a solo player has no way
+  to change any of it without hosting a lobby and inviting nobody.
+
+  Bot pace is the one asked for, and it is the one that bites: practice is where
+  you are learning, which is exactly when 900ms a move is too fast to follow.
+
+  **Nothing server-side needs to change.** `botSpeed` already rides on
+  `startGame.rules` and is narrowed by `botSpeedFrom`; practice just isn't sending
+  it. Same for `claimWindow` (N6, shipped) and `huanSanZhang` — all three are
+  already accepted on that message, so this is a client screen and one object
+  literal.
+
+  **The shape is the question, not the plumbing.** Practice's whole appeal is one
+  tap, and a settings form in front of it spends that. Recommend a disclosure —
+  the button stays, with a small "Settings" affordance beside it that reveals pace
+  (and later the rest) and remembers the choice in `prefs.ts` beside the animation
+  prefs, so it is a once-ever decision rather than a prompt every session.
+
+  Note the interaction with the harness: `--bot-delay` / `SM_BOT_DELAY_MS`
+  **outrank** anything on `startGame.rules`, which is what keeps the Playwright
+  suites fast. A practice pace setting must not change that precedence.
+  **Small-medium.**
+
+- [ ] **N18 — bot difficulty is one setting for the whole table.** Requested
+  2026-08-02. The lobby has a single easy/medium selector and it applies to
+  whichever bot is added next: `HostSetup` sends
+  `addBot{difficulty: botLevel}` per empty seat, so filling three seats with the
+  selector on Easy gives three easy bots. Setting it per seat would let a table
+  mix — one medium opponent among two easy ones, which is a better practice
+  ladder than all-or-nothing.
+
+  **The protocol already carries it per bot.** `addBot` takes
+  `difficulty: 'easy' | 'medium'` on each message and `RoomSlot.difficulty` is
+  already per seat — the room stores it per slot and `bot.ts` reads it per slot.
+  So the server side is done; what is missing is a per-seat control in the lobby
+  instead of one shared selector, and a way to change a seat's level after the bot
+  is added (today that means kick and re-add).
+
+  Worth doing with **N17**, which wants the same choice available from practice:
+  three bots at one level is precisely the case where mixing is interesting, and
+  both changes are about the same screen's worth of controls. A third level is
+  **N19**, and this item should not wait for it. **Small-medium.**
+
+- [ ] **N19 — a hard bot, so the ladder has three rungs.** Requested 2026-08-02.
+  There are two: `botTurnAction` / `botClaimAction` (easy) and
+  `botTurnActionMedium` / `botClaimActionMedium`, dispatched by a **boolean** —
+  `room.ts:665` and `:687` both read `difficulty === 'medium'` and pick one of two
+  functions. That is the first thing this changes: a third level wants a lookup,
+  not a second ternary.
+
+  **What medium already does, so hard has somewhere to go.** Medium picks its
+  discard by `ukeireAfterDiscard` over `visibleTileTypes` — it counts what it can
+  see and keeps the tile that leaves the most winning tiles live — and it checks
+  `anyOpponentTenpai` before feeding a discard. Easy uses `connectScore`, a local
+  shape heuristic with no notion of what anyone else holds.
+
+  So hard is not "medium with better numbers"; the honest gaps are:
+
+  - **Fan-aware play.** Nothing in either bot targets a *scoring* hand. Sichuan
+    caps at `fanCap` 3 and the fan list is reachable from `scoring.ts`, so a bot
+    that steers toward a payable hand instead of merely a winning one is the
+    biggest single step.
+  - **Discard reading per opponent.** `visibleTileTypes` is a flat count; it does
+    not attribute discards to seats, so it cannot infer a void suit even though
+    every player declares one and flips it. That is free information the bots
+    ignore.
+  - **Claim discipline.** `shouldPung` is a local test. Punging costs tempo and
+    reveals shape, and a hard bot should sometimes decline.
+
+  **Two constraints.** The engine stays pure and bots live in the server, so
+  nothing here may reach into `packages/engine` for state it isn't given — and
+  `bot-smoke.test.ts` plays 100 bot-vs-bot games asserting no rule violations and a
+  balanced ledger, so a third level needs its own pass through that or it can
+  violate rules that no other test would catch.
+
+  Also worth deciding: whether hard should be **slower to decide**. Bot pace is the
+  host's (`botSpeed`), and a bot that thinks visibly longer reads as stronger — but
+  conflating strength with pace would take the host's setting away. Keep them
+  separate. **Medium-large** — this is the only item on this list that is real
+  gameplay work rather than plumbing or layout.
 
 ---
 

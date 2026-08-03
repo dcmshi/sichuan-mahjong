@@ -86,15 +86,18 @@ export function houseRules(rules: unknown): Partial<GameConfig> {
 /**
  * How long a discard stays claimable, as presets rather than the number itself.
  *
- * It has already moved twice — 3s, then 6s, then 10s — which is the tell that
- * there is no single right value: a table of beginners wants longer and four
+ * It has already moved four times — 3s, 6s, 10s, now 15s — which is the tell
+ * that there is no single right value: a table of beginners wants longer and four
  * people who know the game want the pause gone. But `claimWindowMs` is a
  * deadline the whole table waits on, so a free integer off the wire is a denial
  * of service in one field: `86400000` freezes a room until the sweep reaps it and
  * `0` closes the window before a human can see it. Take an enum, map it here, and
  * fall back to normal for anything unrecognised. (N6)
+ *
+ * `normal` tracks `DEFAULT_CONFIG.claimWindowMs` and a test pins the two together:
+ * a host who touches nothing must get the same window as practice mode.
  */
-export const CLAIM_WINDOWS = { quick: 5000, normal: 10_000, relaxed: 20_000 } as const;
+export const CLAIM_WINDOWS = { quick: 8000, normal: 15_000, relaxed: 30_000 } as const;
 export type ClaimWindow = keyof typeof CLAIM_WINDOWS;
 
 export function claimWindowMsFrom(v: unknown): number {

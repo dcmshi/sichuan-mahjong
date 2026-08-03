@@ -39,7 +39,8 @@ pnpm --filter sichuan-mahjong build
 pnpm --filter sichuan-mahjong start          # run server (serves built client)
 
 # e2e needs the client built with the window.__e2e helpers, then a built server
-# (Playwright starts the server itself from packages/server/dist/main.js):
+# (Playwright starts the server itself from packages/server/dist/main.js, with
+# SM_SEED set so the deal is fixed — some guards assert on what a round contains):
 VITE_E2E=1 pnpm --filter @sichuan-mahjong/client build   # PowerShell: $env:VITE_E2E=1
 pnpm e2e
 
@@ -161,8 +162,9 @@ It rides on `startGame.rules.botSpeed`, is narrowed by `botSpeedFrom` in `ws.ts`
 and is a `GameRoom` field rather than `GameConfig`: it changes no rule and a
 replay of the same seed is identical at any value. `--bot-delay <ms>` and the
 `SM_BOT_DELAY_MS` seam pin the process and **outrank the lobby**, which is what
-keeps whole-round suites fast. The claim window is 10s, up from 3 — it closes as
-soon as every eligible seat has acted, so the deadline is a backstop, not a pace.
+keeps whole-round suites fast. The claim window defaults to 15s and is a lobby
+preset (N6) — it closes as soon as every eligible seat has acted, so the deadline
+is a backstop, not a pace.
 The 🗒 control in the play well opens the round's move history, which is what the
 transient event feed can't be.
 
@@ -238,17 +240,31 @@ globally — that is an accessibility signal, this is a taste.
 **Open** (see [TODO.md](./TODO.md), which is only the open list): a central discard
 pool (O3) is still held as a fallback — its redaction question is answered by
 `firstDiscardIsVoid`, but the middle is no longer the empty space that motivated
-it. Then N3 (winning hands in help), N5 (bot pace mid-match), and found in play:
-**N7** the turn indicator renders at zero width on a 320px phone, **N10** side
-seats draw upright and the across pile does not mirror, **N11** pre-selecting a
-discard while you wait, **N13** whose turn it is deserves more than 10px of text
-(fix with N7), **N14** the wall diagram empties from the top-left corner whatever
-the dice said, and off one end when kong draws take the other, and **N15** the dice
-overlay says "You rolls for the wall break".
+it. Then N3 (winning hands in help), N5 (bot pace mid-match), **N10** side seats
+draw upright and the across pile does not mirror, **N11** pre-selecting a discard
+while you wait, **N14** the wall diagram empties from the top-left corner whatever
+the dice said and off one end when kong draws take the other, **N15** the dice
+overlay says "You rolls for the wall break", **N16** group a winning hand into the
+sets that won it, **N17/N18** practice mode takes no settings and bot difficulty is
+one setting for the whole table, and **N19** a hard bot so the ladder has three
+rungs — the only open item that is gameplay work rather than plumbing or layout.
+
+**Whose turn it is, said at both ends of the screen** (2026-08-02, N7+N13). The
+indicator rendered at **zero width** on a 320px phone: the icon cluster is
+`flex-shrink-0` and the indicator was the only shrinkable child, so it absorbed the
+whole shortfall while its text stayed in the DOM — which is why no guard caught it.
+`LangSwitch` moved into the ⚙ menu (122px of a 320px row for a once-a-session
+control) and the indicator is now `flex-1`, so it claims the room rather than
+merely surviving. The cue itself is a filled amber pill plus a pulsing **inset**
+ring on the hand block — inset, on a pseudo-element, because the hand is the
+bottom-most row of an exactly-fitting column and a ring with a layout box would
+fail the overflow guard the way N8's `sticky` bar did. It stands down during a
+claim window so two amber prompts never compete. The guard asserts *rendered
+width*, verified by reverting and watching it report 0.
 
 **The claim window is a lobby preset, and bot pace hides at a human table**
 (2026-08-02, N6/N9). `claimWindow: 'quick' | 'normal' | 'relaxed'` rides on
-`startGame.rules` and `claimWindowMsFrom` in `ws.ts` maps it to 5000/10000/20000 —
+`startGame.rules` and `claimWindowMsFrom` in `ws.ts` maps it to 8000/15000/30000 —
 **an enum and never a number**, because this is the one `rules` field where a raw
 integer is a denial of service in one frame: a day-long window freezes a table
 until the sweep reaps it and `0` closes before a human can see it. Unlike

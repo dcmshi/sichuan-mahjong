@@ -11,6 +11,75 @@ file had reached 1,566 lines of which two were actually open.
 
 ---
 
+## ✅ Whose turn it is, at both ends of the screen (N7 + N13 — 2026-08-02)
+
+Filed as two items and fixed as one, because they were the same sentence failing
+twice: N7 was "you cannot see it" and N13 was "seeing it is not enough".
+
+**N7 — it rendered at zero width, with the text present the whole time.** The top
+bar is `justify-between` with a `flex-shrink-0` icon cluster, and the indicator was
+the only shrinkable child — so on a 320px phone it absorbed the entire shortfall
+and truncated to nothing. Measured at 320×568 mid-play: bar `scrollWidth` 323 in a
+320 box, `Wall: 55` at 41px, cluster at 254px, indicator at **0**.
+
+The width came from the cluster, and `LangSwitch` was 122px of it — three 40px
+buttons for a control most players touch once a session. It moved into the ⚙ menu
+that N4 added, which is where it belonged anyway: that menu is per-player display
+preferences and language is one. The indicator then became `flex-1` rather than
+merely shrinkable, so it *claims* the freed room instead of only surviving in it.
+
+**N13 — the cue was a colour swap on 10px text at the far end of the screen.**
+`isMyTurn` already gated which buttons exist and which tiles carry
+`data-discardable`, but it lit nothing up. Two changes: the indicator is now a
+filled amber pill rather than amber text, and the hand block carries a pulsing
+inset ring — which is the treatment the item recommended, because that is where
+the player is already looking and where the action has to be taken.
+
+**The ring is an inset box-shadow on a pseudo-element, and that is load-bearing.**
+The hand is the bottom-most row of a column that fits exactly on this viewport, and
+`viewport.spec.ts` fails the play screen for one extra row — a ring that occupied
+layout would have failed CI the way N8's `sticky` bar did. The base state is the
+fully-lit ring with the animation only dimming it, so under
+`prefers-reduced-motion` — where the global rule collapses it to one instant frame
+with no fill-mode — it reverts to visible rather than to nothing. Same reasoning
+`.rotate-overlay-icon` already carried.
+
+It stands down during a claim window: the claim bar is the cue then, and two
+competing amber prompts read worse than one.
+
+**The guard asserts rendered width, not presence.** The text was in the DOM the
+entire time N7 was live, which is exactly why nothing caught it — this spec watched
+vertical overflow and `ui-clicks` fails on document-level sideways scroll, which a
+shortfall inside a clipped row never causes. Verified by reverting both changes and
+re-running: it reports the indicator at **0** against a floor of 40. A missing
+indicator fails too, since `turnCue` returning null leaves the your-turn sample
+count at zero.
+
+**And it caught a flaky guard I had added earlier the same day.** The full suite
+failed on `claimWindows > 0` — the non-vacuity assertion that stops the claim-bar
+check passing for free on a round with no claim — after that spec had passed three
+isolated runs. The assertion is right; what was wrong is that it depends on what a
+random deal contains, and the seed was `randomUUID()` with no seam. A guard that
+fails on an unlucky round teaches people to re-run it rather than read it, which
+costs more than the guard is worth.
+
+So `SM_SEED` now pins the deal, exactly as `SM_BOT_DELAY_MS` pins the pace, and the
+Playwright config sets it. The room code is deliberately **not** mixed in: it comes
+from `crypto.randomInt`, so mixing it would put the randomness back and make a spec
+run alone differ from the same spec run in the suite. Verified with three
+consecutive clean runs of both viewport projects plus a full 12/12 suite.
+
+**Also, the claim window got longer again: 10s → 15s.** That is its fourth move
+(3, 6, 10, 15), which is the argument for the lobby preset N6 shipped rather than
+for a better guess. `CLAIM_WINDOWS` moved with it — quick 8s, normal 15s, relaxed
+30s — and `normal` stays pinned to `DEFAULT_CONFIG.claimWindowMs` by a test, so a
+host who touches nothing gets the same window practice mode does. The deadline is
+only ever a backstop: the window closes as soon as every eligible seat has acted
+and bots never wait it out, so a longer value costs time only when a human is
+actually thinking.
+
+---
+
 ## ✅ Three small ones: the claim window, bot pace with no bots, and a feed stuck in one language (N6, N9, N12 — 2026-08-02)
 
 Picked up together because all three were filed as **Small** and none touches the

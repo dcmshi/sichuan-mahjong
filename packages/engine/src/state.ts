@@ -48,14 +48,19 @@ export const DEFAULT_CONFIG: GameConfig = {
   enableFlowerPig: false,
   fanCap: 3,
   enableSeatingThrow: true,
-  // 10s. This shipped at 3, went to 6, and was still hurrying people: a claim is
-  // three decisions inside one window — notice the discard, see that it fits your
-  // hand, and pick between Hu, Pung and Kong — and you are usually looking at
-  // your own hand when it opens. The deadline is only ever a backstop: the window
-  // closes the moment every eligible seat has acted, and anyone who doesn't want
-  // the tile has a Pass button, so a longer one costs time only when someone is
-  // genuinely thinking. Bots answer within their pace and never wait it out.
-  claimWindowMs: 10000,
+  // 15s. This shipped at 3, went to 6, then 10, and was *still* hurrying people:
+  // a claim is three decisions inside one window — notice the discard, see that it
+  // fits your hand, and pick between Hu, Pung and Kong — and you are usually
+  // looking at your own hand when it opens.
+  //
+  // Four moves in one direction is the argument for a longer default rather than a
+  // better guess: the deadline is only ever a **backstop**. The window closes the
+  // moment every eligible seat has acted, anyone who doesn't want the tile has a
+  // Pass button, and bots answer within their pace and never wait it out — so a
+  // longer value costs time only when a human is genuinely thinking, which is the
+  // one case where spending it is right. A table that disagrees now has the lobby
+  // preset (N6) instead of needing this number changed.
+  claimWindowMs: 15000,
 };
 
 /**

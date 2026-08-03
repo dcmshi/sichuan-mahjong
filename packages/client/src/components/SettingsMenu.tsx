@@ -4,6 +4,7 @@ import { useEscapeToClose } from '../hooks/useDismissable.js';
 import { useT } from '../i18n/useT.js';
 import type { AnimationSpeed } from '../prefs.js';
 import { useStore } from '../store/index.js';
+import { LangSwitch } from './LangSwitch.js';
 
 const SPEEDS: AnimationSpeed[] = ['slow', 'medium', 'fast'];
 
@@ -67,9 +68,19 @@ export function SettingsMenu() {
               exit={{ scaleY: 0.85, y: -6 }}
               transition={{ type: 'spring', stiffness: 400, damping: 28 }}
             >
+              {/* Language moved in here from the top bar, where its three 40px
+                  buttons were 122px of a 320px row and the turn indicator was
+                  absorbing the whole shortfall. Most players touch it once, and it
+                  is a display preference like everything else in this menu — so
+                  this is where it belongs, not a tax on every turn. (N7) */}
+              <div className="flex items-center justify-between gap-3 px-3 py-2">
+                <span className="text-white/80">{t('settings.language')}</span>
+                <LangSwitch />
+              </div>
+
               <button
                 type="button"
-                className="w-full flex items-center justify-between gap-3 px-3 min-h-11 hover:bg-white/5"
+                className="w-full border-t border-white/10 flex items-center justify-between gap-3 px-3 min-h-11 hover:bg-white/5"
                 onClick={toggleSound}
                 aria-pressed={soundEnabled}
               >

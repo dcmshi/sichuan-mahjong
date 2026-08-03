@@ -72,6 +72,27 @@ function paceFromEnv(): number | null {
 }
 
 /**
+ * Seed for a new room's game.
+ *
+ * `SM_SEED` is the determinism seam, and it exists for the same reason
+ * `SM_BOT_DELAY_MS` does: the Playwright specs assert on things a *deal* decides.
+ * `viewport.spec.ts` in particular checks the claim bar against the hand and
+ * refuses to pass without having seen a real claim window — which on a random deal
+ * is a coin toss, and a guard that fails on an unlucky round teaches people to
+ * re-run it rather than read it.
+ *
+ * When set, **every** room in the process deals the same, deliberately: the room
+ * code is `crypto.randomInt`, so mixing it in would put the randomness straight
+ * back and a spec run alone would differ from the same spec run in the suite.
+ * Losing deal variety across e2e costs nothing — those assertions are structural,
+ * and the engine's randomness is covered by the property tests and the 100-game
+ * bot smoke test. Unset, which is every real deployment, gives `randomUUID()`.
+ */
+function newSeed(): string {
+  return process.env.SM_SEED || randomUUID();
+}
+
+/**
  * An explicit process-wide pace, from `--bot-delay` or the env seam. Null means
  * nobody asked, and each room uses whatever speed its host picked. It outranks
  * the lobby on purpose: it is an operator's or a test harness's decision, and a
@@ -184,8 +205,7 @@ export class GameRoom {
       isBot: s.isBot,
     })) as [PlayerInit, PlayerInit, PlayerInit, PlayerInit];
 
-    const seed = randomUUID();
-    this.state = createGame(seed, players, { ...DEFAULT_CONFIG, ...config });
+    this.state = createGame(newSeed(), players, { ...DEFAULT_CONFIG, ...config });
   }
 
   /** Call after all initial connections are registered to begin the game. */

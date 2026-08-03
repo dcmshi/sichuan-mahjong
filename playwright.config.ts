@@ -61,5 +61,12 @@ export default defineConfig({
     url: 'http://localhost:8080/healthz',
     reuseExistingServer: false,
     timeout: 15_000,
+    // Pin the deal. `viewport.spec.ts` refuses to pass without having seen a real
+    // claim window — which is the point, since otherwise it passes for free on a
+    // round that offered this seat no claim — but on a random deal that is a coin
+    // toss, and it failed a full-suite run after passing three isolated ones.
+    // A fixed seed makes it the same round every time, so a failure means the
+    // layout changed rather than the deal did. (`SM_SEED`, room.ts)
+    env: { SM_SEED: 'e2e-fixed-deal' },
   },
 });

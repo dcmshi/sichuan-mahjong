@@ -72,9 +72,9 @@ describe('houseRules', () => {
  */
 describe('claimWindowMsFrom', () => {
   it('maps the three presets and nothing else', () => {
-    expect(claimWindowMsFrom('quick')).toBe(5000);
-    expect(claimWindowMsFrom('normal')).toBe(10_000);
-    expect(claimWindowMsFrom('relaxed')).toBe(20_000);
+    expect(claimWindowMsFrom('quick')).toBe(8000);
+    expect(claimWindowMsFrom('normal')).toBe(15_000);
+    expect(claimWindowMsFrom('relaxed')).toBe(30_000);
   });
 
   it('refuses a raw number, however it is dressed up', () => {

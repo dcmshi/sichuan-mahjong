@@ -236,7 +236,7 @@ export type GameConfig = {
   voidDiscardRule: 'strict' | 'lenient';   // default 'strict'; lenient = Novikov canonical
   enableFlowerPig: boolean;          // default false (HOUSE RULE — see §5.9)
   fanCap: number;                    // default 3 → max payment 2^3 = 8
-  claimWindowMs: number;             // default 10000
+  claimWindowMs: number;             // default 15000 (lobby preset, N6)
   enableSeatingThrow: boolean;       // default TRUE — everyone throws, highest is East (§4.3.1)
 };
 
@@ -248,7 +248,7 @@ export const DEFAULT_CONFIG: GameConfig = {
   voidDiscardRule: 'strict',
   enableFlowerPig: false,
   fanCap: 3,
-  claimWindowMs: 10000,
+  claimWindowMs: 15000,
   enableSeatingThrow: true,
 };
 ```
@@ -479,7 +479,7 @@ The engine also rejects claims on void-suit tiles regardless of mode (no rationa
 
 Pung, exposed kong, and Hu can be claimed off a discard. **No chow claims.**
 
-Window duration = `config.claimWindowMs` (default 10000ms). Closes early once every eligible player has acted, so the deadline is a backstop rather than a pace: it costs time only when someone is genuinely deciding, and anyone who does not want the tile has a Pass button. It was 3000 until 2026-08-01, then 6000 the same day — a claim is three decisions in one window (notice the discard, see that it fits, choose between Hu, Pung and Kong) and you are usually looking at your own hand when it opens.
+Window duration = `config.claimWindowMs` (default 15000ms). Closes early once every eligible player has acted, so the deadline is a backstop rather than a pace: it costs time only when someone is genuinely deciding, and anyone who does not want the tile has a Pass button. It was 3000 until 2026-08-01, then 6000 the same day, then 10000, then 15000 on 2026-08-02 — a claim is three decisions in one window (notice the discard, see that it fits, choose between Hu, Pung and Kong) and you are usually looking at your own hand when it opens. Four moves in one direction is why the value is now a **host preset** rather than a constant: `claimWindow: 'quick' | 'normal' | 'relaxed'` on `startGame.rules`, mapped server-side by `claimWindowMsFrom` to 8000/15000/30000. It is narrowed to an enum because a raw integer here is a denial of service in one frame — a day-long window holds the room until the sweep reaps it, and `0` closes before a human can see it.
 
 Resolution priority: **Hu > Kong > Pung**.
 - Multiple Hu claims on the same discard: all honored (see §5.6).
@@ -1080,7 +1080,22 @@ narrowed by `botSpeedFrom` in `ws.ts` beside `houseRules`. The pace lives in
 same seed is identical at any value — which is also why it is a room field, not
 part of the state. `--bot-delay <ms>` (and the `SM_BOT_DELAY_MS` seam the vitest
 and Playwright configs use) pins the whole process and **outranks the lobby**, or
-a host who picked "slow" would have the suites playing at 1.8s a move. The history panel (`PlayHistory`) keeps the
+a host who picked "slow" would have the suites playing at 1.8s a move.
+
+`SM_SEED` is the matching seam for the *deal*, read by `newSeed()` in `room.ts` and
+set by the Playwright config. Some e2e assertions depend on what a round happens to
+contain — `viewport.spec.ts` refuses to pass unless it has seen a real claim window,
+so that the claim-bar check cannot pass for free on a round that offered this seat
+no claim — and on a random deal that is a coin toss. It failed a full-suite run
+after passing three isolated ones, which is the worst way for a guard to behave.
+When set, every room in the process deals identically; the room code is *not* mixed
+in, because it comes from `crypto.randomInt` and would put the randomness straight
+back, making a spec run alone differ from the same spec in the suite. Deal variety
+in e2e was never doing verification work — those assertions are structural, and the
+engine's randomness is covered by the property tests and the 100-game bot smoke
+test. Unset, which is every real deployment, gives `randomUUID()`.
+
+The history panel (`PlayHistory`) keeps the
 round's events in the store — raw, with ids, so a language switch re-renders them
 and identical discards stay distinct — and `historyRowFor` is the inverse of
 `feedLineFor`: discards are the bulk of the list rather than dropped. Its control
