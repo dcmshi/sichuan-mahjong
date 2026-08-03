@@ -868,7 +868,8 @@ Mobile-first. Portrait phone is the design target; tablets and desktop scale up 
    - Huan and void declaration are whole screens of their own rather than states of this one, so there is no phase indicator here.
    - **Furiten badge:** visible to your own seat if you're in furiten state (skip-Hu locked until next self-draw). Tooltip explains the rule.
    - **First-discard flip panel:** on your first turn, if you separated a tile at void declaration (§5.4), the hand is not discardable and this panel shows that tile plus a "Flip your first discard" button — the one discard you don't get to choose.
-   - **The void declaration is drawn above each seat's pond, not in it** — face down until its owner flips it, then face up with a white glow. It is the one public statement of what that seat declared, and `PublicPlayer.firstDiscardIsVoid` is what says so (false until the flip). Holding it out of the pile is also what keeps it from scrolling out of an opponent's capped tray.
+   - **The void declaration is drawn beside each seat's pond, not in it** — face down until its owner flips it, then face up with a white glow. It is the one public statement of what that seat declared, and `PublicPlayer.firstDiscardIsVoid` is what says so (false until the flip). Holding it out of the pile is also what keeps it from scrolling out of an opponent's capped tray. It sits on the **far** side of the pile as that seat sees it, the way a tile pushed out onto the table ends up: above your own tray, and *below* the across seat's, whose whole zone reads away from the top of the screen. The two side seats keep it above their piles as a header — an 80px column has no room to put a second sideways tile beside one, and their own far side is horizontal rather than vertical. (N37)
+   - **Each side seat's pile runs the way that seat lays tiles down, and laps to match** — the left column downward, the right column upward, because the 22.5% band the lap hides is on opposite edges once the two quarter turns are opposite. `.tile-lap-v` and `.tile-lap-v-up`; see [docs/handoff-tile-rendering.md](./docs/handoff-tile-rendering.md). (N36)
 6. **Round end** — per-seat rank, wind, name, a Hu badge and this round's score delta, then match totals, then "Next round" / "End match" (host) or "Leave". Each row expands (`RoundEndRow`) to that seat's revealed hand and melds, its fan list and hand value if it won or its ready state if it didn't, and an itemised list of the payments that produced its delta. Winners' rows start expanded. Spectators get the same rows on their own screen once the round settles.
 7. **Match end** — final standings from the accumulated `matchScores`, then back to the menu. Reached on the server's `matchEnd` frame, which used to reset straight to Landing with no result shown. (F9)
 
@@ -1189,7 +1190,7 @@ whole pile upright and unlapped, so the cap costs nothing. **See who declared
 what**, which needed a redaction decision — delivered by
 `PublicPlayer.firstDiscardIsVoid`, derived and false until that seat flips it,
 which is when a real table learns it and is the deliberate reveal A40 asked for;
-each seat's declaration is drawn above its own pile. The PDF edge case falls out of
+each seat's declaration is drawn beside its own pile. The PDF edge case falls out of
 the same derivation: a player may declare a suit they hold none of, a card
 indicator stands in, and no tile ever reveals it (`usedIndicator`). **Fill the
 middle**, which was the layout motivation and is the one that expired — the well

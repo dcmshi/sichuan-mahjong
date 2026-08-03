@@ -54,26 +54,6 @@ export function OpponentTop({
           that drives claims is also rendered large in the well, and this
           column is full-width, so a row holds plenty — no scroll needed
           (contrast OpponentSide, whose 80px column can't fit one). (R2.3) */}
-      {/* The void declaration, held out of the pile and set above it: it is the
-              one public statement of what this seat declared, and reading it off
-              the front of a wrapping pile meant hunting for it. Face down until
-              its owner flips it on their first turn (A37). */}
-      {/* rotate-180 for the same reason the pile below is turned (N32): this seat
-          faces you, so the top of their tiles points at you. */}
-      {(opp.pendingFirstDiscard || voidDiscardTile !== null) && (
-        <div className="flex justify-center rotate-180">
-          {voidDiscardTile === null ? (
-            <TileBack size="sm" />
-          ) : (
-            <Tile
-              id={voidDiscardTile}
-              size="sm"
-              voidDiscard
-              lastDiscard={voidDiscardTile === lastDiscardTile}
-            />
-          )}
-        </div>
-      )}
       {/* Turned all the way round, not merely reversed. (N32, replacing N10)
           N10 mirrored the *order* so the pile grew the way theirs does, and
           deliberately stopped short of 180° on the grounds that these are drawn
@@ -109,6 +89,33 @@ export function OpponentTop({
             <Tile key={id} id={id} size="sm" lastDiscard={id === lastDiscardTile} />
           ))}
         </button>
+      )}
+      {/* The void declaration, held out of the pile: it is the one public
+          statement of what this seat declared, and reading it off the front of a
+          wrapping pile meant hunting for it. Face down until its owner flips it
+          on their first turn (A37).
+
+          Below the pile, not above it. (N37) Every seat puts this on the far
+          side of its own discards — the way a tile pushed out onto the table
+          ends up — and your own zone reads hand, tray, declaration going away
+          from you. This seat sits at the top of the screen, so away from it is
+          *down*; the block kept the position it had when the pile was still
+          drawn from the viewer's side, and N32 turned the pile without moving
+          it. rotate-180 for the same reason the pile is turned: this seat faces
+          you, so the top of their tiles points at you. */}
+      {(opp.pendingFirstDiscard || voidDiscardTile !== null) && (
+        <div className="flex justify-center rotate-180">
+          {voidDiscardTile === null ? (
+            <TileBack size="sm" />
+          ) : (
+            <Tile
+              id={voidDiscardTile}
+              size="sm"
+              voidDiscard
+              lastDiscard={voidDiscardTile === lastDiscardTile}
+            />
+          )}
+        </div>
       )}
     </div>
   );

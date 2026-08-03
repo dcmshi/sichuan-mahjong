@@ -205,6 +205,16 @@ The long form, with the measurements behind each, is in
 - **A sideways tile carries the landscape footprint on its *box*** and rotates the
   art inside it. A tile rotated in place would measure portrait while drawing
   landscape, and `viewport.spec.ts` asserts on rendered geometry.
+- **The two side seats face opposite ways, so they lap opposite ways.** The band
+  is measured in from the art's *right* edge, which `rotate(90deg)` puts at the
+  bottom of the on-screen tile and `rotate(-90deg)` puts at the top — so the left
+  seat is `.tile-lap-v` (column, negative `margin-top`) and the right is
+  `.tile-lap-v-up` (`column-reverse`, negative `margin-bottom`), which is also the
+  direction each seat actually lays discards down. **Neither half works alone**: a
+  reversed column with a negative `margin-top` laps the wrong neighbour, and a
+  negative `margin-bottom` in a plain column opens a gap. N36 was the shared rule
+  covering ink on one side for a whole release, and it was reported by eye — the
+  tray guard only reads boxes, and the boxes were right.
 - **The tray guard constrains how anything may animate or overlay.**
   `viewport.spec.ts` asserts no `.tile` inside a `.discard-tray` ever has a box
   outside that tray's, sampling every ~130ms for 90s across five viewports. Animate
@@ -261,9 +271,9 @@ The long form, with the measurements behind each, is in
 
 ## Status
 
-Everything through **N35** is shipped: all v1 work, six full-repo audit passes
+Everything through **N37** is shipped: all v1 work, six full-repo audit passes
 (A1–A40), the frontend/design pass (F1–F25), the mobile viewport work (R1–R7),
-the hosting work (C1–C10), and the feature run N1–N35 bar the two items below.
+the hosting work (C1–C10), and the whole feature run N1–N37.
 Per-item history, each with the diagnosis that made it worth writing down, is in
 [docs/history.md](./docs/history.md), newest first. Deferrals are recorded as
 O1–O5 in [ARCHITECTURE.md §12](./ARCHITECTURE.md#12-open-questions--explicit-deferrals).
@@ -280,14 +290,14 @@ is a deliberately accepted granularity cost. Free tier, so persistence stays off
 `getDb()` returns null and every caller handles it. Reasoning and measurements in
 [docs/design-hosted-server.md](./docs/design-hosted-server.md).
 
-**Open** — see [TODO.md](./TODO.md), which is only the open list, and is two
-tray-geometry bugs left by N32 when it turned two seats' tiles round without
-turning what sits around them: **N36** the right-hand column runs backwards and
-laps over ink rather than the body band, and **N37** the across seat's void
-declaration sits on the near side of its pile instead of the far side. **N19** (a
-hard bot, plus the medium regression the ladder guard caught) and **N26** (the
-nine wind call sites) shipped 2026-08-03. **O3, the central discard pool, was
-closed won't-do** on
+**Open** — see [TODO.md](./TODO.md), which is only the open list, and is
+currently **empty**. Four items shipped 2026-08-03: **N19** (a hard bot, plus the
+medium regression the ladder guard caught), **N26** (the nine wind call sites),
+and the two tray-geometry bugs N32 left when it turned two seats' tiles round
+without turning what sits around them — **N36** the right-hand column ran
+backwards and lapped over ink rather than the body band, **N37** the across seat's
+void declaration sat on the near side of its pile. **O3, the central discard pool,
+was closed won't-do** on
 2026-08-03: two of the three things it was for shipped by other means (N33 opens
 any seat's full pile with a tap; `firstDiscardIsVoid` puts each declaration above
 its own pile), and the third — an empty middle — expired when the well filled with

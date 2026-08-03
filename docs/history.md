@@ -3,12 +3,78 @@
 This is the record of work already done: the phase log (1–9), six full-repo audit
 passes (A1–A40), the frontend/design pass (F1–F25), the mobile viewport work
 (R1–R7), the tile-rendering change, the hosting work (C1–C10), and the feature
-run N1–N35. Each entry keeps its diagnosis, not just its fix — that is the part
+run N1–N37. Each entry keeps its diagnosis, not just its fix — that is the part
 worth having later.
 
 **Live work lives in [TODO.md](../TODO.md).** This file only grows at the top, and
 nothing in it is outstanding. It was split out of TODO.md on 2026-08-02, when that
 file had reached 1,566 lines of which two were actually open.
+
+---
+
+## ✅ Turning the tiles was only half of it (N36, N37 — 2026-08-03)
+
+Two bugs filed together because they are one fault: **N32 turned two seats' tiles
+round and left the things around them where they were.** Both are geometry, and
+neither is a rule or a leak.
+
+**N36 — the right seat's pile ran the wrong way, and its lap sat on ink.** The
+tile art laps by 22.5% of its width measured *in from the right edge*: outline,
+green, plate, and never ink. The left seat's quarter turn is `rotate(90deg)`, which
+carries that edge to the **bottom** of the on-screen tile, and `.tile-lap-v` pulls
+each tile up over the previous one's bottom — the band, exactly. N32 gave the
+right seat `rotate(-90deg)`, which carries the same edge to the **top**, and the
+column kept sharing the one negative `margin-top`. So the lap covered the art's
+*left* edge, where the face begins. That is the "not flush compared to the other
+position" a player sees: one column with a single shared seam, one that looks like
+tiles resting on each other.
+
+The reading order was wrong for the same reason and is fixed by the same change.
+Sit at the right of a table facing the middle and the screen's bottom edge is on
+your left, so that seat lays its discards **upward**. `OpponentSide` carried a
+comment defending one shared downward direction — N10's argument that a horizontal
+row of readable faces shows its own direction but a column of sideways tiles does
+not. That was true of the order in isolation and false once the two seats face
+opposite ways, because the lap then shows the direction whether or not the tiles
+do.
+
+`.tile-lap-v-up` is the mirror of the two rules above it: `column-reverse` plus a
+negative `margin-bottom`. **The halves cannot be split** — a reversed column with a
+negative `margin-top` laps the wrong neighbour, and a negative `margin-bottom` in a
+plain column opens a gap rather than an overlap. In a reversed column the tile
+above is the later one, so it already paints on top; `margin-bottom` is what pulls
+it down onto the band.
+
+Both rules now select `.tile-sideways + .tile-sideways` rather than
+`:not(:first-child)`, because the "+N more" label moved to the tray's **first**
+child. It stands for the discards dropped off the *old* end, and a first child
+lands at that end in both directions — the top of the left column, the bottom of
+the reversed right one. It had been last, i.e. at the new end, which the across
+seat's tray had already got right and written down. Under the old selector a
+leading label would have made the first tile lap over the number.
+
+Measured in a browser rather than argued: pitch 24.8px on a 32px tile in both
+columns (0.775 exactly), the right column's tops descending, and no tile's box
+outside its tray's — which is the property `viewport.spec.ts` asserts every ~130ms
+for 90s across five viewports, and the reason the vertical lap is a negative margin
+on the *box* rather than the horizontal lap's trick of shrinking the box and
+overflowing the art.
+
+**N37 — the across seat's declaration was on the near side of its pile.** Every
+seat puts its void declaration on the far side of its own discards, the way a tile
+pushed out onto the table ends up: your own zone reads hand, tray, declaration
+going away from you. `OpponentTop` read name, declaration, tray — so the one seat
+that faces you had it between the player and their own pile. N32 turned that pile
+180° so it reads as the seat's own pile seen from the other side, and the
+declaration block, being its own `rotate-180` div outside the tray, kept the
+position it had when the pile was still drawn from the viewer's side. Moving the
+block after the tray in DOM order was the whole fix; the rotation each already
+carried is unchanged.
+
+The side columns keep their declaration above the pile. It is a header there
+rather than a direction: the seat's own far side is *horizontal* for a seat at
+right angles to you, and an 80px column has no room to put a second sideways tile
+beside the pile.
 
 ---
 

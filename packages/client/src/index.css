@@ -231,8 +231,12 @@ body {
    band, but this way each tile's box stays its true footprint — so the tiles
    genuinely overlap, which is what lapping is, and every rect the overflow guard
    reads is honest. The band is 22.5% of the art's *width*, which after a quarter
-   turn is 22.5% of the tile's height on screen. */
-.tile-lap-v .tile-sideways:not(:first-child) {
+   turn is 22.5% of the tile's height on screen.
+
+   Adjacent-sibling rather than `:not(:first-child)`, because the tray's first
+   child is the "+N more" label — it stands for the discards dropped off the old
+   end, and it is not a tile to lap over. */
+.tile-lap-v .tile-sideways + .tile-sideways {
   margin-top: calc(var(--tile-w) * -0.225);
 }
 
@@ -246,6 +250,32 @@ body {
 
 .tile-run-v .tile-face {
   filter: none;
+}
+
+/* The mirror of the two rules above, for the seat on your right. (N36)
+
+   Two faults with one cause, which is why one class fixes both. `.tiles-face-left`
+   turns that seat's art the other way (N32), and that moves the 22.5% body band
+   from the *bottom* of the on-screen tile to the *top* — so the shared
+   `margin-top` above was laying each tile over the previous one's left edge,
+   where the face begins, instead of over the band. And the reading order: sit at
+   the right of a table facing the middle and the screen's bottom edge is on your
+   left, so that seat's pile grows **upward**, not down as the left seat's does.
+
+   The two halves have to change together and cannot be a modifier on either rule
+   alone: `column-reverse` with a negative `margin-top` laps the wrong neighbour,
+   and a negative `margin-bottom` in a plain column opens a gap instead of an
+   overlap. In a reversed column the tile above is the later one, so it paints
+   over the tile below it and `margin-bottom` is what pulls it down onto the band.
+
+   Same 22.5%, same pitch, same container height — `viewport.spec.ts` reads the
+   rects it read before. */
+.tile-lap-v-up {
+  flex-direction: column-reverse;
+}
+
+.tile-lap-v-up .tile-sideways + .tile-sideways {
+  margin-bottom: calc(var(--tile-w) * -0.225);
 }
 
 /* The ring marking a tile at the void declaration. It wraps the tile exactly, so

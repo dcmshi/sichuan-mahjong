@@ -80,9 +80,25 @@ swapped, plus the quarter turn:
 | `.tile-sideways` `width` / `height` | `calc(var(--tile-w) * 255/210)` / `var(--tile-w)` | the **landscape footprint**, on the box |
 | `.tile-sideways .tile-face` size | `var(--tile-w)` × `calc(var(--tile-w) * 255/210)` | the art at its natural portrait size |
 | `.tile-sideways .tile-face` `transform` | `translate(-50%, -50%) rotate(90deg)` | centre-anchored, so the footprint *is* the box |
-| `.tile-lap-v .tile-sideways` `margin-top` | `calc(var(--tile-w) * -0.225)` | the same 22.5% band, now on the vertical axis |
+| `.tile-lap-v .tile-sideways + …` `margin-top` | `calc(var(--tile-w) * -0.225)` | the same 22.5% band, now on the vertical axis |
 
 At `sm` that measures 38.8 × 32 with a 24.8px pitch, verified in a browser.
+
+**The two side seats face opposite ways, so they lap opposite ways.** The turn
+above is the left seat's; the right seat gets `rotate(-90deg)`
+(`.tiles-face-left`, N32), and that puts the band at the **top** of the on-screen
+tile instead of the bottom. The shared `margin-top` therefore covered the art's
+left edge, where the face begins — visibly not flush beside the other column
+(N36). `.tile-lap-v-up` is the mirror: `flex-direction: column-reverse` so the
+pile reads upward, which is also the direction that seat lays tiles down, and
+`margin-bottom: calc(var(--tile-w) * -0.225)` so the tile above laps down onto
+the band. The two halves cannot be split — a reversed column with a negative
+`margin-top` laps the wrong neighbour, and a negative `margin-bottom` in a plain
+column opens a gap instead of an overlap.
+
+Both rules use `.tile-sideways + .tile-sideways` rather than `:not(:first-child)`,
+because the tray's first child is the "+N more" label — it marks the old end of
+the pile, and it is not a tile to lap over.
 
 Percentages throughout, because the hand's tiles are flex-sized and no length is
 known in CSS. That is also why sizes are `--tile-w` on `.tile-sm`/`-md`/`-lg`/`-xl`

@@ -98,29 +98,35 @@ export function OpponentSide({
           24.8px. Ten now fit in less room than six did, with no wrap and no
           scroller — the cap is raised to match. `min-h-0` and no `flex-1`, as
           before: shrink when the column is short, never grow. */}
-      {/* Both side columns grow downward, and that is deliberate rather than
-          unexamined (N32). N10 reversed the across pile because a horizontal row
-          of readable faces shows its own direction; a column of sideways tiles
-          does not, and reversing only the right one would make the two side
-          seats disagree more visibly than either agrees with its owner. */}
+      {/* Each column grows the way its own seat lays tiles down. (N36, replacing
+          the shared downward run N32 left behind.) N10 argued a column of
+          sideways tiles shows no direction of its own, so both sides could share
+          one; the lap says otherwise, since the band it hides is on opposite
+          edges once the two seats face opposite ways. Facing the middle from the
+          right of the table puts the screen's bottom edge on your left, so that
+          pile reads upward — `tile-lap-v-up` turns the column and the lap
+          together, and the two must move together. */}
       {pileDiscards.length > 0 && (
         <button
           type="button"
           aria-label={t('pile.open', { name: opp.name })}
           {...pileTap}
-          className={`flex flex-col min-h-0 cursor-pointer discard-tray tile-run-v tile-lap-v ${
-            side === 'right' ? 'items-end' : 'items-start'
+          className={`min-h-0 cursor-pointer discard-tray tile-run-v ${
+            side === 'right' ? 'tile-lap-v-up items-end' : 'tile-lap-v items-start'
           }`}
         >
-          {pileDiscards.slice(-10).map(id => (
-            <Tile key={id} id={id} size="sm" sideways lastDiscard={id === lastDiscardTile} />
-          ))}
           {/* The cap is for space (R1), but silently dropping the earliest
               discards hid information that matters for reading a hand. The
-              count is free to show. */}
+              count is free to show. First in DOM, as across the table: it
+              stands for the tiles dropped off the *old* end, and a first child
+              lands at that end in both directions — the top of the left column,
+              the bottom of the reversed right one. */}
           {pileDiscards.length > 10 && (
             <span className="text-[9px] text-white/50 px-1">+{pileDiscards.length - 10}</span>
           )}
+          {pileDiscards.slice(-10).map(id => (
+            <Tile key={id} id={id} size="sm" sideways lastDiscard={id === lastDiscardTile} />
+          ))}
         </button>
       )}
     </div>
