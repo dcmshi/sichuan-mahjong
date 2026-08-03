@@ -254,13 +254,17 @@ so it isn't rediscovered as a bug.
 
   The real cause was ordinary: the hand's container ran to the viewport bottom
   (462..568) and the fixed bar covered 525..568, because a fixed element reserves
-  no space. The fix is `sticky bottom-0` with `flex-shrink-0`, in flow — the
-  board's `flex-1 min-h-0` middle row yields the height, and sticky keeps the bar
-  pinned if the board ever scrolls. That is R3's round-end pattern.
+  no space. The bar stays `fixed` and the board pads by the bar's *measured*
+  height while a window is open — padding an `h-dvh` border-box element reduces
+  its content height, so the `flex-1 min-h-0` middle row gives the space back.
+  Putting the bar in flow (`sticky`) was tried first and **CI rejected it**: it
+  covered nothing but added a row to a column that already fits exactly on a
+  320px phone, so the vertical-overflow guard failed. It passed locally three
+  times and failed on CI, which has less slack.
 
-  Measured after: six settled claim windows, zero tiles under the bar, 18px
-  clearance, and no board overflow introduced. The guard was verified by
-  restoring `fixed` — it reports all 13 hand tiles under the bar on both
+  Measured after: settled claim windows show zero tiles under the bar and no
+  board overflow, over three consecutive full-suite runs. The guard was verified
+  by removing the padding — it reports all 13 hand tiles under the bar on both
   viewports — and it polls to a stable pair rather than sleeping, because a fixed
   wait long enough on one machine is short on another and the guard then fails
   intermittently.

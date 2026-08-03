@@ -1,6 +1,6 @@
 import type { GameEvent } from '@sichuan-mahjong/engine';
 import { AnimatePresence, motion } from 'framer-motion';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAnimationPace } from '../hooks/useAnimation.js';
 import { useStore } from '../store/index.js';
 import { Tile } from './Tile.js';
@@ -43,6 +43,7 @@ export function ClaimFlight() {
   const lastEvents = useStore(s => s.lastEvents);
   const { skip, scale } = useAnimationPace();
   const [flights, setFlights] = useState<Flight[]>([]);
+  const timers = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
   const durationMs = FLIGHT_MS * scale;
 
   useEffect(() => {
@@ -71,12 +72,27 @@ export function ClaimFlight() {
     // Timed out rather than cleared on animation complete: under reduced motion
     // Framer skips the animation, so a completion callback would never fire and
     // the copy would sit on the board for the rest of the round. (F20's lesson)
-    const timer = setTimeout(
-      () => setFlights(prev => prev.filter(f => !ids.has(f.id))),
-      durationMs + 60,
-    );
-    return () => clearTimeout(timer);
+    //
+    // Held in a ref and cleared only on unmount, *not* by this effect's cleanup.
+    // `lastEvents` is a fresh array reference on every server push, so a
+    // per-run cleanup cancelled the pending timer and the next run returned at
+    // the `claims.length === 0` guard without rescheduling it — leaving the
+    // flown tile parked over the board, at its destination width, for the rest
+    // of the round. Same fault as the event feed's stuck lines.
+    const timer = setTimeout(() => {
+      timers.current.delete(timer);
+      setFlights(prev => prev.filter(f => !ids.has(f.id)));
+    }, durationMs + 60);
+    timers.current.add(timer);
   }, [lastEvents, skip, durationMs]);
+
+  useEffect(() => {
+    const pending = timers.current;
+    return () => {
+      for (const timer of pending) clearTimeout(timer);
+      pending.clear();
+    };
+  }, []);
 
   return (
     <AnimatePresence>

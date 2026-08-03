@@ -1,5 +1,5 @@
 import type { GameAction, Seat } from '@sichuan-mahjong/engine';
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useSound } from '../hooks/useSound.js';
 import { useT } from '../i18n/useT.js';
 import { sendAction } from '../ws/client.js';
@@ -9,6 +9,12 @@ type Props = {
   legalActions: GameAction[];
   claimDeadline: number;
   windowMs: number;
+  /**
+   * The bar's height, so the board can hold that much clear beneath the hand.
+   * Reported rather than assumed: which buttons are offered varies with the
+   * claim, so the bar is 43px with none and ~95px with a row of them. (N8)
+   */
+  onHeight: (px: number) => void;
 };
 
 /** Share of the claim window still to run, as a percentage. */
@@ -32,8 +38,9 @@ export function initialRemaining(claimDeadline: number, windowMs: number, now: n
   return fromDeadline > 0 && fromDeadline <= windowMs ? fromDeadline : windowMs;
 }
 
-export function ClaimPanel({ seat, legalActions, claimDeadline, windowMs }: Props) {
+export function ClaimPanel({ seat, legalActions, claimDeadline, windowMs, onHeight }: Props) {
   const [pct, setPct] = useState(100);
+  const barRef = useRef<HTMLDivElement | null>(null);
   // One claim per window. The panel used to stay fully armed until the server's
   // next view arrived, so on a slow connection a second tap sent the action
   // again — and Hu twice is not the same as Hu once.
@@ -72,17 +79,26 @@ export function ClaimPanel({ seat, legalActions, claimDeadline, windowMs }: Prop
     sendAction({ t: 'action', action });
   }
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the button flags are not read here — they are what changes the height being measured
+  useLayoutEffect(() => {
+    onHeight(barRef.current?.offsetHeight ?? 0);
+    return () => onHeight(0);
+  }, [onHeight, canHu, canKong, canPung, canPass]);
+
   return (
     // Felt palette, not the gray chrome it used to wear — the claim bar read as
     // a foreign element against the jade-and-amber board. (F14)
     //
-    // `sticky`, not `fixed`. Fixed took the bar out of flow, so the board
-    // reserved nothing for it and it covered the hand for the whole window —
-    // and whether to pung is a judgement about the hand it was covering. In
-    // flow the board's `flex-1 min-h-0` middle row yields the height instead;
-    // `sticky bottom-0` keeps it pinned to the bottom of the visible area if the
-    // board ever does scroll, which is R3's round-end pattern. (N8)
-    <div className="claim-panel sticky bottom-0 flex-shrink-0 bg-green-950/95 backdrop-blur text-white p-3 border-t border-amber-400/30 z-20">
+    // Stays `fixed`, and the board pads instead. In flow it covered nothing, but
+    // it added a row to a column that on CI's metrics was already at the limit,
+    // and `viewport.spec.ts` rightly failed the play screen for overflowing.
+    // Padding the root reduces the content height of an `h-dvh` border-box
+    // element, so the `flex-1 min-h-0` middle row gives the space back and the
+    // column height does not change. (N8)
+    <div
+      ref={barRef}
+      className="claim-panel fixed bottom-0 left-0 right-0 bg-green-950/95 backdrop-blur text-white p-3 border-t border-amber-400/30 z-20"
+    >
       {/* The bar is decorative: a progressbar role would have to be focusable to
           be valid, and a tab stop in front of the claim buttons is the last thing
           you want in a timed decision. The countdown is spoken instead, below. */}

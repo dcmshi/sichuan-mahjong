@@ -11,13 +11,55 @@ file had reached 1,566 lines of which two were actually open.
 
 ---
 
+## ✅ Two overlays that never went away — one bug, twice (2026-08-02)
+
+Reported from play: "X ponged" / "X declared Hu!" staying up until round end, and
+separately the flown claim tile parking itself over the board at its destination
+size, covering other players' hands for the rest of the round.
+
+**Same fault in two components, and it is a React idiom that reads as correct.**
+Both `EventFeed` and `ClaimFlight` scheduled a removal timer inside an effect
+keyed on `lastEvents`, and returned `() => clearTimeout(timer)` as cleanup. The
+store hands out a **fresh array reference on every server push**, so the effect
+re-ran constantly; each re-run's cleanup cancelled the pending removal, and the
+next run hit its own early-return guard — `lastEvents.length === 0` in the feed,
+`claims.length === 0` in the flight — and returned *without rescheduling*. The
+item then had nothing left to remove it.
+
+Cleanup-cancels-timer is the textbook pattern, and it is wrong precisely when the
+timer belongs to a past batch rather than to the current render. Both now keep
+their timers in a `useRef<Set<...>>` and clear them only on unmount.
+
+Measured rather than assumed, since client tests run without a DOM and this is
+effect wiring rather than a pure helper. Feed lines: longest survival 3758ms
+against a 3500ms budget, none left at round end. Flight overlays: 11 across four
+rounds, longest 1301ms against a ~690ms budget (the excess is `AnimatePresence`'s
+exit fade plus sampling granularity), never parked.
+
+**Worth generalising:** an effect keyed on server-pushed state cannot own a timer
+in its cleanup. `DiceOverlay` had the same shape and was fixed during N2 for the
+same reason; that makes three.
+
+---
+
 ## ✅ N8 — the claim bar covered the hand, and my first diagnosis was wrong (2026-08-02)
 
 The Pung / Kong / Hu / Pass bar was `fixed bottom-0`, and your hand is the
 bottom-most row, so for the whole 10-second window the bar sat on the tiles the
-decision is about. Fixed with `sticky bottom-0 flex-shrink-0` — in flow, so the
-board's `flex-1 min-h-0` middle row yields the height, and sticky keeps the bar
-pinned if the board ever scrolls. R3's round-end pattern.
+decision is about. The bar stays `fixed` and the **board pads instead**: it
+reports its own height, and `PlayPhase` sets that as `paddingBottom` on the root
+while a window is open. Padding an `h-dvh` border-box element reduces its content
+height, so the `flex-1 min-h-0` middle row gives the space back and the column
+height does not change.
+
+**`sticky` in flow was tried first and CI rejected it, correctly.** In flow the
+bar covered nothing — but it added a row to a column that already fits exactly on
+a 320×568 phone, and `viewport.spec.ts` failed the play screen for overflowing
+its scroll container. It passed locally three times and failed on CI, whose font
+metrics leave less slack. Reserving space inside the existing column is the
+version that costs no height. The bar's height is *measured* rather than assumed,
+because which buttons are offered varies with the claim: 43px with none, ~95px
+with a row of them.
 
 **The wrong turn is the useful part.** I first measured the hand's layout box
 ending exactly where the bar began, saw hand tiles reported 21px lower than that,
@@ -50,9 +92,9 @@ round loop, asserts at least one window was seen (otherwise it passes for free o
 a round that offered no claim, which is how this went unguarded), and polls to a
 stable pair rather than sleeping — a fixed wait long enough on one machine is
 short on another, and an intermittent guard is worse than none. Verified by
-restoring `fixed`: it reports all 13 hand tiles under the bar on both viewports.
-With the fix, six settled windows show zero tiles under the bar, 18px clearance,
-and no board overflow introduced.
+removing the padding: it reports all 13 hand tiles under the bar on both
+viewports. With the fix, settled windows show zero tiles under the bar and no
+board overflow, over three consecutive full-suite runs.
 
 ---
 

@@ -267,6 +267,9 @@ function VoidDeclarePhase({ view }: { view: PlayerView }) {
 
 function PlayPhase({ view }: { view: PlayerView }) {
   const [showHistory, setShowHistory] = useState(false);
+  // Held clear beneath the hand while a claim window is open, because the bar is
+  // fixed and reserves nothing of its own. (N8)
+  const [claimBarHeight, setClaimBarHeight] = useState(0);
   const t = useT();
   const seat = view.you.seat;
 
@@ -284,7 +287,14 @@ function PlayPhase({ view }: { view: PlayerView }) {
     // still doesn't fit degrades to today's scrolling instead of clipping,
     // honouring the overflow-hidden fix that let landscape reach its lower
     // half in the first place. (F13, R1)
-    <div className="h-dvh board-felt flex flex-col text-white overflow-y-auto overflow-x-hidden">
+    // paddingBottom, not a row: the bar is fixed, so in flow it would add height
+    // to a column that already fits exactly on the smallest phone. Padding an
+    // `h-dvh` border-box element reduces its content height instead, and the
+    // middle row's `flex-1 min-h-0` gives the space back. (N8)
+    <div
+      className="h-dvh board-felt flex flex-col text-white overflow-y-auto overflow-x-hidden"
+      style={inClaimWindow ? { paddingBottom: claimBarHeight } : undefined}
+    >
       <ReconnectingBanner />
       <ClaimFlight />
 
@@ -375,6 +385,7 @@ function PlayPhase({ view }: { view: PlayerView }) {
           legalActions={view.yourLegalActions}
           claimDeadline={view.claimDeadline}
           windowMs={view.config.claimWindowMs}
+          onHeight={setClaimBarHeight}
         />
       )}
 
