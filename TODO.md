@@ -1160,6 +1160,25 @@ so it isn't rediscovered as a bug.
   two paths are "tap a tile" and "tap an empty suit", not one replacing the other.
   **Small-medium.**
 
+- [ ] **N31 - the lobby's Start button is below the fold, and N27 pushed it
+  further.** Measured 2026-08-03 while verifying N27: on a 390x844 phone the
+  primary action sits at **y=1044** in a 1180px-tall document. It was already off
+  screen before the fan-limit row - roughly y=944 - so this is not a regression, but
+  it is now 200px down rather than 100.
+
+  `HostSetup`'s lobby is `min-h-dvh flex flex-col`, so the page grows and the
+  document scrolls: nothing is clipped and the button is reachable. It is simply not
+  *visible*, and a host who has just filled four seats has no on-screen way to know
+  the game can start.
+
+  **The fix already exists one screen over.** R3 solved exactly this on `RoundEnd`
+  with a `sticky bottom-0` block, full-bleed via a negative margin cancelling the
+  root padding, and a felt gradient so the scrolled content fades rather than
+  clipping hard. Copy that shape rather than inventing one.
+
+  Worth folding in while there: the share-URL and watch-link blocks are ~290px of
+  the scroll, and they matter most in the first few seconds and never again. **Small.**
+
 ---
 
 ## Shelved, with reasons
