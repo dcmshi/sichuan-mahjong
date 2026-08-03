@@ -925,7 +925,9 @@ so it isn't rediscovered as a bug.
   suite runs the server with `--bot-delay 150`, so every e2e run sees only the
   pinned branch. That blind spot is how the hardcoded literal shipped.
 
-- [ ] **N25 — the dice overlay parks over the board for the rest of the round.**
+- [x] **N25 — the dice overlay parks over the board for the rest of the round.**
+  *(Done — the stage timers live in a ref and are cancelled on unmount only, and
+  `ui-clicks.spec.ts` now asserts the overlay appears and then clears.)*
   Found 2026-08-03 while verifying N24 in a browser, and **not fixed there** — it
   is a different component with its own history, and it deserves its own change.
 
@@ -960,6 +962,23 @@ so it isn't rediscovered as a bug.
   `fixed inset-0` overlay affects. A guard wants to assert the overlay is *gone* a
   known time after the deal — which is a state assertion, not a layout one.
   **Small, and worth a guard.**
+
+  **Built as recommended.** The handles moved into a ref cleared on unmount only,
+  so re-running the arming effect can no longer cancel a reveal in flight;
+  `shown.current === key` was already the guard against arming twice. Arming a new
+  deal clears the previous handles, which is also what stops the list growing by
+  two a round. Dropping `isDealStart` from the deps would have worked too, but it
+  needs a lint suppression, and a suppression is what hides this class of bug.
+
+  The guard is in `ui-clicks.spec.ts`, which already declared its void suit
+  immediately and so already reproduced it. It asserts the overlay is **visible at
+  the deal** before asserting it clears: "the overlay is gone" passes just as well
+  when the overlay never appeared, and this repo has been bitten by a guard that
+  could not reach its own case. `data-dice-overlay` is what it reads.
+
+  Verified in a browser at 390×844: overlay up at the void screen, play reached in
+  908ms, still present at t+3s (correct — two stages at the medium pace is 5.4s),
+  gone by t+6s, board clear.
 
 ---
 

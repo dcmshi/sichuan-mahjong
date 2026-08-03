@@ -80,9 +80,31 @@ test('opening played via real UI clicks (huan tiles, void suit, discard tap)', a
   // right when only the chosen suit was rendered; now it would always be 13 and
   // would demand a flip button in the indicator case, which has nothing to flip.
   const voidSuitTiles = await page.locator('[data-void-tile] img[alt]').count();
+
+  // ── The dice reveal has to clear itself. Declaring promptly — which is what
+  //    this spec does, and what most players do — used to leave the seating stage
+  //    parked over the board for the rest of the round: the phase left
+  //    `voidDeclare` mid-reveal, React ran the effect's cleanup and cancelled the
+  //    stage timers, and nothing was left to unset the stage. It is
+  //    `pointer-events-none`, so it blocked no click and this whole spec passed
+  //    with it dimming every screenshot. (N25)
+  //
+  //    Asserted visible first, deliberately: "the overlay is gone" passes just as
+  //    well when the overlay never appeared, and this repo has been bitten by a
+  //    guard that could not reach its own case. ──
+  const diceOverlay = page.locator('[data-dice-overlay]');
+  await expect(diceOverlay, 'the dice reveal should be up at the deal').toBeVisible({
+    timeout: 10_000,
+  });
   await page.getByRole('button', { name: /Void /i }).click();
 
   await expect.poll(() => getPhase(page), { timeout: 15_000 }).toBe('play');
+
+  // Two stages of 900+900ms at the medium pace is 5.4s; 15s is slack, not a
+  // second chance — a parked overlay never leaves at all.
+  await expect(diceOverlay, 'the dice reveal must clear itself once play starts').toHaveCount(0, {
+    timeout: 15_000,
+  });
 
   // ── Landscape phones don't get a board to tap. R4 Phase 1 blocks play there
   //    with a rotate-to-portrait overlay, because the board needs roughly twice

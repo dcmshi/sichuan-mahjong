@@ -73,6 +73,7 @@ export function DiceOverlay({
   const t = useT();
   const [stage, setStage] = useState<Stage | null>(null);
   const shown = useRef<string | null>(null);
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   const key = diceKey(view);
   const seatingRolls = decidingRound(view);
@@ -81,16 +82,43 @@ export function DiceOverlay({
   const stageMs = rollMs + HOLD_MS * scale;
   const seatingRounds = view.dice.seating?.length ?? 0;
 
+  // Cancel on unmount, and *only* on unmount. The stage timers outlive every
+  // re-run of the arming effect below, which is the whole point — see N25.
+  useEffect(
+    () => () => {
+      for (const id of timers.current) clearTimeout(id);
+      timers.current = [];
+    },
+    [],
+  );
+
   // Every dependency here is a primitive, and that is load-bearing rather than
   // tidy. The server pushes a fresh view many times a round, so `view.dice` is a
   // new object reference each time; depending on it re-ran this effect, whose
   // cleanup cancelled the stage timers — and the `shown.current` guard then
   // returned early without rescheduling them, parking the overlay on its first
   // stage for the rest of the round.
+  //
+  // **That fix was not enough, and the second version is why the timers moved to
+  // a ref above.** `isDealStart` is a primitive, but it is one that *changes*
+  // mid-animation: the phase leaves `voidDeclare` the moment all four seats have
+  // declared, which at 3.6s of dice on the medium pace is sooner than the reveal
+  // finishes for anyone who declares promptly. React then ran this effect's
+  // cleanup, cancelling the two stage timers, and re-entered the body only to
+  // return at the guard below — leaving `stage` non-null with nothing left to
+  // clear it, and the overlay dimming the board for the rest of the round.
+  //
+  // So re-running this is harmless now: `shown.current === key` already stops it
+  // arming twice, and nothing it does can cancel a reveal already in flight. (N25)
   useEffect(() => {
     if (skip || !isDealStart) return;
     if (shown.current === key) return;
     shown.current = key;
+
+    // A new deal supersedes the previous reveal, and this is also what keeps the
+    // handle list from growing by two a round across a long match.
+    for (const id of timers.current) clearTimeout(id);
+    timers.current = [];
 
     const hasSeating = seatingRounds > 0;
     setStage(hasSeating ? 'seating' : 'wall');
@@ -98,22 +126,22 @@ export function DiceOverlay({
     // Timers rather than animation callbacks: under reduced motion Framer skips
     // the animation outright, and a completion callback that never fires would
     // leave the overlay parked over the board. (F20's lesson, again)
-    const timers: ReturnType<typeof setTimeout>[] = [];
     if (hasSeating) {
-      timers.push(setTimeout(() => setStage('wall'), stageMs));
-      timers.push(setTimeout(() => setStage(null), stageMs * 2));
+      timers.current.push(setTimeout(() => setStage('wall'), stageMs));
+      timers.current.push(setTimeout(() => setStage(null), stageMs * 2));
     } else {
-      timers.push(setTimeout(() => setStage(null), stageMs));
+      timers.current.push(setTimeout(() => setStage(null), stageMs));
     }
-    return () => {
-      for (const id of timers) clearTimeout(id);
-    };
   }, [key, skip, isDealStart, stageMs, seatingRounds]);
 
   return (
     <AnimatePresence>
       {stage !== null && (
         <motion.div
+          // What the e2e guard reads. It is `pointer-events-none`, so an overlay
+          // parked over the board blocks no click and every spec passed with it
+          // sitting there — the assertion has to be that it is *gone*. (N25)
+          data-dice-overlay="true"
           className="fixed inset-0 z-40 flex items-center justify-center bg-black/55 backdrop-blur-sm pointer-events-none"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}

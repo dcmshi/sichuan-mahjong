@@ -11,6 +11,41 @@ file had reached 1,566 lines of which two were actually open.
 
 ---
 
+## ✅ The dice overlay clears itself (N25 — 2026-08-03)
+
+Found while verifying N24 in a browser: declare your void suit promptly and the
+seating-roll overlay never leaves, dimming and blurring the whole board at
+`bg-black/55 backdrop-blur-sm`. Measured still present at t+3s, t+8s and t+20s
+after reaching the play phase, having taken 155ms to get there.
+
+The cause was `isDealStart` in the effect's dependency array. When the phase
+advances to `play`, React runs the previous effect's cleanup — **which cancelled
+the two stage timers** — and then re-enters the body only to return at
+`if (skip || !isDealStart) return`. `stage` was left non-null with nothing
+remaining to clear it.
+
+The comment directly above that effect already describes this failure from a
+previous round of it: depending on `view.dice` re-ran the effect, cancelled the
+timers, and the `shown.current` guard then returned early without rescheduling.
+The fix at the time was to make every dependency a primitive. **`isDealStart` is a
+primitive — it is just one that changes mid-animation.** Same teardown, different
+door. Two stages of 900+900ms scaled by the animation pace is 3.6s at medium, so
+anyone who declares faster than that hit it, which is most people.
+
+The handles now live in a ref cancelled on unmount only, so re-arming cannot kill
+a reveal in flight, and arming a new deal clears the old handles so the list does
+not grow by two a round. Dropping `isDealStart` from the deps would also work, but
+it needs a lint suppression — and the suppression is what hides this class of bug.
+
+**Why nothing caught it, and what does now.** The overlay is
+`pointer-events-none`, so it blocked no click and all 12 e2e specs passed with it
+sitting over every screenshot. The guard went into `ui-clicks.spec.ts`, which
+already declared its void suit immediately and so already reproduced it, and it
+asserts the overlay is **visible first**: "the overlay is gone" passes just as
+well when the overlay never appeared.
+
+---
+
 ## ✅ The ⚙ menu reports the pace the table is actually on (N24 — 2026-08-03)
 
 Reported from a real session: practice set to **slow**, and the play screen's ⚙
