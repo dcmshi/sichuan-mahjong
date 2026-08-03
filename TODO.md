@@ -856,6 +856,56 @@ so it isn't rediscovered as a bug.
   it is incomplete rather than at runtime. Extend the language lists in those
   tests along with `Lang`. **Medium-large, and mostly not a coding task.**
 
+- [ ] **N24 — the ⚙ menu says the bots are on Normal whatever the lobby chose.**
+  Reported 2026-08-03: practice set to **slow**, and the play screen's ⚙ shows
+  **normal** highlighted.
+
+  **It is the display, not the setting.** Traced the whole path and the pace is
+  honoured end to end: `PracticeSetup` sends `rules.botSpeed`
+  (`PracticeSetup.tsx:111`), `ws.ts:416` narrows it through `botSpeedFrom` into
+  `createRoom`, and `room.ts:316` schedules every bot turn at
+  `botPaceMs(this.botSpeed)`. The bots really are slow. What is wrong is one line
+  in the menu:
+
+  ```ts
+  const [botSpeed, setBotSpeed] = useState<BotSpeed>('normal');  // SettingsMenu.tsx:44
+  ```
+
+  Local component state, seeded with the literal `'normal'` and never reconciled
+  with the table. It is right only by coincidence, and it resets to `'normal'` on
+  every remount — so it also lies after a reconnect, and it lies to a host who
+  changed the pace mid-match and reopened the menu.
+
+  **The reason it was built that way is that the client has no way to know.**
+  `botSpeed` is a `GameRoom` field rather than `GameConfig` (deliberately — N5
+  explains why: it changes no rule and no replay), so it is in neither
+  `GameState` nor `PlayerView`, and no `ServerMsg` carries it. Grep confirms
+  `botSpeed` appears nowhere in `views.ts`, `state.ts`, or the client store.
+
+  **The server half already exists and is unused.** `GameRoom.getBotSpeed()`
+  (`room.ts:827`) was written for exactly this — its comment says "so a joining or
+  reconnecting client can show the right one" — and it has **no callers anywhere**.
+  So the fix is to put the value on the wire and read it, not to invent a
+  mechanism.
+
+  Two ways, and the first is the recommendation:
+
+  - **Add it to the `lobby`/`view` push.** A field on `ServerMsg` and a store
+    slot. Says nothing about rules, so it does not touch `views.ts`'s redaction
+    contract — but it is a new projected value, which means it needs the decision
+    §5.2 requires anyway (it is public: everyone at the table watches the same
+    moves land at the same pace).
+  - Echo it back on the `setBotSpeed` reply only. Cheaper, and still wrong on
+    join and on reconnect — which is half the reported cases.
+
+  **The third lie to fix while in there:** `--bot-delay` / `SM_BOT_DELAY_MS`
+  outranks the lobby and the menu both, so on a pinned process the menu shows a
+  pace the server is ignoring entirely. Whatever field carries the value should
+  carry the *effective* one, or the control should say it has been overridden.
+
+  Testable without a DOM once the value is on the wire — a store slot is exactly
+  the shape the client tests can reach. **Small.**
+
 ---
 
 ## Shelved, with reasons
