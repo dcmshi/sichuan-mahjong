@@ -24,6 +24,20 @@ export type HandScore = {
   handValue: number;
 };
 
+/**
+ * A score plus the decomposition it was computed from. (N16)
+ *
+ * A hand parses more than one way — 111222333 is three pungs or three chows —
+ * and `calcHandScore` keeps the best-scoring reading. Nothing recorded *which*,
+ * so a client wanting to show the hand grouped had to re-run the tie-break and
+ * would eventually disagree with the fan list printed beside it. The scorer has
+ * the answer in hand at the moment it picks, so this is a field rather than a
+ * computation.
+ *
+ * Null only if the hand does not win at all, which is the false-Hu path.
+ */
+export type ScoredHand = HandScore & { shape: WinShape | null };
+
 export type HuSubtype =
   | 'heavenly'
   | 'earthly'
@@ -159,26 +173,37 @@ export function calcHandScore(
   huSubtype: HuSubtype,
   fanCap: number,
   enableHeavenlyEarthly: boolean,
-): HandScore {
+): ScoredHand {
   const shapes = findAllWinningShapes(tiles, melds, voidedSuit);
   const contextualFan = huSubtypeToContextualFan(huSubtype);
   const winningTileType = tileTypeOf(winningTile);
 
   let best: HandScore = { fans: [], totalFan: 0, handValue: 1 };
+  let bestShape: WinShape | null = null;
 
   for (const shape of shapes) {
     const structural = calcStructuralFans(shape, winningTileType);
     const allFans = withContextualFan(structural, contextualFan);
     const score = fanMapToScore(allFans, fanCap);
-    if (score.handValue > best.handValue) best = score;
+    if (score.handValue > best.handValue) {
+      best = score;
+      bestShape = shape;
+    }
   }
+
+  // A fan-less hand scores exactly the seed value above, so no shape ever beats
+  // it and `bestShape` stays null — but the hand still won and still has a
+  // decomposition to show. Falling back to the first keeps `best` untouched,
+  // which matters: the comparison is `>`, so changing the seed to shape 0's score
+  // would be a behaviour change for the sake of a display field.
+  const shape = bestShape ?? shapes[0] ?? null;
 
   // Heavenly / Earthly: auto-cap hand value while keeping structural fans for display
   if ((huSubtype === 'heavenly' || huSubtype === 'earthly') && enableHeavenlyEarthly) {
-    return { fans: best.fans, totalFan: fanCap, handValue: 2 ** fanCap };
+    return { fans: best.fans, totalFan: fanCap, handValue: 2 ** fanCap, shape };
   }
 
-  return best;
+  return { ...best, shape };
 }
 
 /** Meld tile types for exhaustive-wait filtering in isTenpai. */

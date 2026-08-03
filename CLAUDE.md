@@ -262,11 +262,21 @@ globally — that is an accessibility signal, this is a taste.
 pool (O3) is still held as a fallback — its redaction question is answered by
 `firstDiscardIsVoid`, but the middle is no longer the empty space that motivated
 it. Then **N10** side seats draw upright and the across pile does not mirror,
-**N16** group a winning hand into the sets that won it, **N19** a hard bot so the
-ladder has three rungs, **N21** check the *payments* against sources other than
-the PDF (a real table disputed one), and **N23** French, Spanish and Japanese.
-N19 is the only open item that is gameplay work rather than plumbing, layout or
-research.
+**N19** a hard bot so the ladder has three rungs, **N21** check the *payments*
+against sources other than the PDF (a real table disputed one), **N23** French,
+Spanish and Japanese, and **N26** nine call sites label a seat's wind from its
+absolute index. N19 is the only open item that is gameplay work rather than
+plumbing, layout or research.
+
+**The reveal shows the sets that won** (2026-08-03, N16). `HuRecord.shape` is the
+decomposition the fans were *scored* from, because a hand parses more than one way
+and a client re-deriving it would eventually contradict the fan list printed
+beneath the tiles. **Optional and redacted**: optional because it lands in the
+snapshot, redacted because `hu` is projected whole — a winner's fans name a
+property of the hand, the shape names every tile in it, and a winner sits out with
+its tiles unshown. Same `reveal` gate as a concealed kong's rank.
+`groupWinningHand` matches types back onto ids, skips the leading melded sets, and
+returns leftovers rather than dropping tiles.
 
 **The help draws the hands, and the fan table reads the engine** (2026-08-02, N3).
 The example hands are checked by `isWinningHand` in a test, because a help screen

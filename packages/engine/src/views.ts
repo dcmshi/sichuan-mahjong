@@ -279,23 +279,43 @@ function toPublicMelds(melds: Meld[], reveal: boolean): PublicMeld[] {
   );
 }
 
-function toPublicPlayer(p: PlayerState, revealMelds: boolean): PublicPlayer {
+/**
+ * `reveal` gates two things now: a concealed kong's rank, and the winning hand's
+ * decomposition (N16). Both are the same question — may this viewer see tiles
+ * this player never put on the table — so they take the same answer: yes to the
+ * owner, and to everyone else only once the round has settled.
+ *
+ * **`hu.shape` needs the redaction that `hu.fans` did not.** A winner's fans are
+ * already public mid-round and name a *property* of the hand; the shape names
+ * every tile type in it, and a seat that has won sits out the rest of the round
+ * with its concealed tiles unrevealed (`handCount`, never `hand`). Passing the
+ * shape through would tell the remaining players exactly which tiles are dead —
+ * real information, and information this codebase has never given them.
+ */
+function toPublicPlayer(p: PlayerState, reveal: boolean): PublicPlayer {
   return {
     seat: p.seat,
     name: p.name,
     isBot: p.isBot,
-    melds: toPublicMelds(p.melds, revealMelds),
+    melds: toPublicMelds(p.melds, reveal),
     discards: p.discards,
     pendingFirstDiscard: p.pendingFirstDiscard !== null,
     // `usedIndicator` is the persistent record of whether a tile was separated at
     // all; the other two say it has since been flipped and landed in `discards`.
     firstDiscardIsVoid: !p.usedIndicator && p.pendingFirstDiscard === null && p.discards.length > 0,
     status: p.status,
-    hu: p.hu,
+    hu: p.hu === null || reveal ? p.hu : withoutShape(p.hu),
     isReady: p.isReady,
     scoreDelta: p.scoreDelta,
     handCount: p.hand.length,
   };
+}
+
+/** Drops the key rather than nulling it, because the field is optional. */
+function withoutShape(hu: HuRecord): HuRecord {
+  if (hu.shape === undefined) return hu;
+  const { shape: _shape, ...rest } = hu;
+  return rest;
 }
 
 /**

@@ -11,6 +11,62 @@ file had reached 1,566 lines of which two were actually open.
 
 ---
 
+## ✅ The reveal shows the sets that won (N16 — 2026-08-03)
+
+The round-end reveal drew a winner's concealed tiles as one flush run of fourteen,
+so the hand was all *there* but you parsed it yourself. It now draws the four sets
+and the pair — or the seven pairs — that the fans were scored from.
+
+**The trap the item named was real: a hand parses more than one way, and nothing
+recorded which reading was scored.** 111222333 is three pungs or three chows, and
+only the pung reading earns All Pungs; `calcHandScore` iterates every
+decomposition and keeps the best, but `HuRecord` carried only `fans`, `handValue`,
+`winningTile` and `subtype`. A client re-running the tie-break would eventually
+disagree with the fan list printed directly beneath the tiles, which is worse than
+not grouping at all. So the shape is a **field**, not a computation: the scorer has
+it in hand at the moment it picks.
+
+**One case the item did not flag — the fan-less hand.** `calcHandScore` seeds
+`best` at `handValue: 1` and compares with `>`, so a hand earning no fan never
+beats the seed and no shape is ever selected. It falls back to `shapes[0]` rather
+than changing the seed, because changing the seed would be a behaviour change made
+for the sake of a display field.
+
+**The redaction decision: strip it until the round settles.** `hu` is projected
+whole into `PublicPlayer`, so without this the shape would reach every seat the
+moment someone won. A winner's *fans* are already public and name a property of
+the hand; the shape names every tile type in it — and a seat that has won sits out
+the rest of the round with its concealed tiles unshown (`handCount`, never
+`hand`). Passing it through would tell the remaining players exactly which tiles
+are dead, which is real information this codebase has never given them. It shares
+the `reveal` gate with a concealed kong's rank, because it is the same question:
+may this viewer see tiles this player never put on the table.
+
+`groupWinningHand` matches the shape's tile *types* back onto the ids the player
+held. Three things it has to get right, each with a test: `shape.sets` leads with
+the declared melds (`findAllWinningShapes` builds it that way) and `MeldDisplay`
+draws those separately, so that many are skipped; a discard-won tile is never in
+`hand` at all, so it joins the pool first and lands in the set it completed, which
+is the question a player is actually asking; and anything the shape does not
+account for comes back as a trailing `rest` group rather than being dropped —
+silently drawing a shorter hand is the failure `revealedTileCount` exists to catch
+on the other path.
+
+**The ring moved from the winning tile to the group holding it.** Tiles in a run
+are lapped, so a ring on one is painted over by the next — and "which set did it
+complete" is what the ring was trying to say.
+
+Verified in a played round at 430×932: the winner rendered 3/3/3/3/2 with exactly
+one ringed group and "Full Flush · Hand value 4" beneath it, and the three
+non-winners kept the flat run.
+
+**Found while verifying, and filed rather than fixed: [N26](../TODO.md).** Nine
+call sites label a seat's wind from its absolute index, so they are wrong whenever
+the dealer is not seat 0 — which is the same mistake N22 fixed in the dice
+overlay, in nine more places.
+
+---
+
 ## ✅ Counterclockwise means seat-decreasing (N22 — 2026-08-03)
 
 `throwForWall` computed `wallSeat` as `(dealer + step) % 4`, stepping *clockwise*

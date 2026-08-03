@@ -109,6 +109,21 @@ export type HuRecord = {
   winningTile: TileId;
   byDiscard: boolean;
   discarder: Seat | null;
+  /**
+   * The decomposition the fans above were scored from — four sets and a pair, or
+   * seven pairs — so the round-end reveal can show the hand grouped as it won
+   * rather than as a flat run of fourteen. (N16)
+   *
+   * `sets` includes the declared melds first, in `melds` order, because that is
+   * what `findAllWinningShapes` returns; a renderer drawing melds separately
+   * skips that many.
+   *
+   * **Optional, and it has to stay optional.** It lands in the persisted
+   * snapshot, so a game saved before this existed has no shape — and it is
+   * redacted from other seats mid-round (see `views.ts`), so a client may hold a
+   * `HuRecord` without it even for a live game.
+   */
+  shape?: import('./hand.js').WinShape;
 };
 
 export type PendingVoid = {

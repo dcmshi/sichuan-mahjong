@@ -660,6 +660,9 @@ function applyHuResolution(
       winningTile: actualWinTile,
       byDiscard: true,
       discarder,
+      // The decomposition these fans came from, so the reveal can group the hand
+      // as it won rather than re-running the tie-break and disagreeing. (N16)
+      ...(score.shape ? { shape: score.shape } : {}),
     };
 
     applyHuStatus(s, winner, record);
@@ -1499,6 +1502,7 @@ function applyDeclareHuOnDraw(
     winningTile,
     byDiscard: false,
     discarder: null,
+    ...(score.shape ? { shape: score.shape } : {}),
   };
 
   return applySelfDrawHu(state, action, seat, record);
@@ -1545,6 +1549,7 @@ function applyDeclareHeavenly(
     winningTile,
     byDiscard: false,
     discarder: null,
+    ...(score.shape ? { shape: score.shape } : {}),
   };
 
   return applySelfDrawHu(state, action, seat, record);

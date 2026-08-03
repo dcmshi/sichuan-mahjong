@@ -571,7 +571,9 @@ so it isn't rediscovered as a bug.
   the seating throw and then rotates each round, so any table hits it whenever
   the local player is dealer. **Small.**
 
-- [ ] **N16 — group a winning hand into the sets that won it.** Requested
+- [x] **N16 — group a winning hand into the sets that won it.** *(Done — the
+  scored shape rides on `HuRecord`, redacted until the round settles, and
+  `groupWinningHand` matches it back onto the revealed tiles.)* Requested
   2026-08-02. The round-end reveal draws a winner's concealed tiles as one flush
   run with the declared melds beside it and the winning tile ringed
   (`RoundEndRow.tsx:76`), so the hand is all *there* but you still have to parse
@@ -610,6 +612,37 @@ so it isn't rediscovered as a bug.
   Also worth deciding: whether to group **non-winning** hands. The request says
   "any finished hands", but a losing hand has no decomposition — that is what
   makes it losing — so there is nothing to group. Winners only. **Medium.**
+
+  **Built the second way, as recommended.** `ScoredHand` is `HandScore` plus the
+  `WinShape` the fans came from, and `HuRecord.shape` carries it. One thing the
+  item did not flag: the fan-less hand. `calcHandScore` seeds `best` at
+  `handValue: 1` and compares with `>`, so a hand that earns no fan never beats
+  the seed and no shape is ever selected — it falls back to `shapes[0]` rather
+  than changing the seed, because changing the seed would be a behaviour change
+  for the sake of a display field.
+
+  **The redaction decision is: strip it until the round settles.** `hu` is
+  projected whole into `PublicPlayer`, so the shape would otherwise reach every
+  seat the moment someone wins. A winner's *fans* are public and name a property
+  of the hand; the shape names every tile type in it, and a seat that has won
+  sits out with its concealed tiles unshown (`handCount`, never `hand`). Passing
+  it through would tell the remaining players exactly which tiles are dead —
+  real information this codebase has never given them. It shares the `reveal`
+  gate with a concealed kong's rank, which is the same question.
+
+  `groupWinningHand` in `roundEnd.ts` matches the shape's tile *types* back onto
+  the ids the player held, skipping `melds.length` leading sets because
+  `findAllWinningShapes` puts the melds first and `MeldDisplay` draws them. A
+  discard-won tile is added to the pool before grouping, so it lands in the set it
+  completed — which is the question a player is asking. Anything the shape does
+  not account for comes back as a trailing `rest` group rather than being dropped.
+
+  **The ring moved from the tile to the group.** Tiles in a run are lapped, so a
+  ring on one is painted over by the next; and "which set did it complete" is what
+  the ring was trying to say anyway.
+
+  Verified in a played round at 430×932: the one winner rendered 3/3/3/3/2 with
+  exactly one ringed group, and the three non-winners kept the flat run.
 
 - [x] **N17 — practice mode takes no settings at all.** *(Done — a "Bot settings"
   disclosure on the landing screen carrying pace and level, remembered in
@@ -1031,6 +1064,43 @@ so it isn't rediscovered as a bug.
   908ms, still present at t+3s (correct — two stages at the medium pace is 5.4s),
   gone by t+6s, board clear.
 
+- [ ] **N26 - the round-end rows label every seat with the wrong wind.** Found
+  2026-08-03 while verifying N16, and the third sighting of one mistake.
+
+  `RoundEndRow.tsx` renders the seat's wind from `player.seat`, and the ledger
+  lines render the other party's from `l.other`. Both read the **absolute seat
+  index** as a wind, so seat 0 is always labelled East - correct only when the
+  dealer happens to be seat 0, and `startNextRound` rotates the dealer every
+  round. Reproduced at round end: "You" at seat 0 was labelled East in a round
+  whose East the dice had given to someone else.
+
+  N22 fixed exactly this in `DiceOverlay` with `windOfSeat(seat, dealer)`, and
+  winds run *against* the seat index because play travels counterclockwise. The
+  helper already exists; what is missing here is the dealer.
+
+  **`RoundResult` does not carry it.** `buildRoundResult` in `room.ts` returns
+  `{ roundIndex, players }`, so the round-end screen has no way to compute a wind -
+  which is presumably why it reached for the seat index. So this is a field on
+  `RoundResult` plus the existing helper, and `windOfSeat` wants to move out of
+  `DiceOverlay` to somewhere both screens can reach.
+
+  **Surveyed, and it is nine call sites, not two.** Every one reads an absolute
+  seat index:
+
+  - `RoundEndRow.tsx` (the seat, and each ledger line's other party),
+    `RoundEnd.tsx`, `MatchEnd.tsx`, `Spectate.tsx` (twice) - all in or after a
+    game, all wrong whenever the dealer is not seat 0, which is three rounds in
+    four.
+  - `HostSetup.tsx` and `Lobby.tsx` label the four empty chairs. **These are a
+    different question**: there is no dealer before the game starts, so the label
+    there is a seat name rather than a wind. Leaving them as-is is defensible, but
+    then a player sees "South" against a chair in the lobby and "South" against a
+    different seat in play. Decide it once and write down which.
+
+  So the shape is: `dealer` on `RoundResult` (and the winds in play can come off
+  `PlayerView.dealer`, which is already projected), one shared helper, and a
+  decision about the lobby. **Small-medium** - the sweep is what makes it more
+  than the one-line fix it looks like.
 ---
 
 ## Shelved, with reasons

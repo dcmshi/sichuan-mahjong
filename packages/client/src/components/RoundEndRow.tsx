@@ -2,7 +2,7 @@ import type { RoundResult, Seat } from '@sichuan-mahjong/engine';
 import { motion } from 'framer-motion';
 import { useState } from 'react';
 import { useT } from '../i18n/useT.js';
-import { formatFan, ledgerLines, separateWinningTile } from '../roundEnd.js';
+import { formatFan, groupWinningHand, ledgerLines, separateWinningTile } from '../roundEnd.js';
 import { useStore } from '../store/index.js';
 import { MeldDisplay } from './MeldDisplay.js';
 import { Tile } from './Tile.js';
@@ -29,6 +29,10 @@ export function RoundEndRow({
   const isPractice = useStore(s => s.isPractice);
   const lines = ledgerLines(player.ledger, player.seat);
   const winningTile = separateWinningTile(player);
+  // The sets the hand actually won with (N16). Null for a non-winner, and for a
+  // winner whose record predates the field — both fall through to the flat run
+  // below, which is what this drew before.
+  const groups = groupWinningHand(player);
 
   return (
     <motion.div
@@ -74,14 +78,42 @@ export function RoundEndRow({
               tiles and declared melds are separate groups, which is what keeps
               the two readable as different things now that nothing has a gap. */}
           <div className="flex flex-wrap items-start gap-2">
-            <div className="flex flex-wrap tile-lap pl-2">
-              {player.hand.map(id => (
-                <Tile key={id} id={id} size="sm" />
-              ))}
-            </div>
+            {groups !== null ? (
+              /* Grouped into the sets that won, because a flush run of fourteen
+                 says the hand is complete without saying why — the same gap the
+                 help screen's example hands close. Each group laps internally and
+                 the space between groups is what makes them read as sets.
+                 The ring moves from the winning *tile* to the group holding it:
+                 tiles in a run are lapped, so a ring on one is painted over by
+                 the next, and "which set did it complete" is the question being
+                 asked anyway. (N16) */
+              groups.map((group, gi) => (
+                <div
+                  key={`g${gi}`}
+                  className={[
+                    'flex flex-wrap tile-lap pl-2',
+                    group.tiles.includes(player.hu?.winningTile ?? -1)
+                      ? 'rounded-lg ring-2 ring-amber-400'
+                      : '',
+                  ].join(' ')}
+                >
+                  {group.tiles.map(id => (
+                    <Tile key={id} id={id} size="sm" />
+                  ))}
+                </div>
+              ))
+            ) : (
+              <div className="flex flex-wrap tile-lap pl-2">
+                {player.hand.map(id => (
+                  <Tile key={id} id={id} size="sm" />
+                ))}
+              </div>
+            )}
             {/* Ringed and set apart because it is the tile that won, and
-                because `separateWinningTile` explains why it is not in `hand`. */}
-            {winningTile !== null && (
+                because `separateWinningTile` explains why it is not in `hand`.
+                Only when the hand could not be grouped — with groups the tile is
+                already drawn, ringed, in the set it completed. */}
+            {groups === null && winningTile !== null && (
               <div className="flex flex-wrap tile-lap pl-2 rounded-lg ring-2 ring-amber-400">
                 <Tile id={winningTile} size="sm" />
               </div>
