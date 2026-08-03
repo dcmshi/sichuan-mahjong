@@ -286,6 +286,21 @@ and Japanese, **N26** nine call sites label a seat's wind from its absolute inde
 the lobby's Start button sits below the fold. N19 is the only open item that is
 gameplay work rather than plumbing, layout or research.
 
+**You pick the tile that leads** (2026-08-03, N30). The void screen submitted
+`counts[chosenSuit][0]` — the first tile of the suit in whatever order the hand
+happened to be in — so the one discard a player is told they do not choose *was*
+chosen, silently, by sort order, and it is the tile three opponents get their first
+claim window on. Tapping a tile now answers both halves at once. `voidChoice` in
+`voidSelection.ts` is a pure helper because **the two null cases are not
+interchangeable**: `firstDiscard: null` is the indicator, legal only for a suit the
+hand holds none of, and null while holding the suit is what the engine rejects as
+`void_indicator_not_allowed` (A36). The three suit buttons stayed live — they carry
+the counts the choice is made on, and they are the only route to the indicator case —
+but a suit with no tile named is now a visible half-answer rather than a silent one.
+The picked tile takes **amber and stops pulsing** instead of gaining a second ring,
+and the lift is on the wrapper rather than the `Tile`, because `.tile-mark-flash`
+draws its ring on that box.
+
 **A control has to say what it does, not what it is called** (2026-08-03, N28/N29).
 The kong button read `Kong M3 (promoted)` — a tile code no other screen uses, in a
 `{label}` slot the Chinese catalogs also filled, and the *name* of the subtype rather

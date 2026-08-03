@@ -11,6 +11,59 @@ file had reached 1,566 lines of which two were actually open.
 
 ---
 
+## ✅ You pick the tile that leads (N30 — 2026-08-03)
+
+Reported as a subtlety: the player should choose which tile goes out first, "since
+discard order might matter here". It does, and **the screen was already sending a
+specific tile without asking.**
+
+`declareVoid` carries `firstDiscard: TileId | null` and the engine holds that exact
+tile out of the hand as `pendingFirstDiscard` — set aside face down at the
+declaration, flipped as your opening play (A35). `submit` filled it with
+`counts[chosenSuit][0]`: **the first tile of that suit in whatever order the hand
+happened to be in.** So the one discard a player is told they do not choose was in
+fact chosen, silently, by sort order — and it is the tile three opponents get their
+first claim window on. `9 man` and `2 man` are not interchangeable openings.
+
+**The fix is a tap, and the two null cases are the whole of the logic.**
+`voidChoice(counts, suit, picked)` in `voidSelection.ts` returns `needTile` for a
+suit the hand holds and `ready` with `firstDiscard: null` **only** for a suit it
+holds none of. Those are not interchangeable: null while holding the suit is exactly
+what the engine rejects as `void_indicator_not_allowed`, because it would keep a
+tile that should have been separated and hand the player an extra one for the round
+(A36). That is why it is a pure exported function with a test rather than a `&&`
+inside the component — the client suite has no DOM, and this is the rule most worth
+pinning.
+
+**The buttons stayed live, as a summary that still selects a suit.** Losing them
+would have cost the per-suit counts, which are the comparison the screen exists to
+support, and they are the only route to the indicator case — a suit you hold none of
+has no tile to tap. What changed is that choosing a suit and choosing a tile are now
+two visible answers instead of one silent one: Confirm greys out and reads "Tap the
+tile to discard first" until the second arrives, then names the tile through
+`tileLabel` on its own line, the way N28's kong offers do.
+
+Two details that would have looked broken otherwise. The picked tile takes **amber
+and stops pulsing** rather than gaining a second ring — the suit's pulse means "all
+of these go", and two rings on one tile say neither. And the 8px lift is on the
+wrapper, not on the `Tile`: `.tile-mark-flash` draws its ring on that box, so a tile
+lifting out of its own mark reads as a rendering fault. A transform moves no layout
+box, so `pt-2` on the row is what keeps the lift inside the scroller.
+
+**`ui-clicks.spec.ts` was the trap the item predicted.** It clicked a suit button
+and went straight for `/Void /i`, which does not exist until a tile is tapped, so it
+now taps a marked tile in between and asserts exactly one `data-void-first`. The
+other three specs drive `__e2e.voidSubmit()`, which sends the action directly — it
+needed no change, and that is also why none of them ever covered this.
+
+Verified in a browser at 390×844 by tapping the **last** man tile rather than the
+first: `man-4` left the hand and `man-1` — what the old code would have submitted —
+stayed. The lift measures 8px against its neighbours (top 266 vs 274) and sits
+inside the scroller; at 320×568 the screen still fits exactly, 568 of 568, with no
+document scroll.
+
+---
+
 ## ✅ The board is drawn from the table's centre (N10 — 2026-08-03)
 
 Two faults, both of which made the board read as four copies of *your* view rather

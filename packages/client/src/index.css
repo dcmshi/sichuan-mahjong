@@ -367,6 +367,25 @@ body {
   position: relative;
 }
 
+/* The one tile you picked to lead with (N30), against the rest of its suit's
+   pulse. Amber — the colour every other confirmed selection in the app uses — and
+   static, because the pulse means "all of these go" and would say nothing extra
+   here. Same inset-0 pseudo-element so it moves no layout box, and the component
+   never puts this and `.tile-mark-flash` on the same tile. The drop shadow is what
+   makes the 8px lift read as a lift rather than a nudge. */
+.tile-mark-pick {
+  position: relative;
+}
+
+.tile-mark-pick::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: 0 0 0 3px #fbbf24, 0 5px 9px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+}
+
 .tile-mark-flash::after {
   content: "";
   position: absolute;

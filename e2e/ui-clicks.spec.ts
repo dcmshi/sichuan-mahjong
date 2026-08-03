@@ -72,7 +72,8 @@ test('opening played via real UI clicks (huan tiles, void suit, discard tap)', a
   // Bots submit automatically → void-declaration phase.
   await expect.poll(() => getPhase(page), { timeout: 15_000 }).toBe('voidDeclare');
 
-  // ── Void: click the first suit button, then the confirm ("Void <suit>") ──
+  // ── Void: click the first suit button, tap which of its tiles leads, then the
+  //    confirm ("Void <suit>") ──
   await page.locator('div.flex.gap-3 > button').first().click();
   // The screen shows the whole hand and marks the chosen suit's tiles, so count
   // the marked ones — holding ≥1 means one gets separated face down, which is
@@ -80,6 +81,15 @@ test('opening played via real UI clicks (huan tiles, void suit, discard tap)', a
   // right when only the chosen suit was rendered; now it would always be 13 and
   // would demand a flip button in the indicator case, which has nothing to flip.
   const voidSuitTiles = await page.locator('[data-void-tile] img[alt]').count();
+  // N30: the first discard is a real choice, so the suit button alone no longer
+  // submits — Confirm stays disabled until a tile is tapped. Both paths are
+  // exercised here: the button chooses the suit, the tile chooses the opening
+  // play. A suit the hand has none of is the indicator case and has nothing to
+  // tap, which is why this is conditional.
+  if (voidSuitTiles > 0) {
+    await page.locator('[data-void-tile]').first().click();
+    await expect(page.locator('[data-void-first]')).toHaveCount(1);
+  }
 
   // ── The dice reveal has to clear itself. Declaring promptly — which is what
   //    this spec does, and what most players do — used to leave the seating stage

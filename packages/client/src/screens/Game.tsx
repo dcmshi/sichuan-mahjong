@@ -14,11 +14,12 @@ import { PlayHistory } from '../components/PlayHistory.js';
 import { PlayTopBar } from '../components/PlayTopBar.js';
 import { ReconnectingBanner } from '../components/ReconnectingBanner.js';
 import { RotateOverlay } from '../components/RotateOverlay.js';
-import { Tile } from '../components/Tile.js';
+import { Tile, tileLabel } from '../components/Tile.js';
 import { WallDiagram, wallStateOf } from '../components/WallDiagram.js';
 import { useSound } from '../hooks/useSound.js';
 import { useT } from '../i18n/useT.js';
 import { useStore } from '../store/index.js';
+import { handBySuit, voidChoice } from '../voidSelection.js';
 import { sendAction } from '../ws/client.js';
 
 // ---------------------------------------------------------------------------
@@ -124,8 +125,10 @@ function HuanPhase({ view }: { view: PlayerView }) {
 
 function VoidDeclarePhase({ view }: { view: PlayerView }) {
   const [chosenSuit, setChosenSuit] = useState<Suit | null>(null);
+  const [picked, setPicked] = useState<TileId | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const seat = view.you.seat;
+  const play = useSound();
   const t = useT();
   // As in HuanPhase: don't leave a rejected submit stuck on "Waiting…". (F1)
   const errorSeq = useStore(s => s.lastError?.seq);
@@ -133,16 +136,31 @@ function VoidDeclarePhase({ view }: { view: PlayerView }) {
     if (errorSeq !== undefined) setSubmitted(false);
   }, [errorSeq]);
 
-  const counts: Record<Suit, TileId[]> = { man: [], pin: [], sou: [] };
-  for (const id of view.you.hand) {
-    const { suit } = tileFromType(tileTypeOf(id));
-    counts[suit].push(id);
+  const counts = handBySuit(view.you.hand);
+  const choice = voidChoice(counts, chosenSuit, picked);
+
+  // Tapping a tile answers both questions at once: which suit goes, and which of
+  // its tiles leads. The buttons stay live for the suit half — a suit you hold
+  // none of has no tile to tap, and comparing the three counts is what they are
+  // for — but they no longer choose a tile on your behalf. (N30)
+  function pickTile(id: TileId) {
+    play('tile');
+    setChosenSuit(tileFromType(tileTypeOf(id)).suit);
+    setPicked(id);
+  }
+
+  function pickSuit(suit: Suit) {
+    if (suit === chosenSuit) return;
+    setChosenSuit(suit);
+    setPicked(null);
   }
 
   function submit() {
-    if (!chosenSuit) return;
-    const firstDiscard = counts[chosenSuit][0] ?? null;
-    sendAction({ t: 'action', action: { t: 'declareVoid', seat, suit: chosenSuit, firstDiscard } });
+    if (choice.kind !== 'ready') return;
+    sendAction({
+      t: 'action',
+      action: { t: 'declareVoid', seat, suit: choice.suit, firstDiscard: choice.firstDiscard },
+    });
     setSubmitted(true);
   }
 
@@ -197,7 +215,7 @@ function VoidDeclarePhase({ view }: { view: PlayerView }) {
               // it: 5px against the untouched 12px on the other side.
               chosenSuit === suit ? 'shadow-[inset_0_0_0_4px_#fbbf24]' : 'opacity-80',
             ].join(' ')}
-            onClick={() => setChosenSuit(suit)}
+            onClick={() => pickSuit(suit)}
           >
             <div>{t(`suit.${suit}.full`)}</div>
             <div className="text-sm font-normal opacity-80">
@@ -214,32 +232,47 @@ function VoidDeclarePhase({ view }: { view: PlayerView }) {
         <p className="text-sm text-green-300 mb-2">{t('void.yourHand')}</p>
         {/* pb-1 so the last row's flash ring has somewhere to be drawn: it is a
             3px spread on the tile's own box, and this container scrolls, so on
-            the bottom row it was clipped by the scroller's edge. */}
-        <div className="flex flex-wrap justify-center gap-1 pb-1">
+            the bottom row it was clipped by the scroller's edge. pt-2 is the same
+            bargain for the lift — a transform moves no box, so the top row's 8px
+            has to come from padding inside the scroller. */}
+        <div className="flex flex-wrap justify-center gap-1 pt-2 pb-1">
           {view.you.hand.map(id => {
             const { suit } = tileFromType(tileTypeOf(id));
             const marked = suit === chosenSuit;
+            const isFirst = id === picked && marked;
             return (
-              <div
+              <motion.div
                 key={id}
                 // The e2e spec reads this to know whether a tile gets separated
                 // face down, which is what turn 1 has to flip (A35). It used to
                 // count the tiles in this container — fine when only the chosen
                 // suit was rendered, wrong now that the whole hand is.
                 data-void-tile={marked ? 'true' : undefined}
+                data-void-first={isFirst ? 'true' : undefined}
                 // The mark is drawn outside the tile and moves no box; 3px rather
                 // than 2 because pin's emerald is the one colour sitting on green
                 // felt, and it needs the extra pixel to read as clearly as the red
                 // and the blue. `tile-mark` matches the tile's corner.
+                //
+                // The picked tile takes amber and stops pulsing instead of adding a
+                // second ring: the suit's pulse says "all of these go", and this one
+                // says "this one goes first" — two rings on one tile would say
+                // neither. The lift is on this box rather than on the Tile, because
+                // the ring is drawn here and a tile lifting out of its own mark
+                // reads as broken.
                 className={[
                   'void-hand-tile',
-                  marked ? `tile-mark tile-mark-flash ${SUIT_MARKS[suit]}` : '',
+                  marked ? 'tile-mark' : '',
+                  isFirst ? 'tile-mark-pick' : '',
+                  marked && !isFirst ? `tile-mark-flash ${SUIT_MARKS[suit]}` : '',
                 ]
                   .filter(Boolean)
                   .join(' ')}
+                animate={{ y: isFirst ? -8 : 0 }}
+                transition={{ type: 'spring', stiffness: 500, damping: 22 }}
               >
-                <Tile id={id} fill />
-              </div>
+                <Tile id={id} fill onClick={pickTile} />
+              </motion.div>
             );
           })}
         </div>
@@ -250,11 +283,25 @@ function VoidDeclarePhase({ view }: { view: PlayerView }) {
       <div className="mt-auto pt-2">
         <button
           type="button"
-          className="w-full py-4 bg-amber-500 hover:bg-amber-400 rounded-xl font-bold text-lg disabled:opacity-40"
+          className="w-full py-3 bg-amber-500 hover:bg-amber-400 rounded-xl font-bold text-lg disabled:opacity-40"
           onClick={submit}
-          disabled={!chosenSuit}
+          disabled={choice.kind !== 'ready'}
         >
-          {chosenSuit ? t('void.confirm', { suit: t(`suit.${chosenSuit}`) }) : t('void.choose')}
+          {choice.kind === 'noSuit' && t('void.choose')}
+          {choice.kind === 'needTile' && t('void.pickTile')}
+          {choice.kind === 'ready' && (
+            <>
+              <div>{t('void.confirm', { suit: t(`suit.${choice.suit}`) })}</div>
+              {/* What the tap committed you to, said out loud: the tile leaves the
+                  hand face down and is your opening play, which no other screen
+                  gets a chance to tell you. */}
+              <div className="text-xs font-normal opacity-90">
+                {choice.firstDiscard === null
+                  ? t('void.indicator')
+                  : t('void.firstDiscard', { tile: tileLabel(choice.firstDiscard, t) })}
+              </div>
+            </>
+          )}
         </button>
       </div>
     </div>

@@ -729,7 +729,10 @@ so it isn't rediscovered as a bug.
   `PlayerView.dealer`, which is already projected), one shared helper, and a
   decision about the lobby. **Small-medium** - the sweep is what makes it more
   than the one-line fix it looks like.
-- [ ] **N30 - the void screen chooses your first discard for you.** Reported
+- [x] **N30 - the void screen chooses your first discard for you.** *(Done — tap
+  the tile, not the button; `voidChoice` in `voidSelection.ts` is what refuses to
+  submit a held suit with no tile named. Verified in a browser: the tapped tile is
+  the one set aside, and the first of the suit stays in hand.)* Reported
   2026-08-03: the player should pick which tile goes first, "since discard order
   might matter here".
 
@@ -760,6 +763,28 @@ so it isn't rediscovered as a bug.
   `usedIndicator` case: the button has to stay tappable on its own for that, so the
   two paths are "tap a tile" and "tap an empty suit", not one replacing the other.
   **Small-medium.**
+
+  **Both landed as filed, and the two null cases are the whole of it.** `voidChoice`
+  returns `needTile` for a suit you hold and `ready` with `firstDiscard: null` only
+  for a suit you hold none of — the same distinction the engine enforces as
+  `void_indicator_not_allowed` (A36), which is why it is a pure function with a test
+  rather than a `&&` in the component. The buttons stayed live: they carry the
+  per-suit counts, they are the only way to reach the indicator case, and a suit
+  chosen without a tile is now a *visible* half-answer rather than a silent one —
+  Confirm greys out and reads "Tap the tile to discard first".
+
+  The picked tile takes amber and **stops pulsing** instead of gaining a second
+  ring; the suit's pulse means "all of these go", and two rings on one tile would
+  have said neither. The lift is on the wrapper, not the `Tile`, because
+  `.tile-mark-flash` draws its ring on that box and a tile lifting out of its own
+  mark reads as broken. `pt-2` on the row is what keeps an 8px transform inside a
+  scroller.
+
+  **The e2e spec was the trap the item predicted.** `ui-clicks.spec.ts` clicked a
+  suit button and went straight for `/Void /i`, which no longer exists until a tile
+  is tapped — so it now taps a marked tile in between and asserts exactly one
+  `data-void-first`. `__e2e.voidSubmit()` sends the action directly and needed no
+  change, which is also why the three specs that use it never covered this.
 
 - [ ] **N31 - the lobby's Start button is below the fold, and N27 pushed it
   further.** Measured 2026-08-03 while verifying N27: on a 390x844 phone the

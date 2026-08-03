@@ -436,6 +436,12 @@ suit — otherwise the frame is rejected with `void_indicator_not_allowed`, sinc
 "using the indicator" while holding the suit would keep a tile that should have
 been separated and falsely grant Heavenly/Earthly eligibility (A36).
 
+**Which tile is the player's choice, and the client asks** (N30). The screen used to
+send `counts[suit][0]`, so hand order chose the one discard three opponents get their
+first claim window on. Tapping a tile now names the suit and the tile in one gesture;
+`voidChoice` in `packages/client/src/voidSelection.ts` is what keeps the two null
+cases apart, since only one of them is legal above.
+
 Server reveals all four atomically. For each player:
 - If `firstDiscard !== null`: the tile leaves `hand` and is parked in
   `pendingFirstDiscard` — face down in the center, **not** in `discards`. Hand
