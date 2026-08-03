@@ -1,6 +1,7 @@
 import type { PlayerView, TileId } from '@sichuan-mahjong/engine';
 import { AnimatePresence, Reorder, motion } from 'framer-motion';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { type StandDownReason, armedDiscardOutcome } from '../armedDiscard.js';
 import { useAnimationPace } from '../hooks/useAnimation.js';
 import { useSound } from '../hooks/useSound.js';
 import { useT } from '../i18n/useT.js';
@@ -93,6 +94,12 @@ function HuCelebration() {
  */
 export function OwnZone({ view }: { view: PlayerView }) {
   const [selectedTile, setSelectedTile] = useState<TileId | null>(null);
+  // The tile armed while you wait, and why the last one stood down. Kept separate
+  // from `selectedTile` rather than folded into it: that one is cleared whenever
+  // `canDiscard` goes false, which is the exact condition an armed tile has to
+  // survive. (N11)
+  const [armedTile, setArmedTile] = useState<TileId | null>(null);
+  const [standDown, setStandDown] = useState<StandDownReason | null>(null);
   const [showHuCelebration, setShowHuCelebration] = useState(false);
   const seat = view.you.seat;
   const play = useSound();
@@ -192,17 +199,68 @@ export function OwnZone({ view }: { view: PlayerView }) {
     if (!canDiscard) setSelectedTile(null);
   }, [canDiscard]);
 
-  function handleTileTap(id: TileId, source?: Element | null) {
-    if (!canDiscard) return;
-    play('tile');
-    if (selectedTile === id) {
-      play('discard');
-      if (source) takeoff.current = { tile: id, from: boxOf(source) };
-      sendAction({ t: 'action', action: { t: 'discard', seat, tile: id } });
-      setSelectedTile(null);
-    } else {
-      setSelectedTile(id);
+  // You may arm a tile whenever the hand is idle: still in the round, not already
+  // able to act. A claim window is excluded because the claim bar is a decision of
+  // its own, and arming underneath it is the confusion this feature exists to
+  // avoid.
+  const canArm =
+    view.phase === 'play' && view.you.status === 'playing' && !canDiscard && !inClaimWindow;
+
+  // Where each hand tile is, so an auto-fired discard can take off from the tile
+  // the player armed. The tap path gets this from the event; this one has no event.
+  const tileEls = useRef(new Map<TileId, HTMLElement>());
+  // Cleared on every arm rather than never: a tile id is unique in the deck, but
+  // rounds re-deal, and without this the second round's copy would refuse to fire.
+  const firedTile = useRef<TileId | null>(null);
+
+  // Runs on every pushed view — which is the point. `armedDiscardOutcome` is where
+  // the "does this turn offer anything else" judgement lives, and it is unit
+  // tested; this only carries out the verdict.
+  useEffect(() => {
+    const outcome = armedDiscardOutcome(view, armedTile);
+    if (outcome.t === 'hold') return;
+    if (outcome.t === 'standDown') {
+      setArmedTile(null);
+      // A claimed tile visibly leaves the hand, so 'gone' needs no sentence.
+      if (outcome.reason !== 'gone') setStandDown(outcome.reason);
+      return;
     }
+    if (firedTile.current === outcome.tile) return;
+    firedTile.current = outcome.tile;
+    setArmedTile(null);
+    play('discard');
+    const el = tileEls.current.get(outcome.tile);
+    if (el) takeoff.current = { tile: outcome.tile, from: boxOf(el) };
+    sendAction({ t: 'action', action: { t: 'discard', seat, tile: outcome.tile } });
+  }, [view, armedTile, play, seat]);
+
+  // The stand-down sentence belongs to the turn that caused it, so it clears once
+  // the table has moved on and nothing is armed — not on a timer, and not on the
+  // next hand change, which for a 'choice' stand-down is the draw that caused it.
+  useEffect(() => {
+    if (standDown !== null && armedTile === null && !isMyTurn && !inClaimWindow) {
+      setStandDown(null);
+    }
+  }, [standDown, armedTile, isMyTurn, inClaimWindow]);
+
+  function handleTileTap(id: TileId, source?: Element | null) {
+    setStandDown(null);
+    if (canDiscard) {
+      play('tile');
+      if (selectedTile === id) {
+        play('discard');
+        if (source) takeoff.current = { tile: id, from: boxOf(source) };
+        sendAction({ t: 'action', action: { t: 'discard', seat, tile: id } });
+        setSelectedTile(null);
+      } else {
+        setSelectedTile(id);
+      }
+      return;
+    }
+    if (!canArm) return;
+    play('tile');
+    firedTile.current = null;
+    setArmedTile(prev => (prev === id ? null : id));
   }
 
   function flipFirstDiscard() {
@@ -389,8 +447,20 @@ export function OwnZone({ view }: { view: PlayerView }) {
           competing amber prompts is worse than one. (N13) */}
       <div className={`px-2 py-2 ${isMyTurn && !inClaimWindow ? 'hand-your-turn' : ''}`}>
         <div className="flex items-center justify-between mb-1">
-          <span className="text-xs text-amber-300 h-4">
-            {selectedTile !== null ? t('play.tapDiscard') : ''}
+          {/* One status line, three states: confirming a discard, holding one
+              ready, or saying why a held one was let go. Fixed height so none of
+              them adds a row to a column that fits exactly. (R3) */}
+          <span
+            className={`text-xs h-4 truncate ${standDown !== null ? 'text-white/60' : 'text-amber-300'}`}
+            data-armed={armedTile !== null ? 'true' : undefined}
+          >
+            {selectedTile !== null
+              ? t('play.tapDiscard')
+              : armedTile !== null
+                ? t('play.armed')
+                : standDown !== null
+                  ? t(`play.standDown.${standDown}`)
+                  : ''}
           </span>
           <button
             type="button"
@@ -422,6 +492,10 @@ export function OwnZone({ view }: { view: PlayerView }) {
             <Reorder.Item
               key={id}
               value={id}
+              ref={(el: HTMLLIElement | null) => {
+                if (el) tileEls.current.set(id, el);
+                else tileEls.current.delete(id);
+              }}
               // Shrink-to-fit: every tile flexes to share the row width (capped so
               // small hands don't balloon), so the whole hand fits with no scroll.
               // What the e2e spec reads to find a tile it may discard. It used
@@ -451,15 +525,22 @@ export function OwnZone({ view }: { view: PlayerView }) {
                 className="block w-full"
                 aria-label={tileLabel(id, t)}
                 // The lift is the only cue that a tile is armed, and it is purely
-                // visual; this is the same state spoken.
-                aria-pressed={selectedTile === id}
+                // visual; this is the same state spoken. Both kinds of raised tile
+                // count — a tile held ready for the next turn is as "pressed" as
+                // one waiting for its confirming tap.
+                aria-pressed={selectedTile === id || armedTile === id}
                 onKeyDown={e => {
                   if (e.key !== 'Enter' && e.key !== ' ') return;
                   e.preventDefault();
                   handleTileTap(id, e.currentTarget);
                 }}
               >
-                <Tile id={id} selected={selectedTile === id} interactive={false} fill />
+                <Tile
+                  id={id}
+                  selected={selectedTile === id || armedTile === id}
+                  interactive={false}
+                  fill
+                />
               </button>
             </Reorder.Item>
           ))}
