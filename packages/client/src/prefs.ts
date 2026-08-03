@@ -106,7 +106,24 @@ export function persistAnimationPrefs(prefs: AnimationPrefs): void {
  * silently took every default and a solo player had no way to slow the bots down
  * — which is the setting that matters most in the mode you learn in.
  */
-export type BotLevel = 'easy' | 'medium';
+/**
+ * The three rungs, mirroring the engine's `BotDifficulty`. Kept as its own alias
+ * rather than imported: this is what a stored preference may contain, and the
+ * validator below is what stands between an old localStorage value and the wire.
+ */
+export type BotLevel = 'easy' | 'medium' | 'hard';
+
+/** The ladder in order, so a picker enumerates it rather than listing it. */
+export const BOT_LEVELS: readonly BotLevel[] = ['easy', 'medium', 'hard'];
+
+/**
+ * The catalog key naming a level. Both pickers used to carry their own
+ * `level === 'easy' ? … : …`, which is a conditional that answers wrongly the
+ * moment there are three of anything.
+ */
+export function botLevelKey(level: BotLevel) {
+  return `host.${level}` as const;
+}
 
 /** One level per bot seat — seats 1, 2 and 3, in that order. */
 export type BotLevels = [BotLevel, BotLevel, BotLevel];
@@ -126,7 +143,7 @@ export function isBotSpeed(v: unknown): v is PracticePrefs['botSpeed'] {
 }
 
 export function isBotLevel(v: unknown): v is BotLevel {
-  return v === 'easy' || v === 'medium';
+  return BOT_LEVELS.includes(v as BotLevel);
 }
 
 const PRACTICE_KEY = 'sm-practice';

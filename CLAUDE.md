@@ -92,7 +92,8 @@ packages/engine/src/
   protocol.ts    ClientMsg / ServerMsg types
 packages/server/src/
   room.ts        GameRoom (owns GameState, drives bots, broadcasts views)
-  bot.ts         easy + medium bot heuristics
+  bot.ts         easy / medium / hard bot heuristics, dispatched by BOT_PLAY
+  shanten.ts     how far a hand is from a win — the gradient the engine has none of
   ws.ts          WebSocket gateway (validates every inbound frame)
 packages/client/src/
   main.tsx       window.__e2e test helpers (VITE_E2E builds only)
@@ -154,11 +155,26 @@ The long form, with the measurements behind each, is in
 
 **Rules and pacing**
 
-- **A wind is a distance from East, never a seat index** — `windOfSeat(seat, dealer)`,
-  since East rotates every round. Play passes counterclockwise, which here means
-  seat-*decreasing*: `(from + 3) % 4`, and the client seats `seat + 3` to the
-  viewer's right. Getting this backwards has cost three separate bugs, and **N26
-  is nine call sites still reading an absolute seat index as a wind**.
+- **A wind is a distance from East, never a seat index** — `windOfSeat(seat, dealer)`
+  in `client/src/wind.ts`, since East rotates every round. Play passes
+  counterclockwise, which here means seat-*decreasing*: `(from + 3) % 4`, and the
+  client seats `seat + 3` to the viewer's right. `wind.${seat}` is **never right**,
+  not even when the dealer is seat 0 — the winds there are East, North, West,
+  South, so two rows of four still disagree. Getting this backwards cost four
+  separate bugs before N26 swept the last nine call sites.
+- **A wind is per round; a chair is durable, and they are not one column.** Where
+  no single round is in view — the lobby and host setup before the seating dice,
+  and any match total spanning rounds — the label is `seat.0`–`seat.3`, not a wind.
+  `seatLabelKey` picks, and tests `dealer == null` rather than `!dealer`, because
+  seat 0 is a falsy dealer.
+- **The bots are a `Record<BotDifficulty, …>` in `room.ts`, not a ternary.** Three
+  rungs, and the ladder is asserted rather than assumed: `bot-smoke.test.ts` seats
+  each level against the one below over 40 deals. That guard exists because N19
+  found **medium losing to easy** — its ukeire signal is identically zero until the
+  hand is tenpai, so it had been discarding in hand order since it shipped.
+  `shanten.ts` is what both now rank by. Hard sees no more of the table than medium
+  (the same `anyOpponentTenpai` peek, and nothing else); its danger read is built
+  from declared void suits and per-seat discard piles, which are public.
 - **The dice are real, and they change which tiles a seed deals.** Both throws come
   from `rng.ts` on a stream of their own (`seed + ':dice'`), and the wall break is
   applied as a rotation of the wall array — so no distribution changes, only the
@@ -205,8 +221,11 @@ The long form, with the measurements behind each, is in
   `data-dice-overlay` all exist because a class rename silently broke four projects.
 - **A `flex-shrink-0` control beside one shrinkable sibling crushes that sibling.**
   The sibling absorbs the entire shortfall while its text stays in the DOM, so
-  nothing errors — it just renders at zero (N7's turn indicator) or one word per
-  line (N23's French flip prompt). Give the text a `basis-*` and let the row wrap.
+  nothing errors — it just renders at zero (N7's turn indicator, and N19's lobby
+  bot name the moment a third level button joined the row) or one word per line
+  (N23's French flip prompt). Give the text a `basis-*` and let the row wrap.
+  **Three times now, and each was found by looking rather than by a test** — the
+  text is present and measurable, so nothing fails; only the box is 0px wide.
 
 **Languages**
 
@@ -242,9 +261,9 @@ The long form, with the measurements behind each, is in
 
 ## Status
 
-Everything through **N34** is shipped: all v1 work, six full-repo audit passes
+Everything through **N35** is shipped: all v1 work, six full-repo audit passes
 (A1–A40), the frontend/design pass (F1–F25), the mobile viewport work (R1–R7),
-the hosting work (C1–C10), and the feature run N1–N34 bar the four items below.
+the hosting work (C1–C10), and the feature run N1–N35 bar the two items below.
 Per-item history, each with the diagnosis that made it worth writing down, is in
 [docs/history.md](./docs/history.md), newest first. Deferrals are recorded as
 O1–O5 in [ARCHITECTURE.md §12](./ARCHITECTURE.md#12-open-questions--explicit-deferrals).
@@ -261,9 +280,14 @@ is a deliberately accepted granularity cost. Free tier, so persistence stays off
 `getDb()` returns null and every caller handles it. Reasoning and measurements in
 [docs/design-hosted-server.md](./docs/design-hosted-server.md).
 
-**Open** — see [TODO.md](./TODO.md), which is only the open list, and is down to
-two: **N19** a hard bot so the ladder has three rungs, and **N26** the nine wind
-call sites above. **O3, the central discard pool, was closed won't-do** on
+**Open** — see [TODO.md](./TODO.md), which is only the open list, and is two
+tray-geometry bugs left by N32 when it turned two seats' tiles round without
+turning what sits around them: **N36** the right-hand column runs backwards and
+laps over ink rather than the body band, and **N37** the across seat's void
+declaration sits on the near side of its pile instead of the far side. **N19** (a
+hard bot, plus the medium regression the ladder guard caught) and **N26** (the
+nine wind call sites) shipped 2026-08-03. **O3, the central discard pool, was
+closed won't-do** on
 2026-08-03: two of the three things it was for shipped by other means (N33 opens
 any seat's full pile with a tap; `firstDiscardIsVoid` puts each declaration above
 its own pile), and the third — an empty middle — expired when the well filled with

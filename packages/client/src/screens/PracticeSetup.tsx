@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useT } from '../i18n/useT.js';
 import type { BotLevel, PracticePrefs } from '../prefs.js';
-import { loadPracticePrefs, persistPracticePrefs } from '../prefs.js';
+import { BOT_LEVELS, botLevelKey, loadPracticePrefs, persistPracticePrefs } from '../prefs.js';
 import { useStore } from '../store/index.js';
 import { connectGame, makeWsUrl, sendAction } from '../ws/client.js';
 
@@ -163,9 +163,9 @@ export function PracticeSetup() {
             <Choice
               key={i}
               label={t('practice.botN', { n: i + 2 })}
-              options={['easy', 'medium'] as const}
+              options={BOT_LEVELS}
               value={prefs.botLevels[i]!}
-              labelFor={l => t(l === 'easy' ? 'host.easy' : 'host.medium')}
+              labelFor={l => t(botLevelKey(l))}
               onPick={level => setLevel(i, level)}
             />
           ))}

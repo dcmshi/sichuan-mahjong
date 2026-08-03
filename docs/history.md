@@ -2,12 +2,149 @@
 
 This is the record of work already done: the phase log (1–9), six full-repo audit
 passes (A1–A40), the frontend/design pass (F1–F25), the mobile viewport work
-(R1–R7), the tile-rendering change, and the hosting work (C1–C9). Each entry keeps
-its diagnosis, not just its fix — that is the part worth having later.
+(R1–R7), the tile-rendering change, the hosting work (C1–C10), and the feature
+run N1–N35. Each entry keeps its diagnosis, not just its fix — that is the part
+worth having later.
 
 **Live work lives in [TODO.md](../TODO.md).** This file only grows at the top, and
 nothing in it is outstanding. It was split out of TODO.md on 2026-08-02, when that
 file had reached 1,566 lines of which two were actually open.
+
+---
+
+## ✅ A wind is not a seat, in nine places (N26 — 2026-08-03)
+
+Every screen that printed a seat's wind read the **absolute seat index** and asked
+the catalog for `wind.${seat}`. `windOfSeat(seat, dealer)` had existed since N22,
+which fixed exactly this in the dice overlay; nothing else had the dealer to hand.
+
+**The bug is worse than the file said it was, and the test says so now.** The
+standing description — and my own reading of it — was "correct only when the
+dealer happens to be seat 0". It is not correct even then. Winds run *against* the
+seat index, because play travels counterclockwise: with East at seat 0 the four
+seats are East, **North**, West, **South**, so two rows of four still disagree.
+Work it through for every dealer and the tally is two right out of four when the
+dealer is even, none at all when it is odd — an average of one row in four. What
+made it survive review is that the row people look at, their own, is right a
+quarter of the time and the labels are plausible the rest.
+
+**The decision the item asked for: a wind is a per-round fact, a seat is a durable
+one, and they are not two names for one column.** Three of the nine sites have no
+round in view at all. The lobby and the host setup label four chairs before the
+seating dice have been thrown, so there is no East for them to be a distance from.
+The match totals span rounds that each had a different East. Those three now name
+a **chair** — a new `seat.0`–`seat.3` in all six catalogs — and everything holding
+a dealer names a wind. `wind.test.ts` asserts the two label sets never overlap in
+any catalog, so the fix cannot be undone by making a chair read "South" again.
+
+`RoundResult` gained an optional `dealer`, which is what the round-end screens
+were missing and why they reached for the index in the first place. Optional
+because rows persisted before this carry none, and a rejoin at round end replays a
+stored result (the A9 path) — `seatLabelKey` names the chair in that case rather
+than printing a wind derived from a guess. The absent test is `dealer == null`
+rather than `!dealer`: seat 0 is a falsy dealer, so the one arrangement that looks
+most correct would have been the single case that silently stopped naming winds.
+
+`windOfSeat` moved out of `DiceOverlay` into `src/wind.ts`. Eight screens needed
+it and none of them should be importing a dice overlay to label a row.
+
+---
+
+## ✅ A third rung, and the discovery that the second one was below the first (N19 — 2026-08-03)
+
+A hard bot, dispatched from a table rather than a second ternary — and, on the way
+to measuring it, the finding that **medium was losing to easy**.
+
+**That is the part worth keeping.** Medium ranked candidate discards by
+`ukeireAfterDiscard`, which calls the engine's `ukeire`, which is `isTenpai` with
+counts attached. It answers only for a hand already one tile away. So for most of
+a round every candidate scored 0, the `uke > bestUke` comparison never fired
+again after the first, and medium kept whichever tile came first in hand order —
+while easy at least read the shape it was holding. Seated head to head, four seats
+at a time over sixty deals: medium **−60**, with 32 wins against easy's 37. The
+level advertised as the step up was the step down, and had been since it shipped.
+
+The engine cannot fix this, because the gap is real: nothing in it has a notion of
+*close*. `packages/server/src/shanten.ts` adds one — the standard
+`8 − 2·sets − blocks` search, with the two corrections that are the whole subtlety
+(no sixth block, and a penalty for five blocks with no pair among them), plus the
+seven-pairs count where a four-of-a-kind is two pairs because the Root fan is
+defined on exactly that. It lives beside the bots rather than in the engine: no
+rule depends on it, nothing a client sees is derived from it, and the engine's
+purity is about replay determinism rather than about being the only place mahjong
+is understood. It is checked against the engine as an oracle — over 400 random
+hands, `shanten === 0` iff some tile type completes the hand, and `=== -1` iff
+`isWinningHand` says so. Not `isTenpai` directly: that also applies the
+exhaustive-wait filter, which is a rule about whether a wait can ever fill rather
+than a measure of how far from a win a shape is.
+
+Medium got the term it was missing and nothing else — shanten, then its existing
+ukeire as the tenpai tie-break, then easy's isolation score. It now beats easy by
+**+105** and doubles its wins, 66 against 33.
+
+**What makes hard hard, given that it sees no more than medium does.** The one
+look either bot takes at a hand it should not be able to read is
+`anyOpponentTenpai`, which A25 put in the medium claim gate. Hard keeps that and
+adds nothing: a level called hard that defends *less* than medium would be a
+strange thing to ship, and a level that reads opponents' exact waits would be
+unbeatable and would read as cheating. What changes is what the look is for.
+Medium uses it to gate one pung. Hard uses it to decide whether the turn is a push
+or a fold, and then picks the tile from evidence anyone at the table has:
+
+- **The void declarations**, which N19 filed as the free information both other
+  bots ignore, and which are a guarantee rather than an estimate — `canHuOnTile`,
+  `canPungOnTile` and `canKongOnTile` each reject a tile in the claimant's void
+  suit outright. The bot reads them under the same condition `views.ts` uses for
+  `firstDiscardIsVoid`, so a declaration still face down is one it cannot see.
+  There is no genbutsu read to go with it: furiten here is the skip-Hu rule
+  (§5.5.5), not "you discarded what you wait on", so a seat's own discards say
+  nothing about what it can win from.
+- **Each seat's pile, attributed to that seat** — a suit a player has never thrown
+  is the suit they are collecting, a meld in it says so twice, and a type whose
+  copies are nearly all face up has a thinner wait left to fill.
+
+Then the three gaps the item named. **Fan awareness**: candidates that tie on
+shanten are separated by what the hand is still worth winning with — `calcTMV`
+when the discard leaves it tenpai, a flush-and-pung shape estimate below that.
+The two scales never meet, because candidates are only ever compared against
+others at the same shanten. **Claim discipline**: a pung is taken only when it
+actually lowers shanten, measured against the best discard from the over-full hand
+it leaves, and while someone else is tenpai only when it lands this hand in tenpai
+too. **The kong**: declined when the hand reads better as seven pairs, since Kong
+and SevenPairs are incompatible in Table 9 and four of a kind is two of the seven.
+Hard also declares its own void by which suit costs the hand least rather than
+which is shortest — three tiles that form a run are worse to give up than four
+scattered singles, and it is the one decision of the round made before a tile is
+drawn.
+
+**And a third instance of the flex trap, found by looking rather than by a test.**
+Adding the third level button to the lobby row put a `flex-shrink-0` picker and a
+Kick beside one shrinkable child, and the bot's name — the only thing that could
+give — rendered at **zero width** on a 320px phone. `docScrollX` was 0, the row
+was 288px with a 288px scroll width, and the text was in the DOM and measurable
+the whole time; nothing failed, and the name was simply not on screen. Same shape
+as N7's turn indicator and N23's French flip prompt, same remedy: `flex-wrap` and
+a `basis-*` on the text. Spanish's chair label went from "Asiento 1" to "Silla 1"
+at the same time, the long form measuring 62px against a 64px column.
+
+The dispatch is a `Record<BotDifficulty, …>` in `room.ts`. Two levels had been
+selected by `difficulty === 'medium'` at three separate call sites, which is the
+shape that makes a third rung a rewrite instead of a row — and `BotDifficulty` is
+now one exported union rather than `'easy' | 'medium'` spelled out at six places.
+`botDifficultyFrom` still narrows at the WS boundary, and its test used to name
+`'hard'` as the canonical junk string, which is the argument for validating
+against the levels rather than against a blocklist.
+
+**The ladder is now guarded, not just measured.** `bot-smoke.test.ts` seats each
+rung against the one below over 40 deals and asserts it wins — the assertion that
+would have caught the medium regression on the day it shipped. Hard also gets its
+own pass through the smoke test, because it reaches the engine by a different
+route: it declines kongs and pungs the others take, so it visits states neither of
+them does, and it is asserted to still form exposed pungs, since a discipline that
+declines every claim is a bot that never claims and no test of the refusal path
+would notice.
+
+Hard beats medium **+65** (77 wins to 68) and easy **+142** (78 to 35).
 
 ---
 

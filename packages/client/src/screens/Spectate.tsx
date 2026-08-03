@@ -1,4 +1,4 @@
-import type { SpectatorView } from '@sichuan-mahjong/engine';
+import type { Seat, SpectatorView } from '@sichuan-mahjong/engine';
 import { motion } from 'framer-motion';
 import { LangSwitch } from '../components/LangSwitch.js';
 import { MeldDisplay } from '../components/MeldDisplay.js';
@@ -8,6 +8,7 @@ import { Tile, TileBack } from '../components/Tile.js';
 import { splitPile } from '../discardPile.js';
 import { useT } from '../i18n/useT.js';
 import { useStore } from '../store/index.js';
+import { seatKey, windKey } from '../wind.js';
 
 function SeatRow({ view, seat }: { view: SpectatorView; seat: number }) {
   const t = useT();
@@ -25,7 +26,9 @@ function SeatRow({ view, seat }: { view: SpectatorView; seat: number }) {
       ].join(' ')}
     >
       <div className="flex items-center gap-2">
-        <span className="text-[10px] text-green-300 w-10">{t(`wind.${seat}`)}</span>
+        <span className="text-[10px] text-green-300 w-10">
+          {t(windKey(seat as Seat, view.dealer))}
+        </span>
         <span
           className={[
             'text-xs font-semibold px-2 py-0.5 rounded-full',
@@ -166,6 +169,7 @@ export function Spectate() {
                 player={p}
                 rank={rank}
                 youSeat={null}
+                dealer={roundResult.dealer}
                 defaultOpen={p.hu !== null}
               />
             ))}
@@ -183,7 +187,8 @@ export function Spectate() {
                     key={p.seat}
                     className="flex items-center gap-2 bg-black/15 rounded-lg px-3 py-1.5 text-xs"
                   >
-                    <span className="text-green-300 w-10">{t(`wind.${p.seat}`)}</span>
+                    {/* A chair, not a wind — the total spans rounds. (N26) */}
+                    <span className="text-green-300 w-10">{t(seatKey(p.seat))}</span>
                     <span className="flex-1 truncate">{p.name}</span>
                     <span
                       className={[

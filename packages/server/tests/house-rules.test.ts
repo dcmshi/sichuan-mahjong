@@ -169,15 +169,18 @@ describe('claimWindowMsFrom', () => {
  * field gets. (N18)
  */
 describe('botDifficultyFrom', () => {
-  it('accepts the two levels that exist', () => {
+  it('accepts the levels that exist', () => {
     expect(botDifficultyFrom('easy')).toBe('easy');
     expect(botDifficultyFrom('medium')).toBe('medium');
+    // N19's third rung. It was in the junk list below until it shipped, which is
+    // the point of validating against the levels rather than against a blocklist.
+    expect(botDifficultyFrom('hard')).toBe('hard');
   });
 
   // A level no dispatch in room.ts recognises would seat an opponent that never
   // acts, so an unknown string has to become a real level rather than pass through.
   it('turns anything else into easy rather than passing it on', () => {
-    for (const junk of ['hard', 'MEDIUM', '', 0, 1, null, undefined, {}, [], true]) {
+    for (const junk of ['expert', 'MEDIUM', 'Hard', '', 0, 1, null, undefined, {}, [], true]) {
       expect(botDifficultyFrom(junk), String(junk)).toBe('easy');
     }
   });

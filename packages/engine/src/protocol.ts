@@ -4,12 +4,19 @@ import type { HuRecord, LedgerEntry, Seat } from './state.js';
 import type { TileId } from './tiles.js';
 import type { PlayerView, SpectatorView } from './views.js';
 
+/**
+ * The bot ladder. A named union rather than an inline one at each of the six
+ * places it appears: N19 added the third rung, and the two-rung version was
+ * spelled out at every site, so widening it meant finding them all by hand.
+ */
+export type BotDifficulty = 'easy' | 'medium' | 'hard';
+
 export type LobbyPlayer = {
   seat: Seat;
   name: string;
   isBot: boolean;
   connected: boolean;
-  difficulty?: 'easy' | 'medium';
+  difficulty?: BotDifficulty;
 };
 
 // (A30: an `events: GameEvent[]` field used to ride along here — it was always
@@ -22,6 +29,17 @@ export type RoundResult = {
    * incremented on arrival. (A39)
    */
   roundIndex: number;
+  /**
+   * Who was East. Optional because snapshots and persisted rows written before
+   * N26 don't carry it — a client that gets one falls back to labelling chairs
+   * rather than printing a wind it cannot compute.
+   *
+   * The round-end screens had no way at all to reach this, which is why they read
+   * the absolute seat index as a wind and were right only when the dice happened
+   * to give East to seat 0. `startNextRound` rotates the dealer every round, so
+   * that is one round in four.
+   */
+  dealer?: Seat;
   players: Array<{
     seat: Seat;
     name: string;
@@ -47,14 +65,14 @@ export type ClientMsg =
    * "+ Bot" buttons lie, since tapping North's filled South if South was empty.
    * Still falls back to the first open seat when omitted or already taken. (N18)
    */
-  | { t: 'addBot'; difficulty: 'easy' | 'medium'; seat?: Seat }
+  | { t: 'addBot'; difficulty: BotDifficulty; seat?: Seat }
   | { t: 'kickBot'; seat: Seat }
   /**
    * Re-level a bot already sitting down. Without it, changing a bot's difficulty
    * meant kicking and re-adding — two round trips, with a window in which a human
    * could take the seat. Host-only, and rejected for a seat holding a person. (N18)
    */
-  | { t: 'setBotDifficulty'; seat: Seat; difficulty: 'easy' | 'medium' }
+  | { t: 'setBotDifficulty'; seat: Seat; difficulty: BotDifficulty }
   /**
    * `rules` carries the host's house-rule choices for the match. Optional so an
    * older client (or a rejoining one) still starts a game on the defaults, and

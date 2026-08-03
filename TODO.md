@@ -4,7 +4,7 @@ What is actually open. **Everything closed lives in
 [docs/history.md](./docs/history.md)**, newest first, each entry with the diagnosis
 that made it worth writing down — the phase log, the six audit passes (A1–A40), the
 frontend pass (F1–F25), the viewport work (R1–R7), the tile rendering change, the
-hosting work (C1–C10), and the feature run N1–N34.
+hosting work (C1–C10), and the feature run N1–N35.
 
 Deferrals are also recorded as O1–O5 in
 [ARCHITECTURE.md §12](./ARCHITECTURE.md#12-open-questions--explicit-deferrals).
@@ -16,93 +16,68 @@ so it isn't rediscovered as a bug.
 
 ## Open
 
-Two items. **N19 is gameplay work; N26 is a sweep.**
+Two items, both in the discard trays, both left by N32 when it turned two seats'
+tiles round and did not turn everything that goes with them. **Neither is a rule
+or a leak — they are geometry.** Filed 2026-08-03.
 
-N23 (French, Spanish, Japanese), N31 (the lobby's Start button) and N35 (the
-support/source links) all shipped 2026-08-03, each written up in
-[docs/history.md](./docs/history.md). **O3 was closed the same day without being
-built** — it is under Shelved below, with the reasoning in ARCHITECTURE §12.
+N19 (a hard bot, and the ladder guard that found medium losing to easy) and N26
+(the nine wind call sites) both shipped 2026-08-03, each written up in
+[docs/history.md](./docs/history.md).
 
 N23 left one thing open that is not a task: the four Japanese terms it had to
 coin, because Sichuan has them and riichi does not — 欠け色, 金鉤釣, 槓上放銃,
 花豚 — **want a native speaker's eye**. The borrowed ones do not.
 
-### N19 — a hard bot, so the ladder has three rungs
+### N36 — the right-hand seat's pile runs backwards, and its lap shows the seam
 
-Requested 2026-08-02. There are two: `botTurnAction` / `botClaimAction` (easy) and
-`botTurnActionMedium` / `botClaimActionMedium`, dispatched by a **boolean** —
-`room.ts:665` and `:687` both read `difficulty === 'medium'` and pick one of two
-functions. That is the first thing this changes: a third level wants a lookup,
-not a second ternary.
+`OpponentSide` draws both side columns top-down, and a comment there says so
+deliberately: N10 reversed the *across* pile because a horizontal row of readable
+faces shows its own direction, and argued a column of sideways tiles does not.
+N32 then gave the right seat the opposite quarter turn (`.tiles-face-left`,
+`rotate(-90deg)`) without revisiting that, and it turns out to break two things at
+once.
 
-**What medium already does, so hard has somewhere to go.** Medium picks its
-discard by `ukeireAfterDiscard` over `visibleTileTypes` — it counts what it can
-see and keeps the tile that leaves the most winning tiles live — and it checks
-`anyOpponentTenpai` before feeding a discard. Easy uses `connectScore`, a local
-shape heuristic with no notion of what anyone else holds.
+**The order.** Sit at the right of a table facing the middle: the screen's bottom
+edge is on your left and its top edge is on your right, so that seat's pile reads
+**upward**. It currently reads downward, which is correct for the *left* seat —
+facing the other way, the top edge is on its left — and the two columns have been
+sharing one direction.
 
-So hard is not "medium with better numbers"; the honest gaps are:
+**The lap, which is the visible half.** The 22.5% overlap is the body band
+measured **in from the right edge of the art** (index.css, and
+[docs/handoff-tile-rendering.md](./docs/handoff-tile-rendering.md)): that strip is
+outline, green and plate, and never ink. Turned +90° for the left seat, that edge
+lands at the **bottom** of the on-screen tile, and `.tile-lap-v` pulls each tile up
+by 22.5% so it covers the previous tile's bottom — the band, exactly. Turned −90°
+for the right seat, the same edge lands at the **top**, so the identical negative
+margin covers the art's *left* edge instead, where the face begins. That is why
+one column looks flush and the other looks like tiles resting on each other.
 
-- **Fan-aware play.** Nothing in either bot targets a *scoring* hand. Sichuan
-  caps at `fanCap` and the fan list is reachable from `scoring.ts`, so a bot
-  that steers toward a payable hand instead of merely a winning one is the
-  biggest single step.
-- **Discard reading per opponent.** `visibleTileTypes` is a flat count; it does
-  not attribute discards to seats, so it cannot infer a void suit even though
-  every player declares one and flips it. That is free information the bots
-  ignore.
-- **Claim discipline.** `shouldPung` is a local test. Punging costs tempo and
-  reveals shape, and a hard bot should sometimes decline.
+So the fix is one change with two effects: reverse that column and lap it the
+other way — `column-reverse` with the existing negative top margin, or DOM order
+plus a negative bottom margin. **Check it against `viewport.spec.ts` rather than
+by eye**: the vertical lap is a negative margin on the *box* (unlike the
+horizontal lap, which shrinks the box and overflows the art), so these tiles
+genuinely overlap and every rect the tray guard reads has to stay honest.
+**Small**, and the sandbox (`scripts/tiles/sandbox.html`) draws lapped runs
+without a server. Reported 2026-08-03.
 
-**Two constraints.** The engine stays pure and bots live in the server, so
-nothing here may reach into `packages/engine` for state it isn't given — and
-`bot-smoke.test.ts` plays 100 bot-vs-bot games asserting no rule violations and a
-balanced ledger, so a third level needs its own pass through that or it can
-violate rules that no other test would catch.
+### N37 — the across seat's declaration sits on the near side of its pile
 
-Also worth deciding: whether hard should be **slower to decide**. Bot pace is the
-host's (`botSpeed`), and a bot that thinks visibly longer reads as stronger — but
-conflating strength with pace would take the host's setting away. Keep them
-separate. **Medium-large.**
+Every seat puts its void declaration on the **far** side of its pile — furthest
+from its owner, the way a tile pushed out onto the table ends up. Your own zone
+reads hand, tray, declaration, going away from you. `OpponentTop` reads name,
+declaration, tray, going away from the seat at the top of the screen, so that one
+seat has it the near way round: between the player and their own discards.
 
-### N26 — the round-end rows label every seat with the wrong wind
+This is N32 residue. That change turned the across *pile* 180° so it reads as
+that seat's pile seen from the other side, and the declaration block above it —
+its own `rotate-180` div, outside the tray — kept the position it had when the
+pile was still drawn from the viewer's side. Moving the block after the tray in
+DOM order is the whole fix, and the rotation each already carries is unchanged.
 
-Found 2026-08-03 while verifying N16, and the third sighting of one mistake.
-
-`RoundEndRow.tsx` renders the seat's wind from `player.seat`, and the ledger
-lines render the other party's from `l.other`. Both read the **absolute seat
-index** as a wind, so seat 0 is always labelled East — correct only when the
-dealer happens to be seat 0, and `startNextRound` rotates the dealer every
-round. Reproduced at round end: "You" at seat 0 was labelled East in a round
-whose East the dice had given to someone else.
-
-N22 fixed exactly this in `DiceOverlay` with `windOfSeat(seat, dealer)`, and
-winds run *against* the seat index because play travels counterclockwise. The
-helper already exists; what is missing here is the dealer.
-
-**`RoundResult` does not carry it.** `buildRoundResult` in `room.ts` returns
-`{ roundIndex, players }`, so the round-end screen has no way to compute a wind —
-which is presumably why it reached for the seat index. So this is a field on
-`RoundResult` plus the existing helper, and `windOfSeat` wants to move out of
-`DiceOverlay` to somewhere both screens can reach.
-
-**Surveyed, and it is nine call sites, not two.** Every one reads an absolute
-seat index:
-
-- `RoundEndRow.tsx` (the seat, and each ledger line's other party),
-  `RoundEnd.tsx`, `MatchEnd.tsx`, `Spectate.tsx` (twice) — all in or after a
-  game, all wrong whenever the dealer is not seat 0, which is three rounds in
-  four.
-- `HostSetup.tsx` and `Lobby.tsx` label the four empty chairs. **These are a
-  different question**: there is no dealer before the game starts, so the label
-  there is a seat name rather than a wind. Leaving them as-is is defensible, but
-  then a player sees "South" against a chair in the lobby and "South" against a
-  different seat in play. Decide it once and write down which.
-
-So the shape is: `dealer` on `RoundResult` (and the winds in play can come off
-`PlayerView.dealer`, which is already projected), one shared helper, and a
-decision about the lobby. **Small-medium** — the sweep is what makes it more
-than the one-line fix it looks like.
+Worth doing with N36, being the same fault line: N32 turned the tiles and left
+the things around them where they were. **Small.** Reported 2026-08-03.
 
 ---
 

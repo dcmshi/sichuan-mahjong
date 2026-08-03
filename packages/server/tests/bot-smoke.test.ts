@@ -1,13 +1,22 @@
 import { DEFAULT_CONFIG, applyAction, createGame } from '@sichuan-mahjong/engine';
-import type { GameAction, GameState, PlayerInit, Seat } from '@sichuan-mahjong/engine';
+import type {
+  BotDifficulty,
+  GameAction,
+  GameState,
+  PlayerInit,
+  Seat,
+} from '@sichuan-mahjong/engine';
 import { describe, expect, it } from 'vitest';
 import {
   botClaimAction,
+  botClaimActionHard,
   botClaimActionMedium,
   botHuanAction,
   botTurnAction,
+  botTurnActionHard,
   botTurnActionMedium,
   botVoidAction,
+  botVoidActionHard,
   visibleTileTypes,
 } from '../src/bot.js';
 
@@ -21,9 +30,23 @@ const PLAYERS: [PlayerInit, PlayerInit, PlayerInit, PlayerInit] = [
   { name: 'Bot3', isBot: true },
 ];
 
-function runGame(seed: string, difficulty: 'easy' | 'medium' = 'easy'): GameState {
-  const turnFn = difficulty === 'medium' ? botTurnActionMedium : botTurnAction;
-  const claimFn = difficulty === 'medium' ? botClaimActionMedium : botClaimAction;
+/** The same table `room.ts` dispatches through, so the suite covers what ships. */
+const LEVELS: Record<
+  BotDifficulty,
+  {
+    turn: typeof botTurnAction;
+    claim: typeof botClaimAction;
+    declareVoid: typeof botVoidAction;
+  }
+> = {
+  easy: { turn: botTurnAction, claim: botClaimAction, declareVoid: botVoidAction },
+  medium: { turn: botTurnActionMedium, claim: botClaimActionMedium, declareVoid: botVoidAction },
+  hard: { turn: botTurnActionHard, claim: botClaimActionHard, declareVoid: botVoidActionHard },
+};
+
+/** One level per seat, so a table can mix them. */
+function runMixedGame(seed: string, levels: BotDifficulty[]): GameState {
+  const play = (seat: Seat) => LEVELS[levels[seat] ?? 'easy'];
   let state = createGame(seed, PLAYERS, { ...DEFAULT_CONFIG, claimWindowMs: 0 });
   let iter = 0;
 
@@ -42,7 +65,7 @@ function runGame(seed: string, difficulty: 'easy' | 'medium' = 'easy'): GameStat
     } else if (state.phase === 'voidDeclare') {
       for (let s = 0; s < 4; s++) {
         if (state.pendingVoid[s] == null) {
-          action = botVoidAction(state, s as Seat);
+          action = play(s as Seat).declareVoid(state, s as Seat);
           break;
         }
       }
@@ -54,7 +77,7 @@ function runGame(seed: string, difficulty: 'easy' | 'medium' = 'easy'): GameStat
           const seat = s as Seat;
           if (seat === w.from) continue;
           if (!w.passed[seat] && w.claims[seat] === null) {
-            action = claimFn(state, seat);
+            action = play(seat).claim(state, seat);
             allDecided = false;
             break;
           }
@@ -65,7 +88,7 @@ function runGame(seed: string, difficulty: 'easy' | 'medium' = 'easy'): GameStat
       } else if (state.turnDrawNeeded) {
         action = { t: 'draw', seat: state.turn };
       } else {
-        action = turnFn(state, state.turn);
+        action = play(state.turn).turn(state, state.turn);
       }
     }
 
@@ -77,13 +100,19 @@ function runGame(seed: string, difficulty: 'easy' | 'medium' = 'easy'): GameStat
     const result = applyAction(state, action);
     if (!result.ok) {
       throw new Error(
-        `Game ${seed}, iter ${iter}: action rejected: ${result.reason}\naction: ${JSON.stringify(action)}\nphase: ${state.phase}`,
+        `Game ${seed}, iter ${iter}: action rejected: ${result.reason}
+action: ${JSON.stringify(action)}
+phase: ${state.phase}`,
       );
     }
     state = result.state;
   }
 
   return state;
+}
+
+function runGame(seed: string, difficulty: BotDifficulty = 'easy'): GameState {
+  return runMixedGame(seed, [difficulty, difficulty, difficulty, difficulty]);
 }
 
 describe('bot smoke test', () => {
@@ -129,6 +158,63 @@ describe('bot smoke test', () => {
       expect(totalDelta + state.penaltyPot, `medium game ${g}: payment balance`).toBe(0);
     }
   }, 120_000);
+
+  // N19's own pass through the smoke test. A level that reaches the engine by a
+  // different route can violate rules no other test would catch — the hard bot
+  // declines kongs and pungs the others take, and declares a different void suit,
+  // so it visits states neither of the other two does.
+  it('runs hard-bot games without rule violations or balance errors', () => {
+    let exposedPungs = 0;
+    for (let g = 0; g < 30; g++) {
+      const state = runGame(`smoke-hard-${g}`, 'hard');
+      const totalDelta = state.players.reduce((sum, p) => sum + p.scoreDelta, 0);
+      expect(totalDelta + state.penaltyPot, `hard game ${g}: payment balance`).toBe(0);
+      exposedPungs += state.players.reduce(
+        (n, p) => n + p.melds.filter(m => m.kind === 'pung' && !m.concealed).length,
+        0,
+      );
+    }
+    // Hard declines pungs the other levels take, and a discipline that declines
+    // *every* one is a bot that never claims — which no unit test of the refusal
+    // path would catch.
+    expect(exposedPungs).toBeGreaterThan(0);
+  }, 180_000);
+});
+
+/**
+ * The ladder has to be a ladder. Each rung is seated at 0 and 2 against the rung
+ * below at 1 and 3, on one deal each, and scored across the run — a single round
+ * turns on the deal far too much to say anything.
+ *
+ * This is the assertion N19 was really for, and it is the one that found the
+ * defect it was filed around: before the shanten term went in, **medium lost to
+ * easy** here, −60 over 60 games with half as many wins. Medium ranked discards
+ * by an acceptance count that is identically zero until the hand is already
+ * tenpai, so for most of a round it kept whichever tile came first in hand order,
+ * while easy at least read the shape it was holding.
+ */
+describe('the bot ladder', () => {
+  function ledger(strong: BotDifficulty, weak: BotDifficulty, games: number): [number, number] {
+    let strongTotal = 0;
+    let weakTotal = 0;
+    for (let g = 0; g < games; g++) {
+      const state = runMixedGame(`ladder-${strong}-${weak}-${g}`, [strong, weak, strong, weak]);
+      strongTotal += (state.players[0]?.scoreDelta ?? 0) + (state.players[2]?.scoreDelta ?? 0);
+      weakTotal += (state.players[1]?.scoreDelta ?? 0) + (state.players[3]?.scoreDelta ?? 0);
+    }
+    return [strongTotal, weakTotal];
+  }
+
+  it('has hard above medium above easy', () => {
+    for (const [strong, weak] of [
+      ['hard', 'medium'],
+      ['hard', 'easy'],
+      ['medium', 'easy'],
+    ] as const) {
+      const [s, w] = ledger(strong, weak, 40);
+      expect(s, `${strong} scored ${s} against ${weak}'s ${w}`).toBeGreaterThan(w);
+    }
+  }, 300_000);
 });
 
 describe('medium bot defensive pung (A25)', () => {

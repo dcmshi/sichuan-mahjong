@@ -1,21 +1,30 @@
 import type { Seat } from '@sichuan-mahjong/engine';
 import { useEffect, useRef, useState } from 'react';
 import { useT } from '../i18n/useT.js';
+import { BOT_LEVELS, type BotLevel, botLevelKey } from '../prefs.js';
 import { useStore } from '../store/index.js';
+import { seatKey } from '../wind.js';
 import { connectGame, makeWatchLink, makeWsUrl, sendAction } from '../ws/client.js';
 
-/** A seated bot's level, and the control that changes it. (N18) */
+/**
+ * A seated bot's level, and the control that changes it. (N18)
+ *
+ * `flex-wrap`, because the third rung made this three buttons in a row that also
+ * holds the chair label, the bot's name and a Kick — the same shape N7 and N23
+ * both broke on, where a `flex-shrink-0` control beside one shrinkable sibling
+ * crushes that sibling rather than wrapping.
+ */
 function BotLevelPicker({
   value,
   onPick,
 }: {
-  value: 'easy' | 'medium';
-  onPick: (level: 'easy' | 'medium') => void;
+  value: BotLevel;
+  onPick: (level: BotLevel) => void;
 }) {
   const t = useT();
   return (
-    <div className="inline-flex rounded-lg overflow-hidden border border-white/20 flex-shrink-0">
-      {(['easy', 'medium'] as const).map(level => (
+    <div className="inline-flex flex-wrap rounded-lg overflow-hidden border border-white/20 flex-shrink-0">
+      {BOT_LEVELS.map(level => (
         <button
           key={level}
           type="button"
@@ -26,7 +35,7 @@ function BotLevelPicker({
             value === level ? 'bg-amber-400 text-black' : 'bg-black/20 text-white/60',
           ].join(' ')}
         >
-          {t(level === 'easy' ? 'host.easy' : 'host.medium')}
+          {t(botLevelKey(level))}
         </button>
       ))}
     </div>
@@ -339,11 +348,22 @@ export function HostSetup() {
           const p = lobbyPlayers[i];
           const isMe = i === seat;
           return (
-            <div key={i} className="flex items-center gap-2 bg-black/20 rounded-xl px-3 py-2.5">
-              <span className="text-green-400 text-sm w-14">{t(`wind.${i}`)}</span>
+            // `flex-wrap`, and the two text cells carry a `basis-*`. The level
+            // picker and Kick are both `flex-shrink-0`, so with three levels
+            // instead of two the only shrinkable child — the bot's name —
+            // absorbed the whole shortfall and rendered at zero width on a 320px
+            // phone. Same shape as N7's turn indicator and N23's flip prompt;
+            // the remedy is the same one written down in CLAUDE.md.
+            <div
+              key={i}
+              className="flex flex-wrap items-center gap-2 bg-black/20 rounded-xl px-3 py-2.5"
+            >
+              {/* A chair, not a wind: the seating dice have not been thrown, so
+                  there is no East yet to be a distance from. (N26) */}
+              <span className="text-green-400 text-sm w-16 flex-shrink-0">{t(seatKey(i))}</span>
               {p?.name ? (
                 <>
-                  <span className="font-semibold flex-1 min-w-0 truncate">
+                  <span className="font-semibold flex-1 basis-24 min-w-0 truncate">
                     {p.name}
                     {isMe && <span className="ml-1 text-xs text-amber-400">{t('common.you')}</span>}
                   </span>
@@ -374,13 +394,13 @@ export function HostSetup() {
                 </>
               ) : (
                 <>
-                  <span className="text-white/40 italic text-sm flex-1 min-w-0">
+                  <span className="text-white/40 italic text-sm flex-1 basis-16 min-w-0">
                     {t('host.empty')}
                   </span>
-                  {/* Two buttons rather than one plus a mode: the level a bot is
-                      added at is the only thing being chosen, so choosing it *is*
-                      the tap. */}
-                  {(['easy', 'medium'] as const).map(level => (
+                  {/* A button per level rather than one plus a mode: the level a
+                      bot is added at is the only thing being chosen, so choosing
+                      it *is* the tap. */}
+                  {BOT_LEVELS.map(level => (
                     <button
                       key={level}
                       type="button"
@@ -389,7 +409,7 @@ export function HostSetup() {
                         sendAction({ t: 'addBot', difficulty: level, seat: i as Seat })
                       }
                     >
-                      + {t(level === 'easy' ? 'host.easy' : 'host.medium')}
+                      + {t(botLevelKey(level))}
                     </button>
                   ))}
                 </>

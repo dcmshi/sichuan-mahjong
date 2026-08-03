@@ -3,6 +3,7 @@ import { ReconnectingBanner } from '../components/ReconnectingBanner.js';
 import { RoundEndRow } from '../components/RoundEndRow.js';
 import { useT } from '../i18n/useT.js';
 import { useStore } from '../store/index.js';
+import { seatKey } from '../wind.js';
 import { sendAction } from '../ws/client.js';
 
 export function RoundEnd() {
@@ -60,6 +61,7 @@ export function RoundEnd() {
               player={p}
               rank={rank}
               youSeat={seat}
+              dealer={result.dealer}
               defaultOpen={p.hu !== null}
             />
           ))}
@@ -86,7 +88,9 @@ export function RoundEnd() {
                     key={p.seat}
                     className="flex items-center gap-3 bg-black/15 rounded-xl px-4 py-2"
                   >
-                    <span className="text-xs text-green-300 w-12">{t(`wind.${p.seat}`)}</span>
+                    {/* A chair, not a wind: this total spans rounds, and East
+                        moved between them. (N26) */}
+                    <span className="text-xs text-green-300 w-12">{t(seatKey(p.seat))}</span>
                     <span className="flex-1 text-sm">{p.name}</span>
                     <span className={`font-bold ${total >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                       {total > 0 ? '+' : ''}

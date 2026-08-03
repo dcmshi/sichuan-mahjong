@@ -1,6 +1,7 @@
 import { LangSwitch } from '../components/LangSwitch.js';
 import { useT } from '../i18n/useT.js';
 import { useStore } from '../store/index.js';
+import { seatKey } from '../wind.js';
 
 export function Lobby() {
   const t = useT();
@@ -31,7 +32,8 @@ export function Lobby() {
           const p = lobbyPlayers[i];
           return (
             <div key={i} className="flex items-center gap-3 bg-black/20 rounded-xl px-3 py-2.5">
-              <span className="text-green-400 text-sm w-14">{t(`wind.${i}`)}</span>
+              {/* A chair, not a wind — no dealer exists before the game starts. (N26) */}
+              <span className="text-green-400 text-sm w-16 flex-shrink-0">{t(seatKey(i))}</span>
               {p?.name ? (
                 <>
                   <span className="font-semibold">{p.name}</span>

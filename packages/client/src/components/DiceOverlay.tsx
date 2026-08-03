@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
 import { useAnimationPace } from '../hooks/useAnimation.js';
 import { useT } from '../i18n/useT.js';
+import { windKey } from '../wind.js';
 import { Die } from './Die.js';
 
 /** How long the dice tumble, and how long the result sits, at `fast`. */
@@ -46,23 +47,6 @@ export function throwerKey(stage: 'seating' | 'wall', dealer: Seat, youSeat: Sea
   const yours = dealer === youSeat;
   if (stage === 'seating') return yours ? 'dice.youAreEast' : 'dice.isEast';
   return yours ? 'dice.wallTitleYou' : 'dice.wallTitle';
-}
-
-/**
- * A seat's wind, which is its distance from East *against* the seat index.
- *
- * This read `wind.${wallSeat}` — the absolute index — so it was only right when
- * the dealer happened to be seat 0, and East rotates every round. Winds run in
- * play order, and play runs counterclockwise by decreasing seat, so South is
- * `dealer - 1`: the seat to East's right, which is where a table seats them.
- * (N22)
- *
- * Pure and exported for the same reason `throwerKey` is: the local player is East
- * only a quarter of the time, and the dealer is seat 0 only a quarter of the
- * time, so the browser reaches the wrong-looking cases by luck.
- */
-export function windOfSeat(seat: Seat, dealer: Seat): number {
-  return (dealer - seat + 4) % 4;
 }
 
 /**
@@ -218,7 +202,7 @@ export function DiceOverlay({
                 </div>
                 <div className="text-base text-white/90">
                   {t('dice.wallResult', {
-                    wind: t(`wind.${windOfSeat(view.dice.wallSeat, view.dealer)}`),
+                    wind: t(windKey(view.dice.wallSeat, view.dealer)),
                     n: view.dice.indent,
                   })}
                 </div>

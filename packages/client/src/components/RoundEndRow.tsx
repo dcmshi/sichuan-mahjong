@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useT } from '../i18n/useT.js';
 import { formatFan, groupWinningHand, ledgerLines, separateWinningTile } from '../roundEnd.js';
 import { useStore } from '../store/index.js';
+import { seatLabelKey } from '../wind.js';
 import { MeldDisplay } from './MeldDisplay.js';
 import { Tile } from './Tile.js';
 
@@ -18,8 +19,16 @@ export function RoundEndRow({
   player,
   rank,
   youSeat,
+  dealer,
   defaultOpen,
-}: { player: Player; rank: number; youSeat: Seat | null; defaultOpen: boolean }) {
+}: {
+  player: Player;
+  rank: number;
+  youSeat: Seat | null;
+  /** Who was East this round; absent on a result stored before N26. */
+  dealer: Seat | undefined;
+  defaultOpen: boolean;
+}) {
   const [open, setOpen] = useState(defaultOpen);
   const t = useT();
   // Practice games hide the badge — labelling the only human "(you)" among three
@@ -51,7 +60,7 @@ export function RoundEndRow({
         onClick={() => setOpen(o => !o)}
       >
         <span className="text-white/40 text-sm w-6">#{rank + 1}</span>
-        <span className="text-xs text-green-300 w-12">{t(`wind.${player.seat}`)}</span>
+        <span className="text-xs text-green-300 w-12">{t(seatLabelKey(player.seat, dealer))}</span>
         <span className="font-semibold flex-1 min-w-0 truncate">
           {player.name}
           {player.seat === youSeat && !isPractice && (
@@ -146,7 +155,7 @@ export function RoundEndRow({
                   <span className="text-white/60 flex-1 min-w-0 truncate">
                     {t(l.key)}
                     {l.detail ? ` (${t(l.detail)})` : ''}
-                    {l.other !== null ? ` · ${t(`wind.${l.other}`)}` : ''}
+                    {l.other !== null ? ` · ${t(seatLabelKey(l.other, dealer))}` : ''}
                   </span>
                   <span className={l.amount >= 0 ? 'text-green-400' : 'text-red-400'}>
                     {l.amount > 0 ? '+' : ''}

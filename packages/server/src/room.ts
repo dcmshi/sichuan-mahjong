@@ -10,6 +10,7 @@ import {
   startNextRound,
 } from '@sichuan-mahjong/engine';
 import type {
+  BotDifficulty,
   GameAction,
   GameConfig,
   GameEvent,
@@ -21,11 +22,14 @@ import type {
 } from '@sichuan-mahjong/engine';
 import {
   botClaimAction,
+  botClaimActionHard,
   botClaimActionMedium,
   botHuanAction,
   botTurnAction,
+  botTurnActionHard,
   botTurnActionMedium,
   botVoidAction,
+  botVoidActionHard,
 } from './bot.js';
 import { deleteLiveRoom, loadLiveRooms, saveGameWithCode, saveLiveRoom } from './persistence.js';
 import { importToken, revokeTokensForCode, tokensForCode } from './tokens.js';
@@ -146,7 +150,32 @@ export type RoomSlot = {
   name: string;
   isBot: boolean;
   connected: boolean;
-  difficulty?: 'easy' | 'medium';
+  difficulty?: BotDifficulty;
+};
+
+/**
+ * The ladder, as a table rather than a ternary per decision point. N19 found the
+ * two levels dispatched by `difficulty === 'medium'` at each of three call sites,
+ * which is the shape that makes a third rung a rewrite instead of a row — and
+ * silently plays easy for any string that reaches here unrecognised, which is
+ * exactly the failure `botDifficultyFrom` exists to prevent at the boundary.
+ *
+ * `void` has no hard/medium split by design: hard reads the declaration as the
+ * one decision of the round made before a tile is drawn, and medium's tile count
+ * is the same heuristic easy uses. Huan has no split at all — 換三張 is off by
+ * default and off the Novikov path, so all three share one implementation.
+ */
+const BOT_PLAY: Record<
+  BotDifficulty,
+  {
+    turn: (state: GameState, seat: Seat) => GameAction | null;
+    claim: (state: GameState, seat: Seat) => GameAction;
+    declareVoid: (state: GameState, seat: Seat) => GameAction | null;
+  }
+> = {
+  easy: { turn: botTurnAction, claim: botClaimAction, declareVoid: botVoidAction },
+  medium: { turn: botTurnActionMedium, claim: botClaimActionMedium, declareVoid: botVoidAction },
+  hard: { turn: botTurnActionHard, claim: botClaimActionHard, declareVoid: botVoidActionHard },
 };
 
 /** Serializable snapshot of a live room, persisted so the game survives a restart. */
@@ -675,13 +704,18 @@ export class GameRoom {
     return slot.isBot || !this.connections.has(seat);
   }
 
+  /** A seat's level, defaulting to easy for anything unlevelled. */
+  private botPlayFor(seat: Seat): (typeof BOT_PLAY)[BotDifficulty] {
+    return BOT_PLAY[this.slots[seat]?.difficulty ?? 'easy'];
+  }
+
   private botHuanSelect(seat: Seat): void {
     const action = botHuanAction(this.state, seat);
     if (action) this.applyAndPropagate(action);
   }
 
   private botVoidDeclare(seat: Seat): void {
-    const action = botVoidAction(this.state, seat);
+    const action = this.botPlayFor(seat).declareVoid(this.state, seat);
     if (action) this.applyAndPropagate(action);
   }
 
@@ -700,11 +734,9 @@ export class GameRoom {
     const player = this.state.players[seat];
     if (!player || player.status === 'hu') return;
 
-    const medium = this.slots[seat]?.difficulty === 'medium';
+    const play = this.botPlayFor(seat);
     this.scheduleBot(seat, () => {
-      const action = medium
-        ? botTurnActionMedium(this.state, seat)
-        : botTurnAction(this.state, seat);
+      const action = play.turn(this.state, seat);
       if (action !== null) this.applyAndPropagate(action);
     });
   }
@@ -722,14 +754,11 @@ export class GameRoom {
       // them and can stamp a missed-Hu furiten. (A10)
       if (!this.isBotOrOffline(seat) || this.isInReconnectGrace(seat)) continue;
 
-      const medium = this.slots[seat]?.difficulty === 'medium';
+      const play = this.botPlayFor(seat);
       this.scheduleBot(seat, () => {
         const w = this.state.pendingClaims;
         if (w === null || w.passed[seat] || w.claims[seat] !== null) return;
-        const action = medium
-          ? botClaimActionMedium(this.state, seat)
-          : botClaimAction(this.state, seat);
-        this.applyAndPropagate(action);
+        this.applyAndPropagate(play.claim(this.state, seat));
       });
     }
   }
@@ -776,6 +805,7 @@ export class GameRoom {
   private buildRoundResult(): RoundResult {
     return {
       roundIndex: this.roundIndex,
+      dealer: this.state.dealer,
       players: this.state.players.map(p => ({
         seat: p.seat as Seat,
         name: p.name,

@@ -1,5 +1,5 @@
 import { randomInt } from 'node:crypto';
-import type { Seat } from '@sichuan-mahjong/engine';
+import type { BotDifficulty, Seat } from '@sichuan-mahjong/engine';
 
 // Alphabet excludes I, O, 0, 1 to avoid confusion
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -30,7 +30,7 @@ export type LobbySlot = {
   isBot: boolean;
   token: string;
   connected: boolean;
-  difficulty?: 'easy' | 'medium';
+  difficulty?: BotDifficulty;
 };
 
 export type Lobby = {

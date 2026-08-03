@@ -143,7 +143,7 @@ describe('practice prefs (N17)', () => {
     ]);
     expect(parsePracticePrefs({ botLevels: ['medium', 'hard', null] }).botLevels).toEqual([
       'medium',
-      'easy',
+      'hard',
       'easy',
     ]);
     // A longer array is truncated to the three bot seats.
@@ -151,7 +151,7 @@ describe('practice prefs (N17)', () => {
   });
 
   it('rejects values the server would not accept anyway', () => {
-    for (const junk of ['fastest', 'NORMAL', 0, null, true, {}, []]) {
+    for (const junk of ['fastest', 'NORMAL', 'expert', 0, null, true, {}, []]) {
       expect(parsePracticePrefs({ botSpeed: junk }).botSpeed, String(junk)).toBe('normal');
       expect(parsePracticePrefs({ botLevels: [junk, junk, junk] }).botLevels, String(junk)).toEqual(
         ['easy', 'easy', 'easy'],

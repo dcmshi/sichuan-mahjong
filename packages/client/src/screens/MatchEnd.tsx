@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { useT } from '../i18n/useT.js';
 import { useStore } from '../store/index.js';
+import { seatKey } from '../wind.js';
 
 /**
  * Final standings for the match. Before this the store reset straight to the
@@ -24,7 +25,7 @@ export function MatchEnd() {
   const nameOf = (s: number) =>
     roundResult?.players.find(p => p.seat === s)?.name ??
     lobbyPlayers.find(p => p.seat === s)?.name ??
-    t(`wind.${s}`);
+    t(seatKey(s));
 
   const standings = Object.keys(matchScores)
     .map(Number)
@@ -60,7 +61,9 @@ export function MatchEnd() {
                 ].join(' ')}
               >
                 <span className="text-white/40 text-sm w-6">#{rank + 1}</span>
-                <span className="text-xs text-green-300 w-12">{t(`wind.${s}`)}</span>
+                {/* A chair, not a wind: these are match totals, and East rotated
+                    every round that fed them. (N26) */}
+                <span className="text-xs text-green-300 w-12">{t(seatKey(s))}</span>
                 <span className="font-semibold flex-1">
                   {nameOf(s)}
                   {s === seat && !isPractice && (

@@ -1,5 +1,12 @@
 import type { WebSocket } from '@fastify/websocket';
-import type { ClientMsg, GameConfig, LobbyPlayer, Seat, ServerMsg } from '@sichuan-mahjong/engine';
+import type {
+  BotDifficulty,
+  ClientMsg,
+  GameConfig,
+  LobbyPlayer,
+  Seat,
+  ServerMsg,
+} from '@sichuan-mahjong/engine';
 import type { FastifyInstance } from 'fastify';
 import { allowJoin, clientKey } from './limits.js';
 import { allLobbies, canStart, deleteLobby, findOpenSeat, getLobby } from './lobby.js';
@@ -124,12 +131,13 @@ export function isSeat(v: unknown): v is Seat {
 }
 
 /**
- * A bot level off the wire. Only the two that exist are accepted; anything else is
- * easy, which is the gentler failure — a crafted frame must not be able to seat an
- * opponent whose difficulty string no dispatch in `room.ts` recognises. (N18)
+ * A bot level off the wire. Only the levels that exist are accepted; anything else
+ * is easy, which is the gentler failure — a crafted frame must not be able to seat
+ * an opponent whose difficulty string no dispatch in `room.ts` recognises. (N18,
+ * widened for the third rung in N19.)
  */
-export function botDifficultyFrom(v: unknown): 'easy' | 'medium' {
-  return v === 'medium' ? 'medium' : 'easy';
+export function botDifficultyFrom(v: unknown): BotDifficulty {
+  return v === 'medium' || v === 'hard' ? v : 'easy';
 }
 
 export function claimWindowMsFrom(v: unknown): number {
@@ -469,10 +477,10 @@ function handleLobbyMessage(
       const botToken = issueToken(code, wanted, 'player');
       lobby.slots[wanted] = {
         // Just the seat. The level used to be baked in as "Bot (Hard)" — for the
-        // *medium* bot, which was already wrong and gets wronger once N19 adds a
-        // real hard one. `LobbyPlayer.difficulty` is already on the wire, so the
-        // lobby shows the level from that and the name stays stable in the feed
-        // and the move history. (N18)
+        // *medium* bot, which was already wrong and would be a second seat's name
+        // now that N19 has shipped a real hard one. `LobbyPlayer.difficulty` is
+        // already on the wire, so the lobby shows the level from that and the name
+        // stays stable in the feed and the move history. (N18)
         name: `Bot ${wanted + 1}`,
         isBot: true,
         token: botToken,

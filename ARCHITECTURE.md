@@ -88,7 +88,8 @@ sichuan-mahjong/
 │   │   │   ├── ws.ts             # WebSocket gateway
 │   │   │   ├── lobby.ts
 │   │   │   ├── room.ts           # GameRoom owns GameState
-│   │   │   ├── bot.ts
+│   │   │   ├── bot.ts            # three levels; room.ts dispatches via BOT_PLAY
+│   │   │   ├── shanten.ts        # distance from a win — what the engine has no notion of
 │   │   │   ├── persistence.ts    # SQLite at user data dir
 │   │   │   ├── tokens.ts
 │   │   │   ├── networking.ts     # IP detection, mDNS, Tailscale detection, TLS provisioning
@@ -750,7 +751,7 @@ export type ClientMsg =
   // narrows them, and only a literal `true` may switch a rule on.
   | { t: 'join'; name: string }
   | { t: 'leave' }
-  | { t: 'addBot'; difficulty: 'easy' | 'medium' }     // host only
+  | { t: 'addBot'; difficulty: BotDifficulty }         // host only ('easy'|'medium'|'hard')
   | { t: 'kickBot'; seat: Seat }                        // host only
   | { t: 'startGame'; rules?: { huanSanZhang?: boolean } }  // host only, requires 4 seats filled
   | { t: 'nextRound' }                                  // host only, from the round-end screen
@@ -787,6 +788,8 @@ Both halves are per-viewer redacted before send: melds project as `PublicMeld` (
 
 `RoundResult` carries a `roundIndex`. A client that reconnects at round end is handed that round's result again (§6.5), so anything cumulative — the client's match-score totals — must be keyed on it rather than incremented on arrival (A39).
 
+It also carries an optional `dealer` (N26). Without it the round-end screens had no way to compute a wind and read the absolute seat index instead — which is wrong for at least half the rows at every dealer, and for all of them at two of the four. Optional because rows persisted before N26 carry none; a client handed one of those names the **chair** (`seat.0`–`seat.3`) rather than printing a wind derived from a guess. That distinction is the settled rule: a wind is a per-round fact, a chair is durable, and the lobby and match totals — which have no single round in view — use the chair.
+
 ### 6.5 Reconnection
 
 - Player tokens stored in `Map<token, {code, seat}>` (in-memory).
@@ -818,9 +821,29 @@ Heuristic, server-side. Each bot subscribes to its own `PlayerView` and emits `G
 
 ### 7.2 Medium bot
 
-- Uses `ukeire(...)` for tile efficiency on discards.
-- Defensive discard scoring once another player declares Hu.
-- Risk-aware void clearing in lenient mode.
+- **Discard:** minimum shanten after the discard; ties broken by `ukeire(...)`, then by the easy bot's isolation score.
+- **Claim:** as easy, plus a defensive gate — no pung while any opponent is tenpai.
+
+> The shanten term arrived in N19, and until it did this level was **weaker than easy**. `ukeire` is `isTenpai` with counts attached, so it answers only for a hand already one tile away: every candidate scored 0 for most of a round and the "maximise acceptance" loop kept whichever tile came first in hand order. Head to head over 60 deals it lost by 60 points with two-thirds of easy's wins. The ladder is now asserted rather than assumed — see §11.3.
+
+### 7.3 Hard bot
+
+Three things the other two have no notion of, on top of medium's efficiency.
+
+- **Fan awareness.** Candidates tying on shanten are separated by what the hand is still worth winning with: `calcTMV` when the discard leaves it tenpai, a flush-and-pung shape estimate below that. The two scales never meet, because candidates are only compared against others at the same shanten.
+- **A public read of the table, and a push/fold from it.** A tile in a seat's *declared* void suit can never reach them — `canHuOnTile`, `canPungOnTile` and `canKongOnTile` each reject it — and the declaration becomes readable under exactly the condition `views.ts` uses for `firstDiscardIsVoid`. Above that guarantee sits a per-seat discard read: a suit a player has never thrown is the suit they are collecting, a meld in it says so twice, a nearly-exhausted type has a thinner wait left. When an opponent is tenpai and this hand is two or more exchanges away, the turn folds and safety outranks efficiency.
+- **Claim discipline.** A pung only when it lowers shanten, measured against the best discard from the over-full hand it leaves — and while someone else is tenpai, only when it lands this hand in tenpai too. A kong is declined when the hand reads better as seven pairs, Kong and SevenPairs being incompatible in Table 9 and four of a kind being two of the seven.
+- **Void declaration** by which suit costs the hand least rather than which is shortest: three tiles forming a run are worse to give up than four scattered singles, and it is the one decision of the round made before a tile is drawn.
+
+**Hard sees no more of the table than medium does.** The single look either takes at a hand it should not read is `anyOpponentTenpai` (A25); hard adds nothing to it and uses it only to choose push or fold. Reading opponents' exact waits would make the level unbeatable and would read as cheating; every tile it actually picks is justified from public evidence. There is no genbutsu read to go with the void suits — furiten here is the skip-Hu rule (§5.5.5), not "you discarded what you wait on", so a seat's own pile says nothing about what it can win from.
+
+`shanten.ts` is the shared machinery: the standard `8 − 2·sets − blocks` search with the no-sixth-block and no-pair corrections, plus a seven-pairs count in which a four-of-a-kind is two pairs (the Root fan is defined on exactly that). It lives in the server, not the engine — no rule depends on it and nothing a client sees is derived from it — and is checked against the engine as an oracle.
+
+### 7.4 Dispatch
+
+`room.ts` holds a `Record<BotDifficulty, { turn, claim, declareVoid }>`. Two levels had been selected by `difficulty === 'medium'` at three call sites, which is the shape that makes a third rung a rewrite rather than a row. `BotDifficulty` is one exported union in `protocol.ts`; `botDifficultyFrom` narrows it at the WS boundary, and anything unrecognised becomes easy rather than seating an opponent no dispatch can drive (N18).
+
+Huan has no per-level split: 換三張 is off by default and off the Novikov path, so all three share `botHuanAction`.
 
 ---
 
@@ -1048,7 +1071,9 @@ After step 4, every future game uses the same URL — no per-session re-sharing.
 ### 11.2 Server
 
 - Integration tests with fake WebSocket clients.
-- **Bot-vs-bot smoke:** 100 full games with 4 easy bots (plus 30 with medium bots). Assert no crashes, no rule violations rejected mid-game, payment-matrix balance for every game, exposed pungs actually form (A13), and — crucially — that wins come from players who separated a face-down first discard, not only from the rare indicator user. A bare "some Hu happened" assertion is what let A35 hide behind indicator users through five audit passes.
+- **The ladder:** each level seated at two chairs against the level below at the other two, over 40 deals, asserting the stronger one finishes ahead. This is the guard that would have caught medium shipping weaker than easy (§7.2) on the day it happened, and a single round turns on the deal far too much to say anything on its own.
+
+- **Bot-vs-bot smoke:** 100 full games with 4 easy bots, plus 30 each with medium and hard. Assert no crashes, no rule violations rejected mid-game, payment-matrix balance for every game, exposed pungs actually form (A13), and — crucially — that wins come from players who separated a face-down first discard, not only from the rare indicator user. A bare "some Hu happened" assertion is what let A35 hide behind indicator users through five audit passes.
 - Tailscale detection mock tests (unit-level): given mocked `tailscale status --json` outputs, verify URL generation.
 - Round-end reveals: `buildRoundResult` carries hands, melds, ready state and a per-seat ledger, and a spectator joining at round end is handed the result.
 - Snapshot validation: `validateRoomSnapshot` names every field a persisted snapshot is missing, checked against the keys of a freshly created game so the required set cannot drift. `restoreRoomsFromDisk` drops an incompatible row rather than half-restoring it — `restore` used to assign the persisted state verbatim, and of the fields that could go missing, two throw and seventeen silently corrupt the projected view.
