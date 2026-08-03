@@ -1,6 +1,13 @@
 import { useCallback, useRef } from 'react';
 
-export function useLongPress(onLongPress: () => void, onPress?: () => void, delay = 500) {
+/**
+ * How long a press has to last to count as a long one. Exported because
+ * `usePileTap` has to swallow the click that follows a press this long — a tile
+ * and the pile it sits in would otherwise both answer one gesture. (N33)
+ */
+export const LONG_PRESS_MS = 500;
+
+export function useLongPress(onLongPress: () => void, onPress?: () => void, delay = LONG_PRESS_MS) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const firedRef = useRef(false);
   // Tracks whether pointer-up already handled the press, so the synthetic click event can skip it.

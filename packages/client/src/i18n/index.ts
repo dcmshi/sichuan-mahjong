@@ -108,17 +108,25 @@ const en: Dict = {
   'wind.2': 'West',
   'wind.3': 'North',
 
-  'suit.man': 'Man',
-  'suit.pin': 'Pin',
-  'suit.sou': 'Sou',
+  // The glyph leads and the roman name follows, in every English string that
+  // names a suit. "Void Man" and "7 of Characters" were two different names for
+  // one thing, and neither was the character printed on the tile the player is
+  // looking at. The `.full` form adds the pinyin, and is what the void screen's
+  // three big buttons draw — the one place with room for it, and the screen
+  // where you are choosing a suit rather than reading one back. Note "Pin" and
+  // "Sou" are not pinyin at all but Japanese (pinzu / souzu), which is exactly
+  // why the tone-marked reading is worth stating somewhere. (N34)
+  'suit.man': '万 Man',
+  'suit.pin': '饼 Pin',
+  'suit.sou': '条 Sou',
   'tile.label': '{rank} of {suit}',
-  'tile.man': 'Characters',
-  'tile.pin': 'Dots',
-  'tile.sou': 'Bamboo',
+  'tile.man': '万 Man',
+  'tile.pin': '饼 Pin',
+  'tile.sou': '条 Sou',
 
-  'suit.man.full': '万 Man',
-  'suit.pin.full': '饼 Pin',
-  'suit.sou.full': '条 Sou',
+  'suit.man.full': '万 Man (wàn)',
+  'suit.pin.full': '饼 Pin (bǐng)',
+  'suit.sou.full': '条 Sou (tiáo)',
 
   'huan.title': 'Huan San Zhang — Select 3 tiles to swap',
   'huan.hint': 'Tap 3 tiles of the same suit. They will be passed to the next player.',
@@ -127,14 +135,13 @@ const en: Dict = {
 
   'void.title': 'Void Declaration — 定缺',
   'void.hint':
-    'Tap the tile you want to discard first — its suit becomes your void, and you must discard all tiles of that suit.',
+    'Choose the suit you will void — you must discard every tile of it. Tap a tile to set which one leads.',
   'void.tilesCount': '{n} tiles',
-  'void.yourHand': 'Your hand — tap the tile that goes out first:',
+  'void.yourHand': 'Your hand — the lifted tile is discarded first; tap another to change it:',
   'void.none': "(none — you'll use the indicator)",
   'void.confirm': 'Void {suit}',
   'void.choose': 'Choose a suit',
-  'void.pickTile': 'Tap the tile to discard first',
-  'void.firstDiscard': '{tile} goes out first',
+  'void.firstDiscard': '{tile} discarded first',
   'void.indicator': 'no tile to set aside — you take the indicator',
 
   'dice.seatingTitle': 'Rolling for seats — highest is East',
@@ -204,6 +211,15 @@ const en: Dict = {
   'event.pung': '{name} ponged',
   'event.kong': '{name} konged',
   'event.hu': '{name} declared Hu!',
+
+  'pile.title': '{name} — discards',
+  'pile.count': '{n} tiles',
+  'pile.void': 'Void declaration',
+  'pile.discards': 'Discards, oldest first',
+  'pile.empty': 'Nothing discarded yet.',
+  // Not "{name}'s discards": `nameOf` returns "You" for your own seat, and a
+  // possessive would read as "You's". Every string here has to survive that.
+  'pile.open': 'Open discards — {name}',
 
   'history.title': 'This round',
   'history.empty': 'No moves yet this round.',
@@ -395,13 +411,12 @@ const zhHans: Dict = {
   'huan.selectMore': '还需选择 {n} 张',
 
   'void.title': '定缺',
-  'void.hint': '点选你要先打出的那张牌 — 该牌的花色即为缺门，必须打出该花色所有牌。',
+  'void.hint': '选择要定缺的花色 — 该花色的牌必须全部打出。点选其中一张可指定先打出哪张。',
   'void.tilesCount': '{n} 张',
-  'void.yourHand': '你的手牌 — 点选先打出的那张：',
+  'void.yourHand': '你的手牌 — 抬起的那张先打出，点选其他牌可更换：',
   'void.none': '（没有 — 将使用指示牌）',
   'void.confirm': '定缺 {suit}',
   'void.choose': '选择花色',
-  'void.pickTile': '点选先打出的那张牌',
   'void.firstDiscard': '先打出 {tile}',
   'void.indicator': '没有牌可扣下 — 使用指示牌',
 
@@ -468,6 +483,13 @@ const zhHans: Dict = {
   'event.pung': '{name} 碰了',
   'event.kong': '{name} 杠了',
   'event.hu': '{name} 胡了！',
+
+  'pile.title': '{name} 打出的牌',
+  'pile.count': '{n} 张',
+  'pile.void': '定缺牌',
+  'pile.discards': '打出的牌（由先至后）',
+  'pile.empty': '还没有打出任何牌。',
+  'pile.open': '查看打出的牌 — {name}',
 
   'history.title': '本局记录',
   'history.empty': '本局还没有出牌。',
@@ -655,13 +677,12 @@ const zhHant: Dict = {
   'huan.selectMore': '還需選擇 {n} 張',
 
   'void.title': '定缺',
-  'void.hint': '點選你要先打出的那張牌 — 該牌的花色即為缺門，必須打出該花色所有牌。',
+  'void.hint': '選擇要定缺的花色 — 該花色的牌必須全部打出。點選其中一張可指定先打出哪張。',
   'void.tilesCount': '{n} 張',
-  'void.yourHand': '你的手牌 — 點選先打出的那張：',
+  'void.yourHand': '你的手牌 — 抬起的那張先打出，點選其他牌可更換：',
   'void.none': '（沒有 — 將使用指示牌）',
   'void.confirm': '定缺 {suit}',
   'void.choose': '選擇花色',
-  'void.pickTile': '點選先打出的那張牌',
   'void.firstDiscard': '先打出 {tile}',
   'void.indicator': '沒有牌可扣下 — 使用指示牌',
 
@@ -728,6 +749,13 @@ const zhHant: Dict = {
   'event.pung': '{name} 碰了',
   'event.kong': '{name} 槓了',
   'event.hu': '{name} 胡了！',
+
+  'pile.title': '{name} 打出的牌',
+  'pile.count': '{n} 張',
+  'pile.void': '定缺牌',
+  'pile.discards': '打出的牌（由先至後）',
+  'pile.empty': '還沒有打出任何牌。',
+  'pile.open': '查看打出的牌 — {name}',
 
   'history.title': '本局記錄',
   'history.empty': '本局還沒有出牌。',

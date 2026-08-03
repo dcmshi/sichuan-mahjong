@@ -81,12 +81,18 @@ test('opening played via real UI clicks (huan tiles, void suit, discard tap)', a
   // right when only the chosen suit was rendered; now it would always be 13 and
   // would demand a flip button in the indicator case, which has nothing to flip.
   const voidSuitTiles = await page.locator('[data-void-tile] img[alt]').count();
-  // N30: the first discard is a real choice, so the suit button alone no longer
-  // submits — Confirm stays disabled until a tile is tapped. Both paths are
-  // exercised here: the button chooses the suit, the tile chooses the opening
-  // play. A suit the hand has none of is the indicator case and has nothing to
-  // tap, which is why this is conditional.
+  // N30: the first discard is a real choice, and the screen has to *show* which
+  // tile it is — the bug was that `counts[suit][0]` went out with nothing on
+  // screen naming it. Tapping the suit alone is still enough to submit; what it
+  // must not be is silent, so exactly one marked tile carries `data-void-first`
+  // before any tile is tapped, and tapping one moves the mark to it. A suit the
+  // hand has none of is the indicator case and has nothing to mark, which is why
+  // this is conditional.
   if (voidSuitTiles > 0) {
+    await expect(
+      page.locator('[data-void-first]'),
+      'the suit button alone must still name the tile that leads',
+    ).toHaveCount(1);
     await page.locator('[data-void-tile]').first().click();
     await expect(page.locator('[data-void-first]')).toHaveCount(1);
   }
@@ -167,4 +173,29 @@ test('opening played via real UI clicks (huan tiles, void suit, discard tap)', a
 
   // The discard registered iff our hand shrank by (at least) one tile.
   await expect.poll(() => hand.count(), { timeout: 10_000 }).toBeLessThan(before);
+
+  // ── N33: tapping a pile opens all of it, and tapping again dismisses it.
+  //    Asserted on a real click rather than through the store, because the thing
+  //    that can break is the gesture: the tray's tiles carry their own long press
+  //    for the 2× preview, and `usePileTap` is what keeps one press from
+  //    answering both. The modal must also render outside every `.discard-tray`,
+  //    or `viewport.spec.ts` sees `md` tiles inside an `sm` tray. ──
+  const tray = page.locator('.discard-tray').first();
+  await expect.poll(() => tray.count(), { timeout: 20_000 }).toBeGreaterThan(0);
+  await tray.click();
+  const pileModal = page.locator('[data-pile-modal]');
+  await expect(pileModal).toBeVisible({ timeout: 5_000 });
+  await expect(pileModal.locator('.tile').first()).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.querySelector('[data-pile-modal]')?.closest('.discard-tray') !== null,
+    ),
+    'the pile modal must not render inside a discard tray',
+  ).toBe(false);
+  await snap('pile-modal');
+  // The backdrop covers the pile that was tapped, so a second tap in the same
+  // place is what closes it — which is how it was asked for.
+  const trayBox = (await tray.boundingBox())!;
+  await page.mouse.click(trayBox.x + trayBox.width / 2, trayBox.y + trayBox.height / 2);
+  await expect(pileModal).toHaveCount(0, { timeout: 5_000 });
 });

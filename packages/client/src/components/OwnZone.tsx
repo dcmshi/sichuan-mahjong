@@ -2,7 +2,9 @@ import { type PlayerView, type TileId, tileTypeOf } from '@sichuan-mahjong/engin
 import { AnimatePresence, Reorder, motion } from 'framer-motion';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { type StandDownReason, armedDiscardOutcome } from '../armedDiscard.js';
+import { splitPile } from '../discardPile.js';
 import { useAnimationPace } from '../hooks/useAnimation.js';
+import { usePileTap } from '../hooks/usePileTap.js';
 import { useSound } from '../hooks/useSound.js';
 import { useT } from '../i18n/useT.js';
 import { kongOffers, kongTileTypes } from '../kongOffers.js';
@@ -94,7 +96,7 @@ function HuCelebration() {
  * truncating it would remove information you need to reason about your own
  * hand. (see `docs/viewport-audit.md`, "Constraints a redesign has to respect")
  */
-export function OwnZone({ view }: { view: PlayerView }) {
+export function OwnZone({ view, onOpenPile }: { view: PlayerView; onOpenPile: () => void }) {
   const [selectedTile, setSelectedTile] = useState<TileId | null>(null);
   // The tile armed while you wait, and why the last one stood down. Kept separate
   // from `selectedTile` rather than folded into it: that one is cleared whenever
@@ -106,6 +108,7 @@ export function OwnZone({ view }: { view: PlayerView }) {
   const seat = view.you.seat;
   const play = useSound();
   const t = useT();
+  const pileTap = usePileTap(onOpenPile);
   const { skip: skipAnimations, scale: animScale } = useAnimationPace();
   const discardFlightMs = DISCARD_FLIGHT_MS * animScale;
 
@@ -141,7 +144,7 @@ export function OwnZone({ view }: { view: PlayerView }) {
   // by the time the server's view comes back the hand has already re-laid out
   // without that tile; the destination can only be measured once the tray tile
   // exists, so the two halves meet here.
-  const trayRef = useRef<HTMLDivElement | null>(null);
+  const trayRef = useRef<HTMLButtonElement | null>(null);
   const takeoff = useRef<{ tile: TileId; from: Flight['from'] } | null>(null);
   const [flight, setFlight] = useState<Flight | null>(null);
   const discardKey = view.you.discards.join(',');
@@ -177,10 +180,7 @@ export function OwnZone({ view }: { view: PlayerView }) {
     return () => clearTimeout(id);
   }, [flight, discardFlightMs]);
 
-  // The void declaration is drawn on its own above the pile, so the pile is
-  // everything after it.
-  const pileDiscards = view.you.firstDiscardIsVoid ? view.you.discards.slice(1) : view.you.discards;
-  const voidDiscardTile = view.you.firstDiscardIsVoid ? (view.you.discards[0] ?? null) : null;
+  const { voidDiscard: voidDiscardTile, pile: pileDiscards } = splitPile(view.you);
 
   const isMyTurn = view.turn === seat && view.phase === 'play' && view.claimDeadline === null;
   const canDiscard = isMyTurn && view.yourLegalActions.some(a => a.t === 'discard');
@@ -424,15 +424,22 @@ export function OwnZone({ view }: { view: PlayerView }) {
               the lines and the tiles are drawn past their aspect ratio. */}
           {/* discard-landing hides the tile the flight is heading for, so it isn't
               drawn in the pile and in the air at the same time. */}
-          <div
+          {/* Your own pile opens too, though it is the one tray that is never
+              capped: a control that works on three seats of four reads as
+              broken, and the modal still draws it at a size you can read
+              without the internal scroll this tray falls back on. (N33) */}
+          <button
+            type="button"
             ref={trayRef}
+            aria-label={t('pile.open', { name: t('history.you') })}
+            {...pileTap}
             // w-fit mx-auto, like every other seat's: the tray is drawn around
             // the pile rather than across the screen. It still wraps — fit-content
             // is min(max-content, available), so a full round fills the row and
             // spills onto a second — but three discards get a tray three tiles
             // wide instead of a bar with a hole in it. justify-center stays for
             // the last, partial row of a wrapped pile.
-            className={`flex flex-wrap justify-center content-start items-start w-fit max-w-full mx-auto discard-tray tile-lap mt-0.5 min-h-0 overflow-y-auto ${
+            className={`flex flex-wrap justify-center content-start items-start w-fit max-w-full mx-auto cursor-pointer discard-tray tile-lap mt-0.5 min-h-0 overflow-y-auto ${
               flight ? 'discard-landing' : ''
             }`}
           >
@@ -444,7 +451,7 @@ export function OwnZone({ view }: { view: PlayerView }) {
                 lastDiscard={view.lastDiscard?.from === seat && id === lastDiscardTile}
               />
             ))}
-          </div>
+          </button>
         </div>
       )}
 

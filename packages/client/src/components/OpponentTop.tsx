@@ -1,16 +1,22 @@
 import type { PlayerView } from '@sichuan-mahjong/engine';
+import { splitPile } from '../discardPile.js';
+import { usePileTap } from '../hooks/usePileTap.js';
+import { useT } from '../i18n/useT.js';
 import { HandCountChip } from './HandCountChip.js';
 import { MeldDisplay } from './MeldDisplay.js';
 import { Tile, TileBack } from './Tile.js';
 
 /** The opponent seated across the table. */
-export function OpponentTop({ view, relSeat }: { view: PlayerView; relSeat: 0 | 1 | 2 }) {
+export function OpponentTop({
+  view,
+  relSeat,
+  onOpenPile,
+}: { view: PlayerView; relSeat: 0 | 1 | 2; onOpenPile: () => void }) {
+  const t = useT();
+  const pileTap = usePileTap(onOpenPile);
   const opp = view.others[relSeat];
   const lastDiscardTile = view.lastDiscard?.from === opp.seat ? view.lastDiscard.tile : null;
-  // The void declaration is drawn on its own above the pile, so the pile is
-  // everything after it.
-  const pileDiscards = opp.firstDiscardIsVoid ? opp.discards.slice(1) : opp.discards;
-  const voidDiscardTile = opp.firstDiscardIsVoid ? (opp.discards[0] ?? null) : null;
+  const { voidDiscard: voidDiscardTile, pile: pileDiscards } = splitPile(opp);
   return (
     <div className="flex flex-col items-center gap-1 w-full min-w-0">
       <div
@@ -52,8 +58,10 @@ export function OpponentTop({ view, relSeat }: { view: PlayerView; relSeat: 0 | 
               one public statement of what this seat declared, and reading it off
               the front of a wrapping pile meant hunting for it. Face down until
               its owner flips it on their first turn (A37). */}
+      {/* rotate-180 for the same reason the pile below is turned (N32): this seat
+          faces you, so the top of their tiles points at you. */}
       {(opp.pendingFirstDiscard || voidDiscardTile !== null) && (
-        <div className="flex justify-center">
+        <div className="flex justify-center rotate-180">
           {voidDiscardTile === null ? (
             <TileBack size="sm" />
           ) : (
@@ -66,33 +74,41 @@ export function OpponentTop({ view, relSeat }: { view: PlayerView; relSeat: 0 | 
           )}
         </div>
       )}
+      {/* Turned all the way round, not merely reversed. (N32, replacing N10)
+          N10 mirrored the *order* so the pile grew the way theirs does, and
+          deliberately stopped short of 180° on the grounds that these are drawn
+          face up so you can read them. Reported anyway — a seat facing you whose
+          tiles face you back is the same "four copies of one viewpoint" the
+          order fixed half of. The readability that argument was protecting is
+          now a tap away (N33), so the tiles sit the way they would on a table.
+
+          One rotation on the tray rather than one per tile: it turns order, lap
+          direction and the bleed padding together, which is exactly the pile
+          seen from the other side — so the explicit `.reverse()` is gone, being
+          what the rotation now does. A 180° turn about a box's own centre maps
+          that box onto itself, so `viewport.spec.ts` reads the same rects. */}
       {pileDiscards.length > 0 && (
-        <div className="flex items-start max-w-full overflow-x-hidden discard-tray tile-lap">
-          {/* Reversed, so this pile grows the way *theirs* does. (N10)
-              It ran left-to-right like your own, which is your reading direction
-              applied to someone else's tiles: this seat is across the table, so
-              their newest discard is at their left, which is your right — the
-              board was four copies of one viewpoint rather than one table.
-              Mirrored in order only, deliberately *not* turned 180°: the reason
-              these are drawn face up at all is so you can read them, and an
-              upside-down tile face cannot be read. Which tile paints on top of
-              the lap flips with the order, and that is fine — the covered band is
-              22.5% of body and never ink, whichever side it is covered from. */}
-          {pileDiscards
-            .slice(-9)
-            .reverse()
-            .map(id => (
-              <Tile key={id} id={id} size="sm" lastDiscard={id === lastDiscardTile} />
-            ))}
+        <button
+          type="button"
+          aria-label={t('pile.open', { name: opp.name })}
+          {...pileTap}
+          className="flex items-start max-w-full overflow-x-hidden cursor-pointer discard-tray tile-lap rotate-180"
+        >
           {/* The cap is for space (R1), but silently dropping the earliest
               discards hid information that matters for reading a hand. The
-              count is free to show. */}
+              count is free to show. First in DOM, not last: it stands for the
+              tiles dropped off the *old* end, and the rotation puts what comes
+              first on the right. Turned back upright — a number is read rather
+              than placed on a table. */}
           {pileDiscards.length > 9 && (
-            <span className="self-center text-[9px] text-white/50 px-1">
+            <span className="self-center text-[9px] text-white/50 px-1 rotate-180">
               +{pileDiscards.length - 9}
             </span>
           )}
-        </div>
+          {pileDiscards.slice(-9).map(id => (
+            <Tile key={id} id={id} size="sm" lastDiscard={id === lastDiscardTile} />
+          ))}
+        </button>
       )}
     </div>
   );

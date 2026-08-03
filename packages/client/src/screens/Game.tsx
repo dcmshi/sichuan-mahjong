@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { ClaimFlight } from '../components/ClaimFlight.js';
 import { ClaimPanel } from '../components/ClaimPanel.js';
 import { DiceOverlay } from '../components/DiceOverlay.js';
+import { DiscardPileModal } from '../components/DiscardPileModal.js';
 import { EventFeed } from '../components/EventFeed.js';
 import { LangSwitch } from '../components/LangSwitch.js';
 import { OpponentSide } from '../components/OpponentSide.js';
@@ -16,6 +17,7 @@ import { ReconnectingBanner } from '../components/ReconnectingBanner.js';
 import { RotateOverlay } from '../components/RotateOverlay.js';
 import { Tile, tileLabel } from '../components/Tile.js';
 import { WallDiagram, wallStateOf } from '../components/WallDiagram.js';
+import { playerAt, splitPile } from '../discardPile.js';
 import { useSound } from '../hooks/useSound.js';
 import { useT } from '../i18n/useT.js';
 import { useStore } from '../store/index.js';
@@ -140,9 +142,10 @@ function VoidDeclarePhase({ view }: { view: PlayerView }) {
   const choice = voidChoice(counts, chosenSuit, picked);
 
   // Tapping a tile answers both questions at once: which suit goes, and which of
-  // its tiles leads. The buttons stay live for the suit half — a suit you hold
-  // none of has no tile to tap, and comparing the three counts is what they are
-  // for — but they no longer choose a tile on your behalf. (N30)
+  // its tiles leads. The buttons answer the first alone and `voidChoice` supplies
+  // the default for the second — they carry the three counts the comparison is
+  // made on, and a suit you hold none of has no tile to tap. What changed in N30
+  // is that the default is now marked and named rather than computed in `submit`.
   function pickTile(id: TileId) {
     play('tile');
     setChosenSuit(tileFromType(tileTypeOf(id)).suit);
@@ -239,7 +242,10 @@ function VoidDeclarePhase({ view }: { view: PlayerView }) {
           {view.you.hand.map(id => {
             const { suit } = tileFromType(tileTypeOf(id));
             const marked = suit === chosenSuit;
-            const isFirst = id === picked && marked;
+            // Read off the choice, not off `picked`: the tile that leads is
+            // marked whether you named it or took the default, which is what
+            // keeps the default from being the silent one N30 found.
+            const isFirst = choice.kind === 'ready' && id === choice.firstDiscard;
             return (
               <motion.div
                 key={id}
@@ -288,7 +294,6 @@ function VoidDeclarePhase({ view }: { view: PlayerView }) {
           disabled={choice.kind !== 'ready'}
         >
           {choice.kind === 'noSuit' && t('void.choose')}
-          {choice.kind === 'needTile' && t('void.pickTile')}
           {choice.kind === 'ready' && (
             <>
               <div>{t('void.confirm', { suit: t(`suit.${choice.suit}`) })}</div>
@@ -314,6 +319,10 @@ function VoidDeclarePhase({ view }: { view: PlayerView }) {
 
 function PlayPhase({ view }: { view: PlayerView }) {
   const [showHistory, setShowHistory] = useState(false);
+  // Which seat's pile is open, held here rather than in each zone: the modal has
+  // to render outside every `.discard-tray` subtree (N33), and one piece of state
+  // is also what stops two piles opening at once.
+  const [openPile, setOpenPile] = useState<Seat | null>(null);
   // Held clear beneath the hand while a claim window is open, because the bar is
   // fixed and reserves nothing of its own. (N8)
   const [claimBarHeight, setClaimBarHeight] = useState(0);
@@ -349,7 +358,7 @@ function PlayPhase({ view }: { view: PlayerView }) {
 
       {/* Opponent across */}
       <div className="py-2 px-3">
-        <OpponentTop view={view} relSeat={1} />
+        <OpponentTop view={view} relSeat={1} onOpenPile={() => setOpenPile(view.others[1].seat)} />
       </div>
 
       {/* Middle row — the row's height used to be set entirely by the side
@@ -359,7 +368,12 @@ function PlayPhase({ view }: { view: PlayerView }) {
           this row fall to what the well actually needs. */}
       <div className="flex flex-1 min-h-0 gap-2 px-2">
         <div className="w-20 flex-shrink-0">
-          <OpponentSide view={view} relSeat={2} side="left" />
+          <OpponentSide
+            view={view}
+            relSeat={2}
+            side="left"
+            onOpenPile={() => setOpenPile(view.others[2].seat)}
+          />
         </div>
         <div className="relative flex-1 flex flex-col items-center justify-center gap-1 play-well p-2 min-h-0">
           {/* What just happened, plus sound for opponents' moves — inside the
@@ -419,11 +433,16 @@ function PlayPhase({ view }: { view: PlayerView }) {
             against 211.6px instead of this column's 80px and spilled across the
             well. The left column never had the bug because it was always a block. */}
         <div className="w-20 flex-shrink-0">
-          <OpponentSide view={view} relSeat={0} side="right" />
+          <OpponentSide
+            view={view}
+            relSeat={0}
+            side="right"
+            onOpenPile={() => setOpenPile(view.others[0].seat)}
+          />
         </div>
       </div>
 
-      <OwnZone view={view} />
+      <OwnZone view={view} onOpenPile={() => setOpenPile(seat)} />
 
       {/* Claim panel */}
       {inClaimWindow && view.claimDeadline !== null && (
@@ -437,6 +456,22 @@ function PlayPhase({ view }: { view: PlayerView }) {
       )}
 
       {showHistory && <PlayHistory nameOf={nameOf} onClose={() => setShowHistory(false)} />}
+
+      {openPile !== null &&
+        (() => {
+          const p = playerAt(view, openPile);
+          if (!p) return null;
+          const { voidDiscard, pile } = splitPile(p);
+          return (
+            <DiscardPileModal
+              name={nameOf(openPile)}
+              voidDiscard={voidDiscard}
+              pile={pile}
+              lastDiscard={view.lastDiscard?.from === openPile ? view.lastDiscard.tile : null}
+              onClose={() => setOpenPile(null)}
+            />
+          );
+        })()}
 
       {/* Landscape phones only (index.css); see RotateOverlay.tsx (R4 Phase 1). */}
       <RotateOverlay />

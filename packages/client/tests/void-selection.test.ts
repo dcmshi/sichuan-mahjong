@@ -27,10 +27,15 @@ describe('voidChoice', () => {
     expect(voidChoice(counts, null, null)).toEqual({ kind: 'noSuit' });
   });
 
-  // The bug N30 fixes: `counts[suit][0]` was submitted the moment a suit was
-  // chosen, so sort order picked the opening play.
-  it('will not submit a held suit until a tile is named', () => {
-    expect(voidChoice(counts, 'man', null)).toEqual({ kind: 'needTile', suit: 'man' });
+  // Choosing a suit is enough: the first of it in hand order is the default, and
+  // the screen marks and names whichever tile this returns. N30's bug was that
+  // the same default was computed inside `submit`, where nothing showed it.
+  it('defaults to the first tile of the suit, so the suit button alone submits', () => {
+    expect(voidChoice(counts, 'man', null)).toEqual({
+      kind: 'ready',
+      suit: 'man',
+      firstDiscard: tile('man', 3),
+    });
   });
 
   it('submits the tile that was tapped, not the first of the suit', () => {
@@ -52,23 +57,26 @@ describe('voidChoice', () => {
   });
 
   it('ignores a tile left over from a suit no longer chosen', () => {
-    expect(voidChoice(counts, 'pin', tile('man', 3))).toEqual({ kind: 'needTile', suit: 'pin' });
+    expect(voidChoice(counts, 'pin', tile('man', 3))).toEqual({
+      kind: 'ready',
+      suit: 'pin',
+      firstDiscard: tile('pin', 5),
+    });
   });
 
   it('ignores a pick that is not in the hand at all', () => {
-    expect(voidChoice(counts, 'man', tile('man', 1))).toEqual({ kind: 'needTile', suit: 'man' });
+    expect(voidChoice(counts, 'man', tile('man', 1))).toEqual({
+      kind: 'ready',
+      suit: 'man',
+      firstDiscard: tile('man', 3),
+    });
   });
 });
 
 describe('the void screen strings', () => {
   it('resolves in every language, with the tile substituted', () => {
     for (const lang of LANGS) {
-      for (const key of [
-        'void.hint',
-        'void.yourHand',
-        'void.pickTile',
-        'void.indicator',
-      ] as const) {
+      for (const key of ['void.hint', 'void.yourHand', 'void.indicator'] as const) {
         expect(translate(lang.code, key), `${lang.code} ${key}`).not.toContain('{');
       }
       const line = translate(lang.code, 'void.firstDiscard', { tile: '3 man' });

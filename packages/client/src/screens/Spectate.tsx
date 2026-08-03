@@ -5,6 +5,7 @@ import { MeldDisplay } from '../components/MeldDisplay.js';
 import { ReconnectingBanner } from '../components/ReconnectingBanner.js';
 import { RoundEndRow } from '../components/RoundEndRow.js';
 import { Tile, TileBack } from '../components/Tile.js';
+import { splitPile } from '../discardPile.js';
 import { useT } from '../i18n/useT.js';
 import { useStore } from '../store/index.js';
 
@@ -14,10 +15,7 @@ function SeatRow({ view, seat }: { view: SpectatorView; seat: number }) {
   const isTurn = view.turn === seat;
   const isDealer = view.dealer === seat;
   const lastFromHere = view.lastDiscard?.from === seat ? view.lastDiscard.tile : null;
-  // The void declaration is drawn on its own above the pile, so the pile is
-  // everything after it.
-  const pileDiscards = p.firstDiscardIsVoid ? p.discards.slice(1) : p.discards;
-  const voidDiscardTile = p.firstDiscardIsVoid ? (p.discards[0] ?? null) : null;
+  const { voidDiscard: voidDiscardTile, pile: pileDiscards } = splitPile(p);
 
   return (
     <div

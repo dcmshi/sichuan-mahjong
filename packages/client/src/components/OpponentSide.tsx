@@ -1,4 +1,7 @@
 import type { PlayerView } from '@sichuan-mahjong/engine';
+import { splitPile } from '../discardPile.js';
+import { usePileTap } from '../hooks/usePileTap.js';
+import { useT } from '../i18n/useT.js';
 import { HandCountChip } from './HandCountChip.js';
 import { MeldChip } from './MeldDisplay.js';
 import { Tile, TileBack } from './Tile.js';
@@ -8,16 +11,24 @@ export function OpponentSide({
   view,
   relSeat,
   side,
-}: { view: PlayerView; relSeat: 0 | 1 | 2; side: 'left' | 'right' }) {
+  onOpenPile,
+}: {
+  view: PlayerView;
+  relSeat: 0 | 1 | 2;
+  side: 'left' | 'right';
+  onOpenPile: () => void;
+}) {
+  const t = useT();
+  const pileTap = usePileTap(onOpenPile);
   const opp = view.others[relSeat];
   const lastDiscardTile = view.lastDiscard?.from === opp.seat ? view.lastDiscard.tile : null;
-  // The void declaration is drawn on its own above the pile, so the pile is
-  // everything after it.
-  const pileDiscards = opp.firstDiscardIsVoid ? opp.discards.slice(1) : opp.discards;
-  const voidDiscardTile = opp.firstDiscardIsVoid ? (opp.discards[0] ?? null) : null;
+  const { voidDiscard: voidDiscardTile, pile: pileDiscards } = splitPile(opp);
   return (
     <div
-      className={`flex flex-col min-h-0 h-full gap-1 ${side === 'right' ? 'items-end' : 'items-start'}`}
+      className={[
+        'flex flex-col min-h-0 h-full gap-1',
+        side === 'right' ? 'items-end tiles-face-left' : 'items-start',
+      ].join(' ')}
     >
       <div
         className={[
@@ -87,9 +98,17 @@ export function OpponentSide({
           24.8px. Ten now fit in less room than six did, with no wrap and no
           scroller — the cap is raised to match. `min-h-0` and no `flex-1`, as
           before: shrink when the column is short, never grow. */}
+      {/* Both side columns grow downward, and that is deliberate rather than
+          unexamined (N32). N10 reversed the across pile because a horizontal row
+          of readable faces shows its own direction; a column of sideways tiles
+          does not, and reversing only the right one would make the two side
+          seats disagree more visibly than either agrees with its owner. */}
       {pileDiscards.length > 0 && (
-        <div
-          className={`flex flex-col min-h-0 discard-tray tile-run-v tile-lap-v ${
+        <button
+          type="button"
+          aria-label={t('pile.open', { name: opp.name })}
+          {...pileTap}
+          className={`flex flex-col min-h-0 cursor-pointer discard-tray tile-run-v tile-lap-v ${
             side === 'right' ? 'items-end' : 'items-start'
           }`}
         >
@@ -102,7 +121,7 @@ export function OpponentSide({
           {pileDiscards.length > 10 && (
             <span className="text-[9px] text-white/50 px-1">+{pileDiscards.length - 10}</span>
           )}
-        </div>
+        </button>
       )}
     </div>
   );

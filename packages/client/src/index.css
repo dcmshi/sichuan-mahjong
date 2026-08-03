@@ -207,6 +207,22 @@ body {
   transform: translate(-50%, -50%) rotate(90deg);
 }
 
+/* The other quarter turn, for the seat on your right. (N32)
+
+   A discard's top edge points away from its owner and toward the middle of the
+   table — that is what your own upright pile does. The left seat has the middle
+   on its right, so the turn above is correct for it; the right seat has the
+   middle on its *left*, and shared that one rotation, so its whole pile was
+   drawn facing off the edge of the screen.
+
+   A sign, and nothing else: a 255×210 box occupies the same landscape footprint
+   turned either way, so every rect `viewport.spec.ts` reads is unchanged. It
+   sits on the seat's column rather than on the tile, because the pile and the
+   void declaration above it both turn and only the pile is a run. */
+.tiles-face-left .tile-sideways .tile-face {
+  transform: translate(-50%, -50%) rotate(-90deg);
+}
+
 /* A vertical run of them, lapped the way `.tile-lap` laps a horizontal one: one
    shared edge rather than a bevel per tile.
 
