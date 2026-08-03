@@ -351,6 +351,7 @@ export type PlayerView = {
   };
   others: [PublicPlayer, PublicPlayer, PublicPlayer]; // counter-clockwise from you
   wallRemaining: number;
+  wallDrawn: { head: number; tail: number };  // the wall's two open ends — see below
   phase: Phase;
   turn: Seat;
   lastDiscard: { tile: TileId; from: Seat } | null;
@@ -365,6 +366,13 @@ export function projectView(state: GameState, seat: Seat): PlayerView;
 ```
 
 `yourLegalActions` is the engine telling the UI exactly which buttons to enable. The client never duplicates rule logic.
+
+`wallDrawn` says *where* the wall has been eaten into, which the single
+`wallRemaining` count cannot: `drawIndex` walks forward from the break and
+`kongDrawIndex` starts at the last tile and walks back, so a round with kongs in
+it has two gaps rather than one. Public for the same reason the count is —
+everyone watches the same wall come apart. The client's `WallDiagram` reads it
+together with `dice.breakOffset` to place the head (N14).
 
 `dice` is the one field on this type that carries **no** redaction. Every other addition needed a decision — concealed kongs, drawn tiles, the face-down first discard — because the question is always "would this seat know it at a real table". Dice are thrown face-up in front of four people, so there is nothing here to withhold. `SpectatorView` carries it for the same reason.
 

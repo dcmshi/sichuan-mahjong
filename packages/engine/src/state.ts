@@ -39,6 +39,13 @@ export type GameConfig = {
   enableSeatingThrow: boolean;
 };
 
+/**
+ * Tiles the deal takes off the head of the wall before play starts: 13 each.
+ * The dealer's 14th is a draw like any other, so it is not counted here — which
+ * is what makes `drawIndex - DEALT_TILES` "tiles drawn from the head so far".
+ */
+export const DEALT_TILES = 52;
+
 export const DEFAULT_CONFIG: GameConfig = {
   enableHuanSanZhang: false,
   huanDirection: 'random',
@@ -168,6 +175,12 @@ export type GameState = {
    */
   dice: DiceRecord;
   wall: TileId[];
+  /**
+   * The two ends the wall is consumed from. `drawIndex` walks forward from the
+   * break; `kongDrawIndex` starts at the last tile and walks *back*, because
+   * kong replacements come off the other end. They meet in the middle, which is
+   * why `wallRemaining` is the gap between them rather than a countdown.
+   */
   drawIndex: number;
   kongDrawIndex: number;
   players: [PlayerState, PlayerState, PlayerState, PlayerState];
@@ -275,8 +288,8 @@ export function createGame(
   // Deal 13 tiles to each player; the dealer gets a 14th
   let idx = 0;
   for (let i = 0; i < 4; i++) {
-    players[i]!.hand = sortTiles(wall.slice(idx, idx + 13));
-    idx += 13;
+    players[i]!.hand = sortTiles(wall.slice(idx, idx + DEALT_TILES / 4));
+    idx += DEALT_TILES / 4;
   }
   players[east]!.hand = sortTiles([...players[east]!.hand, wall[idx]!]);
   idx += 1;

@@ -1,3 +1,5 @@
+import type { PlayerView, Seat } from '@sichuan-mahjong/engine';
+import { WALL_SIZE } from '@sichuan-mahjong/engine';
 import { useT } from '../i18n/useT.js';
 import { TileBack } from './Tile.js';
 
@@ -43,20 +45,91 @@ export const WALL_EW_DEPTH = EW_W + EW_RISE;
 export type WallSlot = { left: number; top: number; width: number; filled: boolean };
 
 /**
- * Tiles still standing in each stack, walking the ring from the head: 2 while
- * untouched, 1 once its top tile is gone, 0 once both are. The engine only tells
- * us how many are left, not which wall they came from, so they come off in order
- * — which is how a table plays it anyway.
+ * What the diagram needs to draw itself: where the break fell, and how far each
+ * end has been eaten into.
+ */
+export type WallState = {
+  /** Ring position 0..27 of the stack the break falls on, viewer-relative. */
+  head: number;
+  /** Tiles taken from the head end since the deal. */
+  drawnHead: number;
+  /** Tiles taken from the tail end — the kong replacements. */
+  drawnTail: number;
+};
+
+/**
+ * Screen side of a seat, as the board arranges them.
+ *
+ * `projectView` orders `others` counterclockwise from the viewer and `Game.tsx`
+ * puts `others[2]` (seat+1) on the left, `others[1]` (seat+2) across, and
+ * `others[0]` (seat+3) on the right. So relative seat 0,1,2,3 maps to sides
+ * bottom, left, top, right. There is no exported helper for this in the engine —
+ * the mapping is the client's, so it lives here with the thing that needs it.
+ */
+export function sideOfSeat(seat: Seat, youSeat: Seat): number {
+  return [2, 3, 0, 1][(seat - youSeat + 4) % 4] as number;
+}
+
+/**
+ * Where the break falls, as a ring position in the diagram.
+ *
+ * The two do not share a scale: `breakOffset` indexes the 108-tile wall, and the
+ * diagram is 28 stacks because 4 × 7 × 2 = 56 is what the deal *leaves*, not what
+ * the wall was. So this maps proportionally rather than by index — the ring
+ * position keeps its place around the table and its place along the wall, which
+ * is what a player can actually read off it. The rotation by `youSeat` is what
+ * turns an absolute seat into a screen side, exactly as `sideOfSeat` does.
+ */
+export function wallHead(breakOffset: number, youSeat: Seat): number {
+  const absolute = Math.round((breakOffset / WALL_SIZE) * WALL_STACKS);
+  return (((absolute - youSeat * WALL_STACKS_PER_SIDE) % WALL_STACKS) + WALL_STACKS) % WALL_STACKS;
+}
+
+/**
+ * Tiles still standing in each stack, indexed by ring position.
+ *
+ * Both ends move. The head walks forward from the break, two tiles a stack; the
+ * tail walks *backward* from the stack before it, because `kongDrawIndex` starts
+ * at the last tile and decrements — a kong replacement comes off the far end.
+ * Collapsing the two into one count and taking it all off one corner is what made
+ * a round with two kongs draw a wall that was wrong at both ends. (N14)
  *
  * Exported to be tested: the client suite runs in Node with no DOM.
  */
-export function wallStacks(remaining: number): number[] {
-  const left = Math.max(0, Math.min(remaining, WALL_TILES));
-  const drawn = WALL_TILES - left;
-  return Array.from({ length: WALL_STACKS }, (_, i) => {
-    const throughThisStack = i * 2 + 2;
-    return Math.max(0, Math.min(2, throughThisStack - drawn));
+export function wallStacks(state: WallState): number[] {
+  const head = ((state.head % WALL_STACKS) + WALL_STACKS) % WALL_STACKS;
+  const fromHead = Math.max(0, Math.min(state.drawnHead, WALL_TILES));
+  // Clamped against what the head has already taken, so the two ends can never
+  // claim the same tile and report more standing than the wall holds.
+  const fromTail = Math.max(0, Math.min(state.drawnTail, WALL_TILES - fromHead));
+
+  return Array.from({ length: WALL_STACKS }, (_, ring) => {
+    const forward = (ring - head + WALL_STACKS) % WALL_STACKS;
+    const backward = WALL_STACKS - 1 - forward;
+    const takenFront = Math.max(0, Math.min(2, fromHead - forward * 2));
+    const takenBack = Math.max(0, Math.min(2, fromTail - backward * 2));
+    return Math.max(0, 2 - takenFront - takenBack);
   });
+}
+
+/**
+ * Ring position → the side it sits on and the slot along that side.
+ *
+ * The walk is a genuine ring, which it was not before: `wallSlots` used to run
+ * top left-to-right, right top-to-bottom, bottom **left-to-right**, left
+ * top-to-bottom, so it jumped from the bottom-right corner back to the
+ * bottom-left. That is invisible while the head is pinned to a corner and stops
+ * being invisible the moment the dice move it. Sides advance in seat order — the
+ * order the engine's wall array runs in — and each side's direction is chosen so
+ * one side's exit corner is the next side's entry.
+ */
+function ringSlot(ring: number): { side: number; i: number } {
+  const side = [2, 3, 0, 1][Math.floor(ring / WALL_STACKS_PER_SIDE)] as number;
+  const k = ring % WALL_STACKS_PER_SIDE;
+  // Bottom runs right-to-left and left runs bottom-to-top, which is what closes
+  // the loop against top (left-to-right) and right (top-to-bottom).
+  const i = side === 2 || side === 3 ? WALL_STACKS_PER_SIDE - 1 - k : k;
+  return { side, i };
 }
 
 /**
@@ -66,26 +139,36 @@ export function wallStacks(remaining: number): number[] {
  * earlier ones, and the lower tile of a stack covers the upper one, which is what
  * makes a stack read as a stack rather than two tiles.
  */
-export function wallSlots(remaining: number): WallSlot[] {
-  const stacks = wallStacks(remaining);
+export function wallSlots(state: WallState): WallSlot[] {
+  const stacks = wallStacks(state);
   const slots: WallSlot[] = [];
-  for (let side = 0; side < WALL_SIDES; side++) {
-    for (let i = 0; i < WALL_STACKS_PER_SIDE; i++) {
-      const held = stacks[side * WALL_STACKS_PER_SIDE + i] ?? 0;
-      const along = START + i * PITCH;
-      for (let layer = 0; layer < 2; layer++) {
-        // A stack of one has had its top tile taken, so layer 1 is what survives.
-        const filled = held >= 2 - layer;
-        if (side === 0) slots.push({ left: along, top: layer * NS_RISE, width: NS_W, filled });
-        else if (side === 1)
-          slots.push({ left: 100 - EW_W - layer * EW_RISE, top: along, width: EW_W, filled });
-        else if (side === 2)
-          slots.push({ left: along, top: 100 - NS_H - layer * NS_RISE, width: NS_W, filled });
-        else slots.push({ left: layer * EW_RISE, top: along, width: EW_W, filled });
-      }
+  // Painting order is the ring's, not the screen's: a stack has to lap the one
+  // before it in the direction the wall is walked, or the run reads backwards.
+  for (let ring = 0; ring < WALL_STACKS; ring++) {
+    const { side, i } = ringSlot(ring);
+    const held = stacks[ring] ?? 0;
+    const along = START + i * PITCH;
+    for (let layer = 0; layer < 2; layer++) {
+      // A stack of one has had its top tile taken, so layer 1 is what survives.
+      const filled = held >= 2 - layer;
+      if (side === 0) slots.push({ left: along, top: layer * NS_RISE, width: NS_W, filled });
+      else if (side === 1)
+        slots.push({ left: 100 - EW_W - layer * EW_RISE, top: along, width: EW_W, filled });
+      else if (side === 2)
+        slots.push({ left: along, top: 100 - NS_H - layer * NS_RISE, width: NS_W, filled });
+      else slots.push({ left: layer * EW_RISE, top: along, width: EW_W, filled });
     }
   }
   return slots;
+}
+
+/** Everything the diagram needs, read off a view. */
+export function wallStateOf(view: Pick<PlayerView, 'dice' | 'wallDrawn' | 'you'>): WallState {
+  return {
+    head: wallHead(view.dice.breakOffset, view.you.seat),
+    drawnHead: view.wallDrawn.head,
+    drawnTail: view.wallDrawn.tail,
+  };
 }
 
 /**
@@ -98,11 +181,11 @@ export function wallSlots(remaining: number): WallSlot[] {
  * none to give, and `pointer-events: none` so it can't take a tap from the
  * history button underneath it.
  */
-export function WallDiagram({ remaining }: { remaining: number }) {
+export function WallDiagram({ remaining, state }: { remaining: number; state: WallState }) {
   const t = useT();
   return (
     <div className="wall-diagram" role="img" aria-label={t('play.wall', { n: remaining })}>
-      {wallSlots(remaining).map((slot, i) => (
+      {wallSlots(state).map((slot, i) => (
         <div
           key={i}
           className={slot.filled ? 'wall-cell' : 'wall-cell is-empty'}

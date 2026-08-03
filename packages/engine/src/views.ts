@@ -1,9 +1,11 @@
 import type { GameAction, GameEvent } from './actions.js';
 import { canHuConsideringFuriten, canKongOnTile, canPungOnTile } from './claims.js';
 import type { DiceRecord } from './dice.js';
+import { WALL_SIZE } from './dice.js';
 import { isWinningHand } from './hand.js';
 import type { Meld } from './melds.js';
 import type { GameConfig, GameState, HuRecord, PlayerState, Seat } from './state.js';
+import { DEALT_TILES } from './state.js';
 import type { Phase } from './state.js';
 import type { Suit, TileId, TileType } from './tiles.js';
 import { suitOf, tileFromType, tileToType, tileTypeOf } from './tiles.js';
@@ -69,6 +71,15 @@ export type PlayerView = {
   };
   others: [PublicPlayer, PublicPlayer, PublicPlayer];
   wallRemaining: number;
+  /**
+   * How far the wall has been eaten into from each end — `head` from the break
+   * forwards, `tail` from the far end backwards, which is where kong
+   * replacements come from. `wallRemaining` is the total and cannot say *where*
+   * the gaps are, so a round with two kongs drew a wall that was wrong at both
+   * ends. Public for the same reason the count is: everyone watches the same
+   * wall come apart. (N14)
+   */
+  wallDrawn: { head: number; tail: number };
   phase: Phase;
   turn: Seat;
   lastDiscard: { tile: TileId; from: Seat } | null;
@@ -93,6 +104,8 @@ export type PlayerView = {
 export type SpectatorView = {
   players: [PublicPlayer, PublicPlayer, PublicPlayer, PublicPlayer]; // seat-indexed
   wallRemaining: number;
+  /** Same two ends as `PlayerView.wallDrawn`; the spectator sees the same wall. */
+  wallDrawn: { head: number; tail: number };
   phase: Phase;
   turn: Seat;
   dealer: Seat;
@@ -285,6 +298,19 @@ function toPublicPlayer(p: PlayerState, revealMelds: boolean): PublicPlayer {
   };
 }
 
+/**
+ * The wall's two open ends, as counts rather than indices: how many tiles have
+ * come off the head since the deal, and how many off the tail. Indices are engine
+ * bookkeeping and would put the deal's arithmetic on the wire; these are the two
+ * numbers a diagram of the wall actually needs. (N14)
+ */
+function wallDrawnOf(state: GameState): { head: number; tail: number } {
+  return {
+    head: Math.max(0, state.drawIndex - DEALT_TILES),
+    tail: Math.max(0, WALL_SIZE - 1 - state.kongDrawIndex),
+  };
+}
+
 export function projectView(state: GameState, seat: Seat): PlayerView {
   const you = state.players[seat]!;
 
@@ -315,6 +341,7 @@ export function projectView(state: GameState, seat: Seat): PlayerView {
       PublicPlayer,
     ],
     wallRemaining: state.kongDrawIndex - state.drawIndex + 1,
+    wallDrawn: wallDrawnOf(state),
     phase: state.phase,
     turn: state.turn,
     lastDiscard: state.lastDiscard
@@ -364,6 +391,7 @@ export function projectSpectatorView(state: GameState): SpectatorView {
       PublicPlayer,
     ],
     wallRemaining: state.kongDrawIndex - state.drawIndex + 1,
+    wallDrawn: wallDrawnOf(state),
     phase: state.phase,
     turn: state.turn,
     dealer: state.dealer,
