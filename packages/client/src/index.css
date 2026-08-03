@@ -170,6 +170,68 @@ body {
   filter: none;
 }
 
+/* ---------------------------------------------------------------------------
+   Sideways tiles — the side seats' discards. (N10)
+
+   Those two players sit at right angles to you, so their tiles face sideways: a
+   pile of upright ones says the board is four copies of your own view rather than
+   one table seen from your seat.
+
+   The art is untouched, and no rotated copies of it are shipped. The rotation is
+   contained instead: **the box carries the landscape footprint and the art is
+   rotated inside it**, so `getBoundingClientRect` on a `.tile` reports the space
+   the tile really occupies. That distinction is the whole reason this works —
+   `transform` moves no layout box, so a tile rotated *in place* would measure
+   portrait while drawing landscape, and `viewport.spec.ts` asserts on rendered
+   geometry for every tray tile across five viewports.
+
+   `--tile-w` stays the portrait width, so the art is drawn at its natural size and
+   the box is the swap of it. Centre-anchored, which makes the footprint exactly the
+   box: rotating about the art's own centre leaves that centre where it was.
+--------------------------------------------------------------------------- */
+.tile-sideways {
+  width: calc(var(--tile-w) * 255 / 210);
+  height: var(--tile-w);
+  aspect-ratio: auto;
+}
+
+.tile-sideways .tile-face {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  /* Tailwind's preflight caps images at `max-width: 100%`, which against the
+     narrower box would clamp the art and undo the rotation's fit. */
+  max-width: none;
+  width: var(--tile-w);
+  height: calc(var(--tile-w) * 255 / 210);
+  transform: translate(-50%, -50%) rotate(90deg);
+}
+
+/* A vertical run of them, lapped the way `.tile-lap` laps a horizontal one: one
+   shared edge rather than a bevel per tile.
+
+   The overlap is a **negative margin on the box**, not the horizontal lap's trick
+   of shrinking the box and overflowing the art. Both hide the same 22.5% body
+   band, but this way each tile's box stays its true footprint — so the tiles
+   genuinely overlap, which is what lapping is, and every rect the overflow guard
+   reads is honest. The band is 22.5% of the art's *width*, which after a quarter
+   turn is 22.5% of the tile's height on screen. */
+.tile-lap-v .tile-sideways:not(:first-child) {
+  margin-top: calc(var(--tile-w) * -0.225);
+}
+
+/* One shadow for the stack, as `.tile-run` does for a horizontal one: inside a run
+   a tile's own shadow falls on the neighbour lapping it. */
+.tile-run-v {
+  display: inline-flex;
+  flex-direction: column;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.45));
+}
+
+.tile-run-v .tile-face {
+  filter: none;
+}
+
 /* The ring marking a tile at the void declaration. It wraps the tile exactly, so
    it has to share the art's own corner — at `rounded-sm` the ring squared off a
    round tile and its corners stood proud of it. 18.1% of the width equals 14.9%

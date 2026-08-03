@@ -53,21 +53,6 @@ export function OpponentSide({
           ))}
         </div>
       )}
-      {/* Grows downward, two flush tiles wide, scrolling inside the column.
-          The old single sideways row cut a tile in half at 80px — and worse, on
-          the right the column is a flex parent, so `max-w-full` resolved against
-          min-content instead of 80px and the tray rendered 211.6px wide, spilling
-          132px across the well. Two 32px tiles fit 80px exactly, so nothing is
-          ever cut mid-tile.
-          `min-h-0` with no `flex-1`: shrink-and-scroll when the column is short,
-          but never *grow*. flex-1 here stretched the tray to the full column
-          height, so six discards drew a tray box running most of the way down a
-          tall viewport with nothing in the lower two-thirds of it.
-          `content-start items-start` is the other half, and the one that was
-          drawing elongated tiles: a wrapping flex container defaults to
-          `align-content: stretch`, so spare cross-axis space is handed to the
-          lines and the tiles grow *past* their aspect ratio. On a desktop-height
-          window six discards were drawn as six very long tiles. */}
       {/* The void declaration, held out of the pile and set above it: it is the
               one public statement of what this seat declared, and reading it off
               the front of a wrapping pile meant hunting for it. Face down until
@@ -75,29 +60,47 @@ export function OpponentSide({
       {(opp.pendingFirstDiscard || voidDiscardTile !== null) && (
         <div className="flex justify-center w-20">
           {voidDiscardTile === null ? (
-            <TileBack size="sm" />
+            <TileBack size="sm" sideways />
           ) : (
             <Tile
               id={voidDiscardTile}
               size="sm"
+              sideways
               voidDiscard
               lastDiscard={voidDiscardTile === lastDiscardTile}
             />
           )}
         </div>
       )}
+      {/* One lapped column of sideways tiles. (N10)
+
+          This was a `flex-wrap content-start w-20 overflow-y-auto` box capped at
+          six, and three things were wrong with it at once: the tiles faced the
+          wrong way for a seat sitting at right angles to you, they *wrapped* into
+          a ragged two-wide block rather than reading as a pile, and the whole
+          thing was a **scroll region** — a scrollbar over six tiles is a layout
+          that ran out of room and said so.
+
+          Turning them fixes all three, and buys height rather than spending it: a
+          sideways tile is 32px tall against 38.9px upright, and the vertical lap
+          takes 22.5% of that off every tile after the first, so the pitch is
+          24.8px. Ten now fit in less room than six did, with no wrap and no
+          scroller — the cap is raised to match. `min-h-0` and no `flex-1`, as
+          before: shrink when the column is short, never grow. */}
       {pileDiscards.length > 0 && (
-        <div className="flex flex-wrap content-start items-start w-20 min-h-0 overflow-y-auto discard-tray tile-lap">
-          {pileDiscards.slice(-6).map(id => (
-            <Tile key={id} id={id} size="sm" lastDiscard={id === lastDiscardTile} />
+        <div
+          className={`flex flex-col min-h-0 discard-tray tile-run-v tile-lap-v ${
+            side === 'right' ? 'items-end' : 'items-start'
+          }`}
+        >
+          {pileDiscards.slice(-10).map(id => (
+            <Tile key={id} id={id} size="sm" sideways lastDiscard={id === lastDiscardTile} />
           ))}
           {/* The cap is for space (R1), but silently dropping the earliest
               discards hid information that matters for reading a hand. The
               count is free to show. */}
-          {pileDiscards.length > 6 && (
-            <span className="self-center text-[9px] text-white/50 px-1">
-              +{pileDiscards.length - 6}
-            </span>
+          {pileDiscards.length > 10 && (
+            <span className="text-[9px] text-white/50 px-1">+{pileDiscards.length - 10}</span>
           )}
         </div>
       )}

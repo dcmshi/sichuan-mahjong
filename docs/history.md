@@ -11,6 +11,73 @@ file had reached 1,566 lines of which two were actually open.
 
 ---
 
+## ✅ The board is drawn from the table's centre (N10 — 2026-08-03)
+
+Two faults, both of which made the board read as four copies of *your* view rather
+than one table seen from your seat.
+
+**The side seats' discards were upright, wrapping, in a scroll box.**
+`OpponentSide` drew them in a `flex-wrap content-start w-20 overflow-y-auto`
+container capped at six. Three things wrong at once: those players sit at right
+angles to you so their tiles face sideways, the pile *wrapped* into a ragged
+two-wide block instead of reading as a pile, and the whole thing was a **scroll
+region** — a scrollbar over six tiles is a layout that ran out of room and said so.
+
+Turning them fixes all three and **buys height rather than spending it**. A sideways
+`sm` tile measures 38.8 × 32 against 38.8 tall upright, and the vertical lap takes
+22.5% off every tile after the first, so the pitch is 24.8px. Ten now fit in less
+room than six did, with no wrap and no scroller, so the cap went to ten.
+
+**The art is untouched and no rotated copies ship.** The suggestion on the table was
+to rotate the source SVGs, and it would have worked — but it would have doubled the
+28 shipped assets, needed 28 more `credits.json` entries, doubled what the release
+binary embeds, and made "the tiles are the untouched art" false. Not needed: the
+rotation is *contained* instead. **The box carries the landscape footprint and the
+art is rotated inside it**, so `getBoundingClientRect` on a `.tile` reports the space
+the tile really occupies. That distinction is the whole trick — `transform` moves no
+layout box, so a tile rotated in place would measure portrait while drawing
+landscape, and `viewport.spec.ts` asserts on rendered geometry for every tray tile
+across five viewports.
+
+The vertical lap is a **negative margin on the box**, not the horizontal lap's trick
+of shrinking the box and overflowing the art. Both hide the same 22.5% body band,
+but this way each tile's box stays its true footprint: the tiles genuinely overlap,
+which is what lapping *is*, and every rect the guard reads is honest. Measured on a
+390×844 phone: tile 38.8 × 32, pitch 24.8, zero tiles escaping their tray, no scroll
+overflow on either axis, and zero vertical overflow at 320×568.
+
+**The across seat's pile ran left-to-right like your own** — your reading direction
+applied to someone else's tiles. It is reversed now, so their newest discard is at
+their left, which is your right. Mirrored in order only and deliberately **not**
+turned 180°: the reason these are face up is so you can read them, and an upside-down
+tile face cannot be read. Which tile paints on top of the lap flips with the order,
+which is fine — the covered band is body and never ink from either side.
+
+### The guard this broke, and why it was the guard's fault
+
+`viewport.spec.ts` started failing on se-portrait with "the hand must be ringed while
+the turn is yours (1 of 15 samples were not)" — reproducibly, and passing with the
+change stashed, so N10 caused it.
+
+It was not the ring. The sampling loop read the turn cue in one `page.evaluate` and
+the claim panel in a **second** one, and the ring stands down during a claim window
+on purpose. Those two round trips could straddle a claim opening, so the sample
+asserted "your turn, no claim" of one frame against "no ring" of another. Making
+rendering heavier — ten sideways tiles per side seat, each an `<img>` with a rotation
+and a filter — widened the gap enough to hit it. Both reads are now in one evaluate,
+so a sample comes from one frame by construction.
+
+It also tightened the condition rather than relaxing it. The old test was
+`claimOverlap(page) === null`, which is null when the panel is absent *or* when the
+hand has no measurable tiles — so it counted samples where the panel was up and
+charged the missing ring against the ring. `!cue.claiming` asks the actual question.
+Three consecutive runs of the spec, then the full suite of 12, all green.
+
+**A guard that reads two frames and compares them is measuring its own latency.**
+Same family as N8's lesson about measuring the hand before it settles.
+
+---
+
 ## ✅ The kong button names its tile, and says what it will do (N28 — 2026-08-03)
 
 Reported: "it looks like it adds an additional tile to my hand, but it's not super

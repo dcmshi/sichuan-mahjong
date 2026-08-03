@@ -47,6 +47,12 @@ export type TileProps = {
    * declared. Marked so the table can read it back at a glance.
    */
   voidDiscard?: boolean;
+  /**
+   * Drawn a quarter turn, for the seats sitting at right angles to you. The box
+   * carries the landscape footprint and the art is rotated inside it, so the tile
+   * measures as what it draws — see `.tile-sideways`. (N10)
+   */
+  sideways?: boolean;
 };
 
 /**
@@ -70,6 +76,7 @@ export function Tile({
   interactive = true,
   fill = false,
   voidDiscard = false,
+  sideways = false,
 }: TileProps) {
   const { suit, rank } = tileFromType(tileTypeOf(id));
   const src = `/tiles/${suit}-${rank}.svg`;
@@ -126,6 +133,7 @@ export function Tile({
           // and bleeds left over the tile before it.
           'tile select-none',
           fill ? 'w-full' : SIZE_CLASSES[size],
+          sideways ? 'tile-sideways' : '',
           selected ? 'is-selected' : '',
           lastDiscard ? 'tile-last-discard' : '',
           voidDiscard ? 'tile-void-discard' : '',
@@ -176,9 +184,14 @@ export function Tile({
 export function TileBack({
   size = 'md',
   fill = false,
-}: { size?: 'sm' | 'md' | 'lg'; fill?: boolean }) {
+  sideways = false,
+}: { size?: 'sm' | 'md' | 'lg'; fill?: boolean; sideways?: boolean }) {
   return (
-    <div className={`tile ${fill ? 'w-full' : SIZE_CLASSES[size]}`}>
+    <div
+      className={['tile', fill ? 'w-full' : SIZE_CLASSES[size], sideways ? 'tile-sideways' : '']
+        .filter(Boolean)
+        .join(' ')}
+    >
       <img src="/tiles/back.svg" alt="" className="tile-face" draggable={false} />
     </div>
   );

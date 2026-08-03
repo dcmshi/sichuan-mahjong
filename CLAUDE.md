@@ -180,6 +180,24 @@ deadline is a backstop, not a pace.
 The 🗒 control in the play well opens the round's move history, which is what the
 transient event feed can't be.
 
+**The side seats' tiles lie sideways, and the rotation is contained** (2026-08-03,
+N10). Those two players sit at right angles to you, so a pile of upright tiles said
+the board was four copies of your own view. **The art is still untouched and no
+rotated copies ship** — rotating the source SVGs would have doubled 28 assets, 28
+`credits.json` entries and what the binary embeds. Instead **the box carries the
+landscape footprint and the art is rotated inside it**, so `getBoundingClientRect`
+reports what the tile really occupies; a tile rotated *in place* would measure
+portrait while drawing landscape, and `viewport.spec.ts` asserts on rendered
+geometry. The vertical lap is a **negative margin on the box**, not the horizontal
+lap's shrink-the-box trick, so each tile's box stays its true footprint. It buys
+height: pitch 24.8px against 38.8 upright, so ten fit where six wrapped and
+scrolled. The across pile is reversed so it grows the way *theirs* does — order
+only, never 180°, because these are face up so you can read them. N10 also exposed
+that **a guard reading two frames and comparing them measures its own latency**: the
+viewport spec asked the turn cue and the claim panel in two `page.evaluate` calls,
+and heavier rendering widened the gap until the pair straddled a claim opening. Both
+reads are one evaluate now.
+
 **Tiles are the untouched art, and a run laps** (2026-08-01). Each source SVG is a
 complete 3D tile, so two of them edge to edge show two bevels where a real run
 shows one shared edge. Rather than strip the body and rebuild it in CSS — which is
@@ -262,11 +280,11 @@ globally — that is an accessibility signal, this is a taste.
 **Open** (see [TODO.md](./TODO.md), which is only the open list): a central discard
 pool (O3) is still held as a fallback — its redaction question is answered by
 `firstDiscardIsVoid`, but the middle is no longer the empty space that motivated
-it. Then **N10** side seats draw upright and the across pile does not mirror,
-**N19** a hard bot so the ladder has three rungs, **N23** French, Spanish and
-Japanese, **N26** nine call sites label a seat's wind from its absolute index, and
-**N30** the void screen picks your first discard for you by sort order. N19 is the
-only open item that is gameplay work rather than plumbing, layout or research.
+it. Then **N19** a hard bot so the ladder has three rungs, **N23** French, Spanish
+and Japanese, **N26** nine call sites label a seat's wind from its absolute index,
+**N30** the void screen picks your first discard for you by sort order, and **N31**
+the lobby's Start button sits below the fold. N19 is the only open item that is
+gameplay work rather than plumbing, layout or research.
 
 **A control has to say what it does, not what it is called** (2026-08-03, N28/N29).
 The kong button read `Kong M3 (promoted)` — a tile code no other screen uses, in a

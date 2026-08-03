@@ -119,7 +119,9 @@ async function settledClaimOverlap(page: Page) {
  * So the check is on the rendered width, not on the text being in the DOM: the
  * text was always there, which is exactly why it went unnoticed.
  */
-function turnCue(page: Page): Promise<{ width: number; yours: boolean; handRing: boolean } | null> {
+function turnCue(
+  page: Page,
+): Promise<{ width: number; yours: boolean; handRing: boolean; claiming: boolean } | null> {
   return page.evaluate(() => {
     const el = document.querySelector('[data-turn-indicator]');
     if (!el) return null;
@@ -127,6 +129,14 @@ function turnCue(page: Page): Promise<{ width: number; yours: boolean; handRing:
       width: Math.round(el.getBoundingClientRect().width),
       yours: el.getAttribute('data-your-turn') === 'true',
       handRing: document.querySelector('.hand-your-turn') !== null,
+      // Read in the same evaluate as the other three, because the ring stands
+      // down during a claim window on purpose and this is what excuses it. Asked
+      // separately it was a *different frame*: the loop's two round trips could
+      // straddle a claim opening, so the sample said "your turn, no claim" of one
+      // frame and "no ring" of another. It fired the first time a change made
+      // rendering heavy enough to widen the gap (N10's side piles), which is the
+      // tell for a race rather than a broken cue.
+      claiming: document.querySelector('.claim-panel') !== null,
     };
   });
 }
@@ -221,7 +231,7 @@ test('play fits the viewport, and the round-end controls stay reachable', async 
         narrowestTurnCue = Math.min(narrowestTurnCue, cue.width);
         // The claim bar is the cue during a claim window, so the ring stands down
         // there on purpose — don't count those samples against it.
-        if (cue.yours && (await claimOverlap(page)) === null) {
+        if (cue.yours && !cue.claiming) {
           yourTurns++;
           if (!cue.handRing) yourTurnsWithoutRing++;
         }

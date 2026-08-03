@@ -72,6 +72,18 @@ appearing three ways:
 | `.tile-lap .tile-sized` `width` | `calc(var(--tile-w) * 0.775)` | a fixed-size tile keeps its art size; the box shrinks |
 | `.tile-run` / `.discard-tray` `padding-left` | `0.58rem` / `0.88rem` | the first tile's bleed |
 
+Sideways tiles — the side seats' discards (N10) — are the same constant with the axes
+swapped, plus the quarter turn:
+
+| Property | Value | What it is |
+|---|---|---|
+| `.tile-sideways` `width` / `height` | `calc(var(--tile-w) * 255/210)` / `var(--tile-w)` | the **landscape footprint**, on the box |
+| `.tile-sideways .tile-face` size | `var(--tile-w)` × `calc(var(--tile-w) * 255/210)` | the art at its natural portrait size |
+| `.tile-sideways .tile-face` `transform` | `translate(-50%, -50%) rotate(90deg)` | centre-anchored, so the footprint *is* the box |
+| `.tile-lap-v .tile-sideways` `margin-top` | `calc(var(--tile-w) * -0.225)` | the same 22.5% band, now on the vertical axis |
+
+At `sm` that measures 38.8 × 32 with a 24.8px pitch, verified in a browser.
+
 Percentages throughout, because the hand's tiles are flex-sized and no length is
 known in CSS. That is also why sizes are `--tile-w` on `.tile-sm`/`-md`/`-lg`/`-xl`
 rather than Tailwind's `w-*`: a lapped run has to scale a width down to the pitch,
@@ -109,6 +121,15 @@ on its page so they stay found.
   taller — the vertical budget R1–R7 spent itself on. The hand is the opposite case
   and wants the growth: its tiles are `fill`, so the row sets the pitch and the art
   grows into it, which is where the +26% glyph size comes from.
+- **A rotated tile must not be rotated in place.** `transform` moves no layout box,
+  so a tile turned with `rotate(90deg)` alone measures portrait while drawing
+  landscape — and `viewport.spec.ts` reads `getBoundingClientRect` for every tray
+  tile on five viewports, so the guard would be checking a box that isn't there.
+  `.tile-sideways` puts the landscape footprint on the **box** and rotates the art
+  inside it, centre-anchored so the two coincide exactly. The vertical lap is a
+  negative margin on the box rather than an overflowing art, for the same reason:
+  the tiles then genuinely overlap, which is what lapping is, and every rect stays
+  honest. (N10)
 - **A run carries one shadow, a tray keeps per-tile ones.** Inside `.tile-run` the
   per-tile `drop-shadow` falls on the neighbour lapping it, so `.tile-run
   .tile-face` turns it off. `.tile.is-selected .tile-face` outranks that rule, so a

@@ -68,9 +68,22 @@ export function OpponentTop({ view, relSeat }: { view: PlayerView; relSeat: 0 | 
       )}
       {pileDiscards.length > 0 && (
         <div className="flex items-start max-w-full overflow-x-hidden discard-tray tile-lap">
-          {pileDiscards.slice(-9).map(id => (
-            <Tile key={id} id={id} size="sm" lastDiscard={id === lastDiscardTile} />
-          ))}
+          {/* Reversed, so this pile grows the way *theirs* does. (N10)
+              It ran left-to-right like your own, which is your reading direction
+              applied to someone else's tiles: this seat is across the table, so
+              their newest discard is at their left, which is your right — the
+              board was four copies of one viewpoint rather than one table.
+              Mirrored in order only, deliberately *not* turned 180°: the reason
+              these are drawn face up at all is so you can read them, and an
+              upside-down tile face cannot be read. Which tile paints on top of
+              the lap flips with the order, and that is fine — the covered band is
+              22.5% of body and never ink, whichever side it is covered from. */}
+          {pileDiscards
+            .slice(-9)
+            .reverse()
+            .map(id => (
+              <Tile key={id} id={id} size="sm" lastDiscard={id === lastDiscardTile} />
+            ))}
           {/* The cap is for space (R1), but silently dropping the earliest
               discards hid information that matters for reading a hand. The
               count is free to show. */}
