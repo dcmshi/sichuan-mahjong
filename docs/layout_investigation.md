@@ -1240,3 +1240,45 @@ deliberate break rather than a win. And it does not fit everywhere: 320×568 has
 There is also a case for the space itself. The well is where the eye rests and
 where the live tile sits alone; a board packed to 100% is harder to read, not
 easier.
+
+### 18.4 Rows of 8 and 10, measured — and N39 closed on the result
+
+§18.3 sent "more tiles per row" to N39 as its one live idea. Probed at 8 and 10
+(`try-rows-8/`, `try-rows-10/`), against the shipped 6:
+
+| | 320×568 | 360×640 | 375×667 | 390×664 | 390×844 |
+|---|---|---|---|---|---|
+| **6** (shipped) | slack 33 | 60 | 85 | 80 | 260 |
+| **8** | **slack 0**, box 23.5/24 | 10 | 35 | 31 | 211 |
+| **10** | ❌ 21.4/24 | ❌ 30.3/32 | 10 | 6 | 186 |
+
+Eight passes the guard everywhere, but at 320×568 it consumes **every** pixel of
+headroom and the box has already parted from the art by 0.5px — under the 1.5px
+flag, which is the only reason it reads green. Ten squashes outright at 320 and
+360, and it *under*-reports: the probe's seats hold 7–9 discards, so a ten-row
+column only ever drew nine. Filled to ten it would take another 24.8px, which 375
+(10px spare) and 390×664 (6px) do not have either.
+
+**The finding that closes this is not in that table.** A round deals 13 tiles to
+each of four seats out of 108, leaving 56 in the wall — so there are ~56 draws
+across the round, and a seat's pond peaks around **13–14 discards**, less whatever
+gets claimed away. The cap is 12. It therefore hides **the last one or two tiles
+of a round and nothing else**, and those are counted in `+N` and one tap from being
+read in full (N33).
+
+So the trade is: spend the smallest phone's entire vertical budget — and start
+squashing the moment that seat pongs a third time — to reveal two tiles at the very
+end of a round that are already counted and already reachable. That is not worth
+buying, at any of the three sizes.
+
+**N39 is closed as won't-do.** Its original defect — a tray tile's box shrinking
+under `flex-shrink` while the art stayed sized off `--tile-w`, drawing the pile as
+a stack of black outlines — was fixed by N40, which caps the tray's *height* at
+six tiles however deep the pile gets. What stayed open afterwards was the ambition
+to show more, and the measurement above says there is almost nothing to show. The
+`+N` count and tap-to-open cover the remainder, by design.
+
+Reopen only if the ruleset changes such that seats discard materially more than 14
+times a round, or if the side columns get wider for some other reason — the
+arithmetic is `T × (1 + 0.775 × (rows − 1))` for the column and `sideSlack` for the
+budget, so it is a minute's work to re-derive.

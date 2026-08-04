@@ -16,8 +16,10 @@ so it isn't rediscovered as a bug.
 
 ## Open
 
-One, and it is a **design call rather than a bug** — see below. Everything filed
-on 2026-08-03 shipped the same day: N19 (a hard bot, and the ladder guard that
+**Nothing.** N39 was the last one and it closed on 2026-08-04, on measurement
+rather than by neglect — the section below keeps the diagnosis and the verdict.
+
+Everything filed on 2026-08-03 shipped the same day: N19 (a hard bot, and the ladder guard that
 found medium losing to easy), N26 (the nine wind call sites), **N36** (the
 right-hand seat's pile ran downward and lapped over ink), **N37** (the across
 seat's void declaration sat on the near side of its pile), and **N38** (the side
@@ -28,7 +30,37 @@ the ghost plus the engine bug under it, and every river seated in its own chair.
 Each is written up in [docs/history.md](./docs/history.md), with the full working
 record in [docs/layout_investigation.md](./docs/layout_investigation.md).
 
-### N39 — fit a side tray's count to the height it actually has
+---
+
+## Closed on the evidence
+
+### ❌ N39 — fit a side tray's count to the height it actually has (won't do, 2026-08-04)
+
+**The verdict first.** A round deals 13 tiles to each of four seats out of 108,
+leaving 56 in the wall — so there are ~56 draws across a round and a seat's pond
+peaks at **13–14 discards**, less whatever gets claimed away. The cap is 12. It
+hides *the last one or two tiles of a round and nothing else*, and those are
+counted in `+N` and one tap from being read in full (N33).
+
+Rows of 8 and 10 were built and probed to check that. Eight fits every viewport —
+but at 320×568 it spends **every** pixel of headroom (`slack` 0) and the box has
+already parted from the art by 0.5px. Ten squashes outright at 320 and 360.
+Measurements and screenshots in
+[docs/layout_investigation.md §18.4](./docs/layout_investigation.md).
+
+So the trade was: spend the smallest phone's whole vertical budget, and start
+squashing the moment that seat pongs a third time, to reveal two tiles at the end
+of a round that are already counted and already reachable. Not worth buying.
+
+**The original defect is gone regardless** — N40 caps the tray's *height* at six
+tiles however deep the pile gets, because the second row grows sideways. What is
+below is the diagnosis, kept because the arithmetic is what any future attempt
+would need. Reopen only if seats start discarding materially more than 14 times a
+round, or if the side columns widen for some other reason.
+
+<details>
+<summary>The original diagnosis</summary>
+
 
 A tray tile is a flex item in a column, so when the column runs short its **box**
 shrinks. The art does not: `.tile-sideways .tile-face` is sized off `--tile-w`,
@@ -86,6 +118,8 @@ out of the well hard enough to put 28 wall cells under the last discard at 375×
 It also draws empty for most of a round. Tablets pass, but `RIVER_COLS` is a JS
 constant, so tablet-only would need a `matchMedia` hook the client has none of —
 the same one Bot 3's tall-screen layout wants. §18.2.
+
+</details>
 
 N23 left one thing open that is not a task: the four Japanese terms it had to
 coin, because Sichuan has them and riichi does not — 欠け色, 金鉤釣, 槓上放銃,

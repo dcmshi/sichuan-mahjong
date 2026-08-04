@@ -322,7 +322,10 @@ The long form, with the measurements behind each, is in
 
 ## Status
 
-Everything through **N44** is shipped (N39 excepted — see TODO): all v1 work, six
+Everything through **N44** is shipped, and **N39 closed won't-do** on 2026-08-04
+(a seat's pond peaks at 13–14 discards, so the cap of 12 hides the last one or two
+and nothing else; rows of 8 spend the smallest phone's entire budget to reveal
+them). All v1 work, six
 full-repo audit passes (A1–A40), the frontend/design pass (F1–F25), the mobile
 viewport work (R1–R7), the hosting work (C1–C10), and the whole feature run
 N1–N44. **N40–N44** are the phone-first play-screen pass of 2026-08-04, worked
