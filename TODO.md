@@ -52,6 +52,15 @@ So the trade was: spend the smallest phone's whole vertical budget, and start
 squashing the moment that seat pongs a third time, to reveal two tiles at the end
 of a round that are already counted and already reachable. Not worth buying.
 
+**Shipped since: eight rows.** The owner took the cap to 16 on 2026-08-04 anyway
+(§18.5) — a seat's pond peaks at 13–14, so `+N` effectively stops appearing. The
+cost is 320×568, which is left with no headroom at all; a seat there with a deep
+river *and* two melds squashes. That viewport already squashed on two melds at six
+rows — measured, identical numbers — so this deepens an existing tail rather than
+opening a new one, and it was accepted knowingly. The clean fix is six rows below
+600px tall and eight above, which wants the same `matchMedia` hook two other
+deferred items want.
+
 **The original defect is gone regardless** — N40 caps the tray's *height* at six
 tiles however deep the pile gets, because the second row grows sideways. What is
 below is the diagnosis, kept because the arithmetic is what any future attempt

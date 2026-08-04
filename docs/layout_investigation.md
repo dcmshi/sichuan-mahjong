@@ -1282,3 +1282,49 @@ Reopen only if the ruleset changes such that seats discard materially more than 
 times a round, or if the side columns get wider for some other reason — the
 arithmetic is `T × (1 + 0.775 × (rows − 1))` for the column and `sideSlack` for the
 budget, so it is a minute's work to re-derive.
+
+### 18.5 Eight rows shipped anyway — what melds do to it (N45)
+
+Called after §18.4 on the owner's decision: **the cap is 16 now**, and since a
+seat's pond peaks at 13–14, `+N` effectively stops appearing at all.
+
+The question that mattered was what a pung or kong does to it, because the meld
+chips are the only thing left that can eat a side column. `sideMelds` in the probe
+reports them as `chips@height`, and the two shapes are:
+
+```
+melds=1@42   one chip row
+melds=2@84   two chip rows — chips wrap two to a row in an 80px column
+melds=2@42   the same two chips on a tablet, whose column fits them side by side
+```
+
+**Eight rows, baseline seed** (`n45-rows8/`, 8–9 discards, one chip row): green
+everywhere. But 320×568 reads `slack=0` and `side=23.5/24` — no headroom left, and
+the box has already parted from the art by half a pixel, under the 1.5px flag.
+360×640 has 10px. Everything else is comfortable.
+
+**Two chips on a side seat** (`rows8-deep-c/`, found on seed `kong-hunt-1` with the
+new `deep` drive): 320×568 fails — `side squashed 22.5/24`, `slack=0`,
+`melds=2@84`. Every other viewport passes.
+
+**And the control says this is not eight rows' fault.** The identical run at six
+rows (`rows6-deep-c/`, same seed, same drive) is numerically *identical* — same
+22.5/24, same slack, same everything — because that board's rivers are only 5–6
+deep, so the row count never binds. **The two-meld squash at 320×568 is
+pre-existing and independent of `RIVER_ROWS`.** It is the tail §18.1 documented and
+closed.
+
+What eight rows actually does is spend the headroom that would have absorbed it.
+At six rows 320 has 33px spare with a deep river; at eight it has 0. So the
+compound case — a seat there with eight discards *and* two melds — goes from a
+~9px squash to a ~42px one. Not observed in a real deal (it needs both at once on
+the same seat on that device), but it is arithmetic, not speculation.
+
+Accepted knowingly. The casualty is one 2016 device in a state needing two
+coincidences, against `+N` disappearing from every other phone. The clean fix is
+six rows at ≤600px tall and eight above — which needs a `matchMedia` hook, the
+same one §12 and §18.2 both want, so if it is ever built all three land together.
+
+Note the guards will not catch this if it regresses: a squash shrinks the box
+*inside* its tray, so `viewport.spec.ts` sees no overflow and no escape. Only the
+probe's `box == art` does.

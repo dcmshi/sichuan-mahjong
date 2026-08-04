@@ -70,6 +70,9 @@ const FLOOR = 24;
  */
 const CONCURRENCY = 3;
 
+/** `node layout-probe.mjs <label> deep` — see the drive loop. */
+const DEEP = process.argv[3] === 'deep';
+
 const label = process.argv[2];
 if (!label || !/^[\w.-]+$/.test(label)) {
   console.error('usage: node scripts/screenshots/layout-probe.mjs <label>');
@@ -118,18 +121,32 @@ async function shoot(vp, index) {
   // The worst case is melds on the table *and* deep rivers — a meld chip is
   // another row out of a budget that is already gone. Drive to the first state
   // that has both, or until the round ends.
+  //
+  // `deep` raises the bar to what actually threatens a *side* column: two meld
+  // chips on one side seat, which is the second ~46px chip row (they wrap two to
+  // a row in an 80px column). Off by default, because it samples a later board
+  // and would make runs incomparable with every earlier one — and because not
+  // every deal reaches it, in which case the round ends and the run reports
+  // NO BOARD rather than lying.
   await page
     .waitForFunction(
-      () => {
+      wantDeep => {
         if (window.__e2e.getScreen() !== 'game') return true;
         window.__e2e.autoPlay();
-        const melds = document.querySelectorAll('[data-meld-zone]').length;
         const discards = [...document.querySelectorAll('.discard-tray')].reduce(
           (a, t) => a + t.querySelectorAll('.tile').length,
           0,
         );
+        if (wantDeep) {
+          const sideChips = [...document.querySelectorAll('[data-meld-zone]')]
+            .filter(z => z.querySelector('.tile-sideways'))
+            .map(z => z.children.length);
+          return discards >= 20 && Math.max(0, ...sideChips) >= 2;
+        }
+        const melds = document.querySelectorAll('[data-meld-zone]').length;
         return melds >= 2 && discards >= 26;
       },
+      DEEP,
       { polling: 60, timeout: 60_000 },
     )
     .catch(() => {});
@@ -189,6 +206,10 @@ async function shoot(vp, index) {
   const m = await page.evaluate(() => {
     const trays = [...document.querySelectorAll('.discard-tray')];
     const felt = document.querySelector('.board-felt');
+    // No board to measure. Report it rather than throwing: some seeds finish the
+    // round before the drive loop reaches its target state, and a probe that dies
+    // on the eighth of nine viewports loses the eight it already had.
+    if (!felt) return null;
     const well = document.querySelector('.play-well');
     const wall = document.querySelector('.wall-diagram');
 
@@ -262,6 +283,19 @@ async function shoot(vp, index) {
         return Math.max(...edges) - Math.min(...edges) <= 1 ? 'seated' : 'ragged';
       });
 
+    // What the melds are costing each side seat. Chips wrap two to a row in an
+    // 80px column, so a third pung or kong adds a whole row — and that row is
+    // the only thing left that can eat a side column's headroom now that the
+    // river's height is capped by RIVER_ROWS. Reported as chips/height so the
+    // budget below can be read against it.
+    const sideMelds = trays
+      .filter(t => t.querySelector('.tile-sideways'))
+      .map(t => {
+        const zone = t.parentElement?.querySelector('[data-meld-zone]');
+        if (!zone) return '0';
+        return `${zone.children.length}@${Math.round(zone.getBoundingClientRect().height)}`;
+      });
+
     // How much room a side column has left. The wrapper is `h-full` of the
     // middle row and centres its content, so this is the headroom a deeper
     // river or another meld row would eat — the budget the `max-height` shrink
@@ -310,6 +344,7 @@ async function shoot(vp, index) {
       spill: [...new Set(spill)],
       riverEnds,
       sideSlack,
+      sideMelds,
       declPos,
       wellFree: w && wd ? Math.round(w.height - wd.height) : null,
       overDiscard,
@@ -317,7 +352,7 @@ async function shoot(vp, index) {
   });
 
   await page.screenshot({ path: `${dir}/${vp.name}.png` });
-  rows[index] = { vp: vp.name, screen, ...m };
+  rows[index] = { vp: vp.name, screen, ...(m ?? {}) };
   await page.close();
 }
 
@@ -340,6 +375,10 @@ await browser.close();
 console.log(`\n=== ${label} ===`);
 for (const r of rows) {
   const flags = [];
+  if (r.overflow === undefined) {
+    console.log(`${r.vp.padEnd(24)} NO BOARD (screen=${r.screen}) — nothing measured`);
+    continue;
+  }
   if (r.screen !== 'game') flags.push(`SHOT THE ${r.screen.toUpperCase()} SCREEN`);
   if (r.overflow > 0) flags.push(`OVERFLOW ${r.overflow}`);
   if (r.spill.length) flags.push(`SPILL ${r.spill.join(',')}`);
@@ -365,7 +404,7 @@ for (const r of rows) {
   }
   const side = r.side.map(s => (s ? `${s.box}/${s.art}` : '—')).join(' ');
   console.log(
-    `${r.vp.padEnd(24)} melds=${r.melds} side=${side.padEnd(18)} shown=${r.shown.join('/')} wellFree=${r.wellFree} slack=${r.sideSlack.join('/')} decl=${r.declPos.join(',')} river=${r.riverEnds.join(',')}${flags.length ? `❌ ${flags.join('; ')}` : '✅'}`,
+    `${r.vp.padEnd(24)} melds=${r.melds} side=${side.padEnd(18)} shown=${r.shown.join('/')} wellFree=${r.wellFree} slack=${r.sideSlack.join('/')} melds=${r.sideMelds.join('/')} decl=${r.declPos.join(',')} river=${r.riverEnds.join(',')}${flags.length ? `❌ ${flags.join('; ')}` : '✅'}`,
   );
 }
 console.log(

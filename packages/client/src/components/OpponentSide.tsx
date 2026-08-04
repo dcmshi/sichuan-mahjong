@@ -8,17 +8,28 @@ import { MeldChip } from './MeldDisplay.js';
 import { Tile, TileBack } from './Tile.js';
 
 /**
- * The river, as a table lays one out: **six tiles a row, then start another.**
+ * The river, as a table lays one out: **a row of tiles, then start another.**
  *
- * That is the physical convention rather than an invention — riichi.wiki's *Kawa*
- * and every client that draws one. A side seat's row runs along the screen's
- * vertical axis, so a "row" here is a column of six and the next one starts
- * beside it, growing away from its owner toward the middle of the table.
+ * The wrapping is the physical convention rather than an invention —
+ * riichi.wiki's *Kawa* and every client that draws one. A side seat's row runs
+ * along the screen's *vertical* axis, so a "row" here is a column and the next
+ * one starts beside it, growing away from its owner toward the middle.
  *
- * The arithmetic is what makes it fit. Six sideways tiles lapped at 22.5% stand
- * `32 + 5 × 24.8 = 156px`, and each column is 38.9px wide — so **two of them are
- * 77.7px in an 80px column**, and twelve discards cost the height of six. One
- * long line of twelve would cost 305px, which no phone in the audit has.
+ * **Width is what fixes the column count and height is what fixes the row
+ * length.** A column is `--tile-w × 255/210` = 38.9px, so two are 77.7px in an
+ * 80px tray and a third would need 117px — measured, and it costs the well enough
+ * to put wall cells under the last discard. The rows are free in that dimension:
+ * eight lapped tiles stand `32 + 7 × 24.8 = 205.6px` against a side column's
+ * measured budget, and they cost no width at all.
+ *
+ * Eight, not the riichi six, because 8 × 2 = 16 clears a whole round — a seat's
+ * pond peaks at 13–14 discards (108 tiles, 13 dealt each, ~56 draws split four
+ * ways), so `+N` effectively stops appearing. **The cost is 320×568**, which is
+ * left with no headroom at all: a seat there whose river reaches eight *and* who
+ * has ponged twice squashes, because the second meld chip row is 42px it no
+ * longer has. That viewport already squashed on two melds at six rows, so this
+ * deepens an existing tail rather than opening a new one — but it does deepen it.
+ * Measured in docs/layout_investigation.md §18.5.
  *
  * This replaces a flat cap, which was the wrong shape of answer twice: N10 raised
  * it to ten on box arithmetic that the *art* does not obey (a tray tile is a flex
@@ -26,7 +37,7 @@ import { Tile, TileBack } from './Tile.js';
  * sized off `--tile-w`), and N38 lowered it to six, which showed less rather than
  * fixing the squash.
  */
-const RIVER_ROWS = 6;
+const RIVER_ROWS = 8;
 const RIVER_COLS = 2;
 const SIDE_TRAY_CAP = RIVER_ROWS * RIVER_COLS;
 
