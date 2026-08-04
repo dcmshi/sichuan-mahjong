@@ -257,7 +257,6 @@ describe('a named hand, all the way to the chips', () => {
         pendingFirstDiscard: null,
         voidedSuit: 'sou' as const,
         usedIndicator: false,
-        voidCleared: true,
         status: 'playing' as const,
         hu: null,
         isReady: false,

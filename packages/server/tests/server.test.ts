@@ -811,7 +811,6 @@ describe('Restore & reconnect grace', () => {
       snap.state.firstTurnDone = [true, true, true, true];
       for (const p of snap.state.players) {
         p.voidedSuit = 'sou';
-        p.voidCleared = true;
       }
 
       const restored = GameRoom.restore(snap);

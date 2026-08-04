@@ -184,7 +184,6 @@ export type PlayerState = {
   voidDiscardTile: TileId | null;
   voidedSuit: Suit | null;
   usedIndicator: boolean;
-  voidCleared: boolean;
   status: 'playing' | 'hu';
   hu: HuRecord | null;
   isReady: boolean;
@@ -261,7 +260,6 @@ function makePlayer(seat: Seat, name: string, isBot: boolean): PlayerState {
     voidDiscardTile: null,
     voidedSuit: null,
     usedIndicator: false,
-    voidCleared: false,
     status: 'playing',
     hu: null,
     isReady: false,
@@ -382,4 +380,26 @@ export function huPlayerCount(state: GameState): number {
 export function isVoidSuitTile(state: GameState, seat: Seat, tileId: TileId): boolean {
   const vs = state.players[seat]!.voidedSuit;
   return vs !== null && suitOf(tileId) === vs;
+}
+
+/**
+ * Strict mode, and this seat is still holding void-suit tiles it has to play out
+ * first. **The single definition of that rule** — the engine's discard validator,
+ * `views.ts`'s legal-action list and all three bot difficulties ask this, and they
+ * used to each test a `voidCleared` flag instead.
+ *
+ * That flag was a latch: set when the last void-suit tile left the hand and never
+ * reconsidered. Draw one back off the wall and every one of those five callers
+ * agreed the seat was free, so it could discard anything while holding a tile it
+ * can never win with — and the bots would, permanently. ARCHITECTURE §5.5.3 has
+ * always defined strict as "while the player holds any void-suit tile in hand",
+ * which is a property of the hand and cannot be cached across a draw. (N46)
+ *
+ * Only a draw can re-arm this: claims cannot bring a void-suit tile in, because
+ * `canPungOnTile` / `canKongOnTile` / `canHuOnTile` all refuse one.
+ */
+export function mustPlayVoidFirst(state: GameState, seat: Seat): boolean {
+  if (state.config.voidDiscardRule !== 'strict') return false;
+  const p = state.players[seat]!;
+  return p.voidedSuit !== null && p.hand.some(t => suitOf(t) === p.voidedSuit);
 }

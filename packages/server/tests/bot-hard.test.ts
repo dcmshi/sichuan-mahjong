@@ -45,7 +45,6 @@ describe('hard bot: the discard read (N19)', () => {
     for (const p of state.players) {
       p.pendingFirstDiscard = null;
       p.usedIndicator = true;
-      p.voidCleared = true;
     }
     state.firstTurnDone = [true, true, true, true];
 
@@ -177,7 +176,6 @@ describe('hard bot: claim discipline (N19)', () => {
     state.phase = 'play';
     for (const p of state.players) {
       p.voidedSuit = 'sou';
-      p.voidCleared = true;
       p.usedIndicator = true;
       p.pendingFirstDiscard = null;
     }

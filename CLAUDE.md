@@ -194,6 +194,15 @@ The long form, with the measurements behind each, is in
   applied as a rotation of the wall array — so no distribution changes, only the
   deal. `createGame`'s `dealer` is `Seat | null`: null asks for the throw, a seat
   pins it.
+- **A rule that depends on the hand must be read from the hand, never latched.**
+  Strict void-suit enforcement is "while you hold one", and it was cached in a
+  `voidCleared` flag set the moment the last one left. Draw one back off the wall
+  and the engine, the legal-action list *and* all three bots agreed you were free
+  — so you could discard anything while holding a tile you can never win with, and
+  the bots did for the rest of the round. `mustPlayVoidFirst(state, seat)` is now
+  the single definition and all five callers ask it. Only a draw can re-arm it;
+  claims cannot, because `canPungOnTile` / `canKongOnTile` / `canHuOnTile` all
+  refuse a void-suit tile. (N46)
 - **換三張 is opt-in and off by default** — it is not in Novikov's ruleset, which
   deals straight into the void declaration. Practice mode therefore never reaches
   the huan phase, which is why `e2e/house-rules.spec.ts` exists.

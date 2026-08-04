@@ -12,6 +12,39 @@ file had reached 1,566 lines of which two were actually open.
 
 ---
 
+## ✅ The void suit you drew back (N46 — 2026-08-04)
+
+Reported as "sometimes it allows you to select other non-voided suit when you do
+have the voided suit in hand", and it was exactly that.
+
+Strict mode means *while you hold a void-suit tile, it is the only thing you may
+discard* — ARCHITECTURE §5.5.3 has said so since it was written. The engine
+implemented it with a `voidCleared` flag, set the moment the last void-suit tile
+left the hand and **never reconsidered**. Draw one back off the wall and the flag
+still said cleared, so the discard validator, `getDiscardActions` (which is what
+the client's greyed-out tiles come from) and all three bot difficulties agreed the
+seat was free. You could throw anything while holding a tile you can never win
+with. The bots did, for the rest of the round — this was a strength bug as much as
+a UI one.
+
+**A rule that depends on the hand cannot be cached across a draw.**
+`mustPlayVoidFirst(state, seat)` derives it on every read and is now the single
+definition all five callers ask. `voidCleared` is deleted rather than left
+correct-but-unused, so it cannot be reached for again. Only a draw can re-arm the
+condition: claims cannot bring a void-suit tile in, because `canPungOnTile`,
+`canKongOnTile` and `canHuOnTile` all refuse one.
+
+Three regression tests in `phase3.test.ts` cover held/not-held/lenient. Six
+existing tests failed on the fix, and every one of them was constructing the state
+the bug allowed — a seat holding sou with `voidedSuit: 'sou'`, discarding a man
+tile. Including `first-discard.test.ts`'s own round driver, which had copied the
+latch (`p.voidCleared || …`) to decide what to discard, so it was reproducing the
+bug it was meant to be playing around. The replay corpus's "strict never fires the
+void penalty" case now holds *two* sou, so one can be thrown and one is still held
+at settlement — which is what that assertion always meant to test.
+
+---
+
 ## ✅ The board, seated (N40–N44 — 2026-08-04)
 
 Five passes on the play screen, phones first. The full working record, including

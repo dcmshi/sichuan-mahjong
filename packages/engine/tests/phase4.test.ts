@@ -58,7 +58,6 @@ function makeState(opts: {
       pendingFirstDiscard: null,
       voidedSuit: vs as const,
       usedIndicator: false,
-      voidCleared: true,
       status: 'playing' as const,
       hu: null,
       isReady: false,
@@ -974,7 +973,7 @@ describe('Phase 4 — false-Hu penalty', () => {
       hands: [p0Hand, p1Hand, p2Hand, []],
       turn: 0,
       turnDrawNeeded: false,
-      voidedSuit: 'sou', // voidCleared=true (default) so P0 can freely discard man
+      voidedSuit: 'sou', // and no sou in hand, so P0 may freely discard man
     });
 
     // P0 discards
@@ -1246,7 +1245,7 @@ describe('Phase 4 — wall-end blanket kong refund', () => {
     s.players[1]!.scoreDelta = -2;
 
     // Wall-end discard (a non-sou tile) with no claimants → round end.
-    s = applyOk(s, { t: 'discard', seat: 0, tile: tid(M(1), 0) });
+    s = applyOk(s, { t: 'discard', seat: 0, tile: tid(S(1), 0) });
     if (s.phase !== 'roundEnd') s = applyOk(s, { t: 'claimWindowExpire' });
     expect(s.phase).toBe('roundEnd');
 
@@ -1335,7 +1334,7 @@ describe('Phase 4 — dealer rotation on multi-Hu discard', () => {
     s.huOrder = [1, 2];
 
     // Wall-end discard from seat 0 ends the round → settlement computes the dealer.
-    s = applyOk(s, { t: 'discard', seat: 0, tile: tid(M(3), 0) });
+    s = applyOk(s, { t: 'discard', seat: 0, tile: tid(S(1), 0) });
     if (s.phase !== 'roundEnd') s = applyOk(s, { t: 'claimWindowExpire' });
     expect(s.phase).toBe('roundEnd');
 
@@ -1373,7 +1372,7 @@ describe('Phase 4 — dealer rotation on multi-Hu discard', () => {
     };
     s.huOrder = [2];
 
-    s = applyOk(s, { t: 'discard', seat: 0, tile: tid(M(3), 0) });
+    s = applyOk(s, { t: 'discard', seat: 0, tile: tid(S(1), 0) });
     if (s.phase !== 'roundEnd') s = applyOk(s, { t: 'claimWindowExpire' });
     expect(s.phase).toBe('roundEnd');
     expect(s.nextDealer).toBe(2); // the lone first winner

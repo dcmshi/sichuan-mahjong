@@ -185,7 +185,6 @@ export type PlayerState = {
   voidDiscardTile: TileId | null;   // what it WAS, kept after the flip nulls the above (N43)
   voidedSuit: Suit | null;
   usedIndicator: boolean;           // true if had no void-suit tiles at declaration time
-  voidCleared: boolean;             // true once all void-suit tiles discarded
   status: 'playing' | 'hu';
   hu: HuRecord | null;
   isReady: boolean;                 // tenpai snapshot; recomputed on hand change
@@ -516,7 +515,9 @@ For every turn that is not East's turn 1 (this includes East's turn 2+ and every
 
 #### 5.5.3 Void-suit discard enforcement (`config.voidDiscardRule`)
 
-- **Strict (default)**: while the player holds any void-suit tile in hand, the engine rejects any non-void-suit discard. Once `voidCleared = true`, normal discard rules apply.
+- **Strict (default)**: while the player holds any void-suit tile in hand, the engine rejects any non-void-suit discard; with none held, normal discard rules apply. `mustPlayVoidFirst(state, seat)` in `state.ts` is the single definition — the discard validator, `getDiscardActions` (so the client's legal list agrees) and all three bot difficulties call it.
+
+  It is deliberately **derived from the hand on every read, never cached**. A `voidCleared` flag used to hold this: set when the last void-suit tile left the hand, and never reconsidered. Drawing one back off the wall left all five callers agreeing the seat was free, so it could discard anything while holding a tile it can never win with — and the bots did exactly that, for the rest of the round. Only a draw can re-arm the condition, since `canPungOnTile` / `canKongOnTile` / `canHuOnTile` all refuse a void-suit tile. (N46)
 - **Lenient (Novikov canonical)**: the first discard each round must be void-suit (already enforced by §5.4 via `firstDiscard`). After that, the player can discard any tile. If they end the round still holding void-suit tiles, they pay a 48-point penalty (see §5.9), unless every single discard they made was a void-suit tile (carve-out per Novikov).
 
 The engine also rejects claims on void-suit tiles regardless of mode (no rational reason to claim one).

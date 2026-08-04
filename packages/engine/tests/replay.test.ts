@@ -63,7 +63,6 @@ function makeState(opts: {
       pendingFirstDiscard: null,
       voidedSuit: vs as 'man' | 'pin' | 'sou',
       usedIndicator: false,
-      voidCleared: true,
       status: 'playing' as const,
       hu: null,
       isReady: false,
@@ -619,8 +618,13 @@ describe('Replay corpus — penalty paths', () => {
 
   // VoidPenalty strict mode: the same hand at wall end does NOT incur the penalty
   it('VoidPenalty: strict mode never fires void penalty', () => {
-    const souTile = tid(S(1), 0);
-    const p0Hand: TileId[] = [souTile, tid(M(2), 0), tid(M(3), 0)];
+    // Two sou, so one can be thrown and one is still held at settlement. Strict
+    // mode will not accept anything but a void-suit tile while one is in hand
+    // (N46), and the point of this test is what happens at the *end* — the seat
+    // has to still be holding sou for the penalty to have anything to fire on.
+    // This used to hold one sou and discard a man tile, which the old
+    // `voidCleared` latch allowed and the rule never did.
+    const p0Hand: TileId[] = [tid(S(1), 0), tid(S(1), 1), tid(M(2), 0), tid(M(3), 0)];
 
     const state = makeState({
       hands: [p0Hand, [], [], []],
@@ -628,10 +632,12 @@ describe('Replay corpus — penalty paths', () => {
       wallEndReached: true,
       config: { voidDiscardRule: 'strict' },
     });
+    // Not all-void, so the lenient carve-out could not excuse it either.
     state.players[0]!.discards = [tid(M(8), 0)];
 
-    const r = applyAction(state, { t: 'discard', seat: 0, tile: tid(M(2), 0) });
+    const r = applyAction(state, { t: 'discard', seat: 0, tile: tid(S(1), 0) });
     expect(r.ok).toBe(true);
+    expect(state.players[0]!.hand.filter(t => suitOf(t) === 'sou')).toHaveLength(2);
     const events = (r as { ok: true; events: GameEvent[] }).events;
 
     expect(events.find(ev => ev.e === 'voidPenalty')).toBeUndefined();

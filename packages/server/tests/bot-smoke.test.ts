@@ -228,7 +228,6 @@ describe('medium bot defensive pung (A25)', () => {
     state.phase = 'play';
     for (const p of state.players) {
       p.voidedSuit = 'sou';
-      p.voidCleared = true;
       p.usedIndicator = true;
     }
 

@@ -134,8 +134,13 @@ function playRound(seed: string): {
       continue;
     }
 
+    // Whenever a void-suit tile is held, it is the only thing strict mode will
+    // take — including one drawn back after the suit was already played out.
+    // This used to read `p.voidCleared || …`, which is the latch the engine
+    // itself used and N46 removed; the driver was reproducing the bug it was
+    // meant to be playing around.
     const voidTiles = p.hand.filter(t => suitOf(t) === p.voidedSuit);
-    const candidates = p.voidCleared || voidTiles.length === 0 ? p.hand : voidTiles;
+    const candidates = voidTiles.length > 0 ? voidTiles : p.hand;
     const tile = leastConnected(candidates, p.hand);
     const r = applyAction(state, { t: 'discard', seat, tile });
     if (!r.ok) throw new Error(`discard: ${r.reason}`);

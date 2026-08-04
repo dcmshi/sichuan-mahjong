@@ -50,7 +50,6 @@ export function tableAt(
       pendingFirstDiscard: null,
       voidedSuit: 'sou' as const,
       usedIndicator: false,
-      voidCleared: true,
       status: seats[i]!.status ?? ('playing' as const),
       // A seat marked `hu` needs a record, or round-end projection has nothing to
       // read; the contents do not matter to a payment test.

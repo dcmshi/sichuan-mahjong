@@ -58,7 +58,6 @@ function makeState(opts: {
       pendingFirstDiscard: null,
       voidedSuit: 'sou' as const, // sou is voided for all players
       usedIndicator: false,
-      voidCleared: true,
       status: 'playing' as const,
       hu: null,
       isReady: false,
@@ -1683,5 +1682,52 @@ describe('Phase 3 — dealer turn-1 declareHuOnDraw picks the best winning tile'
     expect(hu.fans.some(f => f.fan === 'GoldenWait')).toBe(true);
     expect(hu.handValue).toBe(16);
     expect(tileTypeOf(hu.winningTile)).toBe(M(1));
+  });
+});
+
+describe('Phase 3 — strict void-suit discard (config.voidDiscardRule)', () => {
+  /** sou 1-9 → types 18-26. sou is the voided suit in every state built here. */
+  const S = (r: number): TileType => 18 + r - 1;
+
+  it('re-locks the hand when a void-suit tile comes back into it', () => {
+    // The regression: a `voidCleared` latch, set when the last void-suit tile
+    // left the hand and never reconsidered. Draw one back off the wall and the
+    // engine, the legal-action list and all three bots agreed the seat was free
+    // — so it could discard anything while holding a tile it can never win with.
+    // ARCHITECTURE §5.5.3 defines strict as "while the player holds any
+    // void-suit tile in hand", which is a property of the hand. (N46)
+    const hand = [tid(M(1)), tid(M(2)), tid(M(3)), tid(S(5))];
+    const state = makeState({ hands: [hand, [], [], []], turn: 0 });
+
+    const offered = computeLegalActions(state, 0)
+      .filter(a => a.t === 'discard')
+      .map(a => (a.t === 'discard' ? a.tile : -1));
+    expect(offered).toEqual([tid(S(5))]);
+
+    const wrong = applyAction(state, { t: 'discard', seat: 0, tile: tid(M(1)) });
+    expect(wrong.ok).toBe(false);
+    if (!wrong.ok) expect(wrong.reason).toBe('must_discard_void_suit');
+
+    const right = applyAction(state, { t: 'discard', seat: 0, tile: tid(S(5)) });
+    expect(right.ok).toBe(true);
+  });
+
+  it('leaves a hand with no void-suit tile completely free', () => {
+    const hand = [tid(M(1)), tid(M(2)), tid(P(3))];
+    const state = makeState({ hands: [hand, [], [], []], turn: 0 });
+    const offered = computeLegalActions(state, 0).filter(a => a.t === 'discard');
+    expect(offered).toHaveLength(3);
+  });
+
+  it('lenient never locks the hand, whatever is held', () => {
+    const hand = [tid(M(1)), tid(S(5))];
+    const state = makeState({
+      hands: [hand, [], [], []],
+      turn: 0,
+      config: { voidDiscardRule: 'lenient' },
+    });
+    const offered = computeLegalActions(state, 0).filter(a => a.t === 'discard');
+    expect(offered).toHaveLength(2);
+    expect(applyAction(state, { t: 'discard', seat: 0, tile: tid(M(1)) }).ok).toBe(true);
   });
 });

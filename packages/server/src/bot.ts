@@ -3,6 +3,7 @@ import {
   computeLegalActions,
   isTenpai,
   meldTileTypes,
+  mustPlayVoidFirst,
   suitOf,
   tileFromType,
   tileToType,
@@ -148,7 +149,7 @@ export function botTurnAction(state: GameState, seat: Seat): GameAction | null {
   if (candidates.length === 0) candidates = [...legalDiscardSet];
 
   // In strict mode with void uncleared, prefer void-suit tiles
-  if (state.config.voidDiscardRule === 'strict' && !player.voidCleared && player.voidedSuit) {
+  if (player.voidedSuit && mustPlayVoidFirst(state, player.seat)) {
     const si = suitIndex(player.voidedSuit);
     const voidCandidates = candidates.filter(t => Math.floor(tileTypeOf(t) / 9) === si);
     if (voidCandidates.length > 0) candidates = voidCandidates;
@@ -314,7 +315,7 @@ export function botTurnActionMedium(state: GameState, seat: Seat): GameAction | 
   if (candidates.length === 0) candidates = [...legalDiscardSet];
 
   // Strict mode void clearing still takes priority
-  if (state.config.voidDiscardRule === 'strict' && !player.voidCleared && player.voidedSuit) {
+  if (player.voidedSuit && mustPlayVoidFirst(state, player.seat)) {
     const si = suitIndex(player.voidedSuit);
     const voidCandidates = candidates.filter(t => Math.floor(tileTypeOf(t) / 9) === si);
     if (voidCandidates.length > 0) candidates = voidCandidates;
@@ -520,7 +521,7 @@ export function botTurnActionHard(state: GameState, seat: Seat): GameAction | nu
   if (candidates.length === 0) candidates = [...legalDiscardSet];
   if (candidates.length === 0) return null;
 
-  if (state.config.voidDiscardRule === 'strict' && !player.voidCleared && player.voidedSuit) {
+  if (player.voidedSuit && mustPlayVoidFirst(state, player.seat)) {
     const si = suitIndex(player.voidedSuit);
     const voidCandidates = candidates.filter(t => Math.floor(tileTypeOf(t) / 9) === si);
     if (voidCandidates.length > 0) candidates = voidCandidates;

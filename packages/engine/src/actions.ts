@@ -17,7 +17,7 @@ import type {
   PendingVoid,
   Seat,
 } from './state.js';
-import { huPlayerCount } from './state.js';
+import { huPlayerCount, mustPlayVoidFirst } from './state.js';
 import type { Suit, Tile, TileId } from './tiles.js';
 import { sortTiles, suitOf, tileFromType, tileToType, tileTypeOf } from './tiles.js';
 
@@ -1005,12 +1005,6 @@ function applyVoidResolution(state: GameState): GameEvent[] {
       player.usedIndicator = false;
     } else {
       player.usedIndicator = true;
-      player.voidCleared = true;
-    }
-
-    if (!player.voidCleared) {
-      const hasVoid = player.hand.some(t => suitOf(t) === pv.suit);
-      if (!hasVoid) player.voidCleared = true;
     }
 
     events.push({ e: 'voidDeclared', seat, suit: pv.suit });
@@ -1073,11 +1067,8 @@ function applyDiscard(
   // owe that and nothing else. (A35)
   if (player.pendingFirstDiscard !== null) return fail('must_flip_first_discard');
 
-  if (!player.voidCleared) {
-    const discardingVoid = suitOf(tile) === player.voidedSuit;
-    if (state.config.voidDiscardRule === 'strict' && !discardingVoid) {
-      return fail('must_discard_void_suit');
-    }
+  if (mustPlayVoidFirst(state, seat) && suitOf(tile) !== player.voidedSuit) {
+    return fail('must_discard_void_suit');
   }
 
   const hand = removeFromHand(player.hand, tile);
@@ -1087,10 +1078,6 @@ function applyDiscard(
   const sp = s.players[seat]!;
   sp.hand = hand;
   sp.discards.push(tile);
-
-  if (!sp.voidCleared && !sp.hand.some(t => suitOf(t) === sp.voidedSuit)) {
-    sp.voidCleared = true;
-  }
 
   s.history.push(action);
   return finishDiscard(s, seat, tile);

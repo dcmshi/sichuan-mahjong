@@ -5,7 +5,7 @@ import { WALL_SIZE } from './dice.js';
 import { isWinningHand } from './hand.js';
 import type { Meld } from './melds.js';
 import type { GameConfig, GameState, HuRecord, PlayerState, Seat } from './state.js';
-import { DEALT_TILES } from './state.js';
+import { DEALT_TILES, mustPlayVoidFirst } from './state.js';
 import type { Phase } from './state.js';
 import type { Suit, TileId, TileType } from './tiles.js';
 import { suitOf, tileFromType, tileToType, tileTypeOf } from './tiles.js';
@@ -160,10 +160,9 @@ function getPromotedPostponedKongActions(state: GameState, seat: Seat): GameActi
 function getDiscardActions(state: GameState, seat: Seat): GameAction[] {
   const player = state.players[seat]!;
   if (player.pendingFirstDiscard !== null) return [{ t: 'flipFirstDiscard', seat }];
-  const tiles =
-    state.config.voidDiscardRule === 'strict' && !player.voidCleared
-      ? player.hand.filter(t => suitOf(t) === player.voidedSuit)
-      : player.hand;
+  const tiles = mustPlayVoidFirst(state, seat)
+    ? player.hand.filter(t => suitOf(t) === player.voidedSuit)
+    : player.hand;
   return tiles.map(tile => ({ t: 'discard', seat, tile }));
 }
 
