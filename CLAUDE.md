@@ -13,24 +13,41 @@ Live at `https://sichuan-mahjong.onrender.com`.
 code: the invariants, the traps, and the routing table below. Per-item history
 belongs in `docs/history.md`, not here.
 
+**Start here**
+
 | File | Holds | Write here when… |
 |---|---|---|
-| **[ARCHITECTURE.md](./ARCHITECTURE.md)** | Types, engine API, full ruleset, protocol, persistence, networking, testing strategy | …you change behavior, a type, or a rule |
-| **[TODO.md](./TODO.md)** | What is *open* — kept short on purpose | …you open or close a piece of work |
-| **[docs/history.md](./docs/history.md)** | Everything closed, newest first: the phase log, audits A1–A40 / F1–F25 / R1–R7, tiles, hosting C1–C10, features N1–N34. Each with its diagnosis | …you finish something; add a section at the top |
+| **[ARCHITECTURE.md](./ARCHITECTURE.md)** | The reference — types, engine API, full ruleset, protocol, persistence, networking, testing strategy. Has a §-index at the top | …you change behavior, a type, or a rule |
+| **[TODO.md](./TODO.md)** | What is *open*, and nothing else — kept short on purpose | …you open or close a piece of work |
+| **[docs/history.md](./docs/history.md)** | Everything closed, newest first, each with its diagnosis: the phase log, audits **A1–A48** / **F1–F25** / **R1–R7**, hosting **C1–C10**, features **N1–N46**. **Opens with a find-an-item-by-id table** — that is how you turn a bare `(N38)` in a comment into the entry that explains it | …you finish something; add a section at the top *and* a row to that table |
 | **[README.md](./README.md)** | User-facing: install, host/join, CLI flags | …you change the CLI or the player-facing flow |
+
+**Before you touch it** — the deep dives, each written after something went wrong
+
+| File | Holds | Read it when… |
+|---|---|---|
 | **[docs/traps-and-decisions.md](./docs/traps-and-decisions.md)** | The long form of the traps below, plus decisions already settled so they are not relitigated | …you are picking this up cold, or hit a layout/CSS surprise |
 | **[docs/handoff-tile-rendering.md](./docs/handoff-tile-rendering.md)** | How tiles are drawn (the art, lapped), the measured layer geometry, every knob, the four things easy to get wrong | …you are changing how a tile looks |
-| **[docs/viewport-audit.md](./docs/viewport-audit.md)** | Measured mobile viewport overflow, and why the landscape layout is shelved | …you change the play or round-end layout |
 | **[docs/layout_investigation.md](./docs/layout_investigation.md)** | The N40–N44 play-screen pass: how the height divides, every rejected option with its measurement, the seated-river rule, and how the probe lies if you let it | …you change the play screen, or run `layout-probe.mjs` |
+| **[docs/viewport-audit.md](./docs/viewport-audit.md)** | Measured mobile viewport overflow, and why the landscape layout is shelved | …you change the play or round-end layout |
+| **[docs/design-hosted-server.md](./docs/design-hosted-server.md)** | The Render deployment: deploy steps, why it needs no client change, and why the hardening is *not* conditional on `--hosted` | …you are working on hosting, or on anything the tailnet used to protect |
+
+**The audit record** — what was checked, what was found, and what was knowingly left
+
+| File | Holds | Read it when… |
+|---|---|---|
+| **[docs/audit-refactor-and-coverage.md](./docs/audit-refactor-and-coverage.md)** | The 2026-08-04 refactor/coverage pass (A41–A48): measured coverage per package, one real bug, the dead symbols, the duplications, and why the client's 42% is not a finding | …you run `pnpm test:coverage`, or wonder what is deliberately untested |
 | **[docs/audit-payments.md](./docs/audit-payments.md)** | Every payment rule checked against three sources outside the PDF, with a decision each. The fan cap is the one divergence | …you change a payment, a fan value, or `fanCap` |
 | **[docs/audit-public-deployment.md](./docs/audit-public-deployment.md)** | What a public URL exposes that a LAN never did — five findings, each reproduced against the live service | …you touch the WS boundary, the HTTP routes, or anything a stranger can reach |
-| **[docs/design-hosted-server.md](./docs/design-hosted-server.md)** | The Render deployment: deploy steps, why it needs no client change, and why the hardening is *not* conditional on `--hosted` | …you are working on hosting, or on anything the tailnet used to protect |
 | **[docs/frontend-audit.md](./docs/frontend-audit.md)** | The 2026-08-02 client audit: 17 of 20 shipped, the three shelved with reasons | …you pick up one of the three, or run another client sweep |
-| **[docs/audit-refactor-and-coverage.md](./docs/audit-refactor-and-coverage.md)** | The 2026-08-04 refactor/coverage pass (A41–A48): measured coverage per package, one real bug, the dead symbols, the duplications, and why the client's 42% is not a finding | …you pick up an A41–A48 item, or run `pnpm test:coverage` |
+
+**External and legal**
+
+| File | Holds | |
+|---|---|---|
 | **[LICENSE](./LICENSE)** | MIT for code, CC-BY-SA 4.0 for the tile art, and the binary as a combined work carrying both | …you add or change a tile, or change what the release build embeds |
-| `SBR_ENG_part_1.pdf` | Novikov, *Sichuan Mahjong? It's that simple!* — the canonical ruleset | (read-only; extract with `pdftotext` when a rule is in question) |
-| [themahjong.guide](https://themahjong.guide/) | *Mahjong: a Visual Guide* — the second reference used alongside the PDF, and **where the tile SVGs were obtained**. The licence chain is Commons/Cangjie6, evidenced per file in `credits.json` | (external; cite it beside the PDF when a rule or a tile's provenance is in question) |
+| `SBR_ENG_part_1.pdf` | Novikov, *Sichuan Mahjong? It's that simple!* — the canonical ruleset | read-only; extract with `pdftotext` when a rule is in question |
+| [themahjong.guide](https://themahjong.guide/) | *Mahjong: a Visual Guide* — the second reference used alongside the PDF, and **where the tile SVGs were obtained**. The licence chain is Commons/Cangjie6, evidenced per file in `credits.json` | cite it beside the PDF when a rule or a tile's provenance is in question |
 
 ---
 
@@ -209,6 +226,13 @@ The long form, with the measurements behind each, is in
   the single definition and all five callers ask it. Only a draw can re-arm it;
   claims cannot, because `canPungOnTile` / `canKongOnTile` / `canHuOnTile` all
   refuse a void-suit tile. (N46)
+- **A meld is a pung or a kong, never a chow.** Sichuan has no chow claims, so
+  `Meld` is a two-way union and every meld is one tile type repeated. It carried a
+  third `chow` variant until A47, which bought **seven** unreachable branches
+  across `actions.ts`, `hand.ts`, `scoring.ts`, `bot.ts` and `MeldDisplay.tsx`.
+  **`WinShape`'s chow in `hand.ts` is the real one** and is not the same thing: a
+  *winning hand* contains runs, they just can't be claimed off a discard. Re-adding
+  the meld variant for symmetry with that one is re-adding dead code.
 - **換三張 is opt-in and off by default** — it is not in Novikov's ruleset, which
   deals straight into the void declaration. Practice mode therefore never reaches
   the huan phase, which is why `e2e/house-rules.spec.ts` exists.
@@ -238,25 +262,17 @@ The long form, with the measurements behind each, is in
   a column, so a short column squeezes the box while `.tile-sideways .tile-face`
   stays sized off `--tile-w` — the art overflows, the lap eats past the body band
   into the face, and at the extreme the pile draws as a stack of black outlines.
-  That is why `SIDE_TRAY_CAP` is **6**: a side column gets 135–179px, and
-  `1 + (h − 9.6 − 32) / 24.8` is five to seven tiles at full size. N10's ten was
-  only ever true of the boxes. Fitting the count to the measured height is
-  **N39**, still open — and the measurement has to come from the *row*, since the
-  tray is content-sized and dropping a tile frees the space that let you drop it.
-  **Found by regenerating a screenshot, not by a test** — the tray guard reads
-  boxes, and the boxes were correct the whole time.
-- **A meld is a pung or a kong, never a chow** — Sichuan has no chow claims, so
-  `Meld` is a two-way union and every meld is one tile type repeated. It carried a
-  third `chow` variant until A47, which bought **seven** unreachable branches
-  across `actions.ts`, `hand.ts`, `scoring.ts`, `bot.ts` and `MeldDisplay.tsx`.
-  **`WinShape`'s chow in `hand.ts` is the real one** and must not be confused with
-  it: a *winning hand* contains runs, they just can't be claimed off a discard.
-  Re-adding the meld variant for symmetry with that one is re-adding dead code.
+  The cap is not what fixes this and never was: N10 raised it to ten on box
+  arithmetic the art does not obey, N38 lowered it to six, and neither touched the
+  squash. **N40's two-row river did** — the tray's *height* now stops at
+  `RIVER_ROWS` however deep the pile gets, so `SIDE_TRAY_CAP` is free to be
+  `8 × 2 = 16` and clear a whole round. What remains is a tail at 320×568, which
+  has no headroom left: a seat there with a deep river *and* two melds still
+  squashes. Accepted knowingly — **N39 closed won't-do** on the measurement
+  ([TODO.md](./TODO.md)). **Found by regenerating a screenshot, not by a test** —
+  the tray guard reads boxes, and the boxes were correct the whole time.
 - **Every seat's river is *your own layout*, turned to that seat's chair — and the
-  only free axis is the wrap.** The cells themselves come from `riverCells` in
-  `discardPile.ts` — one definition for all three trays since A44, because the
-  three copies it replaced are what N42, N43 and N44 each got wrong in a
-  different seat. Only the wrap and the column chunking live in the components. Yours runs along your right hand and wraps toward
+  only free axis is the wrap.** Yours runs along your right hand and wraps toward
   you. Rotate that: the left seat's rows run **down** and wrap **left**, so its
   oldest tile is the top of its *rightmost* row; the right seat's run **up** and
   wrap **right**, oldest at the bottom of its *leftmost*; the across seat's run
@@ -268,16 +284,15 @@ The long form, with the measurements behind each, is in
   order on all four seats, which is not what a table does. The wrap is one
   `flex-row-reverse`, and it was on the wrong side from the start. `declPos` and
   `riverEnds` in `scripts/screenshots/layout-probe.mjs` assert the corners.
-- **The two side seats face opposite ways, so they lap opposite ways.** The band
-  is measured in from the art's *right* edge, which `rotate(90deg)` puts at the
-  bottom of the on-screen tile and `rotate(-90deg)` puts at the top — so the left
-  seat is `.tile-lap-v` (column, negative `margin-top`) and the right is
-  `.tile-lap-v-up` (`column-reverse`, negative `margin-bottom`), which is also the
-  direction each seat actually lays discards down. **Neither half works alone**: a
-  reversed column with a negative `margin-top` laps the wrong neighbour, and a
-  negative `margin-bottom` in a plain column opens a gap. N36 was the shared rule
-  covering ink on one side for a whole release, and it was reported by eye — the
-  tray guard only reads boxes, and the boxes were right.
+  **The cells are `riverCells` in `discardPile.ts`** — one definition for all three
+  trays since A44; only the wrap and the column chunking live in the components.
+- **The two side seats face opposite ways, so they lap opposite ways** —
+  `.tile-lap-v` on the left, `.tile-lap-v-up` on the right, each pairing a
+  flex direction with the matching negative margin. **Neither half works alone**:
+  swap one and you lap the wrong neighbour or open a gap. The geometry is in
+  [docs/handoff-tile-rendering.md](./docs/handoff-tile-rendering.md); what belongs
+  here is that N36 covered ink on one side for a whole release and **was reported
+  by eye** — the tray guard only reads boxes, and the boxes were right.
 - **The tray guard constrains how anything may animate or overlay.**
   `viewport.spec.ts` asserts no `.tile` inside a `.discard-tray` ever has a box
   outside that tray's, sampling every ~130ms for 90s across five viewports. Animate
@@ -289,9 +304,9 @@ The long form, with the measurements behind each, is in
 - **Tailwind v4 emits `rotate-180` as the standalone `rotate` property**, not as
   `transform` — a probe reading only `getComputedStyle().transform` reports `none`
   and concludes wrongly.
-- **Never put a Tailwind class in an e2e selector.** Add a `data-` hook instead;
-  `data-discardable`, `data-void-tile`, `data-void-first`, `data-pile-modal` and
-  `data-dice-overlay` all exist because a class rename silently broke four projects.
+- **Never put a Tailwind class in an e2e selector.** Add a `data-` hook instead —
+  eleven exist (`grep -ro 'data-[a-z-]*' packages/client/src`) because a class
+  rename once silently broke four projects.
 - **A `flex-shrink-0` control beside one shrinkable sibling crushes that sibling.**
   The sibling absorbs the entire shortfall while its text stays in the DOM, so
   nothing errors — it just renders at zero (N7's turn indicator, and N19's lobby
@@ -311,6 +326,23 @@ The long form, with the measurements behind each, is in
   every catalog but Japanese, because the character is what is printed on the tile.
   Japanese is `萬子` / `筒子` / `索子` with a katakana reading and no romanisation;
   Man / Pin / Sou belong there and nowhere else, being Japanese to begin with.
+
+**Hosting** — the service is live at `https://sichuan-mahjong.onrender.com`;
+reasoning and measurements in
+[docs/design-hosted-server.md](./docs/design-hosted-server.md).
+
+- **The hardening is *not* conditional on `--hosted`.** The flag selects a
+  `RuntimeProfile` carrying **numbers only** — rate limits, the concurrent-games
+  ceiling, sweep TTLs — because a control that switches *on* with `--hosted` is one
+  you develop against with it off, and that fails open the first time someone
+  forgets the flag on a deploy.
+- **`trustProxy` is a hop count and stays at one.** Render fronts the service with
+  Cloudflare and does not sanitise inbound `X-Forwarded-For`, so raising it to 2
+  made every per-IP limit bypassable with a header. `req.ip` is therefore an edge
+  address rather than the player — a deliberately accepted granularity cost,
+  recorded as O5.
+- **Free tier, so persistence stays off** — `getDb()` returns null and every caller
+  handles it. Anything you add that touches the database needs the same treatment.
 
 **Process**
 
@@ -347,57 +379,25 @@ The long form, with the measurements behind each, is in
 
 ## Status
 
-Everything through **N44** is shipped, and **N39 closed won't-do** on 2026-08-04
-(a seat's pond peaks at 13–14 discards, so the cap of 12 hides the last one or two
-and nothing else; rows of 8 spend the smallest phone's entire budget to reveal
-them). All v1 work, six
-full-repo audit passes (A1–A40), the frontend/design pass (F1–F25), the mobile
-viewport work (R1–R7), the hosting work (C1–C10), and the whole feature run
-N1–N44. **N40–N44** are the phone-first play-screen pass of 2026-08-04, worked
-with `scripts/screenshots/layout-probe.mjs` — nine viewports, measured; the full
-record is [docs/layout_investigation.md](./docs/layout_investigation.md).
-Per-item history, each with the diagnosis that made it worth writing down, is in
-[docs/history.md](./docs/history.md), newest first. Deferrals are recorded as
-O1–O5 in [ARCHITECTURE.md §12](./ARCHITECTURE.md#12-open-questions--explicit-deferrals).
+**Everything is shipped and [TODO.md](./TODO.md) is empty.** All v1 work, seven
+full-repo audit passes (A1–A48), the frontend/design pass (F1–F25), the mobile
+viewport work (R1–R7), the hosting work (C1–C10), and the feature run N1–N46.
 
-**Hosting is live and the hardening is not conditional on `--hosted`.** The flag
-selects a `RuntimeProfile` carrying **numbers only** — rate limits, the
-concurrent-games ceiling, sweep TTLs — because a control that switches on with
-`--hosted` is one you develop against with it off, and that fails open the first
-time someone forgets the flag on a deploy. `trustProxy` is a hop count and stays
-at **one**: Render fronts the service with Cloudflare and does not sanitise
-inbound `X-Forwarded-For`, so raising it to 2 made every per-IP limit bypassable
-with a header. `req.ip` is therefore an edge address rather than the player, which
-is a deliberately accepted granularity cost. Free tier, so persistence stays off —
-`getDb()` returns null and every caller handles it. Reasoning and measurements in
-[docs/design-hosted-server.md](./docs/design-hosted-server.md).
-
-**Open** — see [TODO.md](./TODO.md), which is only the open list, and is
-**empty**. The refactor/coverage pass of 2026-08-04 — a seventh full-repo audit,
-**A41–A48** — closed the same day, all eight items, and is worth knowing before
-touching that code. **A41** was its only real bug: `restoreRoomsFromDisk`
-re-registered seat tokens and not the watch token, so a host restart killed every
-spectator link while players rejoined fine. **A42** closed the gap that mattered
-most — **nothing anywhere tested a host-privilege gate**, so all seven `not_host` /
-seat-0 checks in `ws.ts` were unverified on a service anyone can reach; there was
-no bug behind it, which is exactly why it survived six audit passes. **A44**
-unified the river's cell construction after three passes had each got a different
-seat wrong. The rest was cleanup: five dead symbols, a missing `isSeat` guard, the
-unreachable `chow` variant, the hand-order rule, and the SQLite layer executed for
-the first time. **663 unit tests, up from 624**; engine coverage 94.3%, server
-81.4%. Evidence in
-[docs/audit-refactor-and-coverage.md](./docs/audit-refactor-and-coverage.md),
-diagnoses in [docs/history.md](./docs/history.md).
-**N39 closed won't-do** the same day. Five items shipped 2026-08-03:
-**N19** (a hard bot, plus the medium regression the ladder guard caught), **N26**
-(the nine wind call sites), the two tray-geometry bugs N32 left when it turned two
-seats' tiles round without turning what sits around them — **N36** the right-hand
-column ran backwards and lapped over ink rather than the body band, **N37** the
-across seat's void declaration sat on the near side of its pile — and **N38**, the
-declaration beside the pile plus the render pass that made opening one 2.4× faster.
-**O3, the central discard pool, was closed won't-do** on
-2026-08-03: two of the three things it was for shipped by other means (N33 opens
-any seat's full pile with a tap; `firstDiscardIsVoid` puts each declaration above
-its own pile), and the third — an empty middle — expired when the well filled with
-the wall diagram. Reasoning in
+This section deliberately does not list what shipped — that is
+[docs/history.md](./docs/history.md), newest first, **with a find-an-item-by-id
+table at the top**: see a bare `(N38)` in a comment and that table says which
+entry writes it up. Deferrals are O1–O5 in
 [ARCHITECTURE.md §12](./ARCHITECTURE.md#12-open-questions--explicit-deferrals).
+
+Two recent passes are worth knowing before you touch the code they cover, because
+each left an invariant above rather than just a fix:
+
+- **N40–N44**, the phone-first play-screen pass — nine viewports, measured with
+  `scripts/screenshots/layout-probe.mjs`. Full record in
+  [docs/layout_investigation.md](./docs/layout_investigation.md).
+- **A41–A48**, the refactor/coverage pass. One real bug (a host restart killed
+  every spectator link), one gap that mattered more than its size (**nothing
+  anywhere tested a host-privilege gate**, and there was no bug behind it — which
+  is why it survived six audits), and the river's cell construction unified after
+  three passes had each got a different seat wrong.
+  [docs/audit-refactor-and-coverage.md](./docs/audit-refactor-and-coverage.md)

@@ -2,15 +2,28 @@
 
 > Web-based 4-player Sichuan ("Bloody Rules") mahjong. Mobile-first PWA. Host runs the server on their own machine; friends connect over LAN or Tailscale. Bots fill empty seats and power a single-player practice mode.
 
-## Status: v2.3 — frontend-audited
+## What this file is
 
-Changelog from v2.2 (2026-07-31): client-only audit + fixes (F1–F25 in [docs/history.md](./docs/history.md)). Highlights: server `error` frames now reach the UI instead of being dropped (F1); a refreshed player can rejoin their seat (F2); the match ends on a standings screen rather than a silent bounce to the menu (F9); the service worker actually caches — it precached a dev-only path and so installed nothing in production (F5); reconnects give up instead of looping forever, and no longer replay stale actions (F6/F21); tiles are keyboard- and screen-reader-operable (F16); reduced motion is honored (F12); the claim countdown no longer depends on the client clock (F25).
+**The reference: what the system *is*.** Types, the engine API, the full ruleset,
+the wire protocol, persistence, networking, and the testing strategy. Where a
+statement here disagrees with the code, the code is right and this is the bug.
 
-Changelog from v2.1 (2026-07): full repo audit + fixes (tracked as A1–A20 in [docs/history.md](./docs/history.md)). Highlights: hardened the WS boundary (malformed frames can no longer crash the server; `claimWindowExpire` is server-only); fixed a furiten bypass (pung → self-draw), the furiten override threshold (max-skipped, §5.5.5), host-seat reservation, reconnect/restore grace during huan/void/claim, once-per-round persistence, and `endMatch` teardown; bots now pung; mDNS/QR fixed (ESM `createRequire`); `node:sqlite` loads lazily so it degrades instead of crashing. **Distribution:** the npm package is now self-contained (engine inlined, client bundled) and the Bun binaries embed the client SPA. Biome adopted + enforced in CI.
+- **What *happened*, and why** → [docs/history.md](./docs/history.md), newest
+  first, with a find-an-item-by-id table at the top. Per-version changelogs used
+  to sit here and were a third copy of that.
+- **What is open** → [TODO.md](./TODO.md).
+- **What will bite you** → [CLAUDE.md](./CLAUDE.md), long form in
+  [docs/traps-and-decisions.md](./docs/traps-and-decisions.md).
 
-Changelog from v2: pre-handoff polish. Added `penaltyPot` field to `GameState` schema (referenced by §11.1 property test but missing from §4.3 type definition). Bu-ting payouts clarified to fire only on wall-end finals (vacuous in 3-Hu). Tile SVG license boundary spelled out — CC-BY-SA applies to standalone SVG files only, code remains MIT, no asset inlining.
-
-Changelog from v1: full Novikov PDF audit complete. East's first turn no longer draws; Heavenly/Earthly explicitly framed as a house-rule layer; PDF Table 9 compatibility matrix encoded verbatim; kong-refund logic split into three distinct paths; false-Hu penalty fixed to flat 8 per remaining player (was incorrectly scaled by fanCap); Flower Pig explicitly deferred (not in canonical PDF); kong-as-3 hand-structure note added; payment-matrix property test relaxed to account for non-redistributive penalties.
+| § | | § | |
+|---|---|---|---|
+| [1](#1-goals--non-goals) | Goals & non-goals | [8](#8-client-ui) | Client UI |
+| [2](#2-tech-stack) | Tech stack | [9](#9-persistence) | Persistence |
+| [3](#3-repo-layout) | Repo layout | [10](#10-networking--distribution) | Networking & distribution |
+| [4](#4-engine--types--api) | Engine — types & API | [11](#11-testing-strategy) | Testing strategy |
+| [5](#5-sichuan-rules-the-engine-encodes) | Sichuan rules the engine encodes | [12](#12-open-questions--explicit-deferrals) | Open questions / deferrals (O1–O5) |
+| [6](#6-lobby--transport) | Lobby & transport | [13](#13-license--credits) | License & credits |
+| [7](#7-bots) | Bots | [14](#14-references) | References |
 
 ---
 

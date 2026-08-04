@@ -1,14 +1,80 @@
 # History — every closed item, newest first
 
-This is the record of work already done: the phase log (1–9), six full-repo audit
-passes (A1–A40), the frontend/design pass (F1–F25), the mobile viewport work
-(R1–R7), the tile-rendering change, the hosting work (C1–C10), and the feature
-run N1–N38. Each entry keeps its diagnosis, not just its fix — that is the part
-worth having later.
+This is the record of work already done: the phase log (1–10), seven full-repo
+audit passes (A1–A48), the frontend/design pass (F1–F25), the mobile viewport work
+(R1–R7), the tile-rendering change, the hosting work (C1–C10), and the feature run
+N1–N46. Each entry keeps its diagnosis, not just its fix — that is the part worth
+having later.
 
 **Live work lives in [TODO.md](../TODO.md).** This file only grows at the top, and
 nothing in it is outstanding. It was split out of TODO.md on 2026-08-02, when that
 file had reached 1,566 lines of which two were actually open.
+
+---
+
+## Find an item by its id
+
+Code comments and docs cite bare ids — `(N38)`, `(A31)`, `(R6)`. This is where
+each one is written up. **Ctrl-F the id including its bracket** (`N38)`) to jump
+past this table to the entry itself.
+
+Series: **N** features · **A** full-repo audits · **F** frontend/design ·
+**R** mobile viewport · **C** hosting · **O** deferrals
+([ARCHITECTURE §12](../ARCHITECTURE.md#12-open-questions--explicit-deferrals)).
+
+| Ids | Entry |
+|---|---|
+| **A1–A39** | Not individually headed — they are the five *Audit backlog* passes and the sixth below them, each a numbered list. Grep the id. |
+| **A40** | A void declaration leaked to every client |
+| **A41** | The watch token that never came back |
+| **A42** | Nothing tested a host-privilege gate |
+| **A43, A45, A47** | The dead symbols, the missing guard, and the chow that never was |
+| **A44** | One river, drawn three times |
+| **A46, A48** | The hand arrangement, and the layer nothing had run |
+| **F1–F25** | *Frontend & design audit — seventh pass*, a numbered list. Grep the id. |
+| **N2** | The dice are real now |
+| **N3, N11, N14** | Help that shows a hand, a discard you can arm early, and a wall that reads the dice |
+| **N4** | Animation pace is the player's, not the table's |
+| **N5, N15, N17, N18** | Who controls the bots, and a sentence that agrees with itself |
+| **N6, N9, N12** | Three small ones: the claim window, bot pace with no bots, and a feed stuck in one language |
+| **N7, N13** | Whose turn it is, at both ends of the screen |
+| **N8** | The claim bar covered the hand, and my first diagnosis was wrong |
+| **N10** | The board is drawn from the table's centre |
+| **N16** | The reveal shows the sets that won |
+| **N19** | A third rung, and the discovery that the second one was below the first |
+| **N20** | The sponsor button, and the two questions it was held for |
+| **N21** | The payments check out; the fan cap does not |
+| **N22** | Counterclockwise means seat-decreasing |
+| **N23** | Six languages, and the parity guard that now scales |
+| **N24** | The ⚙ menu reports the pace the table is actually on |
+| **N25** | The dice overlay clears itself |
+| **N26** | A wind is not a seat, in nine places |
+| **N27** | The table chooses the fan cap |
+| **N28** | The kong button names its tile, and says what it will do |
+| **N29** | Your own hand shows the tile you won on |
+| **N30** | You pick the tile that leads — and the amendment above it |
+| **N31** | The lobby's Start button stays on screen |
+| **N32** | Every seat's tiles face the middle of the table |
+| **N33** | Tap a seat's pile to see all of it |
+| **N34** | A suit is named one way, and the name is what is on the tile |
+| **N35** | A support link and a source link, under the fold on purpose |
+| **N36, N37** | Turning the tiles was only half of it |
+| **N38** | The declaration beside the pile, and a board that stops rebuilding itself |
+| **N39** | Closed **won't-do** — the diagnosis is in [TODO.md](../TODO.md), not here |
+| **N40–N44** | The board, seated |
+| **N45** | Eight rows a side — folded into N39's closure in [TODO.md](../TODO.md) |
+| **N46** | The void suit you drew back |
+| **R1–R4** | Mobile viewport remediation |
+| **R5, R6** | The R5 guard was red in CI from the day it landed |
+| **R7** | Tile density — and *The two melds gaps R7 left* above it |
+| **C1–C7, C9** | It runs on a public URL |
+| **C8** | **Deliberately not done** — persistence off is a config decision on the free tier; the checklist line lives inside the C1–C7 entry |
+| **C10** | Search engines can read it |
+| **O1** | The binary embeds the tile art on purpose |
+| **O2** | Bots played faster than a player could follow |
+| **O3** | Closed **won't-do** — reasoning in [TODO.md](../TODO.md) and ARCHITECTURE §12 |
+| **O4** | One tile face everywhere |
+| **O5** | An **accepted trade-off**, not a task — per-IP limits key to a Cloudflare edge address. ARCHITECTURE §12 |
 
 ---
 
