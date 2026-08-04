@@ -10,12 +10,14 @@
     "format": "biome format --write .",
     "e2e": "playwright test",
     "shots": "playwright test -c scripts/screenshots/playwright.config.ts",
-    "tiles:sandbox": "node scripts/tiles/sandbox.mjs"
+    "tiles:sandbox": "node scripts/tiles/sandbox.mjs",
+    "test:coverage": "pnpm -r test:coverage"
   },
   "packageManager": "pnpm@10.33.3",
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
     "@playwright/test": "^1.60.0",
+    "@vitest/coverage-v8": "^3.2.7",
     "typescript": "^5.7.0"
   }
 }

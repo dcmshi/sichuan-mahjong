@@ -12,7 +12,8 @@
   "scripts": {
     "build": "tsc",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:coverage": "vitest run --coverage --coverage.provider=v8 --coverage.include='src/**'"
   },
   "devDependencies": {
     "fast-check": "^3.22.0",

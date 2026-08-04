@@ -17,7 +17,8 @@
     "prepack": "pnpm --filter @sichuan-mahjong/engine build && pnpm --filter @sichuan-mahjong/client build && tsc && node scripts/bundle-client.mjs && node scripts/bundle-server.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
-    "start": "node dist/main.js"
+    "start": "node dist/main.js",
+    "test:coverage": "vitest run --passWithNoTests --coverage --coverage.provider=v8 --coverage.include='src/**'"
   },
   "dependencies": {
     "@fastify/static": "^9.1.3",

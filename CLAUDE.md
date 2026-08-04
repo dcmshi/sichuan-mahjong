@@ -27,6 +27,7 @@ belongs in `docs/history.md`, not here.
 | **[docs/audit-public-deployment.md](./docs/audit-public-deployment.md)** | What a public URL exposes that a LAN never did — five findings, each reproduced against the live service | …you touch the WS boundary, the HTTP routes, or anything a stranger can reach |
 | **[docs/design-hosted-server.md](./docs/design-hosted-server.md)** | The Render deployment: deploy steps, why it needs no client change, and why the hardening is *not* conditional on `--hosted` | …you are working on hosting, or on anything the tailnet used to protect |
 | **[docs/frontend-audit.md](./docs/frontend-audit.md)** | The 2026-08-02 client audit: 17 of 20 shipped, the three shelved with reasons | …you pick up one of the three, or run another client sweep |
+| **[docs/audit-refactor-and-coverage.md](./docs/audit-refactor-and-coverage.md)** | The 2026-08-04 refactor/coverage pass (A41–A48): measured coverage per package, one real bug, the dead symbols, the duplications, and why the client's 42% is not a finding | …you pick up an A41–A48 item, or run `pnpm test:coverage` |
 | **[LICENSE](./LICENSE)** | MIT for code, CC-BY-SA 4.0 for the tile art, and the binary as a combined work carrying both | …you add or change a tile, or change what the release build embeds |
 | `SBR_ENG_part_1.pdf` | Novikov, *Sichuan Mahjong? It's that simple!* — the canonical ruleset | (read-only; extract with `pdftotext` when a rule is in question) |
 | [themahjong.guide](https://themahjong.guide/) | *Mahjong: a Visual Guide* — the second reference used alongside the PDF, and **where the tile SVGs were obtained**. The licence chain is Commons/Cangjie6, evidenced per file in `credits.json` | (external; cite it beside the PDF when a rule or a tile's provenance is in question) |
@@ -41,6 +42,10 @@ pnpm --filter @sichuan-mahjong/engine build  # required before typecheck/test
 pnpm typecheck
 pnpm lint                                    # biome check .  (pnpm format to fix)
 pnpm test                                    # Vitest (engine + server + client)
+pnpm test:coverage                           # same, with v8 coverage per package.
+# The server run reports one unhandled `Timeout calling "onTaskUpdate"` — an
+# instrumentation artifact (coverage makes bot-smoke's ladder ~6x slower and the
+# worker RPC gives up mid-test), not a failure. All 167 server tests still pass.
 pnpm --filter @sichuan-mahjong/client build
 pnpm --filter sichuan-mahjong build
 pnpm --filter sichuan-mahjong start          # run server (serves built client)
@@ -356,10 +361,18 @@ is a deliberately accepted granularity cost. Free tier, so persistence stays off
 `getDb()` returns null and every caller handles it. Reasoning and measurements in
 [docs/design-hosted-server.md](./docs/design-hosted-server.md).
 
-**Open** — see [TODO.md](./TODO.md), which is only the open list, and is one item:
-**N39**, a side tray showing ten tiles by squashing them, filed with the
-measurement and three candidate fixes because the choice between six readable
-tiles and ten squashed ones is a design call. Five items shipped 2026-08-03:
+**Open** — see [TODO.md](./TODO.md), which is only the open list, and is
+**A41–A48**: the refactor/coverage pass of 2026-08-04, a seventh full-repo audit.
+Two of them are worth knowing before touching that code. **A41 is a real bug** —
+`restoreRoomsFromDisk` re-registers seat tokens and not the watch token, so a host
+restart kills every spectator link while players rejoin fine (verified by running
+it; persistence is off in hosting, so it is LAN/self-hosted only). **A42 is the
+gap that matters most** — no test anywhere covers a host-privilege gate, so all six
+`not_host` / seat-0 checks in `ws.ts` are unverified on a service anyone can reach.
+The rest are dead symbols, three copies of the river's cell construction, and the
+untouched persistence layer. Evidence for each in
+[docs/audit-refactor-and-coverage.md](./docs/audit-refactor-and-coverage.md).
+**N39 closed won't-do** the same day. Five items shipped 2026-08-03:
 **N19** (a hard bot, plus the medium regression the ladder guard caught), **N26**
 (the nine wind call sites), the two tray-geometry bugs N32 left when it turned two
 seats' tiles round without turning what sits around them — **N36** the right-hand
