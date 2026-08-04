@@ -55,8 +55,3 @@ export function atGameCapacity(): boolean {
 export function sweepLimiters(): number {
   return creates.sweep() + joins.sweep();
 }
-
-/** For tests and diagnostics. */
-export function limiterSizes(): { creates: number; joins: number } {
-  return { creates: creates.size(), joins: joins.size() };
-}

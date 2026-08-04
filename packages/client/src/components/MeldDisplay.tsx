@@ -4,11 +4,10 @@ import type { TileId } from '@sichuan-mahjong/engine';
 import { useT } from '../i18n/useT.js';
 import { Tile, TileBack, TileRun } from './Tile.js';
 
-// Build tile IDs from a Meld for display purposes (using canonical tile IDs)
+// Build tile IDs from a Meld for display purposes (using canonical tile IDs).
+// Every meld is one tile type repeated — Sichuan has no chow claims (A47) — so
+// the kind is the whole of the count.
 function meldTileIds(meld: Meld): TileId[] {
-  if (meld.kind === 'chow') {
-    return meld.tiles.map(t => (tileToType(t) * 4) as TileId);
-  }
   const base = (tileToType(meld.tile) * 4) as TileId;
   const count = meld.kind === 'kong' ? 4 : 3;
   return Array.from({ length: count }, (_, i) => (base + i) as TileId);

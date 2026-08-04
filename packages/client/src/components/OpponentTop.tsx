@@ -1,6 +1,6 @@
 import type { PlayerView } from '@sichuan-mahjong/engine';
 import { memo } from 'react';
-import { splitPile } from '../discardPile.js';
+import { riverCells } from '../discardPile.js';
 import { usePileTap } from '../hooks/usePileTap.js';
 import { useT } from '../i18n/useT.js';
 import { HandCountChip } from './HandCountChip.js';
@@ -26,19 +26,10 @@ function OpponentTopImpl({
   const pileTap = usePileTap(onOpenPile);
   const opp = view.others[relSeat];
   const lastDiscardTile = view.lastDiscard?.from === opp.seat ? view.lastDiscard.tile : null;
-  const { voidDiscard: voidDiscardTile, pile: pileDiscards } = splitPile(opp);
-
-  // Nine cells across, the declaration among them and pinned: what the cap drops
-  // is the oldest *ordinary* discards, never the one tile that says what this
-  // seat declared. Same shape as the side seats' river (see `OpponentSide`).
-  const head = opp.pendingFirstDiscard || voidDiscardTile !== null;
-  const room = TOP_TRAY_CAP - (head ? 1 : 0);
-  const shown = pileDiscards.slice(-room);
-  const hidden = pileDiscards.length - shown.length;
-  const cells: ({ id: number; declared: boolean } | null)[] = [
-    ...(head ? [voidDiscardTile === null ? null : { id: voidDiscardTile, declared: true }] : []),
-    ...shown.map(id => ({ id, declared: false })),
-  ];
+  // Nine cells across, the declaration among them and pinned. Same shape as the
+  // side seats' river (see `OpponentSide`); `riverCells` is where that shape
+  // lives, and where the pinning is explained. (A44)
+  const { cells, hidden } = riverCells(opp, TOP_TRAY_CAP);
 
   // Age order in the DOM, which the tray's 180° turn lays out right-to-left —
   // and that is correct, because this seat faces *down* the screen. Their right

@@ -160,10 +160,14 @@ export type KongSubtype = 'concealed' | 'exposed' | 'promoted' | 'postponed';
 // promoted:  declared on own turn using freshly drawn tile, added to existing exposed pung
 // postponed: declared on own turn using a tile already in hand from earlier, added to existing exposed pung
 
+// A *laid-down* meld only. Two variants, and never a chow: Sichuan disallows chow
+// claims, so a run can only ever be concealed in the hand — where it is a
+// `WinShape` set (§4.4), not a meld. The union carried a third `chow` variant
+// until A47, unreachable since the engine has never constructed one, and it cost
+// seven dead branches across actions/hand/scoring/bot/MeldDisplay.
 export type Meld =
   | { kind: 'pung'; tile: Tile; concealed: boolean; claimedFrom: Seat | null }
-  | { kind: 'kong'; tile: Tile; subtype: KongSubtype; claimedFrom: Seat | null; turnDeclared: number }
-  | { kind: 'chow'; tiles: [Tile, Tile, Tile] };  // concealed only — Sichuan disallows chow claims
+  | { kind: 'kong'; tile: Tile; subtype: KongSubtype; claimedFrom: Seat | null; turnDeclared: number };
 
 // Note: a kong contributes 3 (not 4) tiles when validating the 3-3-3-3-2 hand structure.
 // The 4th tile is structural-extra; this is the only place tile counts and structure counts diverge.
@@ -580,7 +584,9 @@ Multiple players may Hu on the same discard. Each gets paid by the discarder ind
 
 **Standard win:** four sets + one pair, where:
 - Set = pung (3 same) | kong (4 same, contributes structural-3) | chow (3 consecutive same suit).
-- Chow may only appear in the concealed portion (no chow claims).
+- Chow may only appear in the concealed portion (no chow claims) — which is why
+  `WinShape`'s three-way set union is *not* the same type as `Meld`'s two-way one
+  (§4.2). A run is a way a hand can be *shaped*, never a group laid on the table.
 - Hand contains zero tiles of player's voided suit.
 
 **Seven pairs (七对):** seven distinct pairs. Void-suit constraint still applies.
@@ -1111,6 +1117,7 @@ After step 4, every future game uses the same URL — no per-session re-sharing.
 - Replay back-compat lives in its own file because `server.test.ts` mocks `src/persistence.js` wholesale.
 - **Host privilege (A42):** every host-only command refused for a non-host — `startGame`, `addBot`, `setBotDifficulty`, `kickBot` in the lobby, and `nextRound`, `endMatch`, `setBotSpeed` in game. Each gets a refusal *and* a positive control, because a negative-only test cannot tell a working guard from a typo'd message name. Where a refusal has an observable effect the test asserts the state is unchanged, not merely that an error frame came back. Verified by mutation: disabling all seven guards fails all seven cases.
 - **Token restore (A41):** the watch token round-trips `serialize` → `restoreRoomsFromDisk` beside the seat tokens, snapshots predating the field still restore, and a restored watch token still cannot resolve as a seat token.
+- **Persistence (A48):** the SQLite layer against a real `node:sqlite` in a temp `SICHUAN_DATA_DIR` — both tables created, a finished game round-tripping with its config parsed back as an object, the live-room write/read/delete cycle, and the `ON CONFLICT DO UPDATE` upsert (a room re-persists on every state change, so the same code is written many times a round). The `normalizeFans` read migration is covered *through the database*, not only as a unit. Every other server suite mocks this module wholesale, which is how it reached 41% coverage with A41's bug sitting one layer above it.
 
 ### 11.3 Client
 
@@ -1126,6 +1133,8 @@ helpers behind the components rather than rendered output:
 - i18n catalog parity across every language in LANGS (A18, N23).
 - Round-end display helpers in `src/roundEnd.ts`: `formatFan` localizes a `FanEntry` and only shows a multiplier above 1; `ledgerLines` signs each entry from the viewing seat's perspective, since a redistributive entry appears in both the payer's and the payee's ledger.
 - `tests/sw.test.ts` runs the real `public/sw.js` in a stubbed worker global. Three of its four cases fail against the pre-F5 file, which is the point: the worker ships as a plain asset and nothing else type-checks or exercises it.
+- **`riverCells` (A44)** — the declaration pinned at the head of a capped river, the face-down cell before the flip, the `+N` count, and the uncapped own-river case. One definition for all three trays; the three copies it replaced are what N42, N43 and N44 each got wrong in a different seat, and none of it was reachable by a unit test while it lived in components.
+- **`reconcileHandOrder` (A46)** — the dragged arrangement kept for tiles still held, dropped for what left, appended for what arrived, and every copy of a repeated tile type surviving as its own id.
 
 ### 11.4 E2E
 

@@ -377,11 +377,6 @@ export function huPlayerCount(state: GameState): number {
   return state.players.filter(p => p.status === 'hu').length;
 }
 
-export function isVoidSuitTile(state: GameState, seat: Seat, tileId: TileId): boolean {
-  const vs = state.players[seat]!.voidedSuit;
-  return vs !== null && suitOf(tileId) === vs;
-}
-
 /**
  * Strict mode, and this seat is still holding void-suit tiles it has to play out
  * first. **The single definition of that rule** — the engine's discard validator,

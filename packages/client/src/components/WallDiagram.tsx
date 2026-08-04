@@ -238,6 +238,3 @@ export function WallDiagram({ remaining, state }: { remaining: number; state: Wa
     </div>
   );
 }
-
-/** The east/west walls read as `EW_H` tall; exported only so the tests can say so. */
-export const WALL_EW_H = EW_H;

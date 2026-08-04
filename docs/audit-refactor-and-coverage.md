@@ -9,10 +9,21 @@ reproduces every number below).
 coverage gap that matters more than its size** — the WS gateway's host-privilege
 checks, which no test in the repo touches.
 
-> **Status, 2026-08-04.** **A41 and A42 have shipped** — §2 and §5a below are the
-> record of what was wrong, kept as written. The rest (A43–A48) is open. Where a
-> number changed, the section says so; everything else still measures as stated.
-> Server coverage is now **79.2%** statements and `ws.ts` **81.6%**.
+> **Status, 2026-08-04. All eight items (A41–A48) shipped the same day.** The
+> sections below are the record of what was wrong, kept as written, each with a
+> note on what changed. Diagnoses are in [history.md](./history.md).
+>
+> Final: **663 unit tests**, up from 624. Engine coverage 93.5% → **94.3%**
+> (`state.ts` and `scoring.ts` now 100%), server 76.7% → **81.4%**
+> (`persistence.ts` 41.1% → 89.7%, `tokens.ts` → 100%, `ws.ts` → 81.6%),
+> client 42.5% → 42.9% with its pure-helper layer at 67.1%.
+>
+> **Two things this audit got wrong, both by undercounting.** It found six
+> host-privilege gates; there are seven — `startGame` is the first one in the
+> file. And it found two unreachable `chow` branches; there are seven, four of
+> them in `hand.ts`, `scoring.ts` and `bot.ts`. Coverage had flagged two of those
+> (`scoring.ts:214` was that file's only uncovered line) and the audit read past
+> it. A reference scan finds definitions; only the compiler finds every use.
 
 Each item carries the evidence and a size, so the order of work is a choice rather
 than a guess.
@@ -85,7 +96,7 @@ regression by reverting the fix: two of the five fail.
 
 ---
 
-## 3. Dead code
+## 3. Dead code — **all deleted (A43, A47)**
 
 Seven exported symbols with no reference anywhere in `packages/`, `e2e/` or `scripts/`
 beyond their own definition. Notably, the coverage report found these independently:
@@ -125,6 +136,13 @@ Two live functions carry a branch that can never run:
   payment path.
 - `meldTileIds` (`MeldDisplay.tsx:8-15`) — three lines.
 
+> **Undercounted: there were seven, not two.** Dropping the variant made the
+> compiler name the rest — `meldToSetShape` (`hand.ts`), `meldTileTypes`
+> (`scoring.ts`) and three in `bot.ts`: the visible-tile scan, the danger read and
+> the flush estimate. Coverage had already pointed at two of them and this audit
+> read past it. **A reference scan finds definitions; only the compiler finds
+> every use** — for a type-level deletion, delete first and read the errors.
+
 Dropping the variant deletes both branches and makes the type say what the game is.
 It also removes a small trap: those branches read the `tiles` array, so anyone
 "fixing" them has to invent semantics for a set that does not exist.
@@ -138,7 +156,7 @@ ARCHITECTURE.md so the next reader doesn't "restore" the meld variant for symmet
 
 ## 4. Duplication worth collapsing
 
-### 4a. River cell construction, written three times
+### 4a. River cell construction, written three times — **fixed (A44)**
 
 **`OwnZone.tsx:194-215`, `OpponentTop.tsx:31-41`, `OpponentSide.tsx:68-82`**
 
@@ -165,6 +183,16 @@ asserts on (`declPos`, `riverEnds`) become unit-testable without a browser. **Hi
 value item in this document** — it is the one place where the same class of bug has
 recurred.
 
+> **Shipped, with two deviations.** It went into `discardPile.ts` beside
+> `splitPile` rather than a new `riverCells.ts` — same concern, and that module is
+> already the shared tray helper. And it returns `hasDeclaration` alongside
+> `cells`/`hidden`, because `OwnZone` needs it for the N43 ghost; it is the `head`
+> all three were computing anyway. Column chunking stayed in `OpponentSide`, since
+> `RIVER_ROWS` is that zone's geometry rather than the river's. A latent
+> `slice(-0)` trap — a cap with no room showing *everything* — was fixed on the way
+> through and has a test. Verified by 8 unit cases, e2e 12/12, and a probe run
+> whose nine viewports came back numerically identical to N45's.
+
 ### 4b. `nameOf`, defined twice identically in one file
 
 **`Game.tsx:352` and `Game.tsx:522`** — same body, same file, ~50 lines apart.
@@ -176,7 +204,7 @@ named exports (`nameWithYou`, `nameAsWritten`) make the choice explicit at each 
 site instead of implicit in a copied lambda. `MatchEnd.tsx:25` is a genuinely different
 fallback chain and should stay where it is.
 
-### 4c. Hand-order reconciliation
+### 4c. Hand-order reconciliation — **fixed (A46)**
 
 **`OwnZone.tsx:133-141`**
 
@@ -222,7 +250,7 @@ negative-only test cannot. Where a refusal has an observable effect, the test as
 state is unchanged rather than only that an error frame arrived. Verified by mutation:
 disabling all seven guards fails all seven cases. `ws.ts` went 68.2% → **81.6%**.
 
-### 5b. `kickBot` indexes an array with an unvalidated wire value
+### 5b. `kickBot` indexes an array with an unvalidated wire value — **fixed (A45)**
 
 **`ws.ts:520-521`**
 
@@ -255,7 +283,7 @@ up by per-field discipline at ~20 case sites rather than by a validated parse. A
 at `parseClientMsg` would make the invariant structural. That is a larger change than
 this audit is proposing; noting it so the choice is deliberate.
 
-### 5c. The persistence layer is never executed
+### 5c. The persistence layer is never executed — **fixed (A48)**
 
 `persistence.ts` is at **41%**, and every test that touches it (`restore-validation`,
 `server`, `limits`, `seo`, and five more) `vi.mock`s the whole module. `getDb`,
@@ -263,8 +291,16 @@ this audit is proposing; noting it so the choice is deliberate.
 never run against a real `node:sqlite` database in CI.
 
 The schema, the round-trip, and the `normalizeFans` migration path are all unverified.
-This is also the layer §2's bug lives in. One integration test against a temp
-`SM_DATA_DIR` — write a room, read it back, restore it — would cover most of it.
+This is also the layer §2's bug lives in. One integration test against a temp data
+directory — write a room, read it back, restore it — would cover most of it.
+
+> **Shipped.** Nine cases in `persistence.test.ts`, and the env var is
+> `SICHUAN_DATA_DIR` (this audit called it `SM_DATA_DIR`). It has to be set before
+> the first `getDb()`, which caches its handle in a module-level binding. The
+> migration is covered *through the database* rather than as a unit, and the
+> `ON CONFLICT DO UPDATE` upsert got its own case — a room re-persists on every
+> state change, so the same code is written many times a round and the second push
+> would otherwise be a key violation. 41.1% → **89.7%**.
 
 ### 5d. Smaller gaps
 
@@ -301,13 +337,24 @@ optional.
 
 ---
 
-## 7. Suggested order
+## 7. What shipped
 
-1. ~~**Watch-token restore fix + regression test** (§2)~~ — **done**, A41.
-2. ~~**WS host-privilege tests** (§5a)~~ — **done**, A42.
-3. **Delete the five dead symbols** (§3) — minutes, and it stops `isVoidSuitTile` from
-   being mistaken for part of the N46 rule.
-4. **Extract `riverCells`** (§4a) — the recurring-bug site.
-5. `kickBot` guard (§5b), `reconcileHandOrder` (§4c), drop the `chow` variant (§3).
-6. Persistence integration test (§5c).
-7. Everything in §6, opportunistically.
+All eight, in this order, on 2026-08-04:
+
+1. **A41** — watch-token restore fix + regression test (§2).
+2. **A42** — WS host-privilege tests (§5a).
+3. **A44** — `riverCells` extracted (§4a), the recurring-bug site.
+4. **A43 / A45 / A47** as one cleanup batch — the dead symbols (§3), the `kickBot`
+   guard (§5b), and the `chow` variant (§3).
+5. **A46** — `reconcileHandOrder` extracted (§4c).
+6. **A48** — persistence integration test (§5c).
+
+**Still open: nothing from this audit.** §4b (`nameOf` defined twice in `Game.tsx`)
+was left as filed — it is two identical lambdas fifty lines apart, and the third
+copy in `EventFeed.tsx` is *deliberately different*, which is the part worth
+recording rather than the part worth changing. §6's structural notes stand as
+written: `room.ts`'s four concerns are worth splitting when something else brings
+you into the file, `actions.ts` is cohesive rather than sprawling, and the i18n
+split is optional churn. §5d's smaller gaps — `networking.ts`, `views.ts`,
+`cli.ts`, `http.ts` — are unchanged, and `views.ts` at 82% is the one with history
+behind it (A31 and A40 both leaked through that boundary).

@@ -148,9 +148,6 @@ let _client: WsClient | null = null;
 export function setWsClient(c: WsClient | null): void {
   _client = c;
 }
-export function getWsClient(): WsClient | null {
-  return _client;
-}
 
 /** Close and drop the active client, if any. Safe to call when none exists. */
 export function closeConnection(): void {

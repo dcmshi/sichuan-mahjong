@@ -43,13 +43,25 @@ describe('meld rendering', () => {
       turnDeclared: 7,
     };
     const pung: PublicMeld = { kind: 'pung', tile: t('sou', 9), concealed: false, claimedFrom: 1 };
-    const chow: PublicMeld = { kind: 'chow', tiles: [t('man', 1), t('man', 2), t('man', 3)] };
 
     expect(meldRender(exposedKong)).toMatchObject({ badged: false });
     expect(meldRender(exposedKong).ids).toHaveLength(4);
     expect(meldRender(pung)).toMatchObject({ badged: false });
     expect(meldRender(pung).ids).toHaveLength(3);
-    expect(meldRender(chow)).toMatchObject({ badged: false });
-    expect(meldRender(chow).ids).toHaveLength(3);
+  });
+
+  // The chow case this used to assert on was unreachable: Sichuan has no chow
+  // claims, so a laid-down meld is a pung or a kong and `Meld` says so since
+  // A47. `WinShape`'s chow is the real one — a concealed run in a winning hand
+  // — and it is not a meld.
+  it('draws every meld as one repeated tile type', () => {
+    const kongIds = meldRender({
+      kind: 'kong',
+      subtype: 'exposed',
+      tile: t('pin', 5),
+      claimedFrom: 2,
+      turnDeclared: 7,
+    }).ids;
+    expect(new Set(kongIds?.map(id => Math.floor(id / 4))).size).toBe(1);
   });
 });

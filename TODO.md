@@ -16,28 +16,21 @@ so it isn't rediscovered as a bug.
 
 ## Open
 
-**A43–A48 — what's left of the refactor / coverage audit of 2026-08-04.** A
-seventh full-repo pass, asking what can be deleted or unified and what is untested
-that matters. Every finding carries its evidence in
-[docs/audit-refactor-and-coverage.md](./docs/audit-refactor-and-coverage.md); this
-is only the list.
+**Nothing.** The refactor/coverage audit of 2026-08-04 — a seventh full-repo pass,
+filed as **A41–A48** — closed the same day, all eight items. The evidence is in
+[docs/audit-refactor-and-coverage.md](./docs/audit-refactor-and-coverage.md) and
+each has a diagnosis in [docs/history.md](./docs/history.md).
 
-**A41 and A42 shipped 2026-08-04** — the watch token now round-trips a host
-restart, and all seven host-privilege gates are covered with a refusal and a
-positive control each. Both are written up in
-[docs/history.md](./docs/history.md).
-
-| | Item | Size |
-|---|---|---|
-| **A43** | **Five dead exported symbols**, found by coverage and confirmed by reference scan: `isVoidSuitTile` (an N46 leftover sitting directly above `mustPlayVoidFirst`), `revokeToken`, `limiterSizes`, `getWsClient`, `WALL_EW_H`. A41 consumed the other two (`watchTokenFor`, `importWatchToken`), which are now live. | minutes |
-| **A44** | **The river's cell construction is written three times** — the `head`/`room`/`shown`/`hidden` split in `OwnZone`, `OpponentTop` and `OpponentSide`. This is the code N42, N43 and N44 each got wrong in a different seat. Pure, so `riverCells()` makes the corners the probe asserts on unit-testable. | small |
-| **A45** | **`kickBot` indexes `lobby.slots` with an unvalidated wire value**, six lines below the sibling case whose comment explains exactly why that needs an `isSeat` guard. **Not exploitable today** — the write is gated on `slot?.isBot` and the reachable keys fall through — so this is a hardening gap, not a vulnerability. | one line |
-| **A46** | **`reconcileHandOrder` wants extracting from `OwnZone`.** Nine lines of pure list logic inside a `useEffect` with a `biome-ignore`, governing whether a player's dragged arrangement survives a draw, a claim and a re-deal. Zero tests. | small |
-| **A47** | **`Meld`'s `chow` variant is unreachable** — Sichuan has no chow claims, the engine never constructs one, and two live functions carry a branch that can never run. Not to be confused with `WinShape`'s chow, which is real. | small |
-| **A48** | **The persistence layer never executes.** 41%, and every test that touches it `vi.mock`s the whole module, so the schema, the round-trip and the `normalizeFans` migration are unverified against a real `node:sqlite`. This is also the layer A41 lives in. | one integration test |
-
-Suggested order and the reasoning behind it are at the end of the audit. `pnpm
-test:coverage` reproduces every number in it.
+One real bug (**A41**, spectator links dying on a host restart), one gap that
+mattered more than its size (**A42** — nothing anywhere tested a host-privilege
+gate, and there was no bug behind it, which is why it survived six audit passes),
+the river construction unified after three passes had each got it wrong in a
+different seat (**A44**), and the rest cleanup: dead symbols, a missing `isSeat`
+guard, an unreachable `chow` variant, the hand-order rule lifted out of a
+`useEffect`, and the SQLite layer executed for the first time. **663 unit tests,
+up from 624.** Coverage: engine 93.5% → **94.3%**, server 76.7% → **81.4%**,
+with `persistence.ts` 41.1% → 89.7% and `tokens.ts` and `state.ts` at 100%.
+`pnpm test:coverage` reproduces it.
 
 Everything filed on 2026-08-03 shipped the same day: N19 (a hard bot, and the ladder guard that
 found medium losing to easy), N26 (the nine wind call sites), **N36** (the

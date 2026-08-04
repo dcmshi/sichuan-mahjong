@@ -289,15 +289,9 @@ function nextActiveSeat(state: GameState, from: Seat): Seat {
 function playerSuitCount(p: GameState['players'][number]): number {
   const suits = new Set<Suit>();
   for (const t of p.hand) suits.add(suitOf(t));
-  for (const m of p.melds) {
-    if (m.kind === 'chow') {
-      suits.add(m.tiles[0].suit);
-      suits.add(m.tiles[1].suit);
-      suits.add(m.tiles[2].suit);
-    } else {
-      suits.add(m.tile.suit);
-    }
-  }
+  // Every meld is a pung or a kong — Sichuan has no chow claims, so a meld is
+  // always one tile type. (A47)
+  for (const m of p.melds) suits.add(m.tile.suit);
   return suits.size;
 }
 

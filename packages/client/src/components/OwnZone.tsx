@@ -2,7 +2,8 @@ import { type PlayerView, type TileId, tileToType, tileTypeOf } from '@sichuan-m
 import { AnimatePresence, Reorder, motion } from 'framer-motion';
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { type StandDownReason, armedDiscardOutcome } from '../armedDiscard.js';
-import { splitPile } from '../discardPile.js';
+import { riverCells } from '../discardPile.js';
+import { reconcileHandOrder } from '../handOrder.js';
 import { useAnimationPace } from '../hooks/useAnimation.js';
 import { usePileTap } from '../hooks/usePileTap.js';
 import { useSound } from '../hooks/useSound.js';
@@ -119,8 +120,8 @@ function OwnZoneImpl({ view, onOpenPile }: { view: PlayerView; onOpenPile: () =>
   const discardFlightMs = DISCARD_FLIGHT_MS * animScale;
 
   // Local hand arrangement: lets the player drag tiles to organise their hand.
-  // Reconciled against the server hand on every update — keep the custom order
-  // for tiles still held, drop discarded/claimed ones, append newly drawn tiles.
+  // Reconciled against the server hand on every update — the rule, and why each
+  // half of it is there, lives in `reconcileHandOrder`. (A46)
   const hand = view.you.hand;
   const [handOrder, setHandOrder] = useState<TileId[]>(() => [...hand]);
   // Distinguish a tap (select/discard) from a drag (reorder) by pointer travel,
@@ -131,13 +132,7 @@ function OwnZoneImpl({ view, onOpenPile }: { view: PlayerView; onOpenPile: () =>
   const handKey = hand.join(',');
   // biome-ignore lint/correctness/useExhaustiveDependencies: intentionally keyed on handKey, not hand
   useEffect(() => {
-    setHandOrder(prev => {
-      const inHand = new Set(hand);
-      const kept = prev.filter(id => inHand.has(id));
-      const keptSet = new Set(kept);
-      const added = hand.filter(id => !keptSet.has(id));
-      return [...kept, ...added];
-    });
+    setHandOrder(prev => reconcileHandOrder(prev, hand));
   }, [handKey]);
 
   useEffect(() => {
@@ -186,12 +181,10 @@ function OwnZoneImpl({ view, onOpenPile }: { view: PlayerView; onOpenPile: () =>
     return () => clearTimeout(id);
   }, [flight, discardFlightMs]);
 
-  const { voidDiscard: voidDiscardTile, pile: pileDiscards } = splitPile(view.you);
-
   // Your river, oldest first, with the void declaration heading it — the same
   // shape all three opponents draw (see `OpponentTop`). Uncapped, unlike theirs:
-  // furiten is decided by what you have already discarded.
-  const head = view.you.pendingFirstDiscard || voidDiscardTile !== null;
+  // furiten is decided by what you have already discarded. (A44)
+  const { cells, hasDeclaration } = riverCells(view.you, null);
 
   // A ghost, for the two ways your declaration can leave no tile behind. (N43)
   //
@@ -206,13 +199,9 @@ function OwnZoneImpl({ view, onOpenPile }: { view: PlayerView; onOpenPile: () =>
   // one. Your own zone only — `voidedSuit` is yours to know, and an opponent's
   // is public solely through the tile they flipped (A40).
   const ghost =
-    !head && view.you.voidedSuit !== null
+    !hasDeclaration && view.you.voidedSuit !== null
       ? tileToType({ suit: view.you.voidedSuit, rank: 1 }) * 4
       : null;
-  const cells: ({ id: TileId; declared: boolean } | null)[] = [
-    ...(head ? [voidDiscardTile === null ? null : { id: voidDiscardTile, declared: true }] : []),
-    ...pileDiscards.map(id => ({ id, declared: false })),
-  ];
 
   const isMyTurn = view.turn === seat && view.phase === 'play' && view.claimDeadline === null;
   const canDiscard = isMyTurn && view.yourLegalActions.some(a => a.t === 'discard');

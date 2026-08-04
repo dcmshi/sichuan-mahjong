@@ -1,6 +1,6 @@
 import type { PlayerView } from '@sichuan-mahjong/engine';
 import { memo } from 'react';
-import { splitPile } from '../discardPile.js';
+import { riverCells } from '../discardPile.js';
 import { usePileTap } from '../hooks/usePileTap.js';
 import { useT } from '../i18n/useT.js';
 import { HandCountChip } from './HandCountChip.js';
@@ -65,22 +65,14 @@ function OpponentSideImpl({
   const pileTap = usePileTap(onOpenPile);
   const opp = view.others[relSeat];
   const lastDiscardTile = view.lastDiscard?.from === opp.seat ? view.lastDiscard.tile : null;
-  const { voidDiscard: voidDiscardTile, pile: pileDiscards } = splitPile(opp);
-
   // The river, oldest first. The void declaration is that seat's *first discard*,
   // so it heads the river rather than sitting outside it — which is both where a
   // table puts it and the only place a two-column river leaves for it, 77.7px of
   // an 80px column being the whole width. It keeps its glow, so it still reads as
-  // the one public statement rather than as an ordinary first throw. Pinned: what
-  // the cap drops is the *oldest ordinary* discards, never the declaration.
-  const head = opp.pendingFirstDiscard || voidDiscardTile !== null;
-  const room = SIDE_TRAY_CAP - (head ? 1 : 0);
-  const shown = pileDiscards.slice(-room);
-  const hidden = pileDiscards.length - shown.length;
-  const cells: ({ id: number; declared: boolean } | null)[] = [
-    ...(head ? [voidDiscardTile === null ? null : { id: voidDiscardTile, declared: true }] : []),
-    ...shown.map(id => ({ id, declared: false })),
-  ];
+  // the one public statement rather than as an ordinary first throw. `riverCells`
+  // holds that rule for all three trays. (A44)
+  const { cells, hidden } = riverCells(opp, SIDE_TRAY_CAP);
+  // Chunking stays here: `RIVER_ROWS` is this zone's geometry, not the river's.
   const columns: (typeof cells)[] = [];
   for (let i = 0; i < cells.length; i += RIVER_ROWS) columns.push(cells.slice(i, i + RIVER_ROWS));
 

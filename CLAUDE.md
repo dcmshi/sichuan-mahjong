@@ -110,7 +110,8 @@ packages/client/src/
   main.tsx       window.__e2e test helpers (VITE_E2E builds only)
   armedDiscard.ts  fire, hold, or stand down with a reason
   voidSelection.ts suit + leading-tile choice on the void screen
-  discardPile.ts   the declaration/pile split, shared by four trays and the modal
+  discardPile.ts   the declaration/pile split + `riverCells`, shared by all three trays
+  handOrder.ts     keep the dragged arrangement across a server push
   helpExamples.ts  the hands How to Play draws, and the fan table it reads
   screens/PracticeSetup.tsx  bot pace + a level per bot, before practice starts
   store/         Zustand store (mirrors PlayerView)
@@ -244,8 +245,18 @@ The long form, with the measurements behind each, is in
   tray is content-sized and dropping a tile frees the space that let you drop it.
   **Found by regenerating a screenshot, not by a test** — the tray guard reads
   boxes, and the boxes were correct the whole time.
+- **A meld is a pung or a kong, never a chow** — Sichuan has no chow claims, so
+  `Meld` is a two-way union and every meld is one tile type repeated. It carried a
+  third `chow` variant until A47, which bought **seven** unreachable branches
+  across `actions.ts`, `hand.ts`, `scoring.ts`, `bot.ts` and `MeldDisplay.tsx`.
+  **`WinShape`'s chow in `hand.ts` is the real one** and must not be confused with
+  it: a *winning hand* contains runs, they just can't be claimed off a discard.
+  Re-adding the meld variant for symmetry with that one is re-adding dead code.
 - **Every seat's river is *your own layout*, turned to that seat's chair — and the
-  only free axis is the wrap.** Yours runs along your right hand and wraps toward
+  only free axis is the wrap.** The cells themselves come from `riverCells` in
+  `discardPile.ts` — one definition for all three trays since A44, because the
+  three copies it replaced are what N42, N43 and N44 each got wrong in a
+  different seat. Only the wrap and the column chunking live in the components. Yours runs along your right hand and wraps toward
   you. Rotate that: the left seat's rows run **down** and wrap **left**, so its
   oldest tile is the top of its *rightmost* row; the right seat's run **up** and
   wrap **right**, oldest at the bottom of its *leftmost*; the across seat's run
@@ -362,17 +373,21 @@ is a deliberately accepted granularity cost. Free tier, so persistence stays off
 [docs/design-hosted-server.md](./docs/design-hosted-server.md).
 
 **Open** — see [TODO.md](./TODO.md), which is only the open list, and is
-**A43–A48**: what remains of the refactor/coverage pass of 2026-08-04, a seventh
-full-repo audit — dead symbols, three copies of the river's cell construction, an
-unvalidated array index in `kickBot`, and the persistence layer every test mocks
-away. Evidence for each in
-[docs/audit-refactor-and-coverage.md](./docs/audit-refactor-and-coverage.md).
-**A41 and A42 shipped the same day.** A41 was the pass's only real bug —
-`restoreRoomsFromDisk` re-registered seat tokens and not the watch token, so a host
-restart killed every spectator link while players rejoined fine. A42 closed the
-gap that mattered most: **nothing anywhere tested a host-privilege gate**, so all
-seven `not_host` / seat-0 checks in `ws.ts` were unverified on a service anyone can
-reach — no bug behind it, which is exactly why it survived six audit passes.
+**empty**. The refactor/coverage pass of 2026-08-04 — a seventh full-repo audit,
+**A41–A48** — closed the same day, all eight items, and is worth knowing before
+touching that code. **A41** was its only real bug: `restoreRoomsFromDisk`
+re-registered seat tokens and not the watch token, so a host restart killed every
+spectator link while players rejoined fine. **A42** closed the gap that mattered
+most — **nothing anywhere tested a host-privilege gate**, so all seven `not_host` /
+seat-0 checks in `ws.ts` were unverified on a service anyone can reach; there was
+no bug behind it, which is exactly why it survived six audit passes. **A44**
+unified the river's cell construction after three passes had each got a different
+seat wrong. The rest was cleanup: five dead symbols, a missing `isSeat` guard, the
+unreachable `chow` variant, the hand-order rule, and the SQLite layer executed for
+the first time. **663 unit tests, up from 624**; engine coverage 94.3%, server
+81.4%. Evidence in
+[docs/audit-refactor-and-coverage.md](./docs/audit-refactor-and-coverage.md),
+diagnoses in [docs/history.md](./docs/history.md).
 **N39 closed won't-do** the same day. Five items shipped 2026-08-03:
 **N19** (a hard bot, plus the medium regression the ladder guard caught), **N26**
 (the nine wind call sites), the two tray-geometry bugs N32 left when it turned two

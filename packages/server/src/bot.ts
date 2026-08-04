@@ -218,15 +218,12 @@ export function visibleTileTypes(state: GameState, seat: Seat): number[] {
   const visible: number[] = [];
   for (const p of state.players) {
     for (const id of p.discards) visible.push(tileTypeOf(id));
+    // Pungs and kongs only — Sichuan has no chow claims. (A47)
     for (const meld of p.melds) {
-      if (meld.kind === 'pung' || meld.kind === 'kong') {
-        if (meld.kind === 'kong' && meld.subtype === 'concealed' && p.seat !== seat) continue;
-        const tt = tileToType(meld.tile);
-        visible.push(tt, tt, tt);
-        if (meld.kind === 'kong') visible.push(tt);
-      } else if (meld.kind === 'chow') {
-        for (const t of meld.tiles) visible.push(tileToType(t));
-      }
+      if (meld.kind === 'kong' && meld.subtype === 'concealed' && p.seat !== seat) continue;
+      const tt = tileToType(meld.tile);
+      visible.push(tt, tt, tt);
+      if (meld.kind === 'kong') visible.push(tt);
     }
   }
   return visible;
@@ -426,7 +423,7 @@ function dangerAgainst(tile: TileId, o: PlayerState, unseen: (type: TileType) =>
   for (const id of o.discards.slice(declaration)) if (suitOf(id) === suit) thrown++;
 
   let danger = thrown === 0 ? 3 : thrown === 1 ? 2 : 1;
-  if (o.melds.some(m => (m.kind === 'chow' ? m.tiles[0].suit : m.tile.suit) === suit)) danger++;
+  if (o.melds.some(m => m.tile.suit === suit)) danger++;
   if (unseen(tileTypeOf(tile)) <= 1) danger--;
   return Math.max(1, danger);
 }
@@ -464,15 +461,15 @@ function handPotential(
   const bySuit = [0, 0, 0];
   for (const id of hand) bySuit[Math.floor(tileTypeOf(id) / 9)]!++;
   for (const m of melds) {
-    const type = tileToType(m.kind === 'chow' ? m.tiles[0] : m.tile);
-    bySuit[Math.floor(type / 9)]! += 3;
+    bySuit[Math.floor(tileToType(m.tile) / 9)]! += 3;
   }
   const total = bySuit[0]! + bySuit[1]! + bySuit[2]!;
   const flush = total === 0 ? 0 : Math.max(...bySuit) / total;
 
   const counts = new Map<TileType, number>();
   for (const id of hand) counts.set(tileTypeOf(id), (counts.get(tileTypeOf(id)) ?? 0) + 1);
-  let pungBlocks = melds.filter(m => m.kind !== 'chow').length;
+  // Every meld is a pung or a kong, so every meld is a pung block. (A47)
+  let pungBlocks = melds.length;
   for (const [, c] of counts) if (c >= 2) pungBlocks++;
 
   return 2 * flush + 0.25 * Math.min(pungBlocks, 4);

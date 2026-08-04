@@ -517,9 +517,14 @@ function handleLobbyMessage(
       }
       const lobby = getLobby(code);
       if (!lobby) return;
-      const kickSeat = msg.seat;
-      const slot = lobby.slots[kickSeat];
-      if (!slot?.isBot) {
+      // Integer check before the index, for the reason `setBotDifficulty` gives
+      // above: `slots["0"]` reaches element 0 on a JS array. This case had been
+      // indexing straight off the wire — not reachable as a defect, since the
+      // write below is gated on `isBot` and no exotic key carries one, but the
+      // guard is one call and its sibling already documents why. (A45)
+      const kickSeat = isSeat(msg.seat) ? msg.seat : null;
+      const slot = kickSeat === null ? undefined : lobby.slots[kickSeat];
+      if (kickSeat === null || !slot?.isBot) {
         send(_ws, { t: 'error', code: 'not_bot', message: 'That seat is not a bot.' });
         return;
       }

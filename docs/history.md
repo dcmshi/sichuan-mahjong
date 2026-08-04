@@ -12,6 +12,112 @@ file had reached 1,566 lines of which two were actually open.
 
 ---
 
+## ✅ One river, drawn three times (A44 — 2026-08-04)
+
+The `head` / `room` / `shown` / `hidden` / `cells` construction — which decides
+whether the void declaration takes a cell, how many ordinary discards fit behind
+it, and how many are counted away in `+N` — was copied into `OwnZone`,
+`OpponentTop` and `OpponentSide`, with `OwnZone` carrying a fourth uncapped
+variant. `splitPile` had been extracted; the layer built on top of it had not.
+
+**This is the code N42, N43 and N44 each got wrong in a different seat**, and
+each fix had to be applied in more than one place. It is also pure, which is
+exactly what the client's "add UI logic the same way" convention asks to be
+lifted out — the trays are components, so nothing about it was reachable by a
+unit test and only its rendered geometry was reachable by the probe.
+
+`riverCells(player, cap)` now holds it, beside `splitPile` in `discardPile.ts`
+rather than in a file of its own: it is the same concern, and that module is
+already described as the shared tray helper. `cap: null` is your own river, which
+is uncapped because furiten is decided by what you have already discarded.
+`hasDeclaration` comes back with the cells because `OwnZone` needs it for the
+ghost (N43) — it is the `head` all three were computing anyway.
+
+Column chunking stayed in `OpponentSide`: `RIVER_ROWS` is that zone's geometry,
+not the river's.
+
+One latent trap did not survive the move. `pile.slice(-room)` returns the *whole*
+array when `room` is 0, so a cap with no room left would have shown everything
+rather than nothing. No tray could reach it — the smallest cap is 9 — but a
+shared helper should not carry it forward, and it now has a test.
+
+Verified three ways, because a refactor of this code has been wrong before: eight
+new unit cases, the full e2e suite (12/12 across five viewports), and a
+layout-probe run whose `declPos` and `riverEnds` corners came back
+`flat:RB,side:RT,side:LB,flat:LB` / `seated,seated` on all nine viewports —
+numerically identical to the N45 run, down to `slack=0` at 320×568.
+
+---
+
+## ✅ The dead symbols, the missing guard, and the chow that never was (A43, A45, A47 — 2026-08-04)
+
+Three small ones, batched because they touch unrelated files and read as one
+review.
+
+**A43 — five dead exported symbols.** `isVoidSuitTile` (an N46 leftover sitting
+directly above `mustPlayVoidFirst` and duplicating one line of it), `revokeToken`
+(superseded by `revokeTokensForCode`), `limiterSizes`, `getWsClient`, and
+`WALL_EW_H`. The last two carried comments claiming a consumer — "exported only
+so the tests can say so" — that no longer existed. **Coverage found these before
+the reference scan did:** the uncovered lines in `state.ts`, `limits.ts` and
+`tokens.ts` were precisely these function bodies and nothing else. `state.ts` and
+`tokens.ts` are now at 100%.
+
+**A45 — `kickBot` indexed `lobby.slots` straight off the wire.** Six lines above
+it, `setBotDifficulty` guards with `isSeat` and explains why: `slots["0"]` reaches
+element 0 on a JS array. **Not reachable as a defect** — the write is gated on
+`slot?.isBot`, and the exotic keys that resolve (`"length"`, `"__proto__"`) carry
+no `isBot`, so they fall through to `not_bot` — but the guard is one call and its
+sibling already documents the reasoning.
+
+**A47 — `Meld` carried an unreachable `chow` variant.** Sichuan has no chow
+claims; the engine only ever pushes pungs and kongs. The audit found two dead
+branches. There were **seven**: `playerSuitCount` and `meldTileIds` as reported,
+plus `meldToSetShape` (`hand.ts`), `meldTileTypes` (`scoring.ts`) and three in
+`bot.ts` — the visible-tile scan, the danger read, and the flush estimate. Two of
+those had been flagged by coverage without anyone reading it that way:
+`scoring.ts:214` was that file's *only* uncovered line, and `bot.ts:228-229` was
+in its uncovered range.
+
+**`WinShape`'s chow in `hand.ts` is real and stays.** A winning hand absolutely
+contains runs; they simply cannot be claimed off a discard, so they are never
+melds. The `Meld` type now says so in a comment, because re-adding the variant for
+symmetry with that one is the obvious wrong move.
+
+---
+
+## ✅ The hand arrangement, and the layer nothing had run (A46, A48 — 2026-08-04)
+
+**A46 — `reconcileHandOrder` lifted out of `OwnZone`.** Nine lines of pure list
+logic inside a `useEffect` with a `biome-ignore` on its dependency array, and no
+tests. It governs whether the arrangement a player dragged survives what happens
+next, and all three of its halves cover a different way a hand changes: keep the
+order for tiles still held (a draw must not reshuffle the twelve you sorted), drop
+what left (discarded, or claimed out from under you when someone kongs your pung),
+append what arrived at the end in server order (a drawn tile goes where a drawn
+tile goes). A re-deal falls out of the same rule rather than being a special case:
+nothing is kept, so the new hand is appended whole. Nine cases, including that
+four copies of one tile type stay four tiles — reconciling by type instead of by
+id would collapse them.
+
+**A48 — the SQLite layer, executed at last.** Every server suite that touches
+`persistence.ts` `vi.mock`s it wholesale, reasonably, since they are testing rooms
+and sockets. The consequence was that the schema, both round-trips and the
+`normalizeFans` read migration had never run against a real `node:sqlite` in CI —
+41% coverage, and A41's bug lived one layer above these rows.
+
+Nine cases against a temp `SICHUAN_DATA_DIR`: both tables created, a finished game
+round-tripping with its config parsed back as an object rather than a string, an
+absent id returning null, the live-room write/read/delete cycle, and the
+`ON CONFLICT DO UPDATE` upsert — which matters because a room re-persists on every
+state change, so the same code is written many times a round and the second push
+would otherwise be a primary-key violation. The migration is covered *through the
+database* rather than as a unit: a row holding the legacy `"AllPungs×2"` display
+form comes back as `{ fan: 'AllPungs', count: 2 }`. `persistence.ts` went 41.1% →
+89.7%.
+
+---
+
 ## ✅ The watch token that never came back (A41 — 2026-08-04)
 
 Found by the refactor/coverage audit, and found *because* of dead code: the two

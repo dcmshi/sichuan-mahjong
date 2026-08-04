@@ -19,10 +19,6 @@ export function resolveToken(token: string): TokenData | undefined {
   return store.get(token);
 }
 
-export function revokeToken(token: string): void {
-  store.delete(token);
-}
-
 // ---------------------------------------------------------------------------
 // Watch tokens (C5)
 // ---------------------------------------------------------------------------

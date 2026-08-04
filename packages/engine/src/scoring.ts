@@ -209,14 +209,11 @@ export function calcHandScore(
 /** Meld tile types for exhaustive-wait filtering in isTenpai. */
 export function meldTileTypes(melds: Meld[]): TileType[] {
   const types: TileType[] = [];
+  // One tile type per meld, repeated: no chow claims in Sichuan. (A47)
   for (const m of melds) {
-    if (m.kind === 'chow') {
-      types.push(tileToType(m.tiles[0]), tileToType(m.tiles[1]), tileToType(m.tiles[2]));
-    } else {
-      const t = tileToType(m.tile);
-      const count = m.kind === 'kong' ? 4 : 3;
-      for (let i = 0; i < count; i++) types.push(t);
-    }
+    const t = tileToType(m.tile);
+    const count = m.kind === 'kong' ? 4 : 3;
+    for (let i = 0; i < count; i++) types.push(t);
   }
   return types;
 }

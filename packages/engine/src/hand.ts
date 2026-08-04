@@ -22,13 +22,12 @@ export type WinShape =
 // Internal helpers
 // ---------------------------------------------------------------------------
 
+// A laid-down meld is a pung or a kong and never a chow (A47), so this only ever
+// widens the two. `SetShape` still carries `chow` — a concealed run in the hand
+// is a real winning set; it just can't be claimed off a discard.
 function meldToSetShape(m: Meld): SetShape {
-  if (m.kind === 'pung') return { kind: 'pung', type: tileToType(m.tile) };
   if (m.kind === 'kong') return { kind: 'kong', type: tileToType(m.tile) };
-  return {
-    kind: 'chow',
-    types: [tileToType(m.tiles[0]), tileToType(m.tiles[1]), tileToType(m.tiles[2])],
-  };
+  return { kind: 'pung', type: tileToType(m.tile) };
 }
 
 function countTypes(tiles: TileId[]): Map<TileType, number> {
