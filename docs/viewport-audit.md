@@ -1,5 +1,14 @@
 # Mobile viewport audit — where the board runs off a phone
 
+> **Addendum, 2026-08-03 — the vertical budget, not the overflow.** The original
+> audit below asked "does the board fit?" and got the answer to zero everywhere.
+> It never asked *how the height is divided*, and the answer turns out to be badly:
+> the across seat's row is a constant 227px on every phone, and the side columns
+> are the only `flex-1`, so they absorb the entire shortfall. On a 320×568 phone
+> they are left with **80px**, and their discards render at **3.8px** a tile. See
+> [The vertical budget](#the-vertical-budget-2026-08-03) at the end of this file
+> for the measurements and the design options.
+
 **Measured:** 2026-08-01 · `main` @ `aa3c47f`
 **Method:** Chromium via Playwright device profiles; `document.documentElement.scrollHeight`
 vs `window.innerHeight`, CSS px. Screens driven through a real practice game.
@@ -446,3 +455,91 @@ rest. N7 needed the *widths inside a row*, and N8 needed the difference between
 a layout box and painted ink — neither of which a vertical-overflow number can
 express. `e2e/viewport.spec.ts` guards the overflow and the trays; it did not
 guard either of these, and in N8's case it only samples a claim window by luck.
+
+---
+
+## The vertical budget (2026-08-03)
+
+**Measured:** `main` @ `44dd8cb`, real practice rounds driven to mid-round with
+melds on the table, Playwright Chromium at four real phone sizes. Heights are the
+rendered `getBoundingClientRect` of each direct child of `.board-felt`, so they
+sum to the viewport.
+
+### The board fits everywhere and is wrong anyway
+
+| Viewport | Top bar | **Across row** | **Middle row** | Own discards | Hand | Side tile height |
+|---|---|---|---|---|---|---|
+| 320×568 | 40 | **227** | **80** | 110 | 109 | **3.8px** |
+| 360×640 | 40 | **227** | **147** | 110 | 107 | **3.8–10.3px** |
+| 375×667 | 40 | **227** | **173** | 110 | 109 | **6.4–14.5px** |
+| 390×844 | 40 | **227** | 348 | 110 | 111 | 32px ✓ |
+| 430×932 | 40 | **227** | 431 | 110 | 115 | 32px ✓ |
+
+`.board-felt` reports **0 overflow on all five** — the guard in
+`e2e/viewport.spec.ts` is green throughout. It is measuring the wrong thing.
+
+**The across seat's row is a constant 227px on every phone.** It is content-sized
+and its tiles are upright, so it never gives anything back: name 21 + chip 39 +
+melds 47 + tray 49 + declaration 39, plus gaps and `py-2`. The middle row is the
+only `flex-1 min-h-0` on the board, so it absorbs 100% of the shortfall — and
+inside it the side columns carry a 99px fixed overhead of their own (name 20 +
+gap + hand-count chip **71**) before a single discard is drawn.
+
+At 320×568 that leaves the trays 10px for six tiles. They do not fail; they
+shrink, because a tray tile is a flex item and its art is sized off `--tile-w`
+rather than off its box (see [N39](../TODO.md)). 3.8px of box under 32px of art
+is a 92% overlap: the pile draws as a stack of black outlines.
+
+### The corners are real, but they are not free
+
+The across zone's content measures **240px wide on every viewport** — it is
+centred, so what is left is genuinely empty:
+
+| Viewport | Across zone width | Content | Free per corner |
+|---|---|---|---|
+| 320 | 296 | 240 | **28px** |
+| 360 | 336 | 240 | 48px |
+| 375 | 351 | 240 | 55px |
+| 390 | 366 | 240 | 63px |
+| 430 | 406 | 240 | **83px** |
+
+A side column is 80px. So the corners hold one at 430, almost at 390, and **not
+at 320** — which is the viewport that needs it most. Overlaying rather than
+reserving collides by 48px at 320.
+
+### What other mahjong does
+
+The physical convention, and what every riichi client draws, is a **river six
+tiles wide that wraps to a new row** — [riichi.wiki/Kawa][kawa],
+[majandofu][maj]. Not one long line. Six sideways tiles stacked is 156px tall and
+38.9px wide, so a side column fits **two of those columns in 77.7px** — twelve
+discards in the height of six. It is also what this app drew before N10, which
+replaced it for reasons that were about *facing* and *wrapping ragged*, not about
+the six.
+
+### Options, with what each is worth
+
+1. **River wraps at six.** Twelve tiles in the height of six, and it is the table
+   convention rather than an invention. Costs the declaration its spot beside the
+   pile (two columns is the whole 80px), so that goes back to the head of the
+   river. Fixes density; does **not** fix starvation — twelve tiles in an 80px
+   column is still 80px.
+2. **Compact the across row.** Its declaration beside its tray (what N38 did for
+   the side seats) and its name beside its hand-count chip: 227 → ~160px, which
+   is **+67px to the middle row on every viewport, at no cost to anyone**. The
+   cheapest real win on the list.
+3. **Shrink the side seats' hand-count chip.** 71px of a column that gets 80.
+   Horizontal, as the across seat already draws it, is 39px and still fits 80px
+   wide — costs the edge-on orientation N10 chose deliberately. Worth 32px.
+4. **Side columns span the across row's band.** The structural fix: +227px to the
+   side columns. Costs the across zone its width — 366 → ~190 at 390 (tray 9 → 7
+   tiles), 296 → ~128 at 320 (tray 9 → 4). Only defensible above ~375px, so it
+   wants a breakpoint, which nothing else in this app has.
+
+2 + 3 together are +99px on every viewport with no trade against another seat, and
+take 320×568's middle row from 80 to 179px — enough for six tiles at full size.
+1 then doubles what that space holds. 4 is the one that needs a decision rather
+than a measurement.
+
+[kawa]: https://riichi.wiki/Kawa
+[maj]: https://majandofu.com/en-mahjong-beginner-rule
