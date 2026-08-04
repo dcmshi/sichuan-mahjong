@@ -65,7 +65,18 @@ The alternative — making the art shrink with the box — is the honest fix and
 hard one: the art is rotated, so its on-screen height is its pre-rotation
 *width*, and CSS has no way to set a width from a box's height.
 
-Reported 2026-08-03, from N38's measurements.
+Reported 2026-08-03, from N38's measurements. **Reviewed 2026-08-04 and left as
+it is** — the three candidate fixes and what each costs are weighed in
+[docs/layout_investigation.md §18.1](./docs/layout_investigation.md). Short
+version: N40 removed the catastrophic case, what remains affects one 2016 device,
+and the container-query route is the one to try first if it ever surfaces.
+
+A **third row** in the side rivers was tried the same day and rejected on phones:
+three rows need 117px against the 80px a column gets, and the 40px per side comes
+out of the well hard enough to put 28 wall cells under the last discard at 375×667.
+It also draws empty for most of a round. Tablets pass, but `RIVER_COLS` is a JS
+constant, so tablet-only would need a `matchMedia` hook the client has none of —
+the same one Bot 3's tall-screen layout wants. §18.2.
 
 N23 left one thing open that is not a task: the four Japanese terms it had to
 coin, because Sichuan has them and riichi does not — 欠け色, 金鉤釣, 槓上放銃,
