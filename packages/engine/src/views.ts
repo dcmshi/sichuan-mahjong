@@ -300,9 +300,16 @@ function toPublicPlayer(p: PlayerState, reveal: boolean): PublicPlayer {
     melds: toPublicMelds(p.melds, reveal),
     discards: p.discards,
     pendingFirstDiscard: p.pendingFirstDiscard !== null,
-    // `usedIndicator` is the persistent record of whether a tile was separated at
-    // all; the other two say it has since been flipped and landed in `discards`.
-    firstDiscardIsVoid: !p.usedIndicator && p.pendingFirstDiscard === null && p.discards.length > 0,
+    // The recorded tile, and that it is still at the head of the pond. Deriving
+    // this from `!usedIndicator && discards.length > 0` marked `discards[0]`
+    // whatever it was, and a claimed discard is spliced out of its owner's pond
+    // (A15) — so a punged declaration promoted that seat's *second* discard into
+    // their public declaration for the rest of the round. See `voidDiscardTile`.
+    // Length-guarded rather than null-guarded: a snapshot written before
+    // `voidDiscardTile` existed restores it as `undefined`, and on an empty pond
+    // `discards[0] === undefined` would then be true and mark a declaration that
+    // is not there. Comparing a tile that exists to the recorded one cannot.
+    firstDiscardIsVoid: p.discards.length > 0 && p.discards[0] === p.voidDiscardTile,
     status: p.status,
     hu: p.hu === null || reveal ? p.hu : withoutShape(p.hu),
     isReady: p.isReady,

@@ -169,6 +169,19 @@ export type PlayerState = {
    * once flipped, and for indicator users who never separated one. (A35/A37)
    */
   pendingFirstDiscard: TileId | null;
+  /**
+   * The tile that *was* the void declaration, kept after the flip that
+   * `pendingFirstDiscard` nulls. Set once and never cleared.
+   *
+   * `firstDiscardIsVoid` used to be derived as "this seat separated a tile and
+   * their pond is non-empty", which reads `discards[0]` as the declaration. A
+   * claimed discard is spliced out of its owner's pond (`takeClaimedDiscard`,
+   * A15) — so if the declaration is punged or konged, `discards[0]` becomes that
+   * seat's *second* discard and the client rings an ordinary tile as their public
+   * declaration. Wrong information about a public fact, and it survives the round.
+   * Comparing against the recorded tile is what makes the flag mean what it says.
+   */
+  voidDiscardTile: TileId | null;
   voidedSuit: Suit | null;
   usedIndicator: boolean;
   voidCleared: boolean;
@@ -245,6 +258,7 @@ function makePlayer(seat: Seat, name: string, isBot: boolean): PlayerState {
     melds: [],
     discards: [],
     pendingFirstDiscard: null,
+    voidDiscardTile: null,
     voidedSuit: null,
     usedIndicator: false,
     voidCleared: false,

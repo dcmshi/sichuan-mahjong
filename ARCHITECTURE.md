@@ -182,6 +182,7 @@ export type PlayerState = {
   melds: Meld[];                    // public
   discards: TileId[];               // public
   pendingFirstDiscard: TileId | null; // separated void tile, face down until flipped (§5.4)
+  voidDiscardTile: TileId | null;   // what it WAS, kept after the flip nulls the above (N43)
   voidedSuit: Suit | null;
   usedIndicator: boolean;           // true if had no void-suit tiles at declaration time
   voidCleared: boolean;             // true once all void-suit tiles discarded
@@ -359,7 +360,7 @@ export type PublicPlayer = {                    // what every seat may see about
   melds: PublicMeld[];                          // concealed kong tile null'd until roundEnd (A27)
   discards: TileId[];
   pendingFirstDiscard: boolean;                 // owes the §5.4 flip — the tile itself stays secret
-  firstDiscardIsVoid: boolean;                  // and once flipped, discards[0] IS that tile
+  firstDiscardIsVoid: boolean;                  // discards[0] is *the recorded* declaration (N43)
   status: 'playing' | 'hu'; hu: HuRecord | null;
   isReady: boolean; scoreDelta: number; handCount: number;
 };
@@ -472,6 +473,14 @@ each subsequent draw, which is what `isWinningHand` requires. Consequences:
 - Until the flip, views ship only `pendingFirstDiscard: boolean` to others (the
   owner gets the id in `you.pendingFirstDiscardTile`), and clients draw a tile
   back — same per-viewer redaction as §6.4 (A37).
+- The flip records the tile in `voidDiscardTile`, and `firstDiscardIsVoid` is
+  `discards.length > 0 && discards[0] === voidDiscardTile` — **not** "this seat
+  separated a tile and their pond is non-empty", which is what it used to be.
+  That older form named `discards[0]` whatever it happened to be, and a claimed
+  discard is spliced out of its owner's pond (A15), so a punged or konged
+  declaration promoted that seat's *second* discard into their public declaration
+  for the rest of the round. `voidDiscardTile` is never cleared, so the flag goes
+  false when the tile leaves rather than pointing at its replacement. (N43)
 
 Before A35 the engine charged the separation *and* a normal turn-1 hand discard,
 pinning every player who separated a tile permanently one tile below the 14 a win

@@ -222,6 +222,44 @@ describe('A35 — the separated tile is the first mandatory discard', () => {
     expect(v.you.firstDiscardIsVoid).toBe(false);
   });
 
+  it('stops calling it a void declaration once the tile is claimed away', () => {
+    // The bug: `firstDiscardIsVoid` was "this seat separated a tile and their
+    // pond is non-empty", which points at `discards[0]` whatever that is. A
+    // claimed discard is spliced out of its owner's pond (takeClaimedDiscard,
+    // A15) — so a punged declaration promoted the seat's *second* discard into
+    // their public declaration, and the client rings it, for the rest of the
+    // round. Simulated here rather than played out: reaching a real claim on the
+    // very first flip needs a seed that offers one, and the view derivation is
+    // what is under test.
+    const { state, separated } = declareAllVoid(newGame('a35-flip'));
+    const dealer = state.dealer;
+    expect(separated[dealer]).toBe(true);
+
+    const flipped = applyAction(state, { t: 'flipFirstDiscard', seat: dealer });
+    expect(flipped.ok).toBe(true);
+    if (!flipped.ok) return;
+    const s = flipped.state;
+    const declared = s.players[dealer]!.discards[0]!;
+    expect(s.players[dealer]!.voidDiscardTile).toBe(declared);
+    expect(projectView(s, dealer).you.firstDiscardIsVoid).toBe(true);
+
+    // Someone claims it, and this seat later throws something else.
+    s.players[dealer]!.discards = [];
+    expect(projectView(s, dealer).you.firstDiscardIsVoid).toBe(false);
+
+    const other = s.players[dealer]!.hand[0]!;
+    s.players[dealer]!.discards = [other];
+    expect(other).not.toBe(declared);
+    expect(projectView(s, dealer).you.firstDiscardIsVoid).toBe(false);
+
+    // And every other seat is told the same thing about them.
+    for (const viewer of [0, 1, 2, 3] as Seat[]) {
+      if (viewer === dealer) continue;
+      const them = projectView(s, viewer).others.find(o => o.seat === dealer)!;
+      expect(them.firstDiscardIsVoid).toBe(false);
+    }
+  });
+
   it('flipFirstDiscard is rejected when nothing is pending', () => {
     const { state } = declareAllVoid(newGame('a35-nothing'));
     const flipped = applyAction(state, { t: 'flipFirstDiscard', seat: state.dealer });

@@ -1120,6 +1120,7 @@ function applyFlipFirstDiscard(
   const s = clone(state);
   const sp = s.players[seat]!;
   sp.pendingFirstDiscard = null;
+  sp.voidDiscardTile = tile;
   sp.discards.push(tile);
   s.history.push(action);
   return finishDiscard(s, seat, tile);
