@@ -65,6 +65,15 @@ The alternative — making the art shrink with the box — is the honest fix and
 hard one: the art is rotated, so its on-screen height is its pre-rotation
 *width*, and CSS has no way to set a width from a box's height.
 
+The same measurement would buy a second thing, which is why it is filed here
+rather than as a layout item of its own: **more tiles per row.** A column of eight
+at 32px is 205px against 156px for six, and a side column has 260px of slack at
+390×844 — so the cap goes 12 → 16 with no width cost at all, where widening to
+three rows costs the well enough to break it (§18.2). It needs the same
+height-derived count, because 320×568 has 33px of slack and two more tiles cost
+37px. Six a row is also the riichi convention the river is built on, so this is a
+deliberate break rather than a free win.
+
 Reported 2026-08-03, from N38's measurements. **Reviewed 2026-08-04 and left as
 it is** — the three candidate fixes and what each costs are weighed in
 [docs/layout_investigation.md §18.1](./docs/layout_investigation.md). Short

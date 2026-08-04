@@ -817,8 +817,8 @@ holds the live tile.** `max-w-[60%] truncate` keeps the two apart at 320.
 - **Filling the well's dead height.** 315px of free well at 390×844 is the largest
   single void on the board, and it cannot be spent from inside: the frame is
   width-bound at `min(96%, 22rem)`, and every tile in the middle row is width-bound
-  too. Spending it means changing how the three rows divide the screen, not
-  changing anything in the well. Open.
+  too. ~~Open.~~ **Closed 2026-08-04 — see §18.3.** It was listed because it was
+  the biggest number, which turned out not to be a reason.
 
 ### 14.6 Verification
 
@@ -1204,3 +1204,39 @@ Tablets pass cleanly, so three rows *there* is defensible — but `RIVER_COLS` i
 JS constant, not a media query, so it needs the same `matchMedia` hook §12 records
 as the blocker for un-compacting Bot 3 on tall screens. One small hook would
 unlock both. Run kept in `prototype-shots/try-3-rows/`.
+
+### 18.3 The well's dead height is not an item — closed
+
+It was on the open list because it was the largest measurable void on the board.
+That is not a reason, and the framing was wrong twice over.
+
+**It is not the well's.** At 390×844 the well has 315px free *and* the side columns
+have 260/306px of their own (`sideSlack`). The whole middle row is taller than
+anything in it needs; there is one pool of unused height, not a hole in the middle.
+
+**And nothing in that row wants height.** Everything competing for space is
+width-bound:
+
+| | Bound by |
+|---|---|
+| Last discard | the wall's mouth, which is set by the well's *width* — §14.3 |
+| Hand | 13 tiles across the screen |
+| Your own tray | a different row, and already showing everything on a tall phone |
+| Wall frame | could grow, and §11.2 is why it must not — it is a gauge |
+
+The three-row experiment (§18.2) proved the same thing from the opposite side: the
+constraint on this board is horizontal, and spending width to buy rows collapses
+the well.
+
+**The one real idea inside it belongs to N39.** More tiles *per row* rather than
+more rows: a column of eight at 32px is 205px against 156px for six, so +50px
+against 260px of slack at 390×844 — the cap goes 12 → 16 at no width cost, which
+is exactly what §18.2 could not achieve. Two things stop it being free. Six tiles a
+row is the riichi convention the river is built on, so lengthening it is a
+deliberate break rather than a win. And it does not fit everywhere: 320×568 has
+33px of slack and two more tiles cost 37px, so the count has to follow the space —
+**which is N39's fix, wearing a different hat.** Filed there, not here.
+
+There is also a case for the space itself. The well is where the eye rests and
+where the live tile sits alone; a board packed to 100% is harder to read, not
+easier.
