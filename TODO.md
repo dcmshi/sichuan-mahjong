@@ -22,8 +22,11 @@ found medium losing to easy), N26 (the nine wind call sites), **N36** (the
 right-hand seat's pile ran downward and lapped over ink), **N37** (the across
 seat's void declaration sat on the near side of its pile), and **N38** (the side
 seats' declarations moved beside their piles, and the board stopped rebuilding
-itself when a pile opens). Each is written up in
-[docs/history.md](./docs/history.md).
+itself when a pile opens). **N40–N44** followed on 2026-08-04 — the declaration in
+your own river, the centre of the table, the declaration standing out of the lap,
+the ghost plus the engine bug under it, and every river seated in its own chair.
+Each is written up in [docs/history.md](./docs/history.md), with the full working
+record in [docs/layout_investigation.md](./docs/layout_investigation.md).
 
 ### N39 — fit a side tray's count to the height it actually has
 

@@ -58,16 +58,22 @@ export function meldRender(meld: PublicMeld): { ids: TileId[] | null; badged: bo
  * column the way their discard tray did before R6. One tile with the meld's name
  * fits, and carries what a player actually reads off an opponent's melds: which
  * tile they've locked away. The kind implies the count.
+ *
+ * `sideways` turns it the way that seat's discards already lie. It is the same
+ * art in a landscape box, so it stands 32px instead of 38.9 — 7px back per meld
+ * row in the column where height is scarce — and two of them are 77.7px, which
+ * still fits the 80px width. The badge stays upright: it is read, not placed on
+ * a table. (N38)
  */
-export function MeldChip({ meld }: { meld: PublicMeld }) {
+export function MeldChip({ meld, sideways = false }: { meld: PublicMeld; sideways?: boolean }) {
   const t = useT();
   const { ids } = meldRender(meld);
   return (
     <div className="relative flex-shrink-0">
       {ids === null || ids[0] === undefined ? (
-        <TileBack size="sm" />
+        <TileBack size="sm" sideways={sideways} />
       ) : (
-        <Tile id={ids[0]} size="sm" interactive={false} />
+        <Tile id={ids[0]} size="sm" interactive={false} sideways={sideways} />
       )}
       <span className="absolute -bottom-1 -right-1 px-0.5 rounded bg-amber-500 text-black text-[8px] font-bold leading-tight">
         {t(meld.kind === 'kong' ? 'claim.kong' : 'claim.pung')}

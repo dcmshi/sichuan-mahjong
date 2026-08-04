@@ -58,6 +58,14 @@ export type TileProps = {
    * measures as what it draws — see `.tile-sideways`. (N10)
    */
   sideways?: boolean;
+  /**
+   * The oldest cell of a side seat's river. Emits `data-river-first` and nothing
+   * else — `layout-probe.mjs` asserts it is the tray's top-left tile, which is
+   * the whole claim the two seats' reading order makes, and the mirroring means
+   * neither DOM order nor a class can be read for it. A `data-` hook rather than
+   * a Tailwind class, per the rule a class rename has broken four times. (N42)
+   */
+  riverFirst?: boolean;
 };
 
 /**
@@ -100,6 +108,7 @@ function TileImpl({
   fill = false,
   voidDiscard = false,
   sideways = false,
+  riverFirst = false,
 }: TileProps) {
   const { suit, rank } = tileFromType(tileTypeOf(id));
   const src = `/tiles/${suit}-${rank}.svg`;
@@ -128,6 +137,8 @@ function TileImpl({
         },
       }
     : { role: 'img', 'aria-label': label };
+
+  const probeProps = riverFirst ? { 'data-river-first': 'true' } : {};
 
   const pointerProps = interactive
     ? {
@@ -184,11 +195,12 @@ function TileImpl({
           title={label}
           {...a11yProps}
           {...pointerProps}
+          {...probeProps}
         >
           {face}
         </motion.div>
       ) : (
-        <div className={className} title={label} {...a11yProps} {...pointerProps}>
+        <div className={className} title={label} {...a11yProps} {...pointerProps} {...probeProps}>
           {face}
         </div>
       )}

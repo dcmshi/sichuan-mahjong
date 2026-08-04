@@ -104,6 +104,11 @@ export function ClaimFlight() {
           // 22.5% smaller than the tile it left.
           className="tile-lap fixed left-0 top-0 z-30 pointer-events-none"
           aria-hidden="true"
+          // A tile in transit, so a screenshot taken now is of a board mid-move.
+          // Shared with OwnZone's FlyingDiscard: `layout-probe.mjs` waits for
+          // both to be gone. A `data-` hook and not the class beside it, per the
+          // rule a Tailwind rename has broken four projects over.
+          data-tile-flight="true"
           initial={{ x: f.from.left, y: f.from.top, width: f.from.width }}
           animate={{ x: f.to.left, y: f.to.top, width: f.to.width }}
           exit={{ opacity: 0 }}

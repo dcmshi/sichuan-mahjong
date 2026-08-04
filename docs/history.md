@@ -12,6 +12,70 @@ file had reached 1,566 lines of which two were actually open.
 
 ---
 
+## ✅ The board, seated (N40–N44 — 2026-08-04)
+
+Five passes on the play screen, phones first. The full working record, including
+every rejected option with the measurement that killed it, is in
+[docs/layout_investigation.md](./layout_investigation.md) §13–§17.
+
+**N40 — your declaration joined your river.** N38 moved it into the river for all
+three opponents and left the player's own in a centred row above the tray, so one
+seat of four drew it differently and that row cost ~34px of the one column with
+nowhere left to give.
+
+**N41 — the centre of the table.** The last discard is the one object that stops
+play and asks a question, and it was drawn at 40px on every phone 700px tall or
+shorter — against a hand tile's 42px cap — under a caption naming it. Meanwhile
+the wall frame, 56 identical backs at `z-index: -1`, was the largest thing in the
+well. The caption became `sr-only` and paid for the tile: same group footprint,
+much larger hero. **The size rungs belong on width, not height** — the mouth is as
+wide as the well, and 390×844 (the *tallest* phone, 315px of free well) failed at
+5rem where a shorter 414×896 passed. And `Void: 万 Wàn` moved to the well's floor,
+because as a sibling of the tile in a `justify-center` column its 20px had been
+pushing the hero 10px above the wall's centre on every viewport at once.
+
+**N42 — the declaration stands out of the lap.** It was lapped like any other
+discard with `z-index: 2` so the neighbour's bleed would not eat its glow — a fix
+for the symptom, and it read as a tile lying *on* the pile rather than as its
+first tile set apart. Cancelling the bleed on the tile after it also made the box
+the whole tile again, which is what finally allowed the ring `.tile-mark` has
+carried a comment about since the void screen shipped. One 0.75rem tile back
+joined the side seats' `×10`, and truncated "Bot 2" to "Bo…" — **N7's shape for
+the fourth time**, found by looking at a screenshot rather than by a guard.
+
+**N43 — a declaration that was not there.** Chasing "what if it gets punged"
+turned up an engine bug: a claimed discard is spliced out of its owner's pond
+(A15), and `firstDiscardIsVoid` was derived as "separated a tile, pond non-empty",
+which names `discards[0]` whatever it is. So a punged declaration did not merely
+vanish — that seat's **next** discard was promoted into their public declaration
+for the rest of the round. `PlayerState.voidDiscardTile` records the tile at the
+flip so the flag can mean what it says; guarded in `first-discard.test.ts`. With
+that correct, the ghost the report asked for is one condition: no declaration in
+the river and a void suit known → rank 1 of the suit at `opacity: 0.3`, ringed.
+Your own zone only — an opponent's void suit is public *solely* through the tile
+they flipped (A40).
+
+**N44 — every river is your own, turned to its chair.** N42 and N43 both got this
+wrong the same way: they put all four rivers in the *viewer's* reading order. A
+table does not work that way. Yours runs along your right hand and wraps toward
+you; rotate that and the left seat's rows run down and wrap left (oldest at the
+top of its *rightmost* row), the right seat's run up and wrap right (oldest at the
+bottom of its *leftmost*), the across seat's run left from the right end. Two
+mistakes were stacked: mine, and — underneath — a wrap direction that had been on
+the wrong sides since the side trays existed. **Only the wrap was ever free**; a
+row's direction is fixed by which edge the body band sits on (N36). Three passes
+of mirroring cell arrays, and the whole fix was one `flex-row-reverse`.
+
+**The probe, ~2 minutes → ~40s**, and four of the five changes were correctness
+rather than speed: wait on the phase instead of the clock, three viewports at
+once, `--bot-delay 120` (0 was tried — the board then outruns the camera), wait
+for the deal's dice to clear, and one bounded "board at rest" predicate before
+shooting. That fourth one is the trap now in CLAUDE.md: the overlay is
+`pointer-events-none` and play continues underneath it, so the two fixed sleeps
+had been paying for it without ever saying so.
+
+---
+
 ## ✅ The declaration beside the pile, and a board that stops rebuilding itself (N38 — 2026-08-03)
 
 Two asks in one pass, and one measurement each.

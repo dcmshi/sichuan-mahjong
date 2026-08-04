@@ -278,6 +278,36 @@ body {
   margin-bottom: calc(var(--tile-w) * -0.225);
 }
 
+/* The declaration heads the river and is **stood out of the lap** rather than
+   lifted above it. (N42)
+
+   It used to be lapped like any other discard and given `z-index: 2` so the
+   neighbour's 22.5% bleed did not eat its glow. That works, but it reads as one
+   tile sitting *on top of* the pile rather than as the pile's first tile set
+   apart — and a ring cannot be drawn on it at all while its box is a pitch, which
+   is the trap `.tile-mark` already carries a comment about.
+
+   So the tile after it gets a positive margin instead of the negative one: the
+   bleed is cancelled and a hair of felt shows between the declaration and the
+   run. Both seats put the declaration first, so both rules are `+`-selectors on
+   the tile that follows it — only the axis differs, because the left seat's rows
+   run down (`margin-top`) and the right seat's run up (`margin-bottom`). */
+.tile-lap-v .tile-void-discard + .tile-sideways {
+  margin-top: 0.15rem;
+}
+
+.tile-lap-v-up .tile-void-discard + .tile-sideways {
+  margin-bottom: 0.15rem;
+}
+
+/* The one back beside a side seat's "×10". Scoped to `.tile-sm` rather than set
+   on the wrapper for the reason `.discard-tray-v` is: `.tile-sm` declares
+   `--tile-w` on the tile itself, and a declaration on the element beats an
+   inherited one whatever the ancestor's specificity. (N42) */
+.hand-count-tile .tile-sm {
+  --tile-w: 0.75rem;
+}
+
 /* The ring marking a tile at the void declaration. It wraps the tile exactly, so
    it has to share the art's own corner — at `rounded-sm` the ring squared off a
    round tile and its corners stood proud of it. 18.1% of the width equals 14.9%
@@ -299,6 +329,44 @@ body {
   z-index: 2;
 }
 
+/* The horizontal half of the same idea. A lapped tile's box is the *pitch* and
+   its art hangs 29% of that off the left (`.tile-lap .tile-face`), so two things
+   have to change together for the declaration to stand flush and carry a ring:
+   the box grows to the whole tile and the art stops hanging. The aspect ratio
+   goes back to the art's own, or a full-width box would draw a pitch-tall one.
+
+   The tile after it then needs its bleed cancelled *and* a hair of gap — one
+   `margin-left` covers both, because the bleed is a margin too. */
+.tile-lap .tile-void-discard {
+  aspect-ratio: 210 / 255;
+}
+
+.tile-lap .tile-void-discard.tile-sized {
+  width: var(--tile-w);
+}
+
+.tile-lap .tile-void-discard .tile-face {
+  width: 100%;
+  margin-left: 0;
+}
+
+.tile-lap .tile-void-discard + .tile,
+/* The ghost is wrapped (it needs a box to fade), so the adjacent-sibling rule
+   above stops at the wrapper and the first real discard lapped over it. */
+  .tile-lap
+  .tile-ghost
+  + .tile {
+  /* 29.032% of a pitch is 22.5% of a whole tile, and `--tile-w` is the whole. */
+  margin-left: calc(var(--tile-w) * 0.225 + 0.15rem);
+}
+
+/* The declaration that has no tile: a suit named where a tile would be. Faint
+   enough that it cannot be misread as something actually discarded, solid enough
+   to find. It keeps the ring — it is the same statement. (N43) */
+.tile-ghost {
+  opacity: 0.3;
+}
+
 /* Same reason, one level up: the mark is on the hand's list item rather than on the
    tile, and without this the next tile in the run laps over the glow. */
 .tile-lap .tile-kong-mark {
@@ -308,14 +376,33 @@ body {
 /* The void-suit tile each seat flipped on turn 1 — the one public statement of
    what they declared, and worth being able to read back off the pile.
 
-   A glow on the art, not a ring on the box: in a lapped tray the box is the pitch
-   and the art hangs a fifth of a tile past it, so a box ring would sit narrow and
-   offset. `drop-shadow` follows the art's own alpha, which is how the selected
-   and last-discard markers already work. White rather than amber, which is spoken
-   for by the last discard; `:not` so the two can't fight over the same tile. */
-.tile-void-discard:not(.tile-last-discard) .tile-face {
-  filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.95))
-    drop-shadow(0 0 4px rgba(255, 255, 255, 0.55)) drop-shadow(0 2px 2px rgba(0, 0, 0, 0.45));
+   **A ring, the way the void screen marks a tile** (`.tile-mark-pick`), rather
+   than the soft glow this carried before. The glow existed because a lapped tray's
+   box is the pitch and the art hangs a fifth of a tile past it, so a box ring sat
+   narrow and offset — the rules above take the declaration out of the lap, which
+   is what makes the box the tile again and the ring exact. It also earns its
+   keep: the tile is now the only statement of your own void suit, the well's
+   "Void: 万 Wàn" line having gone with it. (N42)
+
+   White rather than amber, which is spoken for by the last discard; `:not` so the
+   two can never fight over one tile. Percentages differ by orientation because a
+   turned tile's box is 255×210 rather than 210×255, and one value would give an
+   elliptical corner on whichever it did not suit. */
+.tile-void-discard:not(.tile-last-discard) {
+  border-radius: 18.1% / 14.9%;
+}
+
+.tile-sideways.tile-void-discard:not(.tile-last-discard) {
+  border-radius: 14.9% / 18.1%;
+}
+
+.tile-void-discard:not(.tile-last-discard)::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.92), 0 2px 5px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
 }
 
 /* The tiles a kong offer would take out of the hand. "It's not super clear in the
@@ -351,9 +438,26 @@ body {
   left: 50%;
   transform: translate(-50%, -50%);
   aspect-ratio: 1;
+  /* 96%, and shrinking it was tried and reverted. **This square's interior *is*
+     the well's centre** — the "Last discard" label, the discard itself and the
+     void line all sit inside the frame, which is `position: absolute` with
+     `z-index: -1` precisely so it costs the row no height. So the empty band
+     between the frame and the well's edges is not space anything can be moved
+     into, and closing it comes straight out of the middle: at 70% the clear
+     interior went 143px → 92px on a 390px phone and 21 wall cells painted under
+     the discard at 320×568. Measured in docs/layout_investigation.md §10.7. */
   width: min(96%, 22rem);
   max-height: 96%;
   pointer-events: none;
+  /* **The 22rem cap does not lift on tablets, and that is deliberate.** It was
+     raised to 30/36rem once, on the reasoning that a 352px frame in an 832px well
+     looks like the table shrinking as the screen grows. That is true and it is the
+     wrong thing to optimise: this frame is a *gauge*. Its 56 tiles are identical
+     face-down backs carrying one fact between them — how much wall is left — and
+     it is drawn behind everything at `z-index: -1` with `pointer-events: none`.
+     Spending a tablet's extra pixels on it makes the background louder while the
+     hand and the discards are what a player actually reads. Those scale instead
+     (see `.tile-sm` and the hand's `max-w` in OwnZone); this stays a texture. */
   /* Behind the well's contents. A positioned element paints after every in-flow
      sibling whatever the DOM order, so the discard would end up under the wall;
      a negative index puts it back, and `.play-well`'s `isolation` is what stops
@@ -502,12 +606,75 @@ body {
 
 /* The side seats' trays lap vertically, so the extra left padding above buys
    them nothing — it is the *horizontal* lap's bleed, and there is no horizontal
-   bleed in a column of sideways tiles. It cost 7.2px of an 80px column, which is
-   most of what the declaration needs to sit beside the pile rather than above
-   it. Symmetric and thin instead: the frame still reads, and 38.9 + 38.9 now
-   fits the column. (N38) */
-.discard-tray.tile-run-v {
+   bleed in a column of sideways tiles. It cost 16.8px of an 80px column, and two
+   river columns are 77.7px of it: with the default padding the second column was
+   drawn outside the tray, which is the exact thing `viewport.spec.ts` asserts
+   against. Symmetric and vertical-only instead. (N38) */
+.discard-tray-v {
+  position: relative;
   padding: 0.3rem 0;
+}
+
+/* Tablets draw every discard bigger, from the same `--tile-w` the shrink below
+   uses. (N38)
+
+   `.tile-sm` is 2rem, and it was the *only* size a tray ever drew — so a 1024px
+   iPad Pro laid 32px discards around a hand whose tiles were 92px, and the board
+   read as a phone screenshot pasted onto a tablet. These lift the ceiling on the
+   same 768/1024 breakpoints the hand cap uses.
+
+   The side columns have to widen with it, and that is why `w-20` in `Game.tsx` and
+   `OpponentSide.tsx` carries `md:w-28 lg:w-32`: a river column is
+   `--tile-w × 255/210`, so two of them are 97px at 2.5rem and 117px at 3rem —
+   both past the 80px a phone column is. Widening comes out of the well, which has
+   400px+ of spare width at these sizes. */
+@media (min-width: 768px) {
+  .discard-tray .tile-sm,
+  .discard-tray-v .tile-sm {
+    --tile-w: 2.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .discard-tray .tile-sm,
+  .discard-tray-v .tile-sm {
+    --tile-w: 3rem;
+  }
+}
+
+/* The shortest phones shrink the side rivers **proportionally**, rather than
+   letting flex squash them. (N38)
+
+   This is the one honest answer to N39 on the vertical axis. A tray tile is a
+   flex item whose only child is `position: absolute`, so it contributes no
+   min-content height and collapses under `flex-shrink` while the art stays sized
+   off `--tile-w` — box and art come apart, and the lap eats past the body band
+   into the face. Overriding `--tile-w` moves the box, the art *and* both lap
+   margins together, because all five of them are derived from it, so the tile
+   stays coherent at any size and the lap stays exactly on the 22.5% band.
+
+   1.5rem is 24px, the readability floor the viewport audit sets, and it makes a
+   six-tile river column `24 + 5 × 18.6 = 117px` against the 156px a full-size one
+   needs. 600px rather than the 700px the void screen uses: a 375×667 phone has
+   the room for full-size tiles after the row compaction above, and shrinking
+   tiles that fit would be spending the floor for nothing. Measured in
+   docs/layout_investigation.md.
+
+   It survived the height N40 freed, which was measured rather than assumed: at
+   2rem the probe reads **2px** of slack left in a 320×568 side column, and a seat
+   holding 3–4 melds wraps its chips to a second ~46px row. The tail is what sets
+   this, not the common case — full-size tiles fit the state the probe reaches and
+   collapse the moment a third meld lands. `sideSlack` in the probe is the number
+   to re-read before touching this.
+
+   Scoped to `.tile-sm`, not to the tray: `--tile-w` is inherited, but `.tile-sm`
+   declares it **on the tile itself**, and a declaration on the element always
+   beats an inherited one whatever the ancestor selector's specificity. Setting it
+   on the tray changed nothing at all and the tiles stayed squashed. */
+@media (max-height: 600px) {
+  .discard-tray-v .tile-sm {
+    --tile-w: 1.5rem;
+  }
 }
 
 /* ---------------------------------------------------------------------------
@@ -517,20 +684,72 @@ body {
    shrink a little further: the last-discard tile drops from "lg" to "md"
    tile width, and the event feed (below) drops to one line.
 --------------------------------------------------------------------------- */
+/* Sized to the wall's mouth, which is the rule rather than a tile-size step. (N41)
+
+   This is the tile a claim is decided on, and it was drawn at 2.5rem on every
+   phone 700px tall or shorter — 40px, against a hand tile's 42px cap. The one
+   object on the board that stops play and asks a question was the same size as
+   one of the thirteen you are merely holding, and it sat under a caption naming
+   it. Hierarchy upside down.
+
+   The ceiling is physical: the frame's interior is where a thrown tile lands on a
+   table, so this grows until it would touch a wall and stops. `overDiscard` in
+   scripts/screenshots/layout-probe.mjs counts wall cells intersecting this box and
+   is the guard — it must stay 0. Re-read it before changing any number here.
+
+   **The rungs are on width, and the first attempt put them on height.** The mouth
+   is as wide as the well, and the well is `viewport − two 80px side columns − the
+   gaps`; its height is whatever flex leaves over. So 390×844 — a tall phone with
+   315px of free well — failed at 5rem with seven cells under the tile, while
+   414×896 passed at the same size on 24 more pixels of width. Height never
+   entered it. The old `max-height: 700px` rung is gone with the caption that
+   made the group tall; the probe reads no vertical overflow at any rung. */
 .last-discard-tile {
-  width: 3.5rem; /* Tile's "lg" width */
+  width: 2.5rem;
+}
+
+@media (min-width: 360px) {
+  .last-discard-tile {
+    width: 3.5rem;
+  }
+}
+
+@media (min-width: 390px) {
+  .last-discard-tile {
+    width: 4.5rem;
+  }
+}
+
+@media (min-width: 414px) {
+  .last-discard-tile {
+    width: 5rem;
+  }
 }
 
 @media (max-height: 700px) {
-  .last-discard-tile {
-    width: 2.5rem; /* Tile's "md" width */
-  }
-
   /* The feed can't scroll internally to make room for a second line — it's
      pointer-events-none, sitting over the board — so showing only the most
      recent line is the honest squeeze. */
   .event-feed-line:not(:last-child) {
     display: none;
+  }
+}
+
+/* And up, on the same breakpoints the hand cap and the trays use. This is the
+   tile a claim is decided on, so it should be the largest thing on the board —
+   which it stopped being once the hand reached 72px on a tablet and this stayed
+   at 56px. (N38) Raised again with the phone base, or a 768px tablet would draw
+   the same tile a 390px phone does. The mouth is wider here too: the frame caps
+   at 22rem, so its interior stops growing while these do. (N41) */
+@media (min-width: 768px) {
+  .last-discard-tile {
+    width: 6rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .last-discard-tile {
+    width: 7.5rem;
   }
 }
 

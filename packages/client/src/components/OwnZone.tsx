@@ -1,4 +1,4 @@
-import { type PlayerView, type TileId, tileTypeOf } from '@sichuan-mahjong/engine';
+import { type PlayerView, type TileId, tileToType, tileTypeOf } from '@sichuan-mahjong/engine';
 import { AnimatePresence, Reorder, motion } from 'framer-motion';
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { type StandDownReason, armedDiscardOutcome } from '../armedDiscard.js';
@@ -56,6 +56,8 @@ function FlyingDiscard({ flight, durationMs }: { flight: Flight; durationMs: num
       // tile's — so the tile in flight has to be drawn the same way or it takes
       // off 22.5% smaller than the tile it left and lands smaller than the pile.
       className="tile-lap fixed left-0 top-0 z-30 pointer-events-none"
+      // Paired with ClaimFlight's — see there.
+      data-tile-flight="true"
       initial={{ x: flight.from.left, y: flight.from.top, width: flight.from.width }}
       animate={{ x: flight.to.left, y: flight.to.top, width: flight.to.width }}
       transition={{ duration: durationMs / 1000, ease: [0.3, 0.7, 0.4, 1] }}
@@ -185,6 +187,32 @@ function OwnZoneImpl({ view, onOpenPile }: { view: PlayerView; onOpenPile: () =>
   }, [flight, discardFlightMs]);
 
   const { voidDiscard: voidDiscardTile, pile: pileDiscards } = splitPile(view.you);
+
+  // Your river, oldest first, with the void declaration heading it — the same
+  // shape all three opponents draw (see `OpponentTop`). Uncapped, unlike theirs:
+  // furiten is decided by what you have already discarded.
+  const head = view.you.pendingFirstDiscard || voidDiscardTile !== null;
+
+  // A ghost, for the two ways your declaration can leave no tile behind. (N43)
+  //
+  // Declare a suit you hold none of and there is nothing to set aside, so no
+  // tile is ever flipped. Or flip one and watch it get punged — a claimed
+  // discard is spliced out of its owner's pond (A15), so the statement vanishes
+  // mid-round. Either way the river stops saying what you declared, which is the
+  // one thing it is there to say.
+  //
+  // Rank 1 of the suit, at low opacity: it stands for the *suit*, not for a tile
+  // that was thrown, and the transparency is what keeps it from being read as
+  // one. Your own zone only — `voidedSuit` is yours to know, and an opponent's
+  // is public solely through the tile they flipped (A40).
+  const ghost =
+    !head && view.you.voidedSuit !== null
+      ? tileToType({ suit: view.you.voidedSuit, rank: 1 }) * 4
+      : null;
+  const cells: ({ id: TileId; declared: boolean } | null)[] = [
+    ...(head ? [voidDiscardTile === null ? null : { id: voidDiscardTile, declared: true }] : []),
+    ...pileDiscards.map(id => ({ id, declared: false })),
+  ];
 
   const isMyTurn = view.turn === seat && view.phase === 'play' && view.claimDeadline === null;
   const canDiscard = isMyTurn && view.yourLegalActions.some(a => a.t === 'discard');
@@ -402,30 +430,21 @@ function OwnZoneImpl({ view, onOpenPile }: { view: PlayerView; onOpenPile: () =>
           a full round wraps to three rows where a 375px one needs two, and the
           third row was 41px the play screen doesn't have. Shrinking beats
           capping — the tray keeps every row the viewport can afford and the rest
-          stays one scroll away, so no discard is ever dropped. (R6) */}
-      {(view.you.discards.length > 0 || view.you.pendingFirstDiscard) && (
-        <div className="px-2 pt-1 flex flex-col min-h-0">
-          <span className="text-[10px] text-green-300 flex-shrink-0">{t('play.yourDiscards')}</span>
-          {/* The void declaration, held out of the pile and set above it: it is the
-              one public statement of what this seat declared, and reading it off
-              the front of a wrapping pile meant hunting for it. Face down until
-              its owner flips it on their first turn (A37). */}
-          {(view.you.pendingFirstDiscard || voidDiscardTile !== null) && (
-            <div className="flex justify-center pt-0.5">
-              {voidDiscardTile === null ? (
-                <TileBack size="sm" />
-              ) : (
-                <Tile
-                  id={voidDiscardTile}
-                  size="sm"
-                  voidDiscard
-                  lastDiscard={
-                    view.lastDiscard?.from === seat && voidDiscardTile === lastDiscardTile
-                  }
-                />
-              )}
-            </div>
-          )}
+          stays one scroll away, so no discard is ever dropped. (R6)
+
+          The void declaration heads the river rather than sitting in a row above
+          it, as it does for all three opponents: it *is* your first discard, and
+          the row of its own cost ~34px of the one column on the board that has
+          nowhere left to give. It keeps its white glow, so it still reads as the
+          one public statement rather than an ordinary throw, and `.tile-lap`
+          already lifts a `.tile-void-discard` above the tile lapping it. */}
+      {/* The label belongs to the tray, so it is inside the same `w-fit mx-auto`
+          group and sits on its top-left corner. It used to be a full-width child
+          while the tray below it was centred, which put it hard against the left
+          edge of the screen with nothing under it — reading as a label for the
+          board rather than for the pile. */}
+      {(view.you.discards.length > 0 || view.you.pendingFirstDiscard || ghost !== null) && (
+        <div className="px-2 pt-1 flex flex-col min-h-0 w-fit max-w-full mx-auto">
           {/* Flush, so a 320px phone fits 9 tiles a row instead of 8 and a full
               round's discards land in two rows rather than three.
               `content-start items-start` because a wrapping flex container
@@ -437,6 +456,13 @@ function OwnZoneImpl({ view, onOpenPile }: { view: PlayerView; onOpenPile: () =>
               capped: a control that works on three seats of four reads as
               broken, and the modal still draws it at a size you can read
               without the internal scroll this tray falls back on. (N33) */}
+          {/* Directly above the tray and flush against its top-left: `leading-none`
+              and no margin either side, so it lands on the tray's border rather
+              than near it. It used to clear the declaration too, which sat it two
+              rows off the thing it names and made it read as floating. */}
+          <span className="text-[10px] leading-none text-green-300 flex-shrink-0 self-start">
+            {t('play.yourDiscards')}
+          </span>
           <button
             type="button"
             ref={trayRef}
@@ -448,18 +474,29 @@ function OwnZoneImpl({ view, onOpenPile }: { view: PlayerView; onOpenPile: () =>
             // spills onto a second — but three discards get a tray three tiles
             // wide instead of a bar with a hole in it. justify-center stays for
             // the last, partial row of a wrapped pile.
-            className={`flex flex-wrap justify-center content-start items-start w-fit max-w-full mx-auto cursor-pointer discard-tray tile-lap mt-0.5 min-h-0 overflow-y-auto ${
+            className={`flex flex-wrap justify-center content-start items-start w-fit max-w-full mx-auto cursor-pointer discard-tray tile-lap min-h-0 overflow-y-auto ${
               flight ? 'discard-landing' : ''
             }`}
           >
-            {pileDiscards.map(id => (
-              <Tile
-                key={id}
-                id={id}
-                size="sm"
-                lastDiscard={view.lastDiscard?.from === seat && id === lastDiscardTile}
-              />
-            ))}
+            {ghost !== null && (
+              <span className="tile-ghost flex">
+                <Tile id={ghost} size="sm" voidDiscard interactive={false} />
+              </span>
+            )}
+            {cells.map((cell, i) =>
+              cell === null ? (
+                // Face down until you flip it on your first turn (A37).
+                <TileBack key={`b${i}`} size="sm" />
+              ) : (
+                <Tile
+                  key={cell.id}
+                  id={cell.id}
+                  size="sm"
+                  {...(cell.declared ? { voidDiscard: true } : {})}
+                  lastDiscard={view.lastDiscard?.from === seat && cell.id === lastDiscardTile}
+                />
+              ),
+            )}
           </button>
         </div>
       )}
@@ -532,8 +569,17 @@ function OwnZoneImpl({ view, onOpenPile }: { view: PlayerView; onOpenPile: () =>
               // 75, not 60: early in a hand the void suit is the only legal
               // discard, so most of the hand is dimmed at once and 60 read as
               // "these tiles are barely here" rather than "not this turn".
+              //
+              // The cap rises with the screen. 42px is a phone number — it stops
+              // a three-tile hand ballooning across a 320px row — and it used to
+              // be the only one, so a 1024px tablet drew the same 42px tiles and
+              // left **420px of its own hand row unused**. The `md`/`lg`
+              // breakpoints are 768 and 1024, which is exactly where the measured
+              // slack appears (164px at 768, 206px at 810, 420px at 1024). Still
+              // a cap rather than `none`: 13 tiles sharing a 1024px row would draw
+              // 78px each, which is bigger than the round-end reveal. (N38)
               className={[
-                'flex-1 min-w-0 max-w-[42px]',
+                'flex-1 min-w-0 max-w-[42px] md:max-w-[60px] lg:max-w-[72px]',
                 legalDiscards.has(id) ? '' : 'opacity-75',
                 kongTypes.has(tileTypeOf(id)) ? 'tile-kong-mark' : '',
               ]

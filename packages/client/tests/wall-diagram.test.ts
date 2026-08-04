@@ -3,6 +3,7 @@ import { WALL_SIZE, createRng, throwForWall } from '@sichuan-mahjong/engine';
 import { describe, expect, it } from 'vitest';
 import {
   WALL_EW_DEPTH,
+  WALL_LAP,
   WALL_NS_DEPTH,
   WALL_STACKS,
   WALL_STACKS_PER_SIDE,
@@ -97,7 +98,10 @@ describe('wall diagram', () => {
     const across = wallSlots(fromHead(0)).slice(28, 32);
     const pitch = Math.abs(across[2]!.left - across[0]!.left);
     expect(pitch).toBeLessThan(across[0]!.width);
-    expect(pitch / across[0]!.width).toBeCloseTo(0.775, 3);
+    // Read off the constant rather than restating it, so a change to the lap is a
+    // one-line change here rather than a puzzle. WallDiagram's LAP doc records why
+    // lapping harder than the body band was tried and reverted.
+    expect(pitch / across[0]!.width).toBeCloseTo(1 - WALL_LAP, 3);
   });
 });
 

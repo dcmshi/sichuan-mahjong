@@ -372,7 +372,11 @@ function PlayPhase({ view }: { view: PlayerView }) {
 
       <PlayTopBar view={view} />
 
-      {/* Opponent across */}
+      {/* Opponent across, full width. The side columns deliberately do **not**
+          reach up into this band: taking 80px a side for them narrowed this
+          seat's river to 128px on a 320px phone, which drew its nine tiles at
+          15.9px of art against a ~24px readability floor — the squash moved
+          rather than went away. See docs/layout_investigation.md. */}
       <div className="py-2 px-3">
         <OpponentTop view={view} relSeat={1} onOpenPile={openTopPile} />
       </div>
@@ -383,7 +387,7 @@ function PlayPhase({ view }: { view: PlayerView }) {
           once OpponentSide's tray stops wrapping (R2.3): that's what lets
           this row fall to what the well actually needs. */}
       <div className="flex flex-1 min-h-0 gap-2 px-2">
-        <div className="w-20 flex-shrink-0">
+        <div className="w-20 md:w-28 lg:w-32 flex-shrink-0">
           <OpponentSide view={view} relSeat={2} side="left" onOpenPile={openLeftPile} />
         </div>
         <div className="relative flex-1 flex flex-col items-center justify-center gap-1 play-well p-2 min-h-0">
@@ -397,8 +401,14 @@ function PlayPhase({ view }: { view: PlayerView }) {
               much round is left without doing arithmetic. */}
           <WallDiagram remaining={view.wallRemaining} state={wallStateOf(view)} />
           {lastDiscardTile !== null && (
-            <div className="flex flex-col items-center gap-1">
-              <span className="text-xs text-green-300">{t('play.lastDiscard')}</span>
+            <div className="flex flex-col items-center">
+              {/* Spoken, not drawn. This tile is alone at the centre of the wall's
+                  mouth, amber-glowing, and it scales in as it lands — a caption
+                  above it repeated what all three of those already say, and it
+                  competed with the tile for the one place on the board the eye
+                  goes first. The 20px it cost is most of what pays for the larger
+                  tile below, so the group's footprint is unchanged. */}
+              <span className="sr-only">{t('play.lastDiscard')}</span>
               <motion.div
                 key={lastDiscardTile}
                 initial={{ scale: 1.4, opacity: 0 }}
@@ -417,14 +427,21 @@ function PlayPhase({ view }: { view: PlayerView }) {
               </motion.div>
             </div>
           )}
-          {/* Rendered only when there is a suit to name. An empty string still
-              gives the div a line box, and on the shortest viewports every pixel
-              in the well is already spoken for (R1). */}
-          {view.you.voidedSuit && (
-            <div className="text-xs text-white/30 mt-1">
-              {t('play.void', { suit: t(`suit.${view.you.voidedSuit}`) })}
-            </div>
-          )}
+          {/* The "Void: 万 Wàn" line stood here and is gone. (N42)
+              Your declaration is now a ringed tile at the head of your own river,
+              which names the suit by showing it — the same statement the line was
+              making in words, in the place a table makes it.
+
+              It was also the thing pushing the well's composition off: as a
+              sibling of the discard inside a `justify-center` column its ~20px
+              lifted the tile 10px above the well's centre, and the wall frame is
+              centred on that same axis, so the one tile that should sit dead
+              centre in the mouth was riding into the top wall on every viewport
+              (320×568 overlapped by 0.3px, which the probe caught).
+
+              One case loses the statement: a seat that declared a suit it held
+              none of never flips a declaration, so no tile is ever drawn for it.
+              `firstDiscardIsVoid` stays false there. */}
           {/* In the well, not the top bar: a fourth icon up there truncated the
               turn indicator to "Y...", and the bar has no width to spare. Here it
               is absolutely positioned, so it costs no height either — and the
@@ -443,7 +460,7 @@ function PlayPhase({ view }: { view: PlayerView }) {
             OpponentSide size to min-content, so the tray's `max-w-full` resolved
             against 211.6px instead of this column's 80px and spilled across the
             well. The left column never had the bug because it was always a block. */}
-        <div className="w-20 flex-shrink-0">
+        <div className="w-20 md:w-28 lg:w-32 flex-shrink-0">
           <OpponentSide view={view} relSeat={0} side="right" onOpenPile={openRightPile} />
         </div>
       </div>

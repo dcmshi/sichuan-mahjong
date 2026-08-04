@@ -16,11 +16,34 @@ export const WALL_TILES = WALL_STACKS * 2;
  * A tile's *length* is whichever of its dimensions runs along its wall — width on
  * the north and south walls, height on the east and west ones — so the four walls
  * come out the same length and the frame is square.
+ *
+ * Because every length here is a percentage, lapping harder and growing `TILE`
+ * together leaves the wall the same fraction of the square while making each tile
+ * a bigger fraction of it — so the *square* can shrink for the same drawn tile
+ * size, which is where the well's free space comes from. `.wall-diagram`'s
+ * `width` in index.css is the other half of that trade.
  */
 const TILE = 10.6;
 /** The art's own 210:255. */
 const RATIO = 210 / 255;
-/** Stacks sit flush, lapped exactly as the hand laps. */
+/**
+ * How much of each stack the next one covers — the 22.5% body band, as the hand
+ * and the trays use.
+ *
+ * **Lapping harder was tried and reverted; the three constants below are coupled
+ * and the trade does not come out.** A harder lap shortens a wall, which pushes
+ * its ends away from the corner where the next wall begins — so `TILE` has to
+ * grow to keep the frame closed (at 22.5% it closes near `TILE = 12.5`, at 50%
+ * near 15). Bigger tiles make each wall *thicker*, and a wall's thickness is
+ * subtracted from the frame's interior twice. At `LAP = 0.5, TILE = 15` the clear
+ * middle went 143px → 126px on a 390px phone and the top wall painted across the
+ * "Last discard" label.
+ *
+ * Shrinking the square to match does not help either, because **this frame's
+ * interior *is* the well's centre** — see `.wall-diagram` in index.css. So the
+ * corner whitespace and the packed look cannot both be had: closing the corners
+ * costs the middle, and the middle is used.
+ */
 const LAP = 0.225;
 /** How much of the tile beneath a stacked one still shows. */
 const RISE = 0.42;
@@ -28,6 +51,9 @@ const RISE = 0.42;
 const PITCH = TILE * (1 - LAP);
 const LENGTH = PITCH * (WALL_STACKS_PER_SIDE - 1) + TILE;
 const START = (100 - LENGTH) / 2;
+
+/** Exported so the tests assert on the lap rather than restating its value. */
+export const WALL_LAP = LAP;
 
 /** North and south: the length is the width, so the depth is the height. */
 const NS_W = TILE;

@@ -24,8 +24,29 @@ import { TileBack } from './Tile.js';
 export function HandCountChip({
   count,
   orientation = 'vertical',
-}: { count: number; orientation?: 'vertical' | 'horizontal' }) {
+}: { count: number; orientation?: 'vertical' | 'horizontal' | 'count' }) {
   if (count === 0) return null;
+  // `count` drops the backs entirely and keeps only the number. That is a
+  // smaller step than it looks: this component's whole premise is that an
+  // opponent's hand is public *only* as a count, so it has always been drawing a
+  // number rather than tiles — the backs are the decoration, not the
+  // information. In an 80px side column they cost 39px of height and ~40px of
+  // width, and dropping them is what lets the name and the count share one 21px
+  // row instead of taking 82px in two. (N38)
+  if (orientation === 'count') {
+    // One back, and a small one. A bare "×10" beside a name is a number with no
+    // noun — it could as easily be a score or a seat. The back says *tiles* in the
+    // width of a glyph: `.hand-count-tile` takes it to 0.9rem, so the whole chip
+    // still fits the 21px row the name shares and the trays keep the height. (N42)
+    return (
+      <span className="flex items-center gap-0.5">
+        <span className="hand-count-tile flex">
+          <TileBack size="sm" />
+        </span>
+        <span className="text-[11px] font-semibold text-green-200">×{count}</span>
+      </span>
+    );
+  }
   const horizontal = orientation === 'horizontal';
   return (
     <div className="flex items-center gap-1">

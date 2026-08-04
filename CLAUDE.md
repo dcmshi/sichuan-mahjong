@@ -22,6 +22,7 @@ belongs in `docs/history.md`, not here.
 | **[docs/traps-and-decisions.md](./docs/traps-and-decisions.md)** | The long form of the traps below, plus decisions already settled so they are not relitigated | …you are picking this up cold, or hit a layout/CSS surprise |
 | **[docs/handoff-tile-rendering.md](./docs/handoff-tile-rendering.md)** | How tiles are drawn (the art, lapped), the measured layer geometry, every knob, the four things easy to get wrong | …you are changing how a tile looks |
 | **[docs/viewport-audit.md](./docs/viewport-audit.md)** | Measured mobile viewport overflow, and why the landscape layout is shelved | …you change the play or round-end layout |
+| **[docs/layout_investigation.md](./docs/layout_investigation.md)** | The N40–N44 play-screen pass: how the height divides, every rejected option with its measurement, the seated-river rule, and how the probe lies if you let it | …you change the play screen, or run `layout-probe.mjs` |
 | **[docs/audit-payments.md](./docs/audit-payments.md)** | Every payment rule checked against three sources outside the PDF, with a decision each. The fan cap is the one divergence | …you change a payment, a fan value, or `fanCap` |
 | **[docs/audit-public-deployment.md](./docs/audit-public-deployment.md)** | What a public URL exposes that a LAN never did — five findings, each reproduced against the live service | …you touch the WS boundary, the HTTP routes, or anything a stranger can reach |
 | **[docs/design-hosted-server.md](./docs/design-hosted-server.md)** | The Render deployment: deploy steps, why it needs no client change, and why the hardening is *not* conditional on `--hosted` | …you are working on hosting, or on anything the tailnet used to protect |
@@ -53,6 +54,11 @@ pnpm e2e
 # Regenerate the README screenshots in docs/ (needs the VITE_E2E client +
 # built server above; drives the real app and writes into the repo)
 pnpm shots
+
+# Layout probe — the worst case at nine viewports, measured and shot. Needs the
+# VITE_E2E client above and a server started with --bot-delay 120 (not 0: the
+# board then outruns the camera). Writes prototype-shots/<label>/, never deletes.
+node scripts/screenshots/layout-probe.mjs <label>
 
 # Tile sandbox — every tile the app draws, solo and lapped, at every size it uses.
 # Open the file directly: no build, no server, no game. It links the real
@@ -224,6 +230,19 @@ The long form, with the measurements behind each, is in
   tray is content-sized and dropping a tile frees the space that let you drop it.
   **Found by regenerating a screenshot, not by a test** — the tray guard reads
   boxes, and the boxes were correct the whole time.
+- **Every seat's river is *your own layout*, turned to that seat's chair — and the
+  only free axis is the wrap.** Yours runs along your right hand and wraps toward
+  you. Rotate that: the left seat's rows run **down** and wrap **left**, so its
+  oldest tile is the top of its *rightmost* row; the right seat's run **up** and
+  wrap **right**, oldest at the bottom of its *leftmost*; the across seat's run
+  **left** from the right end. A row's *direction* is not a choice — the 22.5%
+  body band sits at the bottom of the left seat's tiles and the top of the right
+  seat's, so those rows must run down and up respectively or the lap covers ink
+  (N36). **Three separate passes were spent mirroring cell arrays that never
+  needed mirroring**, and two of them (N42, N43) imposed the *viewer's* reading
+  order on all four seats, which is not what a table does. The wrap is one
+  `flex-row-reverse`, and it was on the wrong side from the start. `declPos` and
+  `riverEnds` in `scripts/screenshots/layout-probe.mjs` assert the corners.
 - **The two side seats face opposite ways, so they lap opposite ways.** The band
   is measured in from the art's *right* edge, which `rotate(90deg)` puts at the
   bottom of the on-screen tile and `rotate(-90deg)` puts at the top — so the left
@@ -277,6 +296,19 @@ The long form, with the measurements behind each, is in
   boot** — enough of them and the concurrent-games ceiling refuses new lobbies
   before you have played one. Clear it at `%APPDATA%\sichuan-mahjong\games.db`
   with the server stopped.
+- **The deal's dice overlay is `pointer-events-none` and the game plays on
+  underneath it.** No phase, screen or click failure reveals it — `getPhase()`
+  reaches `play` while it is still animating — so anything that screenshots a
+  board has to assert `[data-dice-overlay]` is **gone** (N25). The layout probe
+  learned this the expensive way: its two fixed sleeps had been paying for the
+  overlay without saying so, and replacing them with proper phase waits produced
+  nine green runs of a live board photographed under a seating roll.
+- **A probe that waits is a probe waiting for the round to end.** Bots keep taking
+  turns, so any settle longer than a frame or two is time for the round to finish
+  and re-deal. `layout-probe.mjs` waits only on conditions the app publishes, all
+  bounded — and note the last discard enters at `scale: 1.4`, which moves
+  `getBoundingClientRect`, so measuring mid-entrance reported 14 wall cells under
+  a tile that was nowhere near them.
 - **A local test pass is weak evidence for the layout guards.** R6 passed locally
   every time while failing CI three runs running; CI has less slack. Poll the run.
 - **`VITE_E2E=1` builds are for tests only.** Rebuild without it before handing the
@@ -290,9 +322,12 @@ The long form, with the measurements behind each, is in
 
 ## Status
 
-Everything through **N38** is shipped: all v1 work, six full-repo audit passes
-(A1–A40), the frontend/design pass (F1–F25), the mobile viewport work (R1–R7),
-the hosting work (C1–C10), and the whole feature run N1–N38.
+Everything through **N44** is shipped (N39 excepted — see TODO): all v1 work, six
+full-repo audit passes (A1–A40), the frontend/design pass (F1–F25), the mobile
+viewport work (R1–R7), the hosting work (C1–C10), and the whole feature run
+N1–N44. **N40–N44** are the phone-first play-screen pass of 2026-08-04, worked
+with `scripts/screenshots/layout-probe.mjs` — nine viewports, measured; the full
+record is [docs/layout_investigation.md](./docs/layout_investigation.md).
 Per-item history, each with the diagnosis that made it worth writing down, is in
 [docs/history.md](./docs/history.md), newest first. Deferrals are recorded as
 O1–O5 in [ARCHITECTURE.md §12](./ARCHITECTURE.md#12-open-questions--explicit-deferrals).
