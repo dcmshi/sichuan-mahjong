@@ -36,13 +36,21 @@ so it overflows the box and the lap eats past the 22.5% body band into the face.
 At the extreme — late in a round, on a seat holding melds — the pile drew as a
 stack of black outlines with no tile visible between them.
 
-N38 took the mitigation: the cap is **6**, which is what a side column can draw
-at full size, and `+N` plus N33's tap-to-open carry the rest. Measured on a
-390×844 phone with the cap in place, both columns render six tiles at 32px with
-no shrink at all. What is left open is that **6 is a constant and the space is
-not**: a column gets 179px with no melds and ~135px with two meld chips, so six
-still squashes a little on a seat that has ponged twice, and wastes room on one
-that hasn't.
+Two mitigations are in, and neither computes anything. N38 capped the pile;
+**N40 replaced that cap with a river of six-tile rows, two of them — twelve
+cells** (`RIVER_ROWS × RIVER_COLS` in `OpponentSide`) — so the second row grows
+sideways and the tray's *height* stops at six tiles however deep the pile gets.
+`+N` and N33's tap-to-open carry the rest. Below 600px tall, `--tile-w` drops the
+whole tile to 24px proportionally, which is the one honest answer on this axis:
+it moves box, art and both lap margins together, so the tile stays coherent and
+the lap stays on the 22.5% band.
+
+What is left open is that **the numbers are constants and the space is not.**
+Measured after N40–N44 (`sideSlack` in the probe): a side column has 33px of
+headroom to spare at 320×568 and 85–131px at 375×667, and a seat holding 3–4
+melds wraps its chips to a second ~46px row that eats all of it. So the shortest
+phone still draws 24px tiles where 32px would fit in the common case, and the
+4-meld tail overshoots by ~5px even at 24px.
 
 The fix is to compute the count from the height:
 `1 + floor((h − padding − 32) / 24.8)`. The reason it is not already done is that
