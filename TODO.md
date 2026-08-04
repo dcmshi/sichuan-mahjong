@@ -16,17 +16,20 @@ so it isn't rediscovered as a bug.
 
 ## Open
 
-**A41–A48 — the refactor / coverage audit of 2026-08-04.** A seventh full-repo
-pass, this one asking what can be deleted or unified and what is untested that
-matters. Every finding carries its evidence in
-[docs/audit-refactor-and-coverage.md](./docs/audit-refactor-and-coverage.md);
-this is only the list. Nothing here is shipped.
+**A43–A48 — what's left of the refactor / coverage audit of 2026-08-04.** A
+seventh full-repo pass, asking what can be deleted or unified and what is untested
+that matters. Every finding carries its evidence in
+[docs/audit-refactor-and-coverage.md](./docs/audit-refactor-and-coverage.md); this
+is only the list.
+
+**A41 and A42 shipped 2026-08-04** — the watch token now round-trips a host
+restart, and all seven host-privilege gates are covered with a refusal and a
+positive control each. Both are written up in
+[docs/history.md](./docs/history.md).
 
 | | Item | Size |
 |---|---|---|
-| **A41** | **Spectator links die on a host restart.** `restoreRoomsFromDisk` re-registers seat tokens and not the room's watch token, so `isWatchToken` fails for every restored game. The two functions written for that path (`watchTokenFor`, `importWatchToken`) are dead, which is how it surfaced. **Verified by running it**, not by reading it. Persistence is off in hosting, so this is LAN / Tailscale / self-hosted only. | ~20 lines with the test |
-| **A42** | **No test anywhere covers a host-privilege gate.** No file in `packages/server/tests` or `e2e/` contains `not_host`, `kickBot` or `setBotDifficulty` — six authorization checks in `ws.ts`, all uncovered, on a service anyone can reach. `server.test.ts` already has the socket harness. | one file |
-| **A43** | **Five dead exported symbols**, found by coverage and confirmed by reference scan: `isVoidSuitTile` (an N46 leftover sitting directly above `mustPlayVoidFirst`), `revokeToken`, `limiterSizes`, `getWsClient`, `WALL_EW_H`. | minutes |
+| **A43** | **Five dead exported symbols**, found by coverage and confirmed by reference scan: `isVoidSuitTile` (an N46 leftover sitting directly above `mustPlayVoidFirst`), `revokeToken`, `limiterSizes`, `getWsClient`, `WALL_EW_H`. A41 consumed the other two (`watchTokenFor`, `importWatchToken`), which are now live. | minutes |
 | **A44** | **The river's cell construction is written three times** — the `head`/`room`/`shown`/`hidden` split in `OwnZone`, `OpponentTop` and `OpponentSide`. This is the code N42, N43 and N44 each got wrong in a different seat. Pure, so `riverCells()` makes the corners the probe asserts on unit-testable. | small |
 | **A45** | **`kickBot` indexes `lobby.slots` with an unvalidated wire value**, six lines below the sibling case whose comment explains exactly why that needs an `isSeat` guard. **Not exploitable today** — the write is gated on `slot?.isBot` and the reachable keys fall through — so this is a hardening gap, not a vulnerability. | one line |
 | **A46** | **`reconcileHandOrder` wants extracting from `OwnZone`.** Nine lines of pure list logic inside a `useEffect` with a `biome-ignore`, governing whether a player's dragged arrangement survives a draw, a claim and a re-deal. Zero tests. | small |

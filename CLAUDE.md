@@ -362,16 +362,17 @@ is a deliberately accepted granularity cost. Free tier, so persistence stays off
 [docs/design-hosted-server.md](./docs/design-hosted-server.md).
 
 **Open** — see [TODO.md](./TODO.md), which is only the open list, and is
-**A41–A48**: the refactor/coverage pass of 2026-08-04, a seventh full-repo audit.
-Two of them are worth knowing before touching that code. **A41 is a real bug** —
-`restoreRoomsFromDisk` re-registers seat tokens and not the watch token, so a host
-restart kills every spectator link while players rejoin fine (verified by running
-it; persistence is off in hosting, so it is LAN/self-hosted only). **A42 is the
-gap that matters most** — no test anywhere covers a host-privilege gate, so all six
-`not_host` / seat-0 checks in `ws.ts` are unverified on a service anyone can reach.
-The rest are dead symbols, three copies of the river's cell construction, and the
-untouched persistence layer. Evidence for each in
+**A43–A48**: what remains of the refactor/coverage pass of 2026-08-04, a seventh
+full-repo audit — dead symbols, three copies of the river's cell construction, an
+unvalidated array index in `kickBot`, and the persistence layer every test mocks
+away. Evidence for each in
 [docs/audit-refactor-and-coverage.md](./docs/audit-refactor-and-coverage.md).
+**A41 and A42 shipped the same day.** A41 was the pass's only real bug —
+`restoreRoomsFromDisk` re-registered seat tokens and not the watch token, so a host
+restart killed every spectator link while players rejoined fine. A42 closed the
+gap that mattered most: **nothing anywhere tested a host-privilege gate**, so all
+seven `not_host` / seat-0 checks in `ws.ts` were unverified on a service anyone can
+reach — no bug behind it, which is exactly why it survived six audit passes.
 **N39 closed won't-do** the same day. Five items shipped 2026-08-03:
 **N19** (a hard bot, plus the medium regression the ladder guard caught), **N26**
 (the nine wind call sites), the two tray-geometry bugs N32 left when it turned two

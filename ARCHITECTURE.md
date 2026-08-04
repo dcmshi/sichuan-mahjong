@@ -747,6 +747,15 @@ watch token in the same map would have seated a spectator as a player. Separate
 stores make that unrepresentable rather than something a guard has to catch. It is
 keyed by code so it outlives `deleteLobby`, which `startGame` calls.
 
+**Being a separate store, it needs its own line in every path that handles
+tokens.** `RoomSnapshot.watchToken` carries it across a host restart, alongside
+but not inside `tokens`. It went missing from the restore path for as long as that
+path has existed: seat tokens came back and the watch token did not, so a restart
+closed every spectator socket with `no_game` on a room the players were rejoining
+fine. The field is optional — snapshots written before A41 don't carry one, and a
+room whose lobby never issued one has none; both restore with spectating
+unavailable, which is what they had before.
+
 Every socket open costs the same per-caller budget as a code lookup — opening a
 socket is the other way to ask whether a code is real. Sockets are pinged every
 30s and a peer that stops answering is terminated (C7): nothing on a LAN closes an
@@ -1100,6 +1109,8 @@ After step 4, every future game uses the same URL — no per-session re-sharing.
 - Round-end reveals: `buildRoundResult` carries hands, melds, ready state and a per-seat ledger, and a spectator joining at round end is handed the result.
 - Snapshot validation: `validateRoomSnapshot` names every field a persisted snapshot is missing, checked against the keys of a freshly created game so the required set cannot drift. `restoreRoomsFromDisk` drops an incompatible row rather than half-restoring it — `restore` used to assign the persisted state verbatim, and of the fields that could go missing, two throw and seventeen silently corrupt the projected view.
 - Replay back-compat lives in its own file because `server.test.ts` mocks `src/persistence.js` wholesale.
+- **Host privilege (A42):** every host-only command refused for a non-host — `startGame`, `addBot`, `setBotDifficulty`, `kickBot` in the lobby, and `nextRound`, `endMatch`, `setBotSpeed` in game. Each gets a refusal *and* a positive control, because a negative-only test cannot tell a working guard from a typo'd message name. Where a refusal has an observable effect the test asserts the state is unchanged, not merely that an error frame came back. Verified by mutation: disabling all seven guards fails all seven cases.
+- **Token restore (A41):** the watch token round-trips `serialize` → `restoreRoomsFromDisk` beside the seat tokens, snapshots predating the field still restore, and a restored watch token still cannot resolve as a seat token.
 
 ### 11.3 Client
 

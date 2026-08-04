@@ -32,7 +32,13 @@ import {
   botVoidActionHard,
 } from './bot.js';
 import { deleteLiveRoom, loadLiveRooms, saveGameWithCode, saveLiveRoom } from './persistence.js';
-import { importToken, revokeTokensForCode, tokensForCode } from './tokens.js';
+import {
+  importToken,
+  importWatchToken,
+  revokeTokensForCode,
+  tokensForCode,
+  watchTokenFor,
+} from './tokens.js';
 
 const RECONNECT_TIMEOUT_MS = 60_000;
 const PERSIST_DEBOUNCE_MS = 1000;
@@ -187,6 +193,16 @@ export type RoomSnapshot = {
   tokens: Array<{ token: string; code: string; seat: Seat; role: 'host' | 'player' }>;
   /** Optional: snapshots written before A39 don't carry it. */
   roundIndex?: number;
+  /**
+   * The room's spectator secret. Separate from `tokens` because it is a
+   * separate store (see `tokens.ts`) — folding it in would make it resolvable
+   * as a seat, which is the exact confusion that store exists to prevent.
+   *
+   * Optional: snapshots written before A41 don't carry it, and a room whose
+   * lobby never issued one has none. Both restore with spectating unavailable,
+   * which is what they had before.
+   */
+  watchToken?: string;
 };
 
 export class GameRoom {
@@ -551,6 +567,7 @@ export class GameRoom {
 
   /** Build a serializable snapshot of this room (state + slots + tokens). */
   serialize(): RoomSnapshot {
+    const watchToken = watchTokenFor(this.code);
     return {
       code: this.code,
       state: this.state,
@@ -563,6 +580,9 @@ export class GameRoom {
         seat: t.seat,
         role: t.role,
       })),
+      // Spread rather than assigned: `exactOptionalPropertyTypes` is on, so an
+      // explicit `undefined` is not the same as an absent optional field.
+      ...(watchToken ? { watchToken } : {}),
     };
   }
 
@@ -1056,6 +1076,10 @@ export function restoreRoomsFromDisk(): number {
       for (const t of snap.tokens) {
         importToken(t.token, { code: t.code, seat: t.seat, role: t.role });
       }
+      // The watch token goes back with them. It lives in its own store, so it
+      // needs its own call — and without one a restart closed every spectator
+      // socket with `no_game` on a room the players were rejoining fine. (A41)
+      if (snap.watchToken) importWatchToken(code, snap.watchToken);
       room.resumeAfterRestore();
       restored++;
     } catch (err) {

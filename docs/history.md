@@ -12,6 +12,68 @@ file had reached 1,566 lines of which two were actually open.
 
 ---
 
+## ✅ The watch token that never came back (A41 — 2026-08-04)
+
+Found by the refactor/coverage audit, and found *because* of dead code: the two
+functions written for this path were both unreferenced. `importWatchToken`'s own
+doc comment read "Re-register a watch token on restore, alongside the seat
+tokens" — it had been written for a call site that never landed, and
+`watchTokenFor` was the getter the serializer would have used.
+
+`restoreRoomsFromDisk` re-registers each room's **seat** tokens from
+`snap.tokens`, so players reconnect into their chairs after a host restart. It
+never re-registered the room's **watch** token, because `RoomSnapshot` had no
+field for one and `serialize()` never captured it. `watchTokens` is a
+module-level `Map`, so a fresh process starts empty and `isWatchToken` fails for
+every restored room — every spectator socket closed with `no_game`, on a game
+that was running fine and that players were rejoining normally.
+
+**The cause is the thing that makes the design right.** The watch token lives in
+its own store precisely so a spectator secret can never resolve to a chair; the
+cost of that separation is that every path handling tokens needs a second line,
+and the restore path only ever had the first. `RoomSnapshot.watchToken` is
+optional, so pre-A41 snapshots and rooms whose lobby never issued one both still
+restore — with spectating unavailable, which is what they had before.
+
+Verified by running it rather than by reading it: a test across a
+`serialize` → `restoreRoomsFromDisk` cycle passed the seat-token assertion and
+failed the watch-token one, then passed both after the fix. Five cases in
+`watch-token-restore.test.ts`, including that a restored watch token still cannot
+resolve as a seat token — the invariant the two-store design exists to hold.
+
+Blast radius was small and non-zero: hosting runs with persistence off (free
+tier), so this only ever bit LAN, Tailscale and self-hosted games — the
+deployments where the host restarting mid-game is most likely.
+
+---
+
+## ✅ Nothing tested a host-privilege gate (A42 — 2026-08-04)
+
+No file in `packages/server/tests` or `e2e/` contained the string `not_host`,
+`kickBot` or `setBotDifficulty`. **Seven authorization checks, all unverified**,
+on a service anyone holding a four-character code can reach: `startGame`,
+`addBot`, `setBotDifficulty` and `kickBot` in the lobby, `nextRound`, `endMatch`
+and `setBotSpeed` in game. A8 put real thought into seat 0 being the host seat and
+nothing checked that what was built on top of it held.
+
+No bug behind it — every gate works. That is worth stating plainly, and it is also
+the reason the gap survived six audit passes: nothing was broken, so nothing drew
+attention. The value here is that the next edit to `handleLobbyMessage` or
+`handleGameMessage` cannot quietly drop one.
+
+**Each gate gets a refusal and a positive control.** The refusal proves the guard
+fires; the control proves the refusal wasn't for an unrelated reason — a typo in
+the message name, a lobby that had already closed — which is the failure a
+negative-only test cannot distinguish from success. Where a refusal has an
+observable effect the test asserts the state is *unchanged* rather than only that
+an error came back: the kicked bot is still seated, the room still exists, the
+pace is still what it was.
+
+Verified by mutation: disabling all seven guards in `ws.ts` fails all seven cases.
+`ws.ts` coverage went 68.2% → 81.6%, and the server package 76.7% → 79.2%.
+
+---
+
 ## ✅ The void suit you drew back (N46 — 2026-08-04)
 
 Reported as "sometimes it allows you to select other non-voided suit when you do

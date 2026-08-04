@@ -9,8 +9,13 @@ reproduces every number below).
 coverage gap that matters more than its size** — the WS gateway's host-privilege
 checks, which no test in the repo touches.
 
-Nothing here is shipped. Each item carries the evidence and a size, so the order of
-work is a choice rather than a guess.
+> **Status, 2026-08-04.** **A41 and A42 have shipped** — §2 and §5a below are the
+> record of what was wrong, kept as written. The rest (A43–A48) is open. Where a
+> number changed, the section says so; everything else still measures as stated.
+> Server coverage is now **79.2%** statements and `ws.ts` **81.6%**.
+
+Each item carries the evidence and a size, so the order of work is a choice rather
+than a guess.
 
 ---
 
@@ -42,7 +47,7 @@ mid-test. All 167 server tests pass in that run.
 
 ---
 
-## 2. The bug: spectator links die on a host restart
+## 2. The bug: spectator links die on a host restart — **fixed (A41)**
 
 **`packages/server/src/room.ts:1050-1058`, `packages/server/src/tokens.ts:56`**
 
@@ -70,10 +75,13 @@ a `serialize` → `restoreRoomsFromDisk` cycle passes on the seat token
 Tailscale and self-hosted runs with a database — exactly the deployments where the host
 restarting mid-game is most likely.
 
-**Fix:** add `watchToken?: string` to `RoomSnapshot`, populate it from `watchTokenFor`
-in `serialize()`, and call `importWatchToken` beside the seat-token loop. Optional field,
-so old snapshots still restore — the same shape `roundIndex` already uses.
-Then the regression test above. ~20 lines including the test.
+**Fixed as described:** `watchToken?: string` on `RoomSnapshot`, populated from
+`watchTokenFor` in `serialize()` and imported beside the seat-token loop. Optional, so
+old snapshots still restore — the same shape `roundIndex` already uses. (It is spread
+rather than assigned: `exactOptionalPropertyTypes` is on, so an explicit `undefined` is
+not an absent field.) Five cases in `watch-token-restore.test.ts`, including that a
+restored watch token still cannot resolve as a seat token. Confirmed to catch the
+regression by reverting the fix: two of the five fail.
 
 ---
 
@@ -88,8 +96,8 @@ function bodies and nothing else.
 |---|---|---|
 | `isVoidSuitTile` | `engine/src/state.ts:380` | An N46 leftover. It sits directly above `mustPlayVoidFirst` and duplicates one line of it. Exported from the engine barrel, so it's dead *public API*. |
 | `revokeToken` | `server/src/tokens.ts:22` | Superseded by `revokeTokensForCode`. |
-| `watchTokenFor` | `server/src/tokens.ts:51` | See §2 — keep, and wire it up. |
-| `importWatchToken` | `server/src/tokens.ts:56` | See §2 — keep, and wire it up. |
+| ~~`watchTokenFor`~~ | `server/src/tokens.ts:51` | **Now live** — A41 wired it into `serialize()`. |
+| ~~`importWatchToken`~~ | `server/src/tokens.ts:56` | **Now live** — A41 wired it into `restoreRoomsFromDisk`. |
 | `limiterSizes` | `server/src/limits.ts:60` | Comment says "For tests and diagnostics"; no test calls it. |
 | `getWsClient` | `client/src/ws/client.ts:151` | `sendAction` / `connectGame` / `closeConnection` cover every caller. |
 | `WALL_EW_H` | `client/src/components/WallDiagram.tsx:243` | Comment says "exported only so the tests can say so"; `wall-diagram.test.ts` imports six other constants and not this one. |
@@ -185,13 +193,15 @@ machine in the hand.
 
 ## 5. Test coverage gaps, in priority order
 
-### 5a. Every host-privilege check in the WS gateway is untested — **do this first**
+### 5a. Every host-privilege check in the WS gateway is untested — **fixed (A42)**
 
-No file in `packages/server/tests` or `e2e/` contains the string `not_host`, `kickBot`
-or `setBotDifficulty`. Six authorization gates, all uncovered:
+No file in `packages/server/tests` or `e2e/` contained the string `not_host`, `kickBot`
+or `setBotDifficulty`. **Seven** authorization gates, all uncovered — the audit first
+counted six and missed `startGame`, which is the first one in the file:
 
 | Gate | Line | Guards |
 |---|---|---|
+| `startGame` | `ws.ts:409-412` | starting the match at all |
 | `addBot` | `ws.ts:461-464` | seat-filling |
 | `setBotDifficulty` | `ws.ts:495-498` | bot strength |
 | `kickBot` | `ws.ts:514-518` | removing a player's opponent |
@@ -201,10 +211,16 @@ or `setBotDifficulty`. Six authorization gates, all uncovered:
 
 These are the difference between "a stranger with the 4-character code is a player" and
 "a stranger with the code runs the table", on a service anyone can reach. `A8` put real
-thought into seat 0 being host-only, and nothing checks that the gates built on it hold.
+thought into seat 0 being host-only, and nothing checked that the gates built on it hold.
 
-The tests are cheap — `server.test.ts` already has the socket harness. One file,
-six negative cases plus a positive control per gate.
+**No bug behind it — every gate works.** Worth stating plainly, and it is also why the
+gap survived six audit passes: nothing was broken, so nothing drew attention.
+
+`host-privilege.test.ts` covers all seven, each with a refusal *and* a positive control
+— the control is what distinguishes a working guard from a typo'd message name, which a
+negative-only test cannot. Where a refusal has an observable effect, the test asserts the
+state is unchanged rather than only that an error frame arrived. Verified by mutation:
+disabling all seven guards fails all seven cases. `ws.ts` went 68.2% → **81.6%**.
 
 ### 5b. `kickBot` indexes an array with an unvalidated wire value
 
@@ -287,8 +303,8 @@ optional.
 
 ## 7. Suggested order
 
-1. **Watch-token restore fix + regression test** (§2) — the only real bug.
-2. **WS host-privilege tests** (§5a) — highest risk per hour, harness already exists.
+1. ~~**Watch-token restore fix + regression test** (§2)~~ — **done**, A41.
+2. ~~**WS host-privilege tests** (§5a)~~ — **done**, A42.
 3. **Delete the five dead symbols** (§3) — minutes, and it stops `isVoidSuitTile` from
    being mistaken for part of the N46 rule.
 4. **Extract `riverCells`** (§4a) — the recurring-bug site.
