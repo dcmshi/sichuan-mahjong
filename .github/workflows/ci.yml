@@ -9,15 +9,29 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      # All three on majors that target node24 natively. On v4 they still ran,
+      # but the runner forced them onto Node 24 and annotated every job about it
+      # — a warning that would become a failure whenever the runner stops
+      # bridging. Bumped 2026-08-04.
+      - uses: actions/checkout@v7
 
       # No `version:` here on purpose. The action errors out if it is set
       # alongside `packageManager` in package.json, and that pin is what keeps
-      # CI, Render and a laptop on the pnpm that generated the lockfile.
-      - uses: pnpm/action-setup@v4
+      # CI, Render and a laptop on the pnpm that generated the lockfile. v6
+      # still resolves pnpm from that field; what it added was pnpm 11 support.
+      - uses: pnpm/action-setup@v6
 
-      - uses: actions/setup-node@v4
+      # `cache: pnpm` is not optional here and was not before. setup-node v5
+      # started caching automatically by detecting the package manager, and v6
+      # narrowed that automatic path to npm only — so for pnpm the explicit
+      # input is the supported route, and stating it is what makes both of those
+      # breaking changes irrelevant to this workflow.
+      - uses: actions/setup-node@v7
         with:
+          # 22, matching `engines.node` (>=22.5.0) and render.yaml's NODE_VERSION.
+          # This is the runtime the service ships on, and it is deliberately not
+          # tied to the node24 the actions above run *themselves* on — testing on
+          # a version nobody deploys would be the mismatch, not the fix.
           node-version: '22'
           cache: pnpm
 
