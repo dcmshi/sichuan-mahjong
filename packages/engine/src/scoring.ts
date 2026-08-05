@@ -124,6 +124,28 @@ function calcStructuralFans(shape: WinShape, winningTileType: TileType): Map<Fan
     if (winningTileType === pair) fans.set('GoldenWait', 1);
   }
 
+  // Root — "1 for each 4 identical tiles in two or more sets" (PDF Table 4).
+  // It is a property of the decomposition, not of the tile counts: four copies
+  // sitting in one set are a kong and score Kong instead. The pair counts as a
+  // group here, so pair + one copy in each of two chows is a root as much as
+  // pung + fourth-in-a-chow is. (A49)
+  const groupsHolding = new Map<TileType, number>();
+  const copiesOf = new Map<TileType, number>();
+  const note = (t: TileType, n: number) => {
+    groupsHolding.set(t, (groupsHolding.get(t) ?? 0) + 1);
+    copiesOf.set(t, (copiesOf.get(t) ?? 0) + n);
+  };
+  note(pair, 2);
+  for (const s of sets) {
+    if (s.kind === 'chow') for (const t of s.types) note(t, 1);
+    else note(s.type, s.kind === 'kong' ? 4 : 3);
+  }
+  let rootCount = 0;
+  for (const [t, n] of copiesOf) {
+    if (n === 4 && (groupsHolding.get(t) ?? 0) >= 2) rootCount++;
+  }
+  if (rootCount > 0) fans.set('Root', rootCount);
+
   // FullFlush: every tile type in the hand is same suit
   const allTypes: TileType[] = [pair];
   for (const s of sets) {

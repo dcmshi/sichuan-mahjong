@@ -379,9 +379,13 @@ reasoning and measurements in
 
 ## Status
 
-**Everything is shipped and [TODO.md](./TODO.md) is empty.** All v1 work, seven
-full-repo audit passes (A1–A48), the frontend/design pass (F1–F25), the mobile
-viewport work (R1–R7), the hosting work (C1–C10), and the feature run N1–N46.
+**All v1 work is shipped**: seven full-repo audit passes (A1–A48), the
+frontend/design pass (F1–F25), the mobile viewport work (R1–R7), the hosting
+work (C1–C10), and the feature run N1–N46. **[TODO.md](./TODO.md) holds the
+open findings of the eighth audit pass (2026-08-04, A49–A54)**. A49 — the Root
+fan scoring only inside seven pairs, halving every payment off a standard hand
+that held one — is closed; A50, a kong's subtype being trusted off the wire, is
+the largest of what is left.
 
 This section deliberately does not list what shipped — that is
 [docs/history.md](./docs/history.md), newest first, **with a find-an-item-by-id

@@ -127,6 +127,70 @@ describe('worked hands — fan and points', () => {
     expect(COMPATIBILITY.SevenPairs.incompatible).toContain('Kong');
   });
 
+  // Root outside seven pairs. The PDF defines it on the decomposition — "1 for
+  // each 4 identical tiles in two or more sets" — and names the standard-hand
+  // shape in the kong chapter: "if three tiles make up a pung and the fourth
+  // tile is used in a chow". The engine awarded it only inside seven pairs until
+  // A49, so every payment off one of these hands was half what the rules say.
+  it('a pung and the fourth copy in a chow is Root', () => {
+    // man 111 + man 123 + pin 456 + pin 789 + pin 22. Four 1m, spread across
+    // the pung and the chow.
+    const tiles = [
+      ...copies(M(1), 4),
+      tid(M(2)),
+      tid(M(3)),
+      ...chow(P(4)),
+      ...chow(P(7)),
+      ...pair(P(2)),
+    ];
+    const s = score(tiles, [], tid(P(2), 1));
+    expect(fansOf(s)).toEqual({ Root: 1 });
+    expect(s.handValue).toBe(2);
+  });
+
+  it('a melded pung and the fourth copy in a concealed chow is Root', () => {
+    // Concealedness does not enter fan scoring except for kongs, so the pung
+    // being laid down changes nothing.
+    const melds: Meld[] = [
+      { kind: 'pung', tile: { suit: 'man', rank: 1 }, concealed: false, claimedFrom: 1 },
+    ];
+    const tiles = [tid(M(1), 3), tid(M(2)), tid(M(3)), ...chow(P(4)), ...chow(P(7)), ...pair(P(2))];
+    const s = score(tiles, melds, tid(P(2), 1));
+    expect(fansOf(s)).toEqual({ Root: 1 });
+    expect(s.handValue).toBe(2);
+  });
+
+  it('four identical tiles in one set is Kong, not Root', () => {
+    // The two fans divide on how the four copies sit: one set is a kong, two or
+    // more sets is a root. A kong is never both.
+    const melds: Meld[] = [
+      {
+        kind: 'kong',
+        subtype: 'concealed',
+        tile: { suit: 'man', rank: 1 },
+        claimedFrom: null,
+        turnDeclared: 1,
+      },
+    ];
+    const tiles = [...chow(M(2)), ...chow(P(4)), ...chow(P(7)), ...pair(P(2))];
+    const s = score(tiles, melds, tid(P(2), 1));
+    expect(fansOf(s)).toEqual({ Kong: 1 });
+  });
+
+  it('Root stacks to the three the table allows', () => {
+    // 1m, 2m and 3m are each held four times: a set of three each, plus one
+    // copy each in the chow. The pung of 1m is melded, which is what keeps this
+    // a standard hand — held entirely in hand it would read as seven pairs
+    // (4+4+4+2), and Root already scored there.
+    const melds: Meld[] = [
+      { kind: 'pung', tile: { suit: 'man', rank: 1 }, concealed: false, claimedFrom: 1 },
+    ];
+    const tiles = [tid(M(1), 3), ...copies(M(2), 4), ...copies(M(3), 4), ...pair(P(2))];
+    const s = score(tiles, melds, tid(P(2), 1));
+    expect(fansOf(s)).toEqual({ Root: 3 });
+    expect(s.handValue).toBe(8); // selfMax 3 and the fan cap both land here
+  });
+
   it('a declared kong is 1 fan each, and they stack', () => {
     const melds: Meld[] = [
       {

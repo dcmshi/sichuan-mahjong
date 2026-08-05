@@ -2,9 +2,9 @@
 
 What is actually open. **Everything closed lives in
 [docs/history.md](./docs/history.md)**, newest first, each entry with the diagnosis
-that made it worth writing down — the phase log, the six audit passes (A1–A40), the
+that made it worth writing down — the phase log, the seven audit passes (A1–A48), the
 frontend pass (F1–F25), the viewport work (R1–R7), the tile rendering change, the
-hosting work (C1–C10), and the feature run N1–N35.
+hosting work (C1–C10), and the feature run N1–N46.
 
 Deferrals are also recorded as O1–O5 in
 [ARCHITECTURE.md §12](./ARCHITECTURE.md#12-open-questions--explicit-deferrals).
@@ -16,8 +16,85 @@ so it isn't rediscovered as a bug.
 
 ## Open
 
-**Nothing.** The refactor/coverage audit of 2026-08-04 — a seventh full-repo pass,
-filed as **A41–A48** — closed the same day, all eight items. The evidence is in
+Five findings from the 2026-08-04 full-repo code audit (the eighth pass, filed as
+**A49–A54**), in priority order. A50 was confirmed by running the code and
+reading the PDF, not only by reading the source; the commands and the extracts
+are noted inline so they can be re-run. **A49 — the Root fan never scoring in a
+standard hand — closed 2026-08-04**; the diagnosis is in
+[docs/history.md](./docs/history.md).
+
+### A50 — a kong's promoted/postponed subtype is trusted off the wire, and the payment hangs off it
+
+**`applyDeclareKongOnTurn` (`packages/engine/src/actions.ts:1208`) takes
+`action.subtype` as sent: `promoted` collects 1 from each opponent
+(`actions.ts:1310-1316`), `postponed` collects nothing.** The engine validates
+the exposed pung and the hand tile but never the classification, so a crafted
+frame saying `promoted` is +3 points a kong — the one field the "WS boundary
+trusts nothing" convention left trusted. (A junk string like `"exposed"` also
+flows un-narrowed into the meld record on this path.)
+
+The honest derivation is wrong in one reachable case too:
+`getPromotedPostponedKongActions` (`packages/engine/src/views.ts:147`) classifies
+by `lastDrawnTile`'s type **without checking `drewThisTurn`**. After a pung claim
+nothing was drawn, but `lastDrawnTile` still holds the *discarder's* draw — so a
+seat that pungs holding the 4th copy (discarder tsumogiri'd the tile it punged)
+is offered a `promoted` kong for what the PDF calls postponed, and the bots take
+every kong the legal list offers. PDF: promoted = *"places freshly taken tile
+from the wall"*, postponed = *"detaches a tile from the standing tiles"*.
+
+Fix: derive the subtype in the engine — promoted iff `drewThisTurn &&
+lastDrawnTile !== null && tileTypeOf(lastDrawnTile) === tileType` — ignore the
+wire value, and have `views.ts` read the same helper. One open rules question to
+settle against the PDF while in there: whether a kong may be declared at all on
+a turn entered by pung (the engine permits it today; the derivation at least
+makes it pay correctly as postponed).
+
+### A51 — a new lobby's code can collide with a live room's
+
+`createLobby` (`packages/server/src/lobby.ts:46`) re-rolls a code only against
+the **lobby** store, but `startGame` deletes the lobby while the room lives on
+under the same code — so a live room's code can be re-issued to a fresh lobby.
+When it fires: the new host's token resolves with `data.code === code`,
+`getRoom(code)` finds the *old* room, and `ws.ts:322-330` seats the stranger
+into the running game as seat 0 — they receive that player's hand and can act
+for them. Odds are ~1 in 21k creates at the hosted 50-game ceiling, but the fix
+is one predicate: `while (store.has(code) || getRoom(code) !== undefined)` —
+and `room.ts` imports nothing from `lobby.ts`, so there is no cycle.
+
+### A52 — two `Date.now()` calls inside the engine
+
+`openClaimWindow`'s deadline (`actions.ts:492`) and `createGame`'s `startedAt`
+(`state.ts:357`). Neither changes behaviour — expiry is server-driven via
+`claimWindowExpire`, so replays stay deterministic in outcome — but the state is
+not a pure function of (seed, actions): two replays differ in these two fields,
+and "the engine stays pure" is one undocumented exception away from being
+uncheckable. Either inject a clock (a `now` on the action/config) or document
+the two exceptions where the convention is stated. Small.
+
+### A53 — two measured-first micro-inefficiencies
+
+`isWinningHand` needs existence but `findStandardShapes`
+(`packages/engine/src/hand.ts:95`) materialises **every** decomposition for
+every pair choice — and it sits under `isTenpai`'s 27-type loop and under
+`autoPassIneligible`'s three-seat Hu check on *every discard*. An early-exit
+exists-solver cuts the common path. Likewise `settleRound` recomputes
+`calcTMV(r.hand, …)` per (non-ready × ready) pair (`actions.ts:404-410`) where
+once per ready seat suffices. Both are invisible at four players on a server —
+do them with a measurement in hand or not at all.
+
+### A54 — `rng.nextInt` is `next() % n`: modulo bias, recorded so it isn't rediscovered
+
+`packages/engine/src/rng.ts:54`. The bias is ~n/2³² (≈2.5×10⁻⁸ on the shuffle) —
+irrelevant to fairness at any scale this game reaches. Fixing it (rejection
+sampling) would change which tiles **every seed deals**: every pinned-seed test,
+the e2e guards and the layout probe baselines regenerate, the same churn the
+dice paid once already (N22). Note the bias where `rng.ts` documents itself, or
+pay the churn deliberately — but not accidentally, in a refactor.
+
+---
+
+The refactor/coverage audit of 2026-08-04 — the seventh full-repo pass, filed as
+**A41–A48** — closed the same day, all eight items. The evidence is in
 [docs/audit-refactor-and-coverage.md](./docs/audit-refactor-and-coverage.md) and
 each has a diagnosis in [docs/history.md](./docs/history.md).
 

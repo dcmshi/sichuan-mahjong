@@ -31,6 +31,7 @@ Series: **N** features · **A** full-repo audits · **F** frontend/design ·
 | **A43, A45, A47** | The dead symbols, the missing guard, and the chow that never was |
 | **A44** | One river, drawn three times |
 | **A46, A48** | The hand arrangement, and the layer nothing had run |
+| **A49** | The Root fan only ever scored in seven pairs |
 | **F1–F25** | *Frontend & design audit — seventh pass*, a numbered list. Grep the id. |
 | **N2** | The dice are real now |
 | **N3, N11, N14** | Help that shows a hand, a discard you can arm early, and a wall that reads the dice |
@@ -75,6 +76,43 @@ Series: **N** features · **A** full-repo audits · **F** frontend/design ·
 | **O3** | Closed **won't-do** — reasoning in [TODO.md](../TODO.md) and ARCHITECTURE §12 |
 | **O4** | One tile face everywhere |
 | **O5** | An **accepted trade-off**, not a task — per-IP limits key to a Cloudflare edge address. ARCHITECTURE §12 |
+
+---
+
+## ✅ The Root fan only ever scored in seven pairs (A49 — 2026-08-04)
+
+Novikov's Table 4 defines Root as *"1 for each 4 identical tiles in two or more
+sets"*, and his kong chapter names the standard-hand shape outright: *"Simply
+four identical tiles in a hand are not kong … for instance, if three tiles make
+up a pung and the fourth tile is used in a chow."* `calcStructuralFans` computed
+it inside its `sevenPairs` branch and nowhere else, so **every payment off a
+standard hand holding a root was half what the rules say** — `calcHandScore` on
+`111m + 123m + 456p + 789p + 22p` returned `fans=[] handValue=1` where the PDF
+says 2. The gap flowed through `calcTMV`'s wall-end bu-ting payouts and the hard
+bot's `handPotential` with it.
+
+**It survived seven audit passes because nothing tested Root outside seven
+pairs**, and because [audit-payments.md](./audit-payments.md) never mentions Root
+at all — that pass audited the payment matrix, which is downstream of the fan
+computation and was correct.
+
+Root is now read off the decomposition rather than off tile counts, which is what
+"in two or more sets" means: count the copies of each type across the sets *and
+the pair*, and score one Root per type holding four of them in ≥2 groups. Four in
+one group is a kong, and keeps scoring Kong — the two fans divide on exactly that
+line. Nothing else in Table 9 moves: Root+AllPungs is structurally impossible
+(pung + pair of the same type is five copies), so the incompatibilities already
+encoded stay right, and `selfMax: 3` was already the correct ceiling.
+
+The three-root case is only reachable with a meld. Three types held four times
+each is 12 tiles, and 4+4+4+2 is also a seven-pairs hand — so the standard branch
+sees it only once a pung has been laid down, which is what the stacking test
+does. The first draft of that test asserted `{ Root: 3 }` on a concealed hand and
+came back `{ SevenPairs: 1, Root: 3 }`.
+
+ARCHITECTURE §5's Table 4 row said "Pair + same tile in a pung/kong elsewhere in
+the hand", which describes five copies of one tile — an impossibility. It and the
+six help catalogs now carry the PDF's wording.
 
 ---
 

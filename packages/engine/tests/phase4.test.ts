@@ -360,6 +360,28 @@ describe('Phase 4 — TMV', () => {
     expect(tmv).toBe(0);
   });
 
+  it('TMV picks up a Root the winning tile would complete', () => {
+    // man 111 + man 23 + pin 456 + pin 789 + pin 22, waiting on man 1 or man 4.
+    // Man 1 makes a fourth copy across the pung and the chow — Root, 1 fan —
+    // and man 4 is a plain hand, so the theoretical maximum is the root's.
+    const tiles: TileId[] = [
+      tid(M(1), 0),
+      tid(M(1), 1),
+      tid(M(1), 2),
+      tid(M(2), 0),
+      tid(M(3), 0),
+      tid(P(4), 0),
+      tid(P(5), 0),
+      tid(P(6), 0),
+      tid(P(7), 0),
+      tid(P(8), 0),
+      tid(P(9), 0),
+      tid(P(2), 0),
+      tid(P(2), 1),
+    ];
+    expect(calcTMV(tiles, [], 'sou', DEFAULT_CONFIG.fanCap)).toBe(2);
+  });
+
   it('TMV excludes Kong fan (Kong requires explicit declaration)', () => {
     // A hand with a kong meld that is tenpai: TMV should not include Kong fan
     const melds: Meld[] = [

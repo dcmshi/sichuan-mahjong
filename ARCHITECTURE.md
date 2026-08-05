@@ -631,7 +631,7 @@ Fan combinations per Novikov SBR canonical Table 4:
 | # | Combination | Fan | Notes |
 | --- | --- | --- | --- |
 | 1 | Kong | 1 each | Per kong present in winning hand structure |
-| 2 | Root (根) | 1 each | Pair + same tile in a pung/kong elsewhere in the hand. Stacks (max 3 per hand). |
+| 2 | Root (根) | 1 each | Four identical tiles spread across **two or more sets** of the winning decomposition — the pair counts as a set. Four in *one* set is a kong and scores Kong instead. Stacks (max 3 per hand). |
 | 3 | All Pungs | 1 | No chow in winning hand |
 | 4 | Golden Wait | 1 | Single-wait pair completion when 4 pungs/kongs in hand |
 | 5 | Full Flush (清一色) | 2 | All tiles in one suit |
