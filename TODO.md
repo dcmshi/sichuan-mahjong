@@ -2,7 +2,7 @@
 
 What is actually open. **Everything closed lives in
 [docs/history.md](./docs/history.md)**, newest first, each entry with the diagnosis
-that made it worth writing down — the phase log, the seven audit passes (A1–A48), the
+that made it worth writing down — the phase log, the eight audit passes (A1–A54), the
 frontend pass (F1–F25), the viewport work (R1–R7), the tile rendering change, the
 hosting work (C1–C10), and the feature run N1–N46.
 
@@ -16,21 +16,20 @@ so it isn't rediscovered as a bug.
 
 ## Open
 
-One finding left from the 2026-08-04 full-repo code audit (the eighth pass, filed
-as **A49–A54**). **A49** (the Root fan never scoring in a standard hand),
-**A50** (a kong's subtype trusted off the wire), **A51** (a lobby code colliding
-with a live room's), **A52** (two `Date.now()` calls in the engine) and **A53**
-(the two micro-inefficiencies, measured first) all closed 2026-08-04; their
-diagnoses are in [docs/history.md](./docs/history.md).
+**Nothing.** The eighth full-repo code audit of 2026-08-04, filed as **A49–A54**,
+closed the same day, all six items. Each has its diagnosis in
+[docs/history.md](./docs/history.md).
 
-### A54 — `rng.nextInt` is `next() % n`: modulo bias, recorded so it isn't rediscovered
-
-`packages/engine/src/rng.ts:54`. The bias is ~n/2³² (≈2.5×10⁻⁸ on the shuffle) —
-irrelevant to fairness at any scale this game reaches. Fixing it (rejection
-sampling) would change which tiles **every seed deals**: every pinned-seed test,
-the e2e guards and the layout probe baselines regenerate, the same churn the
-dice paid once already (N22). Note the bias where `rng.ts` documents itself, or
-pay the churn deliberately — but not accidentally, in a refactor.
+Two were real scoring or payment defects — **A49**, the Root fan never firing in
+a standard hand, which halved every payment off one; and **A50**, a kong's
+promoted/postponed subtype taken off the wire, worth 3 points a frame, with the
+PDF's second kong restriction closed alongside it. **A51** could seat a stranger
+into a running game once in ~21,000 lobby creates. **A52** and **A53** were
+convention and measurement: the engine now takes the clock instead of reading it,
+and `isWinningHand` stops at the first shape (`isTenpai` 24.3ms → 12.5ms over 664
+hands). **A54** ended by disproving its own premise — rejection sampling would
+change 0 of 200,000 seeds' deals, not all of them, so the bias is left on the
+honest ground that neither it nor its fix is observable.
 
 ---
 

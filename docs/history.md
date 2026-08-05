@@ -1,7 +1,7 @@
 # History — every closed item, newest first
 
-This is the record of work already done: the phase log (1–10), seven full-repo
-audit passes (A1–A48), the frontend/design pass (F1–F25), the mobile viewport work
+This is the record of work already done: the phase log (1–10), eight full-repo
+audit passes (A1–A54), the frontend/design pass (F1–F25), the mobile viewport work
 (R1–R7), the tile-rendering change, the hosting work (C1–C10), and the feature run
 N1–N46. Each entry keeps its diagnosis, not just its fix — that is the part worth
 having later.
@@ -36,6 +36,7 @@ Series: **N** features · **A** full-repo audits · **F** frontend/design ·
 | **A51** | A fresh lobby could be handed a live room's code |
 | **A52** | The engine read the clock in two places |
 | **A53** | The two micro-inefficiencies, measured first |
+| **A54** | The modulo bias, and the reason it was filed being wrong |
 | **F1–F25** | *Frontend & design audit — seventh pass*, a numbered list. Grep the id. |
 | **N2** | The dice are real now |
 | **N3, N11, N14** | Help that shows a hand, a discard you can arm early, and a wall that reads the dice |
@@ -80,6 +81,44 @@ Series: **N** features · **A** full-repo audits · **F** frontend/design ·
 | **O3** | Closed **won't-do** — reasoning in [TODO.md](../TODO.md) and ARCHITECTURE §12 |
 | **O4** | One tile face everywhere |
 | **O5** | An **accepted trade-off**, not a task — per-IP limits key to a Cloudflare edge address. ARCHITECTURE §12 |
+
+---
+
+## ✅ The modulo bias, and the reason it was filed being wrong (A54 — 2026-08-04)
+
+`rng.nextInt` is `next() % n`, which is biased: 2³² is not a multiple of most
+`n`, so the lowest `2³² mod n` results are reachable one extra way each. Across
+every draw the shuffle makes, the widest that region gets is **96 values out of
+2³², at n=100** — 2.24×10⁻⁸. Irrelevant, as filed.
+
+**The reason it was filed as unfixable is not.** The entry said rejection
+sampling "would change which tiles every seed deals", so every pinned-seed test,
+e2e guard and layout-probe baseline would regenerate — the churn N22 paid for the
+dice. It would not: a sampler that redraws only on rejection takes the extra draw
+with probability 6.3×10⁻⁷ per 107-draw shuffle. Run over 200,000 seeds, **zero
+deal differently.** The churn is about one seed in 1.6 million.
+
+So the decision had to be remade on the real trade-off, which points the same
+way for a different reason: **the defect is unobservable and so is the fix.** No
+feasible sample distinguishes a 2.24×10⁻⁸ excess, and no seed anyone will find
+takes the rejection branch — the change would land with no test that could fail
+if it were wrong. Four untestable lines against a bias below every other source
+of noise in the game. Left as it is, now as a decision rather than an
+impossibility. A *different* fix is a different question: `Math.floor(nextFloat()
+* n)` really would move every deal.
+
+**`rng.test.ts` compared the generator to nothing but itself.** Six tests, all
+determinism-against-itself or range checks, so any change producing different
+numbers deterministically — the seed expansion, the xoshiro step, the shuffle's
+direction — passed all of them. It now pins a golden `nextInt` sequence and a
+golden wall prefix.
+
+Those goldens were written to guard the modulo decision and **do not**, which is
+worth stating plainly: the first draft asserted they would catch a rejection-
+sampling swap, and the swap was made to check — all eight tests stayed green.
+That is the same fact that makes the bias irrelevant, arrived at from the other
+end. The goldens keep their place because they catch every *other* accidental
+change, and the comment on each says which is which.
 
 ---
 

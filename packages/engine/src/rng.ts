@@ -50,6 +50,37 @@ export function createRng(seed: string): Rng {
 
   return {
     next,
+    /**
+     * `% n`, and **deliberately so** — modulo-biased, measured, and left. (A54)
+     *
+     * 2³² is not a multiple of most `n`, so the lowest `2³² mod n` results are
+     * reachable one extra way each. Across every draw the shuffle makes (n=2..108)
+     * the widest that region gets is **96 values out of 2³², at n=100** —
+     * 2.24×10⁻⁸. One part in forty-five million, in a game whose every other
+     * input is a person deciding something.
+     *
+     * **The reason this was filed is wrong, and that is the useful part.** It was
+     * recorded as unfixable-without-churn: rejection sampling "would change which
+     * tiles every seed deals", so every pinned-seed test, e2e guard and
+     * layout-probe baseline would regenerate. It would not. A sampler that
+     * redraws only on rejection consumes an extra `next()` with probability
+     * 6.3×10⁻⁷ per 107-draw shuffle — **0 of 200,000 seeds deal differently**,
+     * measured. The churn is about one seed in 1.6 million.
+     *
+     * What actually argues against changing it is the other side: the defect is
+     * unobservable and so is the fix. No feasible sample distinguishes a
+     * 2.24×10⁻⁸ excess, and no seed anyone will find takes the rejection branch,
+     * so the change would land with no test that could fail if it were wrong.
+     * A four-line untestable edit against a bias below every other source of
+     * noise is not a trade worth making — but it is a *decision*, not the
+     * impossibility it was filed as. A different fix would be a different
+     * question: `Math.floor(nextFloat() * n)` really would move every deal.
+     *
+     * `rng.test.ts` pins a golden sequence. Note what it does and does not do:
+     * it cannot tell modulo from rejection sampling, for exactly the reason
+     * above — it catches every *other* accidental change to the generator, the
+     * seed expansion and the shuffle, which nothing did before.
+     */
     nextInt(n: number) {
       return next() % n;
     },
