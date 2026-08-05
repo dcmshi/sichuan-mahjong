@@ -406,13 +406,18 @@ function settleRound(s: GameState): GameEvent[] {
   const ready = nonHu.filter(p => p.isReady);
   const nonReady = nonHu.filter(p => !p.isReady);
 
-  // Bu-ting payouts: non-ready non-Hu pays each ready non-Hu their TMV
+  // Bu-ting payouts: non-ready non-Hu pays each ready non-Hu their TMV. The
+  // value is a property of the ready hand, so it is computed once per ready seat
+  // rather than once per (non-ready × ready) pair. (A53)
+  const readyTmv = ready.map(r => ({
+    seat: r.seat,
+    tmv: calcTMV(r.hand, r.melds, r.voidedSuit, s.config.fanCap),
+  }));
   for (const nr of nonReady) {
-    for (const r of ready) {
-      const tmv = calcTMV(r.hand, r.melds, r.voidedSuit, s.config.fanCap);
+    for (const { seat, tmv } of readyTmv) {
       if (tmv === 0) continue;
-      pay(s, nr.seat, r.seat, tmv);
-      events.push({ e: 'buTingPayout', from: nr.seat, to: r.seat, amount: tmv });
+      pay(s, nr.seat, seat, tmv);
+      events.push({ e: 'buTingPayout', from: nr.seat, to: seat, amount: tmv });
     }
   }
 

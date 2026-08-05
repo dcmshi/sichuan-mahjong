@@ -16,23 +16,12 @@ so it isn't rediscovered as a bug.
 
 ## Open
 
-Two findings from the 2026-08-04 full-repo code audit (the eighth pass, filed as
-**A49–A54**), in priority order. **A49** (the Root fan never scoring in a standard
-hand), **A50** (a kong's subtype trusted off the wire), **A51** (a lobby code
-colliding with a live room's) and **A52** (two `Date.now()` calls in the engine)
-all closed 2026-08-04; their diagnoses are in
-[docs/history.md](./docs/history.md).
-
-### A53 — two measured-first micro-inefficiencies
-
-`isWinningHand` needs existence but `findStandardShapes`
-(`packages/engine/src/hand.ts:95`) materialises **every** decomposition for
-every pair choice — and it sits under `isTenpai`'s 27-type loop and under
-`autoPassIneligible`'s three-seat Hu check on *every discard*. An early-exit
-exists-solver cuts the common path. Likewise `settleRound` recomputes
-`calcTMV(r.hand, …)` per (non-ready × ready) pair (`actions.ts:404-410`) where
-once per ready seat suffices. Both are invisible at four players on a server —
-do them with a measurement in hand or not at all.
+One finding left from the 2026-08-04 full-repo code audit (the eighth pass, filed
+as **A49–A54**). **A49** (the Root fan never scoring in a standard hand),
+**A50** (a kong's subtype trusted off the wire), **A51** (a lobby code colliding
+with a live room's), **A52** (two `Date.now()` calls in the engine) and **A53**
+(the two micro-inefficiencies, measured first) all closed 2026-08-04; their
+diagnoses are in [docs/history.md](./docs/history.md).
 
 ### A54 — `rng.nextInt` is `next() % n`: modulo bias, recorded so it isn't rediscovered
 

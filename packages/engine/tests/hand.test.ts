@@ -286,4 +286,40 @@ describe('hand property tests', () => {
       }),
     );
   });
+
+  // `isWinningHand` stops at the first decomposition it finds and
+  // `findAllWinningShapes` builds every one, so hand.ts carries two solvers over
+  // the same rules. This is what keeps them from drifting: whatever the first
+  // one answers, it must be a shape the second one also found. (A53)
+  it('the first-shape solver agrees with the enumerator, and returns one of its shapes', () => {
+    // Random 14-tile hands out of a small type pool, so wins are actually hit
+    // rather than being a vanishing fraction of the space.
+    const hands = fc
+      .array(fc.integer({ min: 0, max: 8 }), { minLength: 14, maxLength: 14 })
+      .filter(types => {
+        const counts = new Map<number, number>();
+        for (const t of types) counts.set(t, (counts.get(t) ?? 0) + 1);
+        return [...counts.values()].every(n => n <= 4);
+      })
+      .map(types => {
+        const used = new Map<number, number>();
+        return types.map(t => {
+          const copy = used.get(t) ?? 0;
+          used.set(t, copy + 1);
+          return (t * 4 + copy) as TileId;
+        });
+      });
+
+    fc.assert(
+      fc.property(hands, hand => {
+        const first = isWinningHand(hand, [], null);
+        const all = findAllWinningShapes(hand, [], null);
+        expect(first === null).toBe(all.length === 0);
+        if (first !== null) {
+          expect(all.map(s => JSON.stringify(s))).toContain(JSON.stringify(first));
+        }
+      }),
+      { numRuns: 500 },
+    );
+  });
 });

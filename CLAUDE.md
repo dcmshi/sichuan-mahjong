@@ -397,12 +397,13 @@ reasoning and measurements in
 **All v1 work is shipped**: seven full-repo audit passes (A1–A48), the
 frontend/design pass (F1–F25), the mobile viewport work (R1–R7), the hosting
 work (C1–C10), and the feature run N1–N46. **[TODO.md](./TODO.md) holds the
-open findings of the eighth audit pass (2026-08-04, A49–A54)**. Four are closed:
+open findings of the eighth audit pass (2026-08-04, A49–A54)**. Five are closed:
 A49 (the Root fan scored only inside seven pairs, halving every payment off a
 standard hand that held one), A50 (a kong's subtype came off the wire, and the
-payment hung off it), A51 (a fresh lobby could be handed a live room's code) and
-A52 (the engine read the clock). What is left is A53 and A54: two measure-first
-micro-inefficiencies, and the modulo bias in `nextInt`.
+payment hung off it), A51 (a fresh lobby could be handed a live room's code),
+A52 (the engine read the clock) and A53 (the two micro-inefficiencies, measured
+first). Only A54 is open — the modulo bias in `nextInt`, which is a recorded
+trade-off rather than a defect.
 
 This section deliberately does not list what shipped — that is
 [docs/history.md](./docs/history.md), newest first, **with a find-an-item-by-id

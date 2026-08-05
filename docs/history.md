@@ -35,6 +35,7 @@ Series: **N** features · **A** full-repo audits · **F** frontend/design ·
 | **A50** | A kong's subtype was worth 3 points and came off the wire |
 | **A51** | A fresh lobby could be handed a live room's code |
 | **A52** | The engine read the clock in two places |
+| **A53** | The two micro-inefficiencies, measured first |
 | **F1–F25** | *Frontend & design audit — seventh pass*, a numbered list. Grep the id. |
 | **N2** | The dice are real now |
 | **N3, N11, N14** | Help that shows a hand, a discard you can arm early, and a wall that reads the dice |
@@ -79,6 +80,43 @@ Series: **N** features · **A** full-repo audits · **F** frontend/design ·
 | **O3** | Closed **won't-do** — reasoning in [TODO.md](../TODO.md) and ARCHITECTURE §12 |
 | **O4** | One tile face everywhere |
 | **O5** | An **accepted trade-off**, not a task — per-IP limits key to a Cloudflare edge address. ARCHITECTURE §12 |
+
+---
+
+## ✅ The two micro-inefficiencies, measured first (A53 — 2026-08-04)
+
+The item was filed with a condition attached — *"do them with a measurement in
+hand or not at all"* — so the measurement came first. Corpus: every (hand, melds,
+void) triple seen across four full seeded rounds, 896 of them, which is hands the
+engine actually deals rather than hands chosen to be slow.
+
+**The early-exit solver was worth doing.** `isWinningHand` needs existence, and
+`findStandardShapes` materialised every decomposition for every pair choice
+before the caller looked at one. Over 664 standing hands, `isTenpai` went
+**24.3ms → 12.5ms** and `isWinningHand` over 208 fourteen-tile hands went
+**0.46ms → 0.24ms** — a shade under 2× each. That matters because `isTenpai` runs
+27 `isWinningHand` calls per invocation and the medium and hard bots call
+`ukeire` once per *candidate discard*.
+
+`solveFirstStandard` returns the first decomposition that closes rather than a
+boolean, so `isWinningHand` keeps its signature and its seven `!== null` callers
+are untouched. The cost is a second recursive solver over the same rules, which
+is the shape A44 was about — so a property test pins them together: whatever
+`isWinningHand` answers must agree with `findAllWinningShapes`, and its shape
+must be one of that list's, over 500 generated hands.
+
+**The `settleRound` hoist was not, and is in anyway.** `calcTMV` is a property of
+the ready hand, so computing it inside the (non-ready × ready) double loop
+repeats work — but the loop is tiny: across 20 rounds it made **13 calls where 5
+would do**, costing 0.05ms per round against a round that takes 1.8ms of engine
+time end to end. Three lines, and the redundancy is gone; nobody should read the
+number as a reason it was worth buying.
+
+**What the suite shows is nothing, and that is honest.** `bot-smoke.test.ts` ran
+23.8s after against 25.0–27.4s before, which is inside its own run-to-run spread.
+The bots' gradient is `shanten.ts`, which is server-side and cached; `ukeire` is
+the cheapest of its three sort keys. The microbenchmark is the defensible number
+here, not the suite.
 
 ---
 
