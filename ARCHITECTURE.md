@@ -570,14 +570,18 @@ This blocks Hu via discard claim when the new winning hand's `totalFan` would be
 
 After any kong, draw a replacement from `kongDrawIndex` (`kongDrawIndex--`). `lastDrawWasKongReplacement = true`.
 
+**Promoted vs. postponed is derived, never read off the wire.** `declareKongOnTurn` carries a `subtype`, but for these two the engine ignores it and asks `promotedKongSubtype(state, tileType)` in `state.ts` — promoted iff `drewThisTurn && tileTypeOf(lastDrawnTile) === tileType`. The classification is worth 3 points a kong, so taking it as sent made it forgeable in one frame; `views.ts` reads the same helper, so the offered button and the payment cannot disagree. `concealed` stays a genuine choice on the wire (a player may hold four of one type *and* an exposed pung of another) and is validated by the hand. (A50)
+
 #### 5.5.7 Robbing the kong (when `enableRobbingKong`)
 
 Promoted **and** postponed kongs trigger a brief claim window (`claimWindowMs`) during which other players may declare Hu on the tile being added. If declared, the kong is reversed and the declarer wins the tile (Robbing-the-Kong fan applies). Concealed kongs cannot be robbed.
 
 #### 5.5.8 Kong restrictions
 
+The PDF names exactly two, and the engine enforces both:
+
 - Cannot declare any kong if `kongDrawIndex` is exhausted (no replacement tile available).
-- Cannot declare kong on a discard that was already claimed for pung this turn.
+- Cannot declare any kong — concealed included — on a turn entered by a pung: *"one cannot declare kong if a player has declared a pung on the same turn."* `turnEnteredByPung(state)` is the predicate (`!turnDrawNeeded && !drewThisTurn`), and a pung claim is the one thing that clears `drewThisTurn`. (A50)
 
 #### 5.5.9 Wall-end edge cases
 

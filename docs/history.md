@@ -32,6 +32,7 @@ Series: **N** features · **A** full-repo audits · **F** frontend/design ·
 | **A44** | One river, drawn three times |
 | **A46, A48** | The hand arrangement, and the layer nothing had run |
 | **A49** | The Root fan only ever scored in seven pairs |
+| **A50** | A kong's subtype was worth 3 points and came off the wire |
 | **F1–F25** | *Frontend & design audit — seventh pass*, a numbered list. Grep the id. |
 | **N2** | The dice are real now |
 | **N3, N11, N14** | Help that shows a hand, a discard you can arm early, and a wall that reads the dice |
@@ -76,6 +77,48 @@ Series: **N** features · **A** full-repo audits · **F** frontend/design ·
 | **O3** | Closed **won't-do** — reasoning in [TODO.md](../TODO.md) and ARCHITECTURE §12 |
 | **O4** | One tile face everywhere |
 | **O5** | An **accepted trade-off**, not a task — per-IP limits key to a Cloudflare edge address. ARCHITECTURE §12 |
+
+---
+
+## ✅ A kong's subtype was worth 3 points and came off the wire (A50 — 2026-08-04)
+
+`applyDeclareKongOnTurn` validated the exposed pung and the tile in hand, then
+believed `action.subtype`: `promoted` collected 1 from each opponent, `postponed`
+collected nothing. Nothing checked the classification, so a crafted frame was
+worth 3 points a kong — **the one field "the WS boundary trusts nothing" had left
+trusted**, because it reads as a description of the action rather than as a
+claim about the state. `room.ts` whitelists the action *type* and matches the
+seat; the payload beyond that was the engine's to police.
+
+The honest derivation was wrong in one reachable case too.
+`getPromotedPostponedKongActions` classified by `lastDrawnTile`'s type without
+asking whether this seat had drawn at all — and after a pung claim nothing was
+drawn, while `lastDrawnTile` still held the *discarder's*. A seat that pungged
+holding the fourth copy, off a tsumogiri of that same tile, was offered a
+`promoted` kong for what the PDF calls postponed, and the bots take every kong
+the legal list offers. The new test builds exactly that position and it failed
+on the offered action before it failed on the payment.
+
+`promotedKongSubtype(state, tileType)` in `state.ts` now holds the rule —
+promoted iff `drewThisTurn && tileTypeOf(lastDrawnTile) === tileType` — beside
+`mustPlayVoidFirst`, for the same reason that one is there: two callers with a
+payment between them. `concealed` stays on the wire, because it is a genuine
+choice (four of one type in hand *and* an exposed pung of another) and the hand
+validates it.
+
+**The open rules question settled against the PDF, and it had an answer.**
+*"There are two important restrictions when declaring kongs. Firstly, one cannot
+declare a kong if there are no replacement tiles left in the wall. Secondly, one
+cannot declare kong if a player has declared a pung on the same turn."* The
+engine enforced the first and permitted the second; ARCHITECTURE §5.5.8 recorded
+it as being about the discard rather than about the turn, which is a rule that
+cannot fire — Kong outranks Pung inside a claim window, so no discard is ever
+claimed for pung with a kong still pending on it. `turnEnteredByPung` now refuses
+one, concealed kongs included: the restriction is on the turn, not on the shape.
+
+That closes the mis-classification a second time, from the other side. The
+derivation still earns its place — postponed is the ordinary case where you drew
+something else and added a copy you were already holding.
 
 ---
 

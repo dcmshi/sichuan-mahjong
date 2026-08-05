@@ -5,7 +5,7 @@ import { WALL_SIZE } from './dice.js';
 import { isWinningHand } from './hand.js';
 import type { Meld } from './melds.js';
 import type { GameConfig, GameState, HuRecord, PlayerState, Seat } from './state.js';
-import { DEALT_TILES, mustPlayVoidFirst } from './state.js';
+import { DEALT_TILES, mustPlayVoidFirst, promotedKongSubtype, turnEnteredByPung } from './state.js';
 import type { Phase } from './state.js';
 import type { Suit, TileId, TileType } from './tiles.js';
 import { suitOf, tileFromType, tileToType, tileTypeOf } from './tiles.js';
@@ -143,10 +143,10 @@ function getPromotedPostponedKongActions(state: GameState, seat: Seat): GameActi
     if (!hasInHand) continue;
     if (state.drawIndex > state.kongDrawIndex) continue;
 
-    let subtype: 'promoted' | 'postponed' = 'postponed';
-    if (state.lastDrawnTile !== null && tileTypeOf(state.lastDrawnTile) === meldType) {
-      subtype = 'promoted';
-    }
+    // The same derivation the engine applies, so the button cannot promise a
+    // payment the action will not make. Classifying by `lastDrawnTile` alone
+    // read the *discarder's* draw on a turn entered by pung. (A50)
+    const subtype = promotedKongSubtype(state, meldType);
     result.push({ t: 'declareKongOnTurn', seat, tile: meld.tile, subtype });
   }
   return result;
@@ -238,7 +238,10 @@ export function computeLegalActions(state: GameState, seat: Seat): GameAction[] 
     actions.push({ t: 'declareHuOnDraw', seat });
   }
 
-  if (!state.wallEndReached) {
+  // A turn entered by a pung has no draw behind it, and the PDF forbids a kong
+  // on one — the second of its two kong restrictions, beside the replacement
+  // tile. Concealed kongs are covered too: the restriction is on the turn. (A50)
+  if (!state.wallEndReached && !turnEnteredByPung(state)) {
     for (const type of getConcealedKongTypes(state, seat)) {
       if (state.drawIndex <= state.kongDrawIndex) {
         actions.push({

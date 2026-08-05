@@ -16,38 +16,10 @@ so it isn't rediscovered as a bug.
 
 ## Open
 
-Five findings from the 2026-08-04 full-repo code audit (the eighth pass, filed as
-**A49–A54**), in priority order. A50 was confirmed by running the code and
-reading the PDF, not only by reading the source; the commands and the extracts
-are noted inline so they can be re-run. **A49 — the Root fan never scoring in a
-standard hand — closed 2026-08-04**; the diagnosis is in
-[docs/history.md](./docs/history.md).
-
-### A50 — a kong's promoted/postponed subtype is trusted off the wire, and the payment hangs off it
-
-**`applyDeclareKongOnTurn` (`packages/engine/src/actions.ts:1208`) takes
-`action.subtype` as sent: `promoted` collects 1 from each opponent
-(`actions.ts:1310-1316`), `postponed` collects nothing.** The engine validates
-the exposed pung and the hand tile but never the classification, so a crafted
-frame saying `promoted` is +3 points a kong — the one field the "WS boundary
-trusts nothing" convention left trusted. (A junk string like `"exposed"` also
-flows un-narrowed into the meld record on this path.)
-
-The honest derivation is wrong in one reachable case too:
-`getPromotedPostponedKongActions` (`packages/engine/src/views.ts:147`) classifies
-by `lastDrawnTile`'s type **without checking `drewThisTurn`**. After a pung claim
-nothing was drawn, but `lastDrawnTile` still holds the *discarder's* draw — so a
-seat that pungs holding the 4th copy (discarder tsumogiri'd the tile it punged)
-is offered a `promoted` kong for what the PDF calls postponed, and the bots take
-every kong the legal list offers. PDF: promoted = *"places freshly taken tile
-from the wall"*, postponed = *"detaches a tile from the standing tiles"*.
-
-Fix: derive the subtype in the engine — promoted iff `drewThisTurn &&
-lastDrawnTile !== null && tileTypeOf(lastDrawnTile) === tileType` — ignore the
-wire value, and have `views.ts` read the same helper. One open rules question to
-settle against the PDF while in there: whether a kong may be declared at all on
-a turn entered by pung (the engine permits it today; the derivation at least
-makes it pay correctly as postponed).
+Four findings from the 2026-08-04 full-repo code audit (the eighth pass, filed as
+**A49–A54**), in priority order. **A49** (the Root fan never scoring in a standard
+hand) and **A50** (a kong's subtype trusted off the wire) both closed 2026-08-04;
+their diagnoses are in [docs/history.md](./docs/history.md).
 
 ### A51 — a new lobby's code can collide with a live room's
 

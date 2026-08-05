@@ -7,8 +7,8 @@ import {
 } from './dice.js';
 import type { Meld } from './melds.js';
 import { createRng } from './rng.js';
-import type { Suit, TileId } from './tiles.js';
-import { buildWall, sortTiles, suitOf } from './tiles.js';
+import type { Suit, TileId, TileType } from './tiles.js';
+import { buildWall, sortTiles, suitOf, tileTypeOf } from './tiles.js';
 
 export type Seat = 0 | 1 | 2 | 3;
 export type Phase = 'huan' | 'voidDeclare' | 'play' | 'roundEnd';
@@ -397,4 +397,39 @@ export function mustPlayVoidFirst(state: GameState, seat: Seat): boolean {
   if (state.config.voidDiscardRule !== 'strict') return false;
   const p = state.players[seat]!;
   return p.voidedSuit !== null && p.hand.some(t => suitOf(t) === p.voidedSuit);
+}
+
+/**
+ * Whether this turn was entered by a pung rather than by a draw, which is the
+ * PDF's second restriction on declaring kongs: *"one cannot declare kong if a
+ * player has declared a pung on the same turn"* (the first being that a
+ * replacement tile must be left). A pung hands you a tile off the table and
+ * obliges a discard; there is no wall tile behind it for a kong to spend.
+ *
+ * `drewThisTurn` is false in exactly one reachable position — a pung claim
+ * clears it, which is the same fact `declareHuOnDraw` reads to refuse a
+ * self-draw win on a claimed tile (A7).
+ */
+export function turnEnteredByPung(state: GameState): boolean {
+  return !state.turnDrawNeeded && !state.drewThisTurn;
+}
+
+/**
+ * Promoted or postponed, derived from where the fourth tile came from — the one
+ * thing that separates them, and the reason they pay differently (1 from each
+ * opponent versus nothing at all).
+ *
+ * The PDF: promoted *"places freshly taken tile from the wall"*, postponed
+ * *"detaches a tile from the standing tiles"*. **The subtype is never read off
+ * the wire** — `declareKongOnTurn` carries one, and taking it as sent made
+ * `promoted` worth 3 points to anyone who could craft a frame. `views.ts` reads
+ * this too, so the button and the payment cannot disagree. (A50)
+ */
+export function promotedKongSubtype(
+  state: GameState,
+  tileType: TileType,
+): 'promoted' | 'postponed' {
+  const drawn = state.lastDrawnTile;
+  if (!state.drewThisTurn || drawn === null) return 'postponed';
+  return tileTypeOf(drawn) === tileType ? 'promoted' : 'postponed';
 }

@@ -804,6 +804,53 @@ describe('Phase 3 — promoted / postponed kong', () => {
     );
     expect(s.lastDrawWasKongReplacement).toBe(true);
   });
+
+  // The subtype decides the payment — promoted collects 1 from each opponent,
+  // postponed collects nothing — so it is derived from the state rather than
+  // read off the frame. The PDF draws the line at where the fourth tile came
+  // from: promoted "places freshly taken tile from the wall", postponed
+  // "detaches a tile from the standing tiles". (A50)
+  it('a kong the wire calls promoted is postponed when the tile came from the hand', () => {
+    const pungMeld: Meld = {
+      kind: 'pung',
+      tile: tileFromType(M(5)),
+      concealed: false,
+      claimedFrom: 3,
+    };
+    const hand = [tid(M(5), 3), tid(P(1), 0), tid(P(2), 0), tid(P(3), 0), tid(M(2), 0)];
+    const s = applyOk(
+      makeState({
+        hands: [hand, [], [], []],
+        melds: [[pungMeld], [], [], []],
+        lastDrawnTile: tid(M(2), 0), // drew man2, and man5 was already held
+      }),
+      { t: 'declareKongOnTurn', seat: 0, tile: tileFromType(M(5)), subtype: 'promoted' },
+    );
+    const meld = s.players[0]!.melds[0]!;
+    expect(meld.kind === 'kong' && meld.subtype).toBe('postponed');
+    expect(s.players.map(p => p.scoreDelta)).toEqual([0, 0, 0, 0]);
+  });
+
+  it('a kong the wire calls postponed is promoted when the tile was just drawn', () => {
+    const pungMeld: Meld = {
+      kind: 'pung',
+      tile: tileFromType(M(5)),
+      concealed: false,
+      claimedFrom: 3,
+    };
+    const hand = [tid(M(5), 3), tid(P(1), 0), tid(P(2), 0), tid(P(3), 0), tid(M(2), 0)];
+    const s = applyOk(
+      makeState({
+        hands: [hand, [], [], []],
+        melds: [[pungMeld], [], [], []],
+        lastDrawnTile: tid(M(5), 3), // the fourth copy, straight off the wall
+      }),
+      { t: 'declareKongOnTurn', seat: 0, tile: tileFromType(M(5)), subtype: 'postponed' },
+    );
+    const meld = s.players[0]!.melds[0]!;
+    expect(meld.kind === 'kong' && meld.subtype).toBe('promoted');
+    expect(s.players.map(p => p.scoreDelta)).toEqual([3, -1, -1, -1]);
+  });
 });
 
 // ─── Kong restrictions ────────────────────────────────────────────────────────
@@ -834,6 +881,65 @@ describe('Phase 3 — kong restrictions', () => {
       subtype: 'concealed',
     });
     expect(r.ok).toBe(false);
+  });
+
+  // The PDF's second restriction, beside the replacement-tile one: "one cannot
+  // declare kong if a player has declared a pung on the same turn". A pung is
+  // not a draw, and a kong needs a tile from somewhere. (A50)
+  it('no kong on a turn entered by a pung', () => {
+    // Seat 0 draws the fourth man3 and discards it; seat 1 holds the other
+    // three and takes it as a pung, keeping one in hand. Its turn now has an
+    // exposed pung, the fourth copy in hand, and no draw behind it.
+    const seat0 = [
+      tid(M(3), 3),
+      tid(M(1), 0),
+      tid(M(2), 0),
+      tid(M(4), 0),
+      tid(M(5), 0),
+      tid(P(1), 0),
+      tid(P(2), 0),
+      tid(P(3), 0),
+      tid(P(4), 0),
+      tid(P(5), 0),
+      tid(P(6), 0),
+      tid(P(7), 0),
+      tid(P(8), 0),
+      tid(P(9), 0),
+    ];
+    const seat1 = [
+      tid(M(3), 0),
+      tid(M(3), 1),
+      tid(M(3), 2),
+      tid(M(2), 1),
+      tid(P(1), 1),
+      tid(P(2), 1),
+      tid(P(3), 1),
+      tid(P(4), 1),
+      tid(P(5), 1),
+      tid(P(6), 1),
+      tid(P(7), 1),
+      tid(P(8), 1),
+      tid(P(9), 1),
+    ];
+    let s = makeState({ hands: [seat0, seat1, [], []], lastDrawnTile: tid(M(3), 3) });
+    s = applyOk(s, { t: 'discard', seat: 0, tile: tid(M(3), 3) });
+    s = applyOk(s, { t: 'claim', seat: 1, claim: { kind: 'pung' } });
+    if (s.pendingClaims !== null) s = applyOk(s, { t: 'claimWindowExpire' });
+
+    expect(s.turn).toBe(1);
+    expect(s.drewThisTurn).toBe(false);
+    expect(computeLegalActions(s, 1).some(a => a.t === 'declareKongOnTurn')).toBe(false);
+
+    // And the engine refuses one sent anyway — `lastDrawnTile` still holds the
+    // discarder's draw, which is what used to classify this as promoted.
+    const r = applyAction(s, {
+      t: 'declareKongOnTurn',
+      seat: 1,
+      tile: tileFromType(M(3)),
+      subtype: 'promoted',
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.reason).toBe('kong_after_pung');
   });
 
   it('exposed kong claim rejected at wall end', () => {

@@ -226,6 +226,17 @@ The long form, with the measurements behind each, is in
   the single definition and all five callers ask it. Only a draw can re-arm it;
   claims cannot, because `canPungOnTile` / `canKongOnTile` / `canHuOnTile` all
   refuse a void-suit tile. (N46)
+- **A kong's promoted/postponed subtype is derived, not read off the wire.** The
+  two differ only in where the fourth tile came from, and that is worth 3 points
+  — promoted collects 1 from each opponent, postponed collects nothing. The
+  engine validated the exposed pung and the hand tile but took `action.subtype`
+  as sent, which is the one field the "WS boundary trusts nothing" convention had
+  left trusted. `promotedKongSubtype(state, tileType)` in `state.ts` is now the
+  single definition and `views.ts` asks it too, so the button and the payment
+  cannot disagree. **`concealed` is still a real choice** and stays on the wire.
+  The same pass closed the PDF's second kong restriction, which nothing
+  implemented: **no kong at all on a turn entered by a pung** — a pung is not a
+  draw, and `turnEnteredByPung` reads the same `drewThisTurn` that A7 added. (A50)
 - **A meld is a pung or a kong, never a chow.** Sichuan has no chow claims, so
   `Meld` is a two-way union and every meld is one tile type repeated. It carried a
   third `chow` variant until A47, which bought **seven** unreachable branches
@@ -382,10 +393,11 @@ reasoning and measurements in
 **All v1 work is shipped**: seven full-repo audit passes (A1–A48), the
 frontend/design pass (F1–F25), the mobile viewport work (R1–R7), the hosting
 work (C1–C10), and the feature run N1–N46. **[TODO.md](./TODO.md) holds the
-open findings of the eighth audit pass (2026-08-04, A49–A54)**. A49 — the Root
-fan scoring only inside seven pairs, halving every payment off a standard hand
-that held one — is closed; A50, a kong's subtype being trusted off the wire, is
-the largest of what is left.
+open findings of the eighth audit pass (2026-08-04, A49–A54)**. Two are closed:
+A49 (the Root fan scored only inside seven pairs, halving every payment off a
+standard hand that held one) and A50 (a kong's subtype came off the wire, and the
+payment hung off it). A51, a lobby code colliding with a live room's, is the
+largest of what is left.
 
 This section deliberately does not list what shipped — that is
 [docs/history.md](./docs/history.md), newest first, **with a find-an-item-by-id

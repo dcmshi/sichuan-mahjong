@@ -17,7 +17,12 @@ import type {
   PendingVoid,
   Seat,
 } from './state.js';
-import { huPlayerCount, mustPlayVoidFirst } from './state.js';
+import {
+  huPlayerCount,
+  mustPlayVoidFirst,
+  promotedKongSubtype,
+  turnEnteredByPung,
+} from './state.js';
 import type { Suit, Tile, TileId } from './tiles.js';
 import { sortTiles, suitOf, tileFromType, tileToType, tileTypeOf } from './tiles.js';
 
@@ -74,6 +79,7 @@ export type RuleViolation =
   | 'invalid_claim'
   | 'no_pending_kong_tile'
   | 'kong_no_replacement'
+  | 'kong_after_pung'
   | 'kong_requires_exposed_pung'
   | 'kong_tile_not_in_hand'
   | 'heavenly_not_eligible'
@@ -1218,6 +1224,7 @@ function applyDeclareKongOnTurn(
   if (state.wallEndReached) return fail('wrong_phase'); // no kongs at wall end
 
   if (state.drawIndex > state.kongDrawIndex) return fail('kong_no_replacement');
+  if (turnEnteredByPung(state)) return fail('kong_after_pung');
 
   const player = state.players[seat]!;
   const tileType = tileToType(tile);
@@ -1285,6 +1292,10 @@ function applyDeclareKongOnTurn(
   const kongTileInstance = player.hand.find(t => tileTypeOf(t) === tileType);
   if (kongTileInstance === undefined) return fail('kong_tile_not_in_hand');
 
+  // Not `action.subtype`: the wire says which kong this is, and promoted pays
+  // while postponed does not, so taking it as sent was 3 points a frame. (A50)
+  const kongSubtype = promotedKongSubtype(state, tileType);
+
   const s = clone(state);
   const sp = s.players[seat]!;
 
@@ -1296,18 +1307,13 @@ function applyDeclareKongOnTurn(
   s.history.push(action);
 
   const events: GameEvent[] = [
-    {
-      e: 'kongDeclared',
-      seat,
-      subtype: subtype as 'promoted' | 'postponed',
-      tile: kongTileInstance,
-    },
+    { e: 'kongDeclared', seat, subtype: kongSubtype, tile: kongTileInstance },
   ];
 
   // Promoted kong: pay 1 from each non-Hu player BEFORE robbing window (refundable if robbed)
   // Postponed: no payment
   const paidAmounts: Array<{ from: Seat; amount: number }> = [];
-  if (subtype === 'promoted') {
+  if (kongSubtype === 'promoted') {
     const payers = payFromAll(s, seat, 1);
     for (const from of payers) {
       paidAmounts.push({ from, amount: 1 });
@@ -1315,12 +1321,7 @@ function applyDeclareKongOnTurn(
     }
   }
 
-  s.pendingKongTile = {
-    seat,
-    tile: kongTileInstance,
-    kongSubtype: subtype as 'promoted' | 'postponed',
-    paidAmounts,
-  };
+  s.pendingKongTile = { seat, tile: kongTileInstance, kongSubtype, paidAmounts };
 
   if (state.config.enableRobbingKong) {
     const window = openClaimWindow(s, kongTileInstance, seat, true);
@@ -1328,24 +1329,10 @@ function applyDeclareKongOnTurn(
       events.push({ e: 'claimWindowOpened', tile: kongTileInstance, from: seat });
       return ok(s, events);
     }
-    events.push(
-      ...completePromotedPostponedKong(
-        s,
-        seat,
-        kongTileInstance,
-        subtype as 'promoted' | 'postponed',
-      ),
-    );
+    events.push(...completePromotedPostponedKong(s, seat, kongTileInstance, kongSubtype));
     s.pendingKongTile = null;
   } else {
-    events.push(
-      ...completePromotedPostponedKong(
-        s,
-        seat,
-        kongTileInstance,
-        subtype as 'promoted' | 'postponed',
-      ),
-    );
+    events.push(...completePromotedPostponedKong(s, seat, kongTileInstance, kongSubtype));
     s.pendingKongTile = null;
   }
 
