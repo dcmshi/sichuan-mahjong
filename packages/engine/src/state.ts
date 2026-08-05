@@ -280,6 +280,14 @@ export function createGame(
    * passes the rotated dealer, because a seat once won is not re-contested.
    */
   dealer: Seat | null = null,
+  /**
+   * The wall clock, taken rather than read. `startedAt` is a real timestamp —
+   * the game record is written with it — but reading `Date.now()` here made the
+   * state something other than a function of its inputs, which is a claim the
+   * purity convention makes and could not check. A caller that passes a fixed
+   * value gets a byte-identical replay. (A52)
+   */
+  now: number = Date.now(),
 ): GameState {
   const cfg: GameConfig = { ...DEFAULT_CONFIG, ...config };
 
@@ -354,7 +362,7 @@ export function createGame(
     huOrder: [],
     nextDealer: 0,
     history: [],
-    startedAt: Date.now(),
+    startedAt: now,
   };
 }
 
@@ -363,14 +371,14 @@ export function createGame(
  * dealer rotated to `prev.nextDealer` (computed at the previous round's end).
  * Per-round score deltas reset to 0; cumulative match totals are tracked client-side.
  */
-export function startNextRound(prev: GameState, seed: string): GameState {
+export function startNextRound(prev: GameState, seed: string, now?: number): GameState {
   const inits = prev.players.map(p => ({ name: p.name, isBot: p.isBot })) as [
     PlayerInit,
     PlayerInit,
     PlayerInit,
     PlayerInit,
   ];
-  return createGame(seed, inits, prev.config, prev.nextDealer);
+  return createGame(seed, inits, prev.config, prev.nextDealer, now);
 }
 
 export function huPlayerCount(state: GameState): number {

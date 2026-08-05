@@ -156,8 +156,12 @@ Full tree: [ARCHITECTURE.md §3](./ARCHITECTURE.md#3-repo-layout).
 
 ## Conventions
 
-- **Engine stays pure.** No I/O, no deps, randomness only through `rng.ts`. Replays,
-  determinism, and the fast-check property tests depend on it.
+- **Engine stays pure.** No I/O, no deps, randomness only through `rng.ts`, **and
+  the clock passed in rather than read** — `applyAction` and `createGame` take a
+  trailing optional `now` defaulting to `Date.now()`, which is what lets
+  `phase1.test.ts` assert two runs of a seed are deep-equal instead of merely
+  agreeing on the outcome (A52). Replays, determinism, and the fast-check property
+  tests depend on all of it.
 - **Everything reaching a client goes through `views.ts`.** Any field added to
   `GameState` needs a redaction decision before it lands in `PlayerView` —
   concealed kongs, drawn tiles, and the face-down first discard are all redacted
@@ -393,12 +397,12 @@ reasoning and measurements in
 **All v1 work is shipped**: seven full-repo audit passes (A1–A48), the
 frontend/design pass (F1–F25), the mobile viewport work (R1–R7), the hosting
 work (C1–C10), and the feature run N1–N46. **[TODO.md](./TODO.md) holds the
-open findings of the eighth audit pass (2026-08-04, A49–A54)**. Three are closed:
+open findings of the eighth audit pass (2026-08-04, A49–A54)**. Four are closed:
 A49 (the Root fan scored only inside seven pairs, halving every payment off a
 standard hand that held one), A50 (a kong's subtype came off the wire, and the
-payment hung off it) and A51 (a fresh lobby could be handed a live room's code).
-What is left is A52–A54: two `Date.now()` calls in the engine, two
-measure-first micro-inefficiencies, and the modulo bias in `nextInt`.
+payment hung off it), A51 (a fresh lobby could be handed a live room's code) and
+A52 (the engine read the clock). What is left is A53 and A54: two measure-first
+micro-inefficiencies, and the modulo bias in `nextInt`.
 
 This section deliberately does not list what shipped — that is
 [docs/history.md](./docs/history.md), newest first, **with a find-an-item-by-id

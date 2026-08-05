@@ -490,12 +490,13 @@ function openClaimWindow(
   tile: TileId,
   from: Seat,
   afterKong: boolean,
+  now: number,
 ): ClaimWindow | null {
   const window: ClaimWindow = {
     tile,
     from,
     afterKong,
-    deadline: Date.now() + s.config.claimWindowMs,
+    deadline: now + s.config.claimWindowMs,
     passed: [false, false, false, false],
     claims: [null, null, null, null],
   };
@@ -1053,6 +1054,7 @@ function applyDraw(state: GameState, action: Extract<GameAction, { t: 'draw' }>)
 function applyDiscard(
   state: GameState,
   action: Extract<GameAction, { t: 'discard' }>,
+  now: number,
 ): ActionResult {
   if (state.phase !== 'play') return fail('wrong_phase');
   const { seat, tile } = action;
@@ -1080,7 +1082,7 @@ function applyDiscard(
   sp.discards.push(tile);
 
   s.history.push(action);
-  return finishDiscard(s, seat, tile);
+  return finishDiscard(s, seat, tile, now);
 }
 
 /**
@@ -1092,6 +1094,7 @@ function applyDiscard(
 function applyFlipFirstDiscard(
   state: GameState,
   action: Extract<GameAction, { t: 'flipFirstDiscard' }>,
+  now: number,
 ): ActionResult {
   if (state.phase !== 'play') return fail('wrong_phase');
   const { seat } = action;
@@ -1110,7 +1113,7 @@ function applyFlipFirstDiscard(
   sp.voidDiscardTile = tile;
   sp.discards.push(tile);
   s.history.push(action);
-  return finishDiscard(s, seat, tile);
+  return finishDiscard(s, seat, tile, now);
 }
 
 /**
@@ -1118,7 +1121,7 @@ function applyFlipFirstDiscard(
  * as taken, open a claim window if anyone can claim, else advance the turn.
  * `s` must already be a clone with the tile moved into `discards`.
  */
-function finishDiscard(s: GameState, seat: Seat, tile: TileId): ActionResult {
+function finishDiscard(s: GameState, seat: Seat, tile: TileId, now: number): ActionResult {
   s.firstTurnDone[seat] = true;
   s.lastDiscard = {
     tile,
@@ -1129,7 +1132,7 @@ function finishDiscard(s: GameState, seat: Seat, tile: TileId): ActionResult {
   const events: GameEvent[] = [{ e: 'discarded', seat, tile }];
 
   // Try to open claim window
-  const window = openClaimWindow(s, tile, seat, false);
+  const window = openClaimWindow(s, tile, seat, false, now);
   if (window !== null) {
     events.push({ e: 'claimWindowOpened', tile, from: seat });
     return ok(s, events);
@@ -1214,6 +1217,7 @@ function applyClaimWindowExpire(
 function applyDeclareKongOnTurn(
   state: GameState,
   action: Extract<GameAction, { t: 'declareKongOnTurn' }>,
+  now: number,
 ): ActionResult {
   if (state.phase !== 'play') return fail('wrong_phase');
   if (state.pendingClaims !== null) return fail('wrong_phase');
@@ -1324,7 +1328,7 @@ function applyDeclareKongOnTurn(
   s.pendingKongTile = { seat, tile: kongTileInstance, kongSubtype, paidAmounts };
 
   if (state.config.enableRobbingKong) {
-    const window = openClaimWindow(s, kongTileInstance, seat, true);
+    const window = openClaimWindow(s, kongTileInstance, seat, true, now);
     if (window !== null) {
       events.push({ e: 'claimWindowOpened', tile: kongTileInstance, from: seat });
       return ok(s, events);
@@ -1528,7 +1532,7 @@ function applyDeclareHeavenly(
 // Public entry point
 // ---------------------------------------------------------------------------
 
-function dispatchAction(state: GameState, action: GameAction): ActionResult {
+function dispatchAction(state: GameState, action: GameAction, now: number): ActionResult {
   switch (action.t) {
     case 'huanSelect':
       return applyHuanSelect(state, action);
@@ -1537,9 +1541,9 @@ function dispatchAction(state: GameState, action: GameAction): ActionResult {
     case 'draw':
       return applyDraw(state, action);
     case 'discard':
-      return applyDiscard(state, action);
+      return applyDiscard(state, action, now);
     case 'flipFirstDiscard':
-      return applyFlipFirstDiscard(state, action);
+      return applyFlipFirstDiscard(state, action, now);
     case 'claim':
       return applyClaim(state, action);
     case 'pass':
@@ -1547,7 +1551,7 @@ function dispatchAction(state: GameState, action: GameAction): ActionResult {
     case 'claimWindowExpire':
       return applyClaimWindowExpire(state, action);
     case 'declareKongOnTurn':
-      return applyDeclareKongOnTurn(state, action);
+      return applyDeclareKongOnTurn(state, action, now);
     case 'declareHuOnDraw':
       return applyDeclareHuOnDraw(state, action);
     case 'declareHeavenly':
@@ -1573,9 +1577,13 @@ function dispatchAction(state: GameState, action: GameAction): ActionResult {
  * uncaught exception, so a caller never crashes — `state` is left untouched and
  * the cause is surfaced in `detail` for diagnosis.
  */
-export function applyAction(state: GameState, action: GameAction): ActionResult {
+export function applyAction(
+  state: GameState,
+  action: GameAction,
+  now: number = Date.now(),
+): ActionResult {
   try {
-    return dispatchAction(state, action);
+    return dispatchAction(state, action, now);
   } catch (err) {
     return {
       ok: false,

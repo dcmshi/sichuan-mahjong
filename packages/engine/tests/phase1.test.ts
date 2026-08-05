@@ -10,7 +10,11 @@ import { suitOf } from '../src/tiles.js';
 // ---------------------------------------------------------------------------
 
 /** Run a full game to wall exhaustion. Returns the final state. Throws on any rule violation. */
-function runToWallEnd(seed: string, voidDiscardRule: 'strict' | 'lenient'): GameState {
+function runToWallEnd(
+  seed: string,
+  voidDiscardRule: 'strict' | 'lenient',
+  now?: number,
+): GameState {
   let state = createGame(
     seed,
     [
@@ -20,6 +24,8 @@ function runToWallEnd(seed: string, voidDiscardRule: 'strict' | 'lenient'): Game
       { name: 'P3', isBot: true },
     ],
     { ...DEFAULT_CONFIG, enableHuanSanZhang: false, voidDiscardRule },
+    null,
+    now,
   );
 
   // Void declaration: each player picks the suit they have fewest of
@@ -39,7 +45,7 @@ function runToWallEnd(seed: string, voidDiscardRule: 'strict' | 'lenient'): Game
     // Find first tile of that suit (if any)
     const firstDiscard = player.hand.find(t => suitOf(t) === voidSuit) ?? null;
 
-    const r = applyAction(state, { t: 'declareVoid', seat, suit: voidSuit, firstDiscard });
+    const r = applyAction(state, { t: 'declareVoid', seat, suit: voidSuit, firstDiscard }, now);
     if (!r.ok) throw new Error(`declareVoid seat ${seat} failed: ${r.reason}`);
     state = r.state;
   }
@@ -58,7 +64,7 @@ function runToWallEnd(seed: string, voidDiscardRule: 'strict' | 'lenient'): Game
     const isEastFirstTurn = seat === state.dealer && !state.firstTurnDone[seat];
 
     if (!isEastFirstTurn) {
-      const dr = applyAction(state, { t: 'draw', seat });
+      const dr = applyAction(state, { t: 'draw', seat }, now);
       if (!dr.ok) throw new Error(`draw seat ${seat} failed: ${dr.reason}`);
       state = dr.state;
       if (state.phase !== 'play') break; // wall exhausted on draw
@@ -69,12 +75,12 @@ function runToWallEnd(seed: string, voidDiscardRule: 'strict' | 'lenient'): Game
     const currentPlayer = state.players[seat]!;
     let disc: ReturnType<typeof applyAction>;
     if (currentPlayer.pendingFirstDiscard !== null) {
-      disc = applyAction(state, { t: 'flipFirstDiscard', seat });
+      disc = applyAction(state, { t: 'flipFirstDiscard', seat }, now);
       if (!disc.ok) throw new Error(`flip seat ${seat} failed: ${disc.reason}`);
     } else {
       const voidTiles = currentPlayer.hand.filter(t => suitOf(t) === currentPlayer.voidedSuit);
       const tile = voidTiles.length > 0 ? voidTiles[0]! : currentPlayer.hand[0]!;
-      disc = applyAction(state, { t: 'discard', seat, tile });
+      disc = applyAction(state, { t: 'discard', seat, tile }, now);
       if (!disc.ok) throw new Error(`discard seat ${seat} failed: ${disc.reason} (tile ${tile})`);
     }
     state = disc.state;
@@ -82,7 +88,7 @@ function runToWallEnd(seed: string, voidDiscardRule: 'strict' | 'lenient'): Game
 
     // Expire any claim window immediately (phase 1 test: no claims)
     if (state.pendingClaims !== null) {
-      const exp = applyAction(state, { t: 'claimWindowExpire' });
+      const exp = applyAction(state, { t: 'claimWindowExpire' }, now);
       if (!exp.ok) throw new Error(`claimWindowExpire failed: ${exp.reason}`);
       state = exp.state;
     }
@@ -111,6 +117,18 @@ describe('Phase 1 — basic round (no claims, no Hu)', () => {
     const b = runToWallEnd('determinism', 'strict');
     expect(a.history.length).toBe(b.history.length);
     expect(a.drawIndex).toBe(b.drawIndex);
+  });
+
+  // The stronger claim the convention actually makes: the state is a *function*
+  // of (seed, actions, clock), so two runs are deep-equal rather than merely
+  // agreeing on the outcome. It could not be asserted while `createGame` and
+  // `openClaimWindow` read `Date.now()` themselves — `startedAt` and any open
+  // window's `deadline` differed by the milliseconds between the two runs. (A52)
+  it('is a pure function of seed and clock, field for field', () => {
+    const at = 1_700_000_000_000;
+    expect(runToWallEnd('determinism', 'strict', at)).toEqual(
+      runToWallEnd('determinism', 'strict', at),
+    );
   });
 
   it('tile conservation: 108 tiles accounted for at round end', () => {

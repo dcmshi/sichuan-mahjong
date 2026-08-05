@@ -34,6 +34,7 @@ Series: **N** features · **A** full-repo audits · **F** frontend/design ·
 | **A49** | The Root fan only ever scored in seven pairs |
 | **A50** | A kong's subtype was worth 3 points and came off the wire |
 | **A51** | A fresh lobby could be handed a live room's code |
+| **A52** | The engine read the clock in two places |
 | **F1–F25** | *Frontend & design audit — seventh pass*, a numbered list. Grep the id. |
 | **N2** | The dice are real now |
 | **N3, N11, N14** | Help that shows a hand, a discard you can arm early, and a wall that reads the dice |
@@ -78,6 +79,34 @@ Series: **N** features · **A** full-repo audits · **F** frontend/design ·
 | **O3** | Closed **won't-do** — reasoning in [TODO.md](../TODO.md) and ARCHITECTURE §12 |
 | **O4** | One tile face everywhere |
 | **O5** | An **accepted trade-off**, not a task — per-IP limits key to a Cloudflare edge address. ARCHITECTURE §12 |
+
+---
+
+## ✅ The engine read the clock in two places (A52 — 2026-08-04)
+
+`createGame`'s `startedAt` and `openClaimWindow`'s `deadline`. Neither changed
+behaviour — expiry is server-driven through `claimWindowExpire`, so replays were
+already deterministic in *outcome* — but the state was not a function of its
+inputs, and that is a claim the purity convention makes.
+
+The evidence it mattered was already in the suite: `phase1.test.ts`'s "same seed
+produces same final state" compared `history.length` and `drawIndex` and stopped
+there. A deep compare would have failed on `startedAt` by however many
+milliseconds separated the two runs, so the strongest determinism assertion the
+engine could carry was one that skipped most of the state.
+
+Both are genuine wall-clock instants and neither can be derived — the game record
+is written with `startedAt`, the server rebases a persisted `deadline` on restart
+and the client counts down against it — so the fix is to take the time rather
+than read it. `applyAction(state, action, now = Date.now())` and
+`createGame(..., now = Date.now())`, threaded through `dispatchAction` to the
+three handlers that need it (`discard`, `flipFirstDiscard`, `declareKongOnTurn`).
+Every existing caller is untouched by the default; the new test passes a fixed
+value and compares the whole state with `toEqual`.
+
+Chosen over documenting the two exceptions, which was the other option on file:
+a documented exception leaves the convention uncheckable, and this one is six
+lines and buys a test.
 
 ---
 

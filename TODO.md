@@ -16,21 +16,12 @@ so it isn't rediscovered as a bug.
 
 ## Open
 
-Three findings from the 2026-08-04 full-repo code audit (the eighth pass, filed
-as **A49–A54**), in priority order. **A49** (the Root fan never scoring in a
-standard hand), **A50** (a kong's subtype trusted off the wire) and **A51** (a
-lobby code colliding with a live room's) all closed 2026-08-04; their diagnoses
-are in [docs/history.md](./docs/history.md).
-
-### A52 — two `Date.now()` calls inside the engine
-
-`openClaimWindow`'s deadline (`actions.ts:492`) and `createGame`'s `startedAt`
-(`state.ts:357`). Neither changes behaviour — expiry is server-driven via
-`claimWindowExpire`, so replays stay deterministic in outcome — but the state is
-not a pure function of (seed, actions): two replays differ in these two fields,
-and "the engine stays pure" is one undocumented exception away from being
-uncheckable. Either inject a clock (a `now` on the action/config) or document
-the two exceptions where the convention is stated. Small.
+Two findings from the 2026-08-04 full-repo code audit (the eighth pass, filed as
+**A49–A54**), in priority order. **A49** (the Root fan never scoring in a standard
+hand), **A50** (a kong's subtype trusted off the wire), **A51** (a lobby code
+colliding with a live room's) and **A52** (two `Date.now()` calls in the engine)
+all closed 2026-08-04; their diagnoses are in
+[docs/history.md](./docs/history.md).
 
 ### A53 — two measured-first micro-inefficiencies
 

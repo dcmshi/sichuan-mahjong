@@ -92,8 +92,8 @@ function makeState(opts: {
   };
 }
 
-function applyOk(state: GameState, action: GameAction): GameState {
-  const r = applyAction(state, action);
+function applyOk(state: GameState, action: GameAction, now?: number): GameState {
+  const r = applyAction(state, action, now);
   if (!r.ok) throw new Error(`${action.t} failed: ${r.reason}`);
   return r.state;
 }
@@ -850,6 +850,24 @@ describe('Phase 3 — promoted / postponed kong', () => {
     const meld = s.players[0]!.melds[0]!;
     expect(meld.kind === 'kong' && meld.subtype).toBe('promoted');
     expect(s.players.map(p => p.scoreDelta)).toEqual([3, -1, -1, -1]);
+  });
+});
+
+// ─── The claim window's deadline ──────────────────────────────────────────────
+
+describe('Phase 3 — the claim window deadline', () => {
+  it('is the caller’s clock plus the window, not the engine reading its own', () => {
+    // The deadline is a real wall-clock instant — the server rebases it across a
+    // restart and the client counts down against it — so the engine takes it
+    // rather than reads it. (A52)
+    const at = 1_700_000_000_000;
+    const s = applyOk(
+      makeState({ hands: [seat0Hand14(), kongHand(), [], []] }),
+      { t: 'discard', seat: 0, tile: tid(M(1), 0) },
+      at,
+    );
+    expect(s.pendingClaims).not.toBeNull();
+    expect(s.pendingClaims!.deadline).toBe(at + s.config.claimWindowMs);
   });
 });
 

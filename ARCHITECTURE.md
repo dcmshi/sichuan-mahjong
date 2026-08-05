@@ -144,7 +144,9 @@ sichuan-mahjong/
 
 ## 4. Engine — types & API
 
-The engine is pure. `applyAction(state, action) → ActionResult` is the only function that mutates anything.
+The engine is pure. `applyAction(state, action, now?) → ActionResult` is the only function that mutates anything.
+
+**Two fields are wall-clock times, and the engine is given them rather than reading them** — `GameState.startedAt` (written into the game record) and an open `ClaimWindow.deadline` (rebased by the server across a restart, counted down by the client). Both `applyAction` and `createGame` take a trailing optional `now` defaulting to `Date.now()`, so every existing caller is unchanged while a fixed value makes the state a function of (seed, actions, clock) field for field. `phase1.test.ts` asserts exactly that with a deep compare; before A52 it could only compare `history.length` and `drawIndex`.
 
 ### 4.1 Tile encoding
 
@@ -363,7 +365,8 @@ export type ActionResult =
   | { ok: true;  state: GameState; events: GameEvent[] }
   | { ok: false; reason: RuleViolation };
 
-export function applyAction(state: GameState, action: GameAction): ActionResult;
+// `now` is the clock, injected rather than read — see §4's note. (A52)
+export function applyAction(state: GameState, action: GameAction, now?: number): ActionResult;
 ```
 
 The Hu subtype (`heavenly | earthly | winAfterKong | shootAfterKong | underTheSea | robbingTheKong | normal`) is derived from `GameState` context at the moment of declaration, not chosen by the player. Per the PDF compatibility table (§5.8), these subtypes are mutually exclusive.
