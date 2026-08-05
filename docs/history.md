@@ -33,6 +33,7 @@ Series: **N** features · **A** full-repo audits · **F** frontend/design ·
 | **A46, A48** | The hand arrangement, and the layer nothing had run |
 | **A49** | The Root fan only ever scored in seven pairs |
 | **A50** | A kong's subtype was worth 3 points and came off the wire |
+| **A51** | A fresh lobby could be handed a live room's code |
 | **F1–F25** | *Frontend & design audit — seventh pass*, a numbered list. Grep the id. |
 | **N2** | The dice are real now |
 | **N3, N11, N14** | Help that shows a hand, a discard you can arm early, and a wall that reads the dice |
@@ -77,6 +78,29 @@ Series: **N** features · **A** full-repo audits · **F** frontend/design ·
 | **O3** | Closed **won't-do** — reasoning in [TODO.md](../TODO.md) and ARCHITECTURE §12 |
 | **O4** | One tile face everywhere |
 | **O5** | An **accepted trade-off**, not a task — per-IP limits key to a Cloudflare edge address. ARCHITECTURE §12 |
+
+---
+
+## ✅ A fresh lobby could be handed a live room's code (A51 — 2026-08-04)
+
+`createLobby` re-rolled its code against the **lobby** store only. `startGame`
+deletes the lobby and leaves the room live under the same code, so a code very
+much in use is absent from the store it was checked against. The new host's token
+then resolves with `data.code === code`, `getRoom(code)` finds the *old* room,
+and `ws.ts` seats the stranger as seat 0 of a running game — their hand, their
+turn, their score.
+
+One predicate: `while (store.has(code) || getRoom(code) !== undefined)`. There is
+no cycle to route around, because `room.ts` imports nothing from `lobby.ts` — the
+dependency only ever ran the other way.
+
+Odds are about 1 in 21,000 creates at the hosted 50-game ceiling, which is small
+and not zero, and the failure is not a collision error. **The test had to force
+one**: `generateCode` is CSPRNG-backed over a ~1.05M keyspace, so the existing
+"never hands out a code already in use" test is a distribution check that could
+never have caught this. Queueing alphabet indices through a mocked `randomInt`
+makes the next draw a chosen code and leaves the real generator in place
+everywhere else.
 
 ---
 

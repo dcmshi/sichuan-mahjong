@@ -1,5 +1,6 @@
 import { randomInt } from 'node:crypto';
 import type { BotDifficulty, Seat } from '@sichuan-mahjong/engine';
+import { getRoom } from './room.js';
 
 // Alphabet excludes I, O, 0, 1 to avoid confusion
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -44,10 +45,15 @@ export type Lobby = {
 const store = new Map<string, Lobby>();
 
 export function createLobby(hostToken: string): Lobby {
+  // The room store as well as the lobby store: `startGame` deletes the lobby and
+  // leaves the room live under the same code, so a code still very much in use is
+  // absent from `store`. Re-issuing one resolves the new host's token against the
+  // running game and seats them into another player's hand. `room.ts` imports
+  // nothing from here, so this direction has no cycle. (A51)
   let code: string;
   do {
     code = generateCode();
-  } while (store.has(code));
+  } while (store.has(code) || getRoom(code) !== undefined);
 
   const lobby: Lobby = {
     code,

@@ -1,5 +1,37 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+// node:sqlite is a native built-in; Vite can't bundle it — mock before room.js loads.
+vi.mock('../src/persistence.js', () => ({
+  saveGameWithCode: vi.fn(),
+  getGame: vi.fn().mockReturnValue(null),
+  saveLiveRoom: vi.fn(),
+  loadLiveRooms: vi.fn().mockReturnValue([]),
+  deleteLiveRoom: vi.fn(),
+}));
+
+/**
+ * `generateCode` is CSPRNG-backed, so a collision cannot be waited for — 32^4 is
+ * ~1.05M. Queueing alphabet indices through `randomInt` makes the next draw a
+ * chosen code; an empty queue falls through to the real generator, which is what
+ * leaves the distribution tests below testing the real thing.
+ */
+const { forcedIndices } = vi.hoisted(() => ({ forcedIndices: [] as number[] }));
+vi.mock('node:crypto', async importOriginal => {
+  const actual = await importOriginal<typeof import('node:crypto')>();
+  return {
+    ...actual,
+    randomInt: (max: number) =>
+      forcedIndices.length > 0 ? forcedIndices.shift()! : actual.randomInt(max),
+  };
+});
+
 import { CODE_LENGTH, createLobby, deleteLobby, generateCode } from '../src/lobby.js';
+import { createRoom, deleteRoom } from '../src/room.js';
+
+const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+/** Make the generator's next draw return `code`. */
+function forceNextCode(code: string): void {
+  for (const ch of code) forcedIndices.push(ALPHABET.indexOf(ch));
+}
 
 /**
  * The room code is the whole access control — there are no accounts, so holding
@@ -46,5 +78,25 @@ describe('room codes', () => {
       codes.add(lobby.code);
     }
     for (const lobby of lobbies) deleteLobby(lobby.code);
+  });
+
+  it('re-rolls a code a live room holds, not only one a live lobby holds', () => {
+    // `startGame` deletes the lobby and leaves the room under the same code, so
+    // the lobby store on its own does not know the code is still in use. Handing
+    // it to a fresh host resolves their token against the running game. (A51)
+    const slots = Array.from({ length: 4 }, (_, i) => ({
+      name: `P${i}`,
+      isBot: true,
+      connected: false,
+    }));
+    createRoom('AAAA', slots);
+    forceNextCode('AAAA');
+    forceNextCode('BBBB');
+
+    const lobby = createLobby('host-token');
+    expect(lobby.code).toBe('BBBB');
+
+    deleteLobby(lobby.code);
+    deleteRoom('AAAA');
   });
 });

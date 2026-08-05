@@ -16,22 +16,11 @@ so it isn't rediscovered as a bug.
 
 ## Open
 
-Four findings from the 2026-08-04 full-repo code audit (the eighth pass, filed as
-**A49–A54**), in priority order. **A49** (the Root fan never scoring in a standard
-hand) and **A50** (a kong's subtype trusted off the wire) both closed 2026-08-04;
-their diagnoses are in [docs/history.md](./docs/history.md).
-
-### A51 — a new lobby's code can collide with a live room's
-
-`createLobby` (`packages/server/src/lobby.ts:46`) re-rolls a code only against
-the **lobby** store, but `startGame` deletes the lobby while the room lives on
-under the same code — so a live room's code can be re-issued to a fresh lobby.
-When it fires: the new host's token resolves with `data.code === code`,
-`getRoom(code)` finds the *old* room, and `ws.ts:322-330` seats the stranger
-into the running game as seat 0 — they receive that player's hand and can act
-for them. Odds are ~1 in 21k creates at the hosted 50-game ceiling, but the fix
-is one predicate: `while (store.has(code) || getRoom(code) !== undefined)` —
-and `room.ts` imports nothing from `lobby.ts`, so there is no cycle.
+Three findings from the 2026-08-04 full-repo code audit (the eighth pass, filed
+as **A49–A54**), in priority order. **A49** (the Root fan never scoring in a
+standard hand), **A50** (a kong's subtype trusted off the wire) and **A51** (a
+lobby code colliding with a live room's) all closed 2026-08-04; their diagnoses
+are in [docs/history.md](./docs/history.md).
 
 ### A52 — two `Date.now()` calls inside the engine
 
