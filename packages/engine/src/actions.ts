@@ -847,6 +847,11 @@ function applyPungClaim(s: GameState, winner: Seat): GameEvent[] {
   // self-draw Hu on the punged tile (which would bypass furiten and grab the
   // self-draw bonus). Clearing this is the crux of the A7 fix.
   s.drewThisTurn = false;
+  // The kong-replacement flag goes with it: it belongs to the turn that drew
+  // off the tail, and this turn has no draw at all. Left set, the pung player's
+  // discard reads as afterKong and a Hu on it scores shootAfterKong — a fan for
+  // a kong the discarder never declared.
+  s.lastDrawWasKongReplacement = false;
 
   const events: GameEvent[] = [{ e: 'claimed', seat: winner, kind: 'pung', tile }];
   applyVoidMeldPenalty(s, winner, suitOf(tile), events);

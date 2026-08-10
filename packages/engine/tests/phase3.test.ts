@@ -981,6 +981,86 @@ describe('Phase 3 — kong restrictions', () => {
   });
 });
 
+describe('Phase 3 — shootAfterKong subtype', () => {
+  it('a discard on a pung-entered turn is not after-kong, even right after one', () => {
+    // Seat 0 concealed-kongs man1 and draws the replacement (kongDrawIndex pins
+    // it to pin5, id 54), then discards it — that discard IS after a kong. Seat 1
+    // pungs it: a turn entered by pung has no draw behind it, so seat 1's discard
+    // must not inherit the stale lastDrawWasKongReplacement flag — a Hu on it
+    // would otherwise score shootAfterKong for a kong the discarder never made.
+    const seat0 = [
+      tid(M(1), 0),
+      tid(M(1), 1),
+      tid(M(1), 2),
+      tid(M(1), 3),
+      tid(M(2), 0),
+      tid(M(4), 0),
+      tid(M(5), 0),
+      tid(P(1), 0),
+      tid(P(2), 0),
+      tid(P(3), 0),
+      tid(P(4), 0),
+      tid(P(6), 0),
+      tid(P(7), 0),
+      tid(P(8), 0),
+    ];
+    const seat1 = [
+      tid(P(5), 0),
+      tid(P(5), 1),
+      tid(M(7), 1), // discarded into seat 2's wait
+      tid(P(6), 1),
+      tid(P(7), 1),
+      tid(P(8), 1),
+      tid(P(9), 1),
+      tid(M(2), 1),
+      tid(M(4), 1),
+      tid(M(5), 1),
+      tid(P(1), 1),
+      tid(P(2), 1),
+      tid(P(3), 1),
+    ];
+    // Tenpai on man7: four pungs and a single — AllPungs + GoldenWait when it lands.
+    const seat2 = [
+      tid(M(6), 0),
+      tid(M(6), 1),
+      tid(M(6), 2),
+      tid(M(8), 0),
+      tid(M(8), 1),
+      tid(M(8), 2),
+      tid(M(9), 0),
+      tid(M(9), 1),
+      tid(M(9), 2),
+      tid(P(4), 1),
+      tid(P(4), 2),
+      tid(P(4), 3),
+      tid(M(7), 0),
+    ];
+
+    let s = makeState({ hands: [seat0, seat1, seat2, []], kongDrawIndex: 54 });
+    s = applyOk(s, {
+      t: 'declareKongOnTurn',
+      seat: 0,
+      tile: tileFromType(M(1)),
+      subtype: 'concealed',
+    });
+    expect(s.lastDrawWasKongReplacement).toBe(true);
+    expect(s.lastDrawnTile).toBe(tid(P(5), 2));
+
+    s = applyOk(s, { t: 'discard', seat: 0, tile: tid(P(5), 2) });
+    expect(s.lastDiscard?.afterKong).toBe(true); // genuinely after a kong
+
+    s = applyOk(s, { t: 'claim', seat: 1, claim: { kind: 'pung' } });
+    expect(s.turn).toBe(1);
+    expect(s.drewThisTurn).toBe(false);
+
+    s = applyOk(s, { t: 'discard', seat: 1, tile: tid(M(7), 1) });
+    expect(s.lastDiscard?.afterKong).toBe(false);
+
+    s = applyOk(s, { t: 'claim', seat: 2, claim: { kind: 'hu' } });
+    expect(s.players[2]!.hu?.subtype).toBe('normal');
+  });
+});
+
 // ─── Furiten ─────────────────────────────────────────────────────────────────
 
 describe('Phase 3 — furiten', () => {
