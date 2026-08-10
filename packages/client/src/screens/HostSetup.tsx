@@ -98,6 +98,9 @@ export function HostSetup() {
       };
       const store = useStore.getState();
       store.setCode(newCode);
+      // The address bar may still carry the old room's ?code= from the /j/:code
+      // redirect — drop it so it can't contradict this lobby's share URL.
+      window.history.replaceState(null, '', window.location.pathname);
       store.setWatchToken(watchToken);
       store.setPlayerName(name.trim());
 
