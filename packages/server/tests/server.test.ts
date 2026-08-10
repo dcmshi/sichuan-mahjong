@@ -108,6 +108,34 @@ function wsSend(ws: WebSocket, msg: ClientMsg): void {
   ws.send(JSON.stringify(msg));
 }
 
+/** Resolve with the first incoming message matching `pred`, skipping the rest. */
+function waitForMessage(
+  ws: WebSocket,
+  pred: (m: ServerMsg) => boolean,
+  timeoutMs = 3000,
+): Promise<ServerMsg> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('timed out waiting for message')), timeoutMs);
+    ws.on('message', function onMsg(data: Buffer) {
+      let msg: ServerMsg;
+      try {
+        msg = JSON.parse(data.toString()) as ServerMsg;
+      } catch {
+        return;
+      }
+      if (pred(msg)) {
+        clearTimeout(timer);
+        ws.off('message', onMsg);
+        resolve(msg);
+      }
+    });
+    ws.once('error', e => {
+      clearTimeout(timer);
+      reject(e);
+    });
+  });
+}
+
 async function waitOpen(ws: WebSocket): Promise<void> {
   if (ws.readyState === WebSocket.OPEN) return;
   return new Promise((resolve, reject) => {
@@ -326,6 +354,77 @@ describe('WebSocket: lobby flow', () => {
     expect(players.some(p => p?.isBot === true)).toBe(true); // addBot took effect
 
     ws2.close();
+  }, 10_000);
+});
+
+describe('WebSocket: lobby leave', () => {
+  let app: Awaited<ReturnType<typeof buildApp>>['app'];
+  let port: number;
+
+  beforeEach(async () => {
+    ({ app, port } = await buildApp());
+  });
+
+  afterEach(async () => {
+    await app.close();
+  });
+
+  async function joinPlayer(code: string, name: string, token?: string) {
+    const ws = wsConnect(port, code, token);
+    await waitOpen(ws);
+    wsSend(ws, { t: 'join', name });
+    const joined = await wsNextMessage(ws);
+    return { ws, joined };
+  }
+
+  it('a leaver frees their seat, so the code can be joined again', async () => {
+    const create = await app.inject({ method: 'POST', url: '/api/lobby' });
+    const { code, hostToken } = create.json<{ code: string; hostToken: string }>();
+
+    const host = await joinPlayer(code, 'Host', hostToken);
+    const friends = [
+      await joinPlayer(code, 'Bob'),
+      await joinPlayer(code, 'Carol'),
+      await joinPlayer(code, 'Dan'),
+    ];
+    // Lobby is now full: host + 3 friends.
+
+    // Dan leaves for good — his seat must open back up.
+    const leaver = friends[2]!;
+    wsSend(leaver.ws, { t: 'leave' });
+    await new Promise(r => setTimeout(r, 80));
+
+    const late = await joinPlayer(code, 'Eve');
+    expect(late.joined.t).toBe('joined');
+    if (late.joined.t === 'joined' && leaver.joined.t === 'joined') {
+      expect(late.joined.seat).toBe(leaver.joined.seat);
+    }
+
+    host.ws.close();
+    late.ws.close();
+    for (const f of friends) f.ws.close();
+  }, 10_000);
+
+  it('host leaving tears the lobby down and tells the remaining players', async () => {
+    const create = await app.inject({ method: 'POST', url: '/api/lobby' });
+    const { code, hostToken } = create.json<{ code: string; hostToken: string }>();
+
+    const host = await joinPlayer(code, 'Host', hostToken);
+    const friend = await joinPlayer(code, 'Bob');
+
+    const closedP = waitForMessage(friend.ws, m => m.t === 'error');
+    wsSend(host.ws, { t: 'leave' });
+    const msg = await closedP;
+    expect(msg.t).toBe('error');
+    if (msg.t === 'error') expect(msg.code).toBe('lobby_closed');
+
+    // The lobby itself is gone — nobody could ever start it without the host.
+    await new Promise(r => setTimeout(r, 50));
+    const info = await app.inject({ method: 'GET', url: `/api/lobby/${code}` });
+    expect(info.statusCode).toBe(404);
+
+    friend.ws.close();
+    host.ws.close();
   }, 10_000);
 });
 

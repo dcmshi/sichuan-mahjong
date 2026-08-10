@@ -1,6 +1,7 @@
-import type { Seat, ServerMsg } from '@sichuan-mahjong/engine';
+import type { ClientMsg, Seat, ServerMsg } from '@sichuan-mahjong/engine';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { useStore } from '../src/store/index.js';
+import { type WsClient, setWsClient } from '../src/ws/client.js';
 
 function roundEnd(roundIndex: number, deltas: [number, number, number, number]): ServerMsg {
   return {
@@ -22,6 +23,7 @@ function roundEnd(roundIndex: number, deltas: [number, number, number, number]):
 }
 
 beforeEach(() => {
+  setWsClient(null);
   useStore.getState().resetSession();
 });
 
@@ -111,5 +113,35 @@ describe('client store (A30)', () => {
     expect(s.code).toBe('');
     expect(s.seat).toBeNull();
     expect(s.matchScores).toEqual({});
+  });
+
+  it('resetSession tells the server we left before dropping the socket', () => {
+    const sent: ClientMsg[] = [];
+    let closed = false;
+    setWsClient({
+      send: (m: ClientMsg) => sent.push(m),
+      close: () => {
+        closed = true;
+      },
+    } as unknown as WsClient);
+
+    useStore.getState().resetSession();
+
+    // The server frees the lobby seat on 'leave'; without it the code stayed
+    // occupied by a ghost slot and the same room could not be rejoined.
+    expect(sent).toEqual([{ t: 'leave' }]);
+    expect(closed).toBe(true);
+    setWsClient(null);
+  });
+
+  it("'lobby_closed' bounces to landing but keeps the error toast", () => {
+    useStore.setState({ screen: 'lobby', code: 'ABCD', seat: 1 });
+    useStore
+      .getState()
+      .handleServerMsg({ t: 'error', code: 'lobby_closed', message: 'The host left the lobby.' });
+
+    const s = useStore.getState();
+    expect(s.screen).toBe('landing');
+    expect(s.lastError?.code).toBe('lobby_closed');
   });
 });

@@ -20,7 +20,13 @@ import {
 } from './room.js';
 import type { RoomSlot } from './room.js';
 import { isAllowedOrigin } from './security.js';
-import { isWatchToken, issueToken, resolveToken, revokeTokensForCode } from './tokens.js';
+import {
+  isWatchToken,
+  issueToken,
+  resolveToken,
+  revokeToken,
+  revokeTokensForCode,
+} from './tokens.js';
 
 function send(ws: WebSocket, msg: ServerMsg): void {
   if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(msg));
@@ -537,8 +543,29 @@ function handleLobbyMessage(
       getLobbyConns(code).delete(seat);
       const lobby = getLobby(code);
       if (lobby) {
+        const slot = lobby.slots[seat];
+        // The slot's token dies with it: it could otherwise reclaim a seat that
+        // no longer exists, and a fresh join is the way back in by design.
+        if (slot) revokeToken(slot.token);
         lobby.slots[seat] = null;
-        broadcastLobbyTo(code, hostToken);
+        if (slot?.token === hostToken) {
+          // The host left for good. startGame is gated on the host token, so
+          // nobody remaining could ever begin the game — tear the lobby down
+          // instead of stranding the other players in it.
+          for (const [, ws] of getLobbyConns(code)) {
+            send(ws, { t: 'error', code: 'lobby_closed', message: 'The host left the lobby.' });
+            try {
+              ws.close();
+            } catch {
+              /* already closing */
+            }
+          }
+          lobbyConnections.delete(code);
+          deleteLobby(code);
+          revokeTokensForCode(code);
+        } else {
+          broadcastLobbyTo(code, hostToken);
+        }
       }
       _ws.close();
       break;

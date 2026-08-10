@@ -17,7 +17,7 @@ import {
   persistAnimationPrefs,
 } from '../prefs.js';
 import { clearSession, persistSession } from '../session.js';
-import { closeConnection } from '../ws/client.js';
+import { closeConnection, sendAction } from '../ws/client.js';
 
 export type HistoryItem = { id: number; event: GameEvent };
 
@@ -293,6 +293,11 @@ export const useStore = create<GameStore>((set, get) => ({
         break;
 
       case 'error':
+        if (msg.code === 'lobby_closed') {
+          // The host left and the server tore the lobby down — nothing to stay
+          // connected to. Bounce to landing; the toast below says why.
+          get().resetSession();
+        }
         set({
           lastError: {
             code: msg.code,
@@ -307,8 +312,18 @@ export const useStore = create<GameStore>((set, get) => ({
   clearError: () => set({ lastError: null }),
 
   resetSession: () => {
+    // Tell the server we're gone for good *before* dropping the socket, so it
+    // can free the lobby seat for a later rejoin. Best-effort: send() drops the
+    // frame when the socket is already dead, and mid-game the server ignores it.
+    sendAction({ t: 'leave' });
     closeConnection(); // drop the live socket so it doesn't linger/reconnect
     clearSession();
+    // Drop a stale ?code= from an old /j/:code redirect — Landing reads it on
+    // mount and would otherwise keep offering the room we just left. (Guarded:
+    // the store's unit tests run without a DOM.)
+    if (typeof window !== 'undefined') {
+      window.history.replaceState(null, '', window.location.pathname);
+    }
     set({
       screen: 'landing',
       code: '',

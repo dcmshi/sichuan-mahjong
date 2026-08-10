@@ -60,6 +60,11 @@ export function isWatchToken(code: string, candidate: string): boolean {
   return timingSafeEqual(Buffer.from(candidate), Buffer.from(expected));
 }
 
+/** Drop a single token — e.g. its owner left the lobby for good, so the seat it would reclaim no longer exists. */
+export function revokeToken(token: string): void {
+  store.delete(token);
+}
+
 /** Drop every token belonging to a lobby/room code (called on teardown). */
 export function revokeTokensForCode(code: string): void {
   for (const [token, data] of store) {
