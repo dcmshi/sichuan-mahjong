@@ -176,6 +176,7 @@ describe('Phase 3 — pung claim', () => {
     let s = makeState({ hands: [seat0Hand14(), pungHand(), [], []] });
     s = applyOk(s, { t: 'discard', seat: 0, tile: tid(M(1), 0) });
     expect(s.pendingClaims).not.toBeNull();
+    expect(s.lastDiscard?.tile).toBe(tid(M(1), 0));
 
     s = applyOk(s, { t: 'claim', seat: 1, claim: { kind: 'pung' } });
     // Others auto-passed; should resolve immediately after seat 1 claims
@@ -185,6 +186,9 @@ describe('Phase 3 — pung claim', () => {
     expect(s.players[1]!.melds[0]!.kind).toBe('pung');
     expect(s.turn).toBe(1);
     expect(s.turnDrawNeeded).toBe(false);
+    // The claimed tile left the table, so the well must drop it too — a stale
+    // lastDiscard kept it blown up on screen until the next discard. (A15)
+    expect(s.lastDiscard).toBeNull();
   });
 
   it('CCW tiebreak: seat nearest CCW from discarder wins pung', () => {
@@ -405,6 +409,8 @@ describe('Phase 3 — exposed kong claim', () => {
     expect(s.kongDrawIndex).toBe(beforeKongDraw - 1);
     expect(s.turn).toBe(1);
     expect(s.turnDrawNeeded).toBe(false);
+    // Same as pung: the konged discard is off the table, so lastDiscard clears.
+    expect(s.lastDiscard).toBeNull();
   });
 
   it('kong claim has priority over pung claim', () => {
@@ -498,6 +504,9 @@ describe('Phase 3 — Hu claim off discard', () => {
     // A28: the won tile left the discarder's pond — it lives in the Hu record now,
     // just like a punged/konged tile leaves for the meld (A15).
     expect(s.players[0]!.discards).not.toContain(tid(M(1), 0));
+    // And lastDiscard clears with it, so the won tile doesn't linger enlarged in
+    // the well through the next player's turn.
+    expect(s.lastDiscard).toBeNull();
   });
 
   it('multi-Hu: two players Hu on same discard', () => {

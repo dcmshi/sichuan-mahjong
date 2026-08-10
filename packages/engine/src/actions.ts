@@ -257,11 +257,16 @@ function removeFromHand(hand: TileId[], tile: TileId): TileId[] | null {
 /**
  * Move the just-claimed discard out of the discarder's pond — it now lives in the
  * claimer's meld, so it must not also render in the discard row. (A15)
+ *
+ * Also drops `lastDiscard` when it names this tile: the discard is no longer on
+ * the table, and leaving the pointer behind kept the claimed tile blown up in
+ * the well until the next discard happened to overwrite it.
  */
 function takeClaimedDiscard(s: GameState, from: Seat, tile: TileId): void {
   const pond = s.players[from]!.discards;
   const idx = pond.indexOf(tile);
   if (idx !== -1) pond.splice(idx, 1);
+  if (s.lastDiscard?.tile === tile && s.lastDiscard.from === from) s.lastDiscard = null;
 }
 
 /** Remove `count` copies of tile type from hand. Returns null if insufficient copies. */
@@ -626,6 +631,9 @@ function applyHuResolution(
   const fromRobbingKong = robbingTile !== undefined;
   const discarder = fromRobbingKong ? (robbedFrom ?? null) : (s.lastDiscard?.from ?? null);
   const actualWinTile = fromRobbingKong ? robbingTile! : s.lastDiscard!.tile;
+  // takeClaimedDiscard below clears lastDiscard along with the pond entry, but
+  // the shootAfterKong subtype is judged inside the winner loop — capture it now.
+  const discardAfterKong = !fromRobbingKong && (s.lastDiscard?.afterKong ?? false);
 
   // The won discard leaves the discarder's pond — it now lives in the winner's
   // Hu record, same as a claimed pung/kong tile leaves for the meld (A15/A28).
@@ -642,7 +650,7 @@ function applyHuResolution(
       subtype = 'robbingTheKong';
     } else if (s.wallEndReached) {
       subtype = 'underTheSea';
-    } else if (s.lastDiscard!.afterKong) {
+    } else if (discardAfterKong) {
       subtype = 'shootAfterKong';
     } else {
       subtype = 'normal';
