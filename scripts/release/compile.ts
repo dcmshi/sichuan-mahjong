@@ -49,6 +49,8 @@ const TARGETS: Array<{ target: string; outFile: string }> = [
   { target: 'bun-windows-x64', outFile: 'sichuan-mahjong-windows-x64.exe' },
 ];
 
+const failed: string[] = [];
+
 for (const { target, outFile } of TARGETS) {
   const out = join(OUT_DIR, outFile);
   console.log(`Building ${target} → ${outFile}`);
@@ -57,7 +59,27 @@ for (const { target, outFile } of TARGETS) {
     console.log(`  ✓ ${outFile}`);
   } catch (err) {
     console.error(`  ✗ ${target} failed:`, err);
+    failed.push(target);
   }
 }
 
-console.log('\nDone. Binaries in dist-bin/');
+/**
+ * **A release script that cannot fail is not a release script.** (A72)
+ *
+ * Every target is attempted even when one breaks — that is deliberate, so a
+ * single bad cross-compile does not hide the state of the other four. But the
+ * loop then printed "Done. Binaries in dist-bin/" and exited 0 whatever
+ * happened, so a run that produced *nothing* was indistinguishable from a clean
+ * one to a human skimming, and completely indistinguishable to CI.
+ *
+ * Reached by running it: `bun-linux-x64` fails to extract its downloaded
+ * runtime on this machine, which is Bun's problem and not ours — but the script
+ * reported success, which is.
+ */
+if (failed.length > 0) {
+  console.error(`\n${failed.length} of ${TARGETS.length} targets failed: ${failed.join(', ')}`);
+  console.error(`Binaries that did build are in ${OUT_DIR}`);
+  process.exit(1);
+}
+
+console.log(`\nDone. ${TARGETS.length} binaries in dist-bin/`);
