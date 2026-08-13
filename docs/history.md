@@ -1,7 +1,7 @@
 # History — every closed item, newest first
 
 This is the record of work already done: the phase log (1–10), nine full-repo
-audit passes (A1–A76), the frontend/design pass (F1–F25), the mobile viewport work
+audit passes (A1–A80), the frontend/design pass (F1–F25), the mobile viewport work
 (R1–R7), the tile-rendering change, the hosting work (C1–C10), and the feature run
 N1–N46. Each entry keeps its diagnosis, not just its fix — that is the part worth
 having later.
@@ -48,6 +48,7 @@ Series: **N** features · **A** full-repo audits · **F** frontend/design ·
 | **A68** | A stale bot decision could kill the room |
 | **A69** | The snapshot check that only looked for missing fields |
 | **A70–A76** | The seven remaining surfaces, swept in one pass |
+| **A77–A80** | Auditing the audit: dependencies, mutation score, load, and what a failure leaves behind |
 | **F1–F25** | *Frontend & design audit — seventh pass*, a numbered list. Grep the id. |
 | **N2** | The dice are real now |
 | **N3, N11, N14** | Help that shows a hand, a discard you can arm early, and a wall that reads the dice |
@@ -92,6 +93,110 @@ Series: **N** features · **A** full-repo audits · **F** frontend/design ·
 | **O3** | Closed **won't-do** — reasoning in [TODO.md](../TODO.md) and ARCHITECTURE §12 |
 | **O4** | One tile face everywhere |
 | **O5** | An **accepted trade-off**, not a task — per-IP limits key to a Cloudflare edge address. ARCHITECTURE §12 |
+
+---
+
+## ✅ Auditing the audit (A77–A80 — 2026-08-13)
+
+Six axes that are not "read the code and find bugs": what we depend on, whether
+the tests would notice if the code were wrong, what the thing does under load,
+and what it leaves behind when it fails. Two came back clean and two did not.
+
+### A77 — ten production vulnerabilities, on a live public URL
+
+**`pnpm audit` had never been run this session.** Ten findings against
+*production* dependencies, nine of them high, on a service anyone can reach.
+Now zero.
+
+The one that mattered is **`ws` >=8.0.0 <8.21.0, memory exhaustion from tiny
+fragments** — a WebSocket game server on a 512MB free-tier instance is precisely
+what that advisory describes, and **H1's 64KB `maxPayload` does not cover it**:
+that caps a *message*, and the attack is an accumulation of *fragments*.
+`@fastify/static` was two advisories deep (a route-guard bypass and an
+authorization bypass via non-canonical paths) and needed a major, 9 → 10 — which
+is why the e2e run is the load-bearing verification here, since every spec
+serves its assets through it.
+
+Three were transitive and went into `pnpm-workspace.yaml` beside the vite and
+esbuild pins already there, each to the first patched version rather than to
+`latest`, so the override says what it is for and expires when the parent
+catches up.
+
+**And the override I wrote first was too wide, which is its own lesson.** I
+pinned `brace-expansion@>=2.0.0` on the reasoning that it is one function and
+its majors are cheap. It is not: 5.x moved off a CommonJS default export and
+`minimatch@9` threw. **Lint, typecheck, 738 unit tests and all 12 Playwright
+specs passed with the tooling broken**, because the only thing in this repo that
+walks a glob is the coverage reporter — which I had not run. Narrowed to exactly
+the advisory's range. A validation suite is only as wide as the paths it touches.
+
+Six dev-only findings remain and are noted rather than chased: the vite dev
+server and postcss/nanoid under vitest, none of which ships. Bumping vite
+collides with a **pre-existing** `@tailwindcss/vite` peer mismatch — it wants
+`^6.4.2`, the tree has 8.0.13 — which predates this work and is worth its own
+look.
+
+### A78 — the tests, asked whether they would fail
+
+Mutation testing, run for the first time. **81.83% overall** across
+`scoring`/`hand`/`state`/`claims`: 722 mutants killed, 146 alive. `scoring.ts`
+came out strongest at 92.3%, which is what a file with `scoring-cases.test.ts`
+behind it should look like.
+
+`claims.ts` was the outlier at **72.76%**, and its survivors were not scattered
+— they clustered on exactly the things the rest of the suite reaches only
+sideways. **The void-suit guard had no test at all.** The same line appears in
+`canHuOnTile`, `canPungOnTile` and `canKongOnTile`, and all three survived being
+replaced with `if (false)`: the three lines could have been deleted and every
+one of the 738 tests still passed. That is not an idle branch — CLAUDE.md leans
+on it twice, for N46 and for A62, whose whole argument is that no claim can
+bring a void tile into a meld. **An invariant two shipped items rest on, with
+nothing holding it up.**
+
+Also alive: `ccwDist`'s arithmetic (`% 4` became `* 4` and nothing noticed), the
+nearest-seat tie-break between two competing pung or kong claimants, and the
+branch that auto-passes a seat which has already won. `claims.ts` is now 80.54%.
+
+One survivor is left deliberately, and the test says why: `canHuOnTile`'s guard
+is belt-and-braces, because `isWinningHand` already rejects a shape containing
+the void suit — so **its mutant is not killable by any behavioural test**, and
+inventing a control that passes for a different reason would be worse than
+recording the fact.
+
+Kept as `pnpm --filter @sichuan-mahjong/engine mutate`, with the baseline in
+CLAUDE.md, because an analysis whose tool is thrown away cannot be re-run to
+check drift. Two pieces of tooling hygiene came with it, both A76's shape — a
+documented command that litters. Stryker's sandbox made `pnpm test` report **528
+tests where there are 264**, green and meaningless, and `pnpm test:coverage`
+wrote generated HTML that **broke `pnpm lint`**.
+
+### A79 — the e2e suite was writing to the developer's real database
+
+Unlike the unit suites, which `vi.mock` persistence, e2e runs a *real* server:
+every lobby became a `live_rooms` row and every finished round a `games` row, in
+`%APPDATA%`. Those are restored at boot and count against the concurrent-games
+ceiling — the trap CLAUDE.md documents with a manual remedy. One session of
+repeated runs left **72 live rooms**, above the hosted ceiling of 50.
+
+The remedy is not to remember to clear it. `SICHUAN_DATA_DIR` now points at
+`test-results/`, already gitignored as Playwright's own output.
+
+### A80 — load is fine, and a stall is now audible
+
+**Measured rather than reasoned about**, which A61 and A63 were not: 50
+concurrent rooms cost ~2MB of heap and play 40 rounds a second, and five
+identical 50-room cycles held flat at +2.1MB over baseline — so the first
+cycle's growth is warmup and rooms are genuinely released. No change needed.
+
+The observability gap was real though. Logging is otherwise in good order —
+every failure path carries a tagged `console.error` — but **a stalled room left
+no trace at all**. A68 was exactly that, and the idle sweep is the only thing
+that ever meets such a room. It now separates the two cases it was lumping
+together: an unfinished round *with players still connected* is an error naming
+the phase and the count, while everyone-left-and-the-bots-played-on stays at
+`log`, because that is housekeeping. Any phase but `roundEnd` counts — a void
+phase waiting forever on a submission that will never come is as dead as a turn
+owed a draw, and the seats sitting in it cannot tell the difference.
 
 ---
 

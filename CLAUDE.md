@@ -473,28 +473,32 @@ reasoning and measurements in
 ## Status
 
 **Everything is shipped and [TODO.md](./TODO.md) is empty.** All v1 work, nine
-full-repo audit passes (A1–A76), the frontend/design pass (F1–F25), the mobile
+full-repo audit passes (A1–A80), the frontend/design pass (F1–F25), the mobile
 viewport work (R1–R7), the hosting work (C1–C10), and the feature run N1–N46.
 
-The ninth pass (2026-08-13, **A56–A76**) closed the same day, and wrote up **A55**
+The ninth pass (2026-08-13, **A56–A80**) closed the same day, and wrote up **A55**
 alongside it — that one had shipped three days earlier without reaching the
-record. It ran as thirteen sweeps across nine axes: the third came back clean
+record. It ran as nineteen sweeps across fifteen axes: the third came back clean
 and left a whole-round invariant test plus `noUnusedLocals` rather than a fix
 (A66); the fourth checked the *ruleset* against native-language sources rather
 than the PDF alone (A67); the fifth drove the room's timers two at a time and
 found a room that could stall dead in silence (A68); the sixth fed the restore
 path corrupted snapshots and found a validator that only ever looked for missing
 fields (A69); and the last took the seven surfaces the others had named and not
-reached (A70–A76), including the release binary, which nobody had ever run.
+reached (A70–A76), including the release binary, which nobody had ever run. The
+last stopped auditing the code and audited the audit (A77–A80) — dependencies,
+mutation score, load, and what a failure leaves behind.
 
-Ten of the twenty-one were real. The ones that left an invariant above: a
+Twelve of the twenty-five were real. The ones that left an invariant above: a
 promoted kong's payment never entering the refund log (A56), the shoot-after-kong
 refund running once per winner instead of once per discard (A57), the winner's
 hand decomposition riding the `hu` event past the redaction that removed it from
 the view (A58), every bot konging its own void suit for a net −42 (A62), a kong
 taking the last tile of the wall without the engine noticing (A67), a stale bot
 decision that could stall a room dead in silence (A68), and a snapshot validator
-that only checked for missing fields (A69).
+that only checked for missing fields (A69). **A77 is the one to know about if you
+read nothing else**: ten production vulnerabilities on a live public URL,
+including a WebSocket fragment DoS aimed squarely at what this service is.
 
 This section deliberately does not list what shipped — that is
 [docs/history.md](./docs/history.md), newest first, **with a find-an-item-by-id

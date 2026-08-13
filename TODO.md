@@ -2,7 +2,7 @@
 
 What is actually open. **Everything closed lives in
 [docs/history.md](./docs/history.md)**, newest first, each entry with the diagnosis
-that made it worth writing down — the phase log, the nine audit passes (A1–A76), the
+that made it worth writing down — the phase log, the nine audit passes (A1–A80), the
 frontend pass (F1–F25), the viewport work (R1–R7), the tile rendering change, the
 hosting work (C1–C10), and the feature run N1–N46.
 
@@ -16,11 +16,11 @@ so it isn't rediscovered as a bug.
 
 ## Open
 
-**Nothing.** The ninth full-repo code audit of 2026-08-13, filed as **A56–A76**,
-closed the same day, all twenty-one items — and **A55** was written up alongside them,
+**Nothing.** The ninth full-repo code audit of 2026-08-13, filed as **A56–A80**,
+closed the same day, all twenty-five items — and **A55** was written up alongside them,
 having shipped on 2026-08-10 without ever reaching the record.
 
-It ran as thirteen sweeps across nine axes. **The third came back clean** — no behavioural defect —
+It ran as nineteen sweeps across fifteen axes. **The third came back clean** — no behavioural defect —
 leaving two guards instead: a whole-round invariant test (**A66**) asserting the
 things a payment balance cannot see, which is why A56 survived a hundred smoke
 games; and `noUnusedLocals` in `tsconfig.base.json`, after six dead symbols had
@@ -67,9 +67,23 @@ The other three came back clean and left guards: ~4,000 hostile frames at the WS
 boundary changed nothing (**A71**), the service worker's guards all held
 (**A73**), and all six catalogs agree on every placeholder (**A74**).
 
-Ten were real defects in what a hand pays, who may see it, how a bot plays,
-whether the round advances, whether a restart brings the table back, or whether
-a player can leave.
+**The final pass stopped auditing the code and audited the audit** (**A77–A80**):
+what we depend on, whether the tests would notice if the code were wrong, what
+the server does under load, and what it leaves behind when it fails.
+
+`pnpm audit` had never been run — **ten production vulnerabilities on a live
+public URL**, nine high, now zero (**A77**). Mutation testing, run for the first
+time, put the engine at 81.83% and found the **void-suit guard in all three
+claim predicates had no test at all**: three lines that could be deleted with
+738 tests still green, holding up an invariant N46 and A62 both rest on
+(**A78**). e2e was writing to the developer's real database and had left 72 live
+rooms above the hosted ceiling (**A79**). Load came back clean — 50 concurrent
+rooms for ~2MB, flat across five cycles — but a stalled room still left no
+trace, so the idle sweep now tells a stall apart from an abandonment (**A80**).
+
+Twelve were real defects in what a hand pays, who may see it, how a bot plays,
+whether the round advances, whether a restart brings the table back, whether a
+player can leave, or what a stranger can reach.
 **A56** is the one that fired on the ordinary path: a promoted kong collects 1
 from each opponent before the robbing window, and those points were only
 committed to `kongPaymentLog` when a window had actually opened — which it almost
