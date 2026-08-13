@@ -181,6 +181,14 @@ repeated runs left **72 live rooms**, above the hosted ceiling of 50.
 The remedy is not to remember to clear it. `SICHUAN_DATA_DIR` now points at
 `test-results/`, already gitignored as Playwright's own output.
 
+**Half-fixed for a day.** The docs pass that followed found `pnpm shots` doing
+the same thing through a config the fix never touched — a second Playwright
+config, its own `webServer`, no override. It writes one lobby a run rather than
+e2e's many, which is exactly why nobody would have noticed it. Both now get a
+throwaway db. What still writes to the real one is whatever you start **by
+hand**, `layout-probe.mjs` included, and that is deliberate: those are run
+against a server you chose the flags for.
+
 ### A80 — load is fine, and a stall is now audible
 
 **Measured rather than reasoned about**, which A61 and A63 were not: 50

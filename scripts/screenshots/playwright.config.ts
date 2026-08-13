@@ -23,5 +23,11 @@ export default defineConfig({
     url: 'http://localhost:8080/healthz',
     reuseExistingServer: false,
     timeout: 15_000,
+    // Same reason as the root config's (A79): this is a real server, so every
+    // lobby it opens lands in `live_rooms` in the developer's own database and
+    // is restored at the next boot. A79 gave `pnpm e2e` a throwaway db and left
+    // this one writing to the real thing — the deal here stays unseeded on
+    // purpose, but where it writes was never deliberate.
+    env: { SICHUAN_DATA_DIR: 'test-results/shots-data' },
   },
 });
