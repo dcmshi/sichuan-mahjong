@@ -73,6 +73,14 @@ export class WsClient {
     };
 
     ws.onmessage = (e: MessageEvent<string>) => {
+      // **A close is a handshake, not an instant.** `close()` drops our
+      // reference to the socket but the browser's is still open, so anything
+      // the server had already put on the wire still arrives here — and the
+      // store acted on it: a `view` landing after the player tapped Leave set
+      // `screen: 'game'` and pulled them back into the room they had just left,
+      // and a stale `error` raised a toast over the landing screen. `onclose`
+      // has always guarded on this flag; `onmessage` had not. (A70)
+      if (this.closed) return;
       try {
         this.cbs.onMessage(JSON.parse(e.data) as ServerMsg);
       } catch {
