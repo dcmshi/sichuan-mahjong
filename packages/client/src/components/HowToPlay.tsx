@@ -1,6 +1,8 @@
 import { DEFAULT_CONFIG } from '@sichuan-mahjong/engine';
 import { AnimatePresence, motion } from 'framer-motion';
+import { useRef } from 'react';
 import { SHAPE_EXAMPLES, helpFanRows } from '../helpExamples.js';
+import { useDialogFocus } from '../hooks/useDialogFocus.js';
 import { useEscapeToClose } from '../hooks/useDismissable.js';
 import { useT } from '../i18n/useT.js';
 import { useStore } from '../store/index.js';
@@ -76,6 +78,10 @@ function FanTable({ cap }: { cap: number }) {
 
 export function HowToPlay({ onClose }: { onClose: () => void }) {
   useEscapeToClose(true, onClose);
+  // `aria-modal` below is a claim about focus, so something has to make it
+  // true. (A75)
+  const panel = useRef<HTMLDivElement | null>(null);
+  useDialogFocus(panel);
   const t = useT();
   // The fan limit is a house rule now, so the two places the help states it read
   // the table's value — the same trap `HELP_FAN_ORDER` exists to avoid. This
@@ -98,6 +104,8 @@ export function HowToPlay({ onClose }: { onClose: () => void }) {
       >
         <motion.div
           className="bg-green-950 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg max-h-[85dvh] overflow-y-auto"
+          ref={panel}
+          tabIndex={-1}
           initial={{ y: '100%' }}
           animate={{ y: 0 }}
           exit={{ y: '100%' }}

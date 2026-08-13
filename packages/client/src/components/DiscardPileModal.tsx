@@ -1,5 +1,7 @@
 import type { TileId } from '@sichuan-mahjong/engine';
 import { AnimatePresence, motion } from 'framer-motion';
+import { useRef } from 'react';
+import { useDialogFocus } from '../hooks/useDialogFocus.js';
 import { useEscapeToClose } from '../hooks/useDismissable.js';
 import { useT } from '../i18n/useT.js';
 import { Tile } from './Tile.js';
@@ -35,6 +37,10 @@ export function DiscardPileModal({
   onClose: () => void;
 }) {
   useEscapeToClose(true, onClose);
+  // `aria-modal` below is a claim about focus, so something has to make it
+  // true. (A75)
+  const panel = useRef<HTMLDivElement | null>(null);
+  useDialogFocus(panel);
   const t = useT();
   const total = pile.length + (voidDiscard === null ? 0 : 1);
 
@@ -62,6 +68,8 @@ export function DiscardPileModal({
           transition={{ type: 'spring', damping: 30, stiffness: 300 }}
           onClick={e => e.stopPropagation()}
           data-pile-modal
+          ref={panel}
+          tabIndex={-1}
         >
           <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 flex-shrink-0">
             <div className="min-w-0">

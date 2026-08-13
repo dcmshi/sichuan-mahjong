@@ -1,5 +1,7 @@
 import type { GameEvent, Seat, TileId } from '@sichuan-mahjong/engine';
 import { AnimatePresence, motion } from 'framer-motion';
+import { useRef } from 'react';
+import { useDialogFocus } from '../hooks/useDialogFocus.js';
 import { useEscapeToClose } from '../hooks/useDismissable.js';
 import { useT } from '../i18n/useT.js';
 import { type HistoryItem, useStore } from '../store/index.js';
@@ -65,6 +67,10 @@ export function PlayHistory({
   onClose,
 }: { nameOf: (seat: Seat) => string; onClose: () => void }) {
   useEscapeToClose(true, onClose);
+  // `aria-modal` below is a claim about focus, so something has to make it
+  // true. (A75)
+  const panel = useRef<HTMLDivElement | null>(null);
+  useDialogFocus(panel);
   const history = useStore(s => s.history);
   const t = useT();
   const rows = historyRows(history);
@@ -90,6 +96,8 @@ export function PlayHistory({
           exit={{ y: '100%' }}
           transition={{ type: 'spring', damping: 30, stiffness: 300 }}
           onClick={e => e.stopPropagation()}
+          ref={panel}
+          tabIndex={-1}
         >
           <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 flex-shrink-0">
             <h2 className="text-white font-bold">{t('history.title')}</h2>
