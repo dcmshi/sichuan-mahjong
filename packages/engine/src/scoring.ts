@@ -63,18 +63,35 @@ export const COMPATIBILITY: Record<
     selfMax: 1,
     incompatible: ['Kong', 'AllPungs', 'GoldenWait', 'WinAfterKong', 'RobbingTheKong'],
   },
+  // **Win after Kong and Under the Sea stack**, and this table said they did not
+  // for as long as it existed. Table 9 marks the pair compatible in both
+  // directions, and outside sources put it plainly: Japanese mahjong forbids the
+  // combination, Chinese Official and Sichuan allow it. It is reachable — a kong
+  // declared with one tile left takes that tile, and a win on the replacement is
+  // both. (A67)
   WinAfterKong: {
     fanValue: 1,
     selfMax: 1,
-    incompatible: ['SevenPairs', 'ShootAfterKong', 'RobbingTheKong', 'UnderTheSea'],
+    incompatible: ['SevenPairs', 'ShootAfterKong', 'RobbingTheKong'],
   },
-  ShootAfterKong: { fanValue: 1, selfMax: 1, incompatible: ['WinAfterKong'] },
+  // …and Shoot after Kong is incompatible with Robbing the Kong, which this said
+  // was fine. Unreachable either way — a hand is won on a discard *after* a kong
+  // or on the tile being added *to* one, never both — but the table is a
+  // statement about the rules and Table 9 makes this one. (A67)
+  ShootAfterKong: { fanValue: 1, selfMax: 1, incompatible: ['WinAfterKong', 'RobbingTheKong'] },
   RobbingTheKong: {
     fanValue: 1,
     selfMax: 1,
-    incompatible: ['AllPungs', 'GoldenWait', 'SevenPairs', 'WinAfterKong', 'UnderTheSea'],
+    incompatible: [
+      'AllPungs',
+      'GoldenWait',
+      'SevenPairs',
+      'WinAfterKong',
+      'ShootAfterKong',
+      'UnderTheSea',
+    ],
   },
-  UnderTheSea: { fanValue: 1, selfMax: 1, incompatible: ['RobbingTheKong', 'WinAfterKong'] },
+  UnderTheSea: { fanValue: 1, selfMax: 1, incompatible: ['RobbingTheKong'] },
 };
 
 function huSubtypeToContextualFan(sub: HuSubtype): FanType | null {
@@ -158,15 +175,21 @@ function calcStructuralFans(shape: WinShape, winningTileType: TileType): Map<Fan
   return fans;
 }
 
-function withContextualFan(
+/**
+ * Add the situation's fans to the hand's own, each only where it conflicts with
+ * nothing already present — including the other contextual fan, since there can
+ * now be two of them.
+ */
+function withContextualFans(
   structural: Map<FanType, number>,
-  contextual: FanType | null,
+  contextual: readonly FanType[],
 ): Map<FanType, number> {
-  if (contextual === null) return structural;
-  // Add contextual fan only if it doesn't conflict with any structural fan
-  if (COMPATIBILITY[contextual].incompatible.some(f => structural.has(f))) return structural;
+  if (contextual.length === 0) return structural;
   const result = new Map(structural);
-  result.set(contextual, 1);
+  for (const fan of contextual) {
+    if (COMPATIBILITY[fan].incompatible.some(f => result.has(f))) continue;
+    result.set(fan, 1);
+  }
   return result;
 }
 
@@ -195,9 +218,23 @@ export function calcHandScore(
   huSubtype: HuSubtype,
   fanCap: number,
   enableHeavenlyEarthly: boolean,
+  /**
+   * The win was *also* on the last tile of the wall.
+   *
+   * `HuSubtype` is one value and the situation can be two: a kong declared with
+   * one tile left takes that tile, so a win on the replacement is Win after Kong
+   * **and** Under the Sea. Every other pair of contextual fans describes
+   * mutually exclusive events, so this is the only flag of its kind rather than
+   * the first of several — and it is a flag rather than a widened `subtype`
+   * because nothing reads `subtype`: the record carries `fans`, and that is what
+   * the reveal draws. (A67)
+   */
+  alsoUnderTheSea = false,
 ): ScoredHand {
   const shapes = findAllWinningShapes(tiles, melds, voidedSuit);
-  const contextualFan = huSubtypeToContextualFan(huSubtype);
+  const primary = huSubtypeToContextualFan(huSubtype);
+  const contextualFans: FanType[] = primary === null ? [] : [primary];
+  if (alsoUnderTheSea && primary !== 'UnderTheSea') contextualFans.push('UnderTheSea');
   const winningTileType = tileTypeOf(winningTile);
 
   let best: HandScore = { fans: [], totalFan: 0, handValue: 1 };
@@ -205,7 +242,7 @@ export function calcHandScore(
 
   for (const shape of shapes) {
     const structural = calcStructuralFans(shape, winningTileType);
-    const allFans = withContextualFan(structural, contextualFan);
+    const allFans = withContextualFans(structural, contextualFans);
     const score = fanMapToScore(allFans, fanCap);
     if (score.handValue > best.handValue) {
       best = score;

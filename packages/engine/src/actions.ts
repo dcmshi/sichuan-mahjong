@@ -282,6 +282,31 @@ function removeTypeFromHand(hand: TileId[], tileType: number, count: number): Ti
   return removed === count ? result : null;
 }
 
+/**
+ * Take the kong replacement off the tail of the wall and give it to `seat`.
+ *
+ * The three kong paths each had this written out, and each forgot the same
+ * thing: **a replacement can be the last tile in the wall.** `wallEndReached`
+ * was set only by `applyDraw`, so konging with one tile left emptied the wall
+ * without the engine noticing — the round then ran an action past its end, and
+ * the discard that followed was not treated as "the discard after the last
+ * tile", which is half of what Table 4 defines Under the Sea to be. A seat
+ * winning on that discard got no fan for it. (A67)
+ */
+function takeKongReplacement(s: GameState, seat: Seat): TileId {
+  const replacement = s.wall[s.kongDrawIndex]!;
+  s.kongDrawIndex--;
+  const player = s.players[seat]!;
+  player.hand = sortTiles([...player.hand, replacement]);
+  s.lastDrawWasKongReplacement = true;
+  s.lastDrawnTile = replacement;
+  s.turnDrawNeeded = false;
+  // A kong replacement is a wall draw, so a self-draw Hu on it is legitimate.
+  s.drewThisTurn = true;
+  if (s.drawIndex > s.kongDrawIndex) s.wallEndReached = true;
+  return replacement;
+}
+
 function nextActiveSeat(state: GameState, from: Seat): Seat {
   let s = ((from + 3) % 4) as Seat;
   for (let i = 0; i < 4; i++) {
@@ -799,18 +824,11 @@ function applyKongClaim(s: GameState, winner: Seat): GameEvent[] {
   });
   takeClaimedDiscard(s, from, tile);
 
-  // Draw replacement
-  const replacement = s.wall[s.kongDrawIndex]!;
-  s.kongDrawIndex--;
-  player.hand = sortTiles([...player.hand, replacement]);
-  s.lastDrawWasKongReplacement = true;
-  s.lastDrawnTile = replacement;
+  const replacement = takeKongReplacement(s, winner);
   s.anyClaimsHappened = true;
 
   s.turn = winner;
   s.turnNumber += 1;
-  s.turnDrawNeeded = false;
-  s.drewThisTurn = true; // kong replacement is a wall draw → self-draw (winAfterKong) is legit
 
   // Exposed kong: discarder pays 2
   pay(s, from, winner, 2);
@@ -890,15 +908,7 @@ function completePromotedPostponedKong(
     turnDeclared: s.turnNumber,
   };
 
-  // Draw replacement
-  const replacement = s.wall[s.kongDrawIndex]!;
-  s.kongDrawIndex--;
-  player.hand = sortTiles([...player.hand, replacement]);
-  s.lastDrawWasKongReplacement = true;
-  s.lastDrawnTile = replacement;
-  s.turnDrawNeeded = false;
-  s.drewThisTurn = true; // kong replacement is a wall draw
-
+  const replacement = takeKongReplacement(s, seat);
   return [{ e: 'kongReplacement', seat, tile: replacement }];
 }
 
@@ -1279,14 +1289,7 @@ function applyDeclareKongOnTurn(
       turnDeclared: s.turnNumber,
     });
 
-    // Draw replacement
-    const replacement = s.wall[s.kongDrawIndex]!;
-    s.kongDrawIndex--;
-    sp.hand = sortTiles([...sp.hand, replacement]);
-    s.lastDrawWasKongReplacement = true;
-    s.lastDrawnTile = replacement;
-    s.turnDrawNeeded = false;
-    s.drewThisTurn = true; // concealed-kong replacement is a wall draw
+    const replacement = takeKongReplacement(s, seat);
     s.history.push(action);
 
     // Concealed kong: pay 2 from each non-Hu player, no robbing window
@@ -1448,8 +1451,13 @@ function applyDeclareHuOnDraw(
     return ok(s, events);
   }
 
-  // Derive subtype
+  // Derive subtype. **Win after Kong and Under the Sea are not exclusive** — a
+  // kong declared with one tile left takes it, so a win on the replacement is
+  // both, and Table 9 marks the pair compatible. `subtype` can only name one, so
+  // the second rides to the scorer as a flag; nothing reads `subtype`, and the
+  // reveal draws `fans`. (A67)
   let subtype: HuRecord['subtype'] = 'normal';
+  const alsoUnderTheSea = state.lastDrawWasKongReplacement && state.wallEndReached;
   if (state.lastDrawWasKongReplacement) {
     subtype = 'winAfterKong';
   } else if (state.wallEndReached) {
@@ -1500,6 +1508,7 @@ function applyDeclareHuOnDraw(
     subtype,
     state.config.fanCap,
     state.config.enableHeavenlyEarthly,
+    alsoUnderTheSea,
   );
 
   const record: HuRecord = {

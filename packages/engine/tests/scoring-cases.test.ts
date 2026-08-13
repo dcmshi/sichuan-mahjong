@@ -386,3 +386,91 @@ describe('a named hand, all the way to the chips', () => {
     }
   });
 });
+
+/**
+ * Win after Kong and Under the Sea are one situation, not two. (A67)
+ *
+ * A kong declared with one tile left in the wall takes that tile, so a win on
+ * the replacement is both. Table 9 marks the pair compatible in both directions;
+ * this table said they excluded each other, and `HuSubtype` can only name one
+ * anyway. Corroborated outside the PDF: Japanese mahjong forbids the
+ * combination and Chinese Official and Sichuan allow it.
+ *
+ * The two below it are the other half — that a kong emptying the wall is
+ * noticed at all, which nothing checked because `wallEndReached` was only ever
+ * set by `applyDraw`.
+ */
+describe('the last tile of the wall, taken as a kong replacement', () => {
+  /** Seat 0 holds four man 1 to kong and waits on pin 9; one tile is left. */
+  function oneTileLeft(): GameState {
+    const s = createGame('a67', PLAYERS, { ...DEFAULT_CONFIG, enableHuanSanZhang: false }, 0, 0);
+    s.phase = 'play';
+    s.turn = 0;
+    s.turnDrawNeeded = false;
+    s.drewThisTurn = true;
+    s.lastDrawnTile = tid(M(1), 3);
+    for (const p of s.players) {
+      p.voidedSuit = 'sou';
+      p.usedIndicator = true;
+      p.pendingFirstDiscard = null;
+    }
+    s.drawIndex = 60;
+    s.kongDrawIndex = 60;
+    s.wall[60] = tid(P(9), 2);
+    s.players[0]!.hand = [
+      ...copies(M(1), 4),
+      ...chow(M(4)),
+      ...chow(P(1)),
+      ...chow(P(5)),
+      tid(P(9), 0),
+    ];
+    return s;
+  }
+
+  const kong = (s: GameState) =>
+    applyAction(s, {
+      t: 'declareKongOnTurn',
+      seat: 0 as Seat,
+      tile: { suit: 'man', rank: 1 },
+      subtype: 'concealed',
+    });
+
+  it('leaves the wall empty, and the engine knows it', () => {
+    const before = oneTileLeft();
+    expect(before.kongDrawIndex - before.drawIndex + 1, 'one tile left').toBe(1);
+    const r = kong(before);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.state.kongDrawIndex - r.state.drawIndex + 1, 'wall is empty').toBe(0);
+    expect(r.state.wallEndReached, 'and the round knows it has ended').toBe(true);
+  });
+
+  it('scores a win on that replacement as both Win after Kong and Under the Sea', () => {
+    const r = kong(oneTileLeft());
+    if (!r.ok) return;
+    const won = applyAction(r.state, { t: 'declareHuOnDraw', seat: 0 as Seat });
+    expect(won.ok).toBe(true);
+    if (!won.ok) return;
+
+    const hu = won.state.players[0]!.hu;
+    expect(hu, 'the hand wins').not.toBeNull();
+    const fans = Object.fromEntries((hu?.fans ?? []).map(f => [f.fan, f.count]));
+    expect(fans.WinAfterKong).toBe(1);
+    expect(fans.UnderTheSea, 'the replacement was the last tile in the wall').toBe(1);
+    expect(fans.Kong).toBe(1);
+    // Three fans: Kong + Win after Kong + Under the Sea. It was two before, and
+    // at the default cap that is the difference between 4 points and 8.
+    expect(hu?.handValue).toBe(8);
+  });
+
+  it('still names one subtype, because only the fans are read', () => {
+    // `subtype` is the event label and nothing consumes it — the reveal draws
+    // `fans`. Widening it would have reached the snapshot and the wire for a
+    // field no screen shows.
+    const r = kong(oneTileLeft());
+    if (!r.ok) return;
+    const won = applyAction(r.state, { t: 'declareHuOnDraw', seat: 0 as Seat });
+    if (!won.ok) return;
+    expect(won.state.players[0]!.hu?.subtype).toBe('winAfterKong');
+  });
+});
