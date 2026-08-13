@@ -2,7 +2,6 @@ import type { GameAction, PlayerView, Seat, Tile, TileType } from '@sichuan-mahj
 import { tileFromType, tileToType } from '@sichuan-mahjong/engine';
 import { describe, expect, it } from 'vitest';
 import { LANGS, catalog, translate } from '../src/i18n/index.js';
-import type { Lang } from '../src/i18n/index.js';
 import { kongOffers, kongTileTypes } from '../src/kongOffers.js';
 
 /**

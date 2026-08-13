@@ -1,7 +1,6 @@
 import {
   allSeatsActed,
   autoPassIneligible,
-  ccwDist,
   forcePassAll,
   furitenSeatsAfterWindow,
   resolveWindow,
@@ -1185,8 +1184,10 @@ function applyClaim(state: GameState, action: Extract<GameAction, { t: 'claim' }
   if (seat === w.from) return fail('wrong_turn');
   if (w.passed[seat] || w.claims[seat] !== null) return fail('already_acted_in_window');
 
-  // Basic validation: claim type must be plausible
-  const player = state.players[seat]!;
+  // Basic validation: claim type must be plausible. Whether the *hand* can
+  // actually make the claim is `resolveWindow`'s job — it re-asks
+  // canHu/canPung/canKongOnTile and drops anything that cannot, so an
+  // implausible claim resolves as a pass rather than being rejected here.
   if (w.afterKong && claim.kind !== 'hu') return fail('invalid_claim');
   if (state.wallEndReached && claim.kind === 'kong') return fail('invalid_claim');
 

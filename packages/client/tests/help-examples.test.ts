@@ -3,7 +3,6 @@ import type { FanType } from '@sichuan-mahjong/engine';
 import { describe, expect, it } from 'vitest';
 import { HELP_FAN_ORDER, SHAPE_EXAMPLES, helpFanRows } from '../src/helpExamples.js';
 import { LANGS, catalog, translate } from '../src/i18n/index.js';
-import type { Lang } from '../src/i18n/index.js';
 
 // The one failure mode a screenshot cannot catch: a help screen confidently
 // drawing a hand that does not actually win. (N3)

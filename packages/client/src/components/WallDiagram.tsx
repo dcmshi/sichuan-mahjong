@@ -59,8 +59,12 @@ export const WALL_LAP = LAP;
 const NS_W = TILE;
 const NS_H = TILE / RATIO;
 const NS_RISE = NS_H * RISE;
-/** East and west: the length is the height, so the depth is the width. */
-const EW_H = TILE;
+/**
+ * East and west: the length is the height, so the depth is the width — and only
+ * the depth is ever placed. A side wall's slots set `top` from the run along the
+ * wall and `width` from the depth; the height follows the art's ratio in CSS, so
+ * there is no `EW_H` to pair with `NS_H`.
+ */
 const EW_W = TILE * RATIO;
 const EW_RISE = EW_W * RISE;
 

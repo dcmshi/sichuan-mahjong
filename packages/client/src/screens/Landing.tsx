@@ -24,7 +24,6 @@ export function Landing() {
   const t = useT();
   const goTo = useStore(s => s.goTo);
   const setCode = useStore(s => s.setCode);
-  const setPlayerName = useStore(s => s.setPlayerName);
 
   // Pre-filled code from the /j/:code redirect. Read once and normalized here,
   // so the button label and the code we actually join with agree — a lowercase
