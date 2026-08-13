@@ -53,11 +53,23 @@ export function importWatchToken(code: string, token: string): void {
   watchTokens.set(code, token);
 }
 
-/** Constant-time check, so the response time can't be used to recover a token. */
+/**
+ * Constant-time check, so the response time can't be used to recover a token.
+ *
+ * The length guard compares **bytes**, not characters. `timingSafeEqual` throws
+ * on buffers of different byte length, and a candidate off the query string can
+ * be multi-byte: 36 non-ASCII characters matched a UUID's `.length` and then
+ * blew up inside the WS route, which dropped the socket with no error frame
+ * instead of the ordinary refusal — a distinguishable answer, from a function
+ * whose whole job is not to give one. (A59)
+ */
 export function isWatchToken(code: string, candidate: string): boolean {
   const expected = watchTokens.get(code);
-  if (expected === undefined || candidate.length !== expected.length) return false;
-  return timingSafeEqual(Buffer.from(candidate), Buffer.from(expected));
+  if (expected === undefined) return false;
+  const given = Buffer.from(candidate);
+  const want = Buffer.from(expected);
+  if (given.length !== want.length) return false;
+  return timingSafeEqual(given, want);
 }
 
 /** Drop a single token — e.g. its owner left the lobby for good, so the seat it would reclaim no longer exists. */

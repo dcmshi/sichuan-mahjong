@@ -129,3 +129,31 @@ describe('tokens across a host restart (A41)', () => {
     deleteRoom(code);
   });
 });
+
+describe('isWatchToken refuses rather than throws (A59)', () => {
+  it('answers false for a candidate whose characters match but whose bytes do not', () => {
+    // `timingSafeEqual` compares buffers and throws on a byte-length mismatch,
+    // so guarding on `.length` — a *character* count — let a query string of 36
+    // multi-byte characters blow up inside the WS route. The socket then closed
+    // with no error frame, which is a different answer from the ordinary
+    // refusal and therefore an answer.
+    const code = 'WTC6';
+    const watch = issueWatchToken(code);
+    const multibyte = 'ä'.repeat(watch.length);
+
+    expect(multibyte.length).toBe(watch.length);
+    expect(Buffer.byteLength(multibyte)).not.toBe(Buffer.byteLength(watch));
+    expect(() => isWatchToken(code, multibyte)).not.toThrow();
+    expect(isWatchToken(code, multibyte)).toBe(false);
+
+    // Still the same answer an ordinary wrong guess gets.
+    expect(isWatchToken(code, 'x'.repeat(watch.length))).toBe(false);
+    expect(isWatchToken(code, watch)).toBe(true);
+
+    deleteRoom(code);
+  });
+
+  it('answers false for a code that has no watch token at all', () => {
+    expect(isWatchToken('NONE', 'ä'.repeat(36))).toBe(false);
+  });
+});
