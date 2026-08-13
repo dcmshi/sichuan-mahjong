@@ -175,3 +175,59 @@ describe('service worker (F5)', () => {
     expect(res).toBeUndefined();
   });
 });
+
+/**
+ * The paths the worker must *not* take, and the coupling it cannot enforce. (A73)
+ *
+ * The four cases above cover what it does when everything is normal. These are
+ * the guards: a POST it must not intercept, another origin it must not touch, a
+ * 404 it must not remember, and the cache-first list — which is the one place a
+ * behaviour depends on a constant elsewhere in the same file.
+ */
+describe('service worker guards (A73)', () => {
+  it('never intercepts a non-GET request', async () => {
+    const res = await dispatch('fetch', request('https://host.example/', 'navigate', 'POST'));
+    expect(res, 'a POST was answered from the cache').toBeUndefined();
+  });
+
+  it('never intercepts another origin', async () => {
+    // Nothing cross-origin is ours to serve, and the CSP forbids loading it
+    // anyway — but a worker that answers for another host is a worse bug than a
+    // blocked request.
+    const res = await dispatch('fetch', request('https://elsewhere.example/assets/x.js'));
+    expect(res).toBeUndefined();
+  });
+
+  it('does not remember a failed asset fetch', async () => {
+    // The stale-bundle case: after a client rebuild without a server restart,
+    // `/assets/index-NEW.js` 404s. Caching that would make the failure survive
+    // the restart that fixes it.
+    served['/assets/index-gone.js'] = response('not found', false, 404);
+    const req = request('https://host.example/assets/index-gone.js');
+    expect((await dispatch('fetch', req))?.status).toBe(404);
+
+    const store = [...caches.stores.values()][0];
+    expect([...(store?.keys() ?? [])], 'a 404 was written into the cache').not.toContain(
+      'https://host.example/assets/index-gone.js',
+    );
+  });
+
+  it('serves the unhashed assets cache-first, which is why CACHE must be bumped', async () => {
+    // /assets/ is content-hashed so a new build is a new URL. These are not:
+    // once cached they are frozen until the CACHE constant changes, because
+    // `activate` is the only thing that clears the old one. The test pins the
+    // set so widening it is a deliberate act rather than a one-line habit.
+    for (const path of ['/manifest.webmanifest', '/icon-192.png', '/tiles/m1.svg']) {
+      served[path] = response(`first:${path}`);
+      const req = request(`https://host.example${path}`);
+      expect((await dispatch('fetch', req))?.body).toBe(`first:${path}`);
+
+      // A deploy changes the file at the same URL…
+      served[path] = response(`second:${path}`);
+      expect(
+        (await dispatch('fetch', req))?.body,
+        `${path} updated without a CACHE bump — the comment in sw.js is now wrong`,
+      ).toBe(`first:${path}`);
+    }
+  });
+});

@@ -12,7 +12,17 @@ const CACHE = 'sichuan-mahjong-v2';
 // instead of a build-time precache manifest. (F5)
 const SHELL = '/';
 
-// Content-hashed build output and static art: safe to serve cache-first.
+// Served cache-first. **Only `/assets/` is content-hashed**, and the rest are
+// not, which is the distinction this comment used to blur by calling the whole
+// set "content-hashed build output and static art".
+//
+// It matters, because cache-first on a *stable* URL means the file never
+// updates: a returning visitor keeps the icon, the manifest and the tile art
+// they first saw until `CACHE` changes, since `activate` is the only thing that
+// clears the old one. That is the right trade for art that has not changed
+// since it was drawn — but **changing any of these ships to nobody until the
+// version above is bumped**, and nothing enforces that, so it is written here
+// next to the list it applies to. (A73)
 function isCacheableAsset(url) {
   return (
     url.pathname.startsWith('/assets/') ||
