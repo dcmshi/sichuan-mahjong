@@ -19,7 +19,15 @@ overrides:
   # a 512MB free-tier instance is the class that actually matters.
   find-my-way@<9.7.0: ^9.7.0
   fast-uri@<3.1.5: ^3.1.5
-  brace-expansion@>=2.0.0 <5.0.9: ^5.0.9
+  # **Exactly the advisory's range and not a character wider.** The first draft
+  # of this said `>=2.0.0` on the reasoning that brace-expansion is one function
+  # and majors are cheap. It is not: 5.x moved off a CommonJS default export, and
+  # `minimatch@9` — which is nobody's dependency here but `@vitest/coverage-v8`'s
+  # — does `brace_expansion_1.default(...)` and threw. Lint, typecheck, 738 unit
+  # tests and all 12 Playwright specs passed with it broken, because the only
+  # thing that walks a glob is the coverage reporter. Widening an override past
+  # the advisory buys nothing and costs the packages that were never affected.
+  brace-expansion@>=3.0.0 <5.0.9: ^5.0.9
 
 onlyBuiltDependencies:
   - '@biomejs/biome'
