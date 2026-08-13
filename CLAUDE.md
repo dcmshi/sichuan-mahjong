@@ -251,6 +251,17 @@ The long form, with the measurements behind each, is in
   The same pass closed the PDF's second kong restriction, which nothing
   implemented: **no kong at all on a turn entered by a pung** — a pung is not a
   draw, and `turnEnteredByPung` reads the same `drewThisTurn` that A7 added. (A50)
+- **A kong replacement can be the last tile in the wall, and it comes off the
+  other end.** `takeKongReplacement` is the one definition of that draw; three
+  paths had it inline and all three forgot that taking it empties the wall.
+  `wallEndReached` was set only by `applyDraw`, so the round ran an action past
+  its end and — the part that costs points — the discard that followed was not
+  "the discard after the last tile", which is half of what Under the Sea means.
+  **Win after Kong and Under the Sea stack**: `HuSubtype` names one situation and
+  this is the one case that is two, which is why `calcHandScore` takes a flag
+  rather than a widened subtype (nothing reads `subtype`; the reveal draws
+  `fans`). Table 9 and the native-language sources agree — Japanese mahjong
+  forbids the pair, Sichuan allows it. (A67)
 - **`kongPaymentLog` is the only thing a refund can see, so a kong payment that
   is made must be logged in the same breath.** Three rules give kong points back
   — the wall-end blanket refund for a non-Hu non-ready declarer, shoot-after-kong,
@@ -416,18 +427,21 @@ reasoning and measurements in
 ## Status
 
 **Everything is shipped and [TODO.md](./TODO.md) is empty.** All v1 work, nine
-full-repo audit passes (A1–A66), the frontend/design pass (F1–F25), the mobile
+full-repo audit passes (A1–A67), the frontend/design pass (F1–F25), the mobile
 viewport work (R1–R7), the hosting work (C1–C10), and the feature run N1–N46.
 
-The ninth pass (2026-08-13, **A56–A66**) closed the same day, and wrote up **A55**
+The ninth pass (2026-08-13, **A56–A67**) closed the same day, and wrote up **A55**
 alongside it — that one had shipped three days earlier without reaching the
-record. It ran as three sweeps and the third came back clean, leaving a
-whole-round invariant test and `noUnusedLocals` rather than a fix (A66).
-Four of the eleven were real: a promoted kong's payment never entering the
+record. It ran as four sweeps: the third came back clean, leaving a whole-round
+invariant test and `noUnusedLocals` rather than a fix (A66), and the fourth
+changed axis to the *ruleset*, checking the fan table against native-language
+sources rather than the PDF alone (A67).
+Five of the twelve were real: a promoted kong's payment never entering the
 refund log (A56), the shoot-after-kong refund running once per winner instead of
 once per discard (A57), the winner's hand decomposition riding the `hu` event past
-the redaction that removed it from the view (A58), and every bot konging its own
-void suit for a net −42 (A62). Each left an invariant above rather than only a fix.
+the redaction that removed it from the view (A58), every bot konging its own void
+suit for a net −42 (A62), and a kong taking the last tile of the wall without the
+engine noticing (A67). Each left an invariant above rather than only a fix.
 
 This section deliberately does not list what shipped — that is
 [docs/history.md](./docs/history.md), newest first, **with a find-an-item-by-id

@@ -2,7 +2,7 @@
 
 What is actually open. **Everything closed lives in
 [docs/history.md](./docs/history.md)**, newest first, each entry with the diagnosis
-that made it worth writing down — the phase log, the nine audit passes (A1–A66), the
+that made it worth writing down — the phase log, the nine audit passes (A1–A67), the
 frontend pass (F1–F25), the viewport work (R1–R7), the tile rendering change, the
 hosting work (C1–C10), and the feature run N1–N46.
 
@@ -16,16 +16,25 @@ so it isn't rediscovered as a bug.
 
 ## Open
 
-**Nothing.** The ninth full-repo code audit of 2026-08-13, filed as **A56–A66**,
-closed the same day, all eleven items — and **A55** was written up alongside them,
+**Nothing.** The ninth full-repo code audit of 2026-08-13, filed as **A56–A67**,
+closed the same day, all twelve items — and **A55** was written up alongside them,
 having shipped on 2026-08-10 without ever reaching the record.
 
-It ran as three sweeps, and **the third came back clean** — no behavioural
-defect. What it left instead is two guards: a whole-round invariant test
-(**A66**) asserting the things a payment balance cannot see, which is why A56
-survived a hundred smoke games; and `noUnusedLocals` in `tsconfig.base.json`,
-after six dead symbols had accumulated with neither biome nor tsc configured to
-notice.
+It ran as four sweeps. **The third came back clean** — no behavioural defect —
+leaving two guards instead: a whole-round invariant test (**A66**) asserting the
+things a payment balance cannot see, which is why A56 survived a hundred smoke
+games; and `noUnusedLocals` in `tsconfig.base.json`, after six dead symbols had
+accumulated with neither biome nor tsc configured to notice.
+
+**The fourth changed axis — from "is the code self-consistent" to "are the rules
+right"** — and finished the second pass N21 had deferred, checking Table 4 and
+Table 9 against native-language sources rather than the PDF's authority
+(**A67**). The values corroborate once the 番 convention is pinned; Table 9
+disagreed with us in two cells, both symmetric, one of them real and one
+unreachable. Chasing the real one found the larger half: a kong takes the last
+tile of the wall and nothing noticed, so the discard after it never scored Under
+the Sea. Working in
+[docs/audit-payments.md](./docs/audit-payments.md).
 
 Four were real defects in what a hand pays, who may see it, or how a bot plays.
 **A56** is the one that fired on the ordinary path: a promoted kong collects 1

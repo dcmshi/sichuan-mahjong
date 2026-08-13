@@ -1,7 +1,7 @@
 # History — every closed item, newest first
 
 This is the record of work already done: the phase log (1–10), nine full-repo
-audit passes (A1–A66), the frontend/design pass (F1–F25), the mobile viewport work
+audit passes (A1–A67), the frontend/design pass (F1–F25), the mobile viewport work
 (R1–R7), the tile-rendering change, the hosting work (C1–C10), and the feature run
 N1–N46. Each entry keeps its diagnosis, not just its fix — that is the part worth
 having later.
@@ -44,6 +44,7 @@ Series: **N** features · **A** full-repo audits · **F** frontend/design ·
 | **A62** | Every bot konged its own void suit |
 | **A63, A64, A65** | Three things that outlived what they belonged to |
 | **A66** | The pass that came back clean, and the two guards it left |
+| **A67** | The fan table, checked against sources outside the PDF |
 | **F1–F25** | *Frontend & design audit — seventh pass*, a numbered list. Grep the id. |
 | **N2** | The dice are real now |
 | **N3, N11, N14** | Help that shows a hand, a discard you can arm early, and a wall that reads the dice |
@@ -88,6 +89,59 @@ Series: **N** features · **A** full-repo audits · **F** frontend/design ·
 | **O3** | Closed **won't-do** — reasoning in [TODO.md](../TODO.md) and ARCHITECTURE §12 |
 | **O4** | One tile face everywhere |
 | **O5** | An **accepted trade-off**, not a task — per-IP limits key to a Cloudflare edge address. ARCHITECTURE §12 |
+
+---
+
+## ✅ The fan table, checked against sources outside the PDF (A67 — 2026-08-13)
+
+The fourth sweep, on the axis the first three never touched: **are the rules
+right**, rather than is the code self-consistent. N21 checked every *payment*
+against three outside sources and closed by saying Table 4 and Table 9 were "a
+second pass with the same method". This is that pass. Full working in
+[docs/audit-payments.md](./audit-payments.md); what follows is the diagnosis.
+
+**The fan values corroborate, but only once the convention is pinned — and that
+is most of the work.** Outside sources cannot be compared at face value because
+they do not agree with each other on what 番 counts: Novikov's is an exponent
+(`2^fan`, 0 fan = 1 point), the common Chinese app convention is 1-indexed
+(平胡 = 1番, multiplier `2^(番−1)`), and a third family uses 番 as the multiplier
+itself, which is where "清七对 48番" comes from. Converted to **doublings**,
+which is convention-free, every value agrees — and the compositions fall out of
+the addition rather than needing rows of their own, which is the real test:
+清对 = 清一色 + 碰碰胡 = ×8, 清七对 = 清一色 + 七对 = ×16, both listed at exactly
+those multipliers by a source that never derives them.
+
+龙七对 is a real variant — ours is additive (七对 + 根 = ×8), one source gives ×16
+— and is recorded rather than changed, the same call `fanCap` got.
+
+**Table 9 disagreed in exactly two cells, and both were symmetric pairs.** The
+PDF's table extracts with mangled columns, so the reading was checked a second
+way: counting the `+` marks per row against our own incompatibility counts. Two
+disagreements, each appearing in both directions, which is what a real matrix
+produces and a misread one does not. Every other cell matched, including all
+nine that can fire.
+
+Shoot after Kong × Robbing the Kong is unreachable — a hand is won on a discard
+*after* a kong or on the tile added *to* one, never both — and was corrected
+anyway, because the table is a statement about the rules.
+
+**Win after Kong × Under the Sea is real, and the outside source settles it
+rather than the PDF's authority:** 萌娘百科 puts it plainly — Japanese mahjong
+forbids the combination, Chinese Official and Sichuan allow it. We were the
+outlier.
+
+**Underneath it was the larger half.** Chasing whether that pair was reachable
+found that a kong replacement comes off the tail, so **a kong declared with one
+tile left takes that tile** — and `wallEndReached` was set only by `applyDraw`.
+Three kong paths each drew the replacement inline and all three missed it, so the
+round ran an action past its end and, worse, the discard that followed was not
+"the discard after the last tile". A seat winning on *that* got no Under the Sea
+fan at all, and that case is far more common than the kong-and-win one. Nothing
+had ever tested it. `takeKongReplacement` is now the one definition all three
+call.
+
+Measured: a win on a kong replacement that was the last tile scored 2 fan and 4
+points, and now scores 3 fan and 8 — a maximum hand at the default cap.
 
 ---
 

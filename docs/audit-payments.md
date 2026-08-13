@@ -139,10 +139,110 @@ which is the same dispute from the other end.
    ranking is by score, so a cheap early Hu can finish last), and it said nothing
    about what the hand was worth. Now `Hand complete · {n} points`.
 
-## What is still unchecked
+---
 
-The **fan values themselves** (Table 4) and the compatibility matrix (Table 9) are
-out of scope here: the report was about a payment, and those are already
-property-tested for self-consistency and symmetry, and asserted against the help
-screen's table. If a fan is ever disputed, that is a second pass with the same
-method — and `scoring-cases.test.ts` is where the answers would land.
+# The second pass: the fan values and the compatibility matrix (A67)
+
+The section above closed by saying Table 4 and Table 9 were out of scope and
+would be "a second pass with the same method". This is that pass, run
+2026-08-13 with the same instruction as the first — **do not take the PDF as
+gospel** — and the same standard: at least one source outside it per claim.
+
+## Sources added
+
+| # | Source | Kind |
+|---|---|---|
+| D | [萌娘百科 — 麻将/番种/岭上开花](https://zh.moegirl.org.cn/zh-hans/麻将/番种/岭上开花) | outside, native-language, per-fan |
+| E | [搜狐 — 四川麻将算番计分规则详细介绍](https://www.sohu.com/a/459159080_121073676) | outside, native-language, full table |
+| F | [知乎 — 四川麻将游戏规则及胡牌有哪些牌型](https://zhuanlan.zhihu.com/p/620676583) | outside, native-language |
+
+## 7. The fan values corroborate — but only after the *convention* is pinned
+
+**Outside sources cannot be compared to the PDF at face value, because they do
+not agree with each other on what "番" counts.** Three conventions are in use:
+
+- Novikov's, which the engine follows: fan is an **exponent**, and the hand is
+  worth `2^fan`. 0 fan is 1 point (Table 5, verbatim: `0 1 2 3 4+ → 1 2 4 8 16`).
+- The common Chinese app convention: 番 is **1-indexed**, 平胡 is 1番 and the
+  multiplier is `2^(番−1)`. E states this outright.
+- A third family where 番 **is** the multiplier, so 清七对 is "48番". Present in
+  search results and internally inconsistent with the other two.
+
+So the check has to be on the **doublings**, which is convention-free. Converted,
+every value agrees:
+
+| Combination | Ours (fan) | Doublings | E | Agrees |
+|---|---|---|---|---|
+| 碰碰胡 All Pungs | 1 | ×2 | 2番 = ×2 | ✅ |
+| 清一色 Full Flush | 2 | ×4 | 3番 = ×4 | ✅ |
+| 七对 Seven Pairs | 2 | ×4 | 3番 = ×4 | ✅ |
+| 根 Root (each) | 1 | ×2 | 1番 | ✅ |
+| 杠 Kong (each) | 1 | ×2 | — | ✅ (= a root) |
+| 杠上花 / 杠上炮 / 抢杠 / 海底 | 1 each | ×2 | 1番 each | ✅ |
+| 金钩钓 Golden Wait | 1 | ×2 | +1番 | ✅ |
+
+And the **compositions** fall out of the addition rather than needing their own
+rows, which is the real test of the scheme: 清对 = 清一色 + 碰碰胡 = 3 fan = ×8,
+and 清七对 = 清一色 + 七对 = 4 fan = ×16. E lists both at exactly those
+multipliers without deriving them. **Keep.**
+
+### 龙七对 is a genuine variant, and we take the additive reading
+
+Seven pairs containing a four-of-a-kind. Ours is 七对 (2) + 根 (1) = 3 fan = ×8,
+which is what addition gives and what the PDF's scheme implies. E gives ×16, and
+another summary describes it as replacing 七对 outright and *deducting* a root —
+a different accounting that lands on a different number.
+
+This is the same shape as the `fanCap` finding above: **both readings are in
+circulation and neither is a mistake.** We take the additive one, because it is
+the one the PDF's scheme produces and because it needs no special case. Recorded
+rather than changed. Unlike `fanCap` it is not exposed as an option — nobody has
+asked, and a second lobby control for one hand shape is not worth the surface.
+
+## 8. Table 9 disagreed with us in exactly two cells, and both were symmetric
+
+Extracted cell by cell. The text layout mangles the columns, so the reading was
+checked a second way — counting the `+` marks per row against our own
+incompatibility counts — and the two disagreements showed up as **symmetric
+pairs**, which is what a real matrix produces and a misread one does not.
+
+| Pair | PDF | Ours (before) | Reachable? |
+|---|---|---|---|
+| Win after Kong × Under the Sea | compatible | **incompatible** | **yes** |
+| Shoot after Kong × Robbing the Kong | incompatible | **compatible** | no |
+
+Every other cell matched, including all nine that can actually fire.
+
+**The second is unreachable and was corrected anyway.** A hand is won either on a
+discard *after* a kong or on the tile being added *to* one, never both. The table
+is a statement about the rules, and Table 9 makes this one.
+
+**The first is real, and D settles it against the PDF rather than on its
+authority:** *"在日本麻将中，杠开不能与海底摸月复合，但在国标麻将、中庸麻雀以及四川麻将
+是允许复合的"* — Japanese mahjong forbids the combination; Chinese Official,
+Zhongyong and **Sichuan allow it**. So the PDF and the outside source agree, and
+we were the outlier.
+
+## 9. …and underneath it, the wall was not noticing it had run out
+
+Chasing whether the pair was reachable found the larger half. A kong replacement
+comes off the tail, so **a kong declared with one tile left takes that tile** —
+and `wallEndReached` was set only by `applyDraw`. Three kong paths each drew the
+replacement inline and all three missed it.
+
+Two consequences, and the second is the one that costs points:
+
+1. The round ran one action past its end, finishing on the next seat's draw.
+2. The discard that followed was not "the discard after the last tile", which is
+   half of what Table 4 defines Under the Sea to be — so a seat winning on it got
+   no fan for it at all. That case is **much more common** than the kong-and-win
+   one, and nothing had ever tested it.
+
+`takeKongReplacement` is now the single definition all three paths call.
+
+## Outcome
+
+Measured on the reproduction: a win on a kong replacement that was the last tile
+scored Kong + Win after Kong = 2 fan = **4 points**, and now scores
+Kong + Win after Kong + Under the Sea = 3 fan = **8 points**, which at the default
+cap is a maximum hand. `scoring-cases.test.ts` carries all three assertions.
