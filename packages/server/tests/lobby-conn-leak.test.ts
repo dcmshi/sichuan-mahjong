@@ -86,8 +86,8 @@ describe('a started game leaves no lobby state behind (A61)', () => {
   let host: WebSocket;
 
   beforeEach(async () => {
-    // Bots would otherwise take turns for the duration of the test.
-    process.env.SM_BOT_DELAY_MS = '100000';
+    // The pace comes from vitest.config.ts's SM_BOT_DELAY_MS=150, and setting it
+    // here would do nothing: `paceOverride` is read once when room.ts loads.
     ({ app, port } = await buildApp());
     const create = await app.inject({ method: 'POST', url: '/api/lobby' });
     ({ code, hostToken } = create.json<{ code: string; hostToken: string }>());
@@ -102,7 +102,6 @@ describe('a started game leaves no lobby state behind (A61)', () => {
     if (host.readyState === WebSocket.OPEN) host.close();
     deleteRoom(code);
     await app.close();
-    process.env.SM_BOT_DELAY_MS = undefined as unknown as string;
   });
 
   it('drops the connection map when the last game socket closes', async () => {

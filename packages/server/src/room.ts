@@ -78,7 +78,13 @@ function paceFromEnv(): number | null {
   const raw = process.env.SM_BOT_DELAY_MS;
   if (raw === undefined) return null;
   const ms = Number.parseInt(raw, 10);
-  return Number.isFinite(ms) && ms >= 0 ? ms : null;
+  if (!Number.isFinite(ms) || ms < 0) return null;
+  // The same ceiling `--bot-delay` gets, which this had skipped: `setBotPaceMs`
+  // clamps and this assigned `paceOverride` raw, so the two ways of saying the
+  // same thing disagreed above 5s. A pace longer than the shortest claim window
+  // a host can pick (8s) is also what made A68's stall reachable by
+  // configuration rather than only by a crafted test. (A68)
+  return clampBotPace(ms);
 }
 
 /**
@@ -670,7 +676,17 @@ export class GameRoom {
     }
   }
 
+  /**
+   * Work out what the room owes next and schedule it. Safe to call at any time
+   * and from anywhere — it clears what it re-arms, and every scheduler it calls
+   * is deduped per seat.
+   *
+   * Guarded on `ended` for the reason `schedulePersist` is (A11): a torn-down
+   * room must not be able to re-arm a timer, and the bot callbacks below now
+   * call back into here.
+   */
   private scheduleNext(): void {
+    if (this.ended) return;
     if (this.claimWindowTimer !== null) {
       clearTimeout(this.claimWindowTimer);
       this.claimWindowTimer = null;
@@ -775,7 +791,11 @@ export class GameRoom {
     const play = this.botPlayFor(seat);
     this.scheduleBot(seat, () => {
       const action = play.turn(this.state, seat);
-      if (action !== null) this.applyAndPropagate(action);
+      // Acting re-enters scheduleNext through afterStateChange. Declining has to
+      // do it here, or the seat's slot in `botPendingSeats` is released with
+      // nothing left to notice the room is owed a move. See A68 below.
+      if (action === null) this.scheduleNext();
+      else this.applyAndPropagate(action);
     });
   }
 
@@ -795,7 +815,25 @@ export class GameRoom {
       const play = this.botPlayFor(seat);
       this.scheduleBot(seat, () => {
         const w = this.state.pendingClaims;
-        if (w === null || w.passed[seat] || w.claims[seat] !== null) return;
+        // **A pending decision can go stale, and something has to notice.** (A68)
+        //
+        // `scheduleBot` and `scheduleBotImmediate` share one `botPendingSeats`
+        // set on the stated ground that huan, void, claim and turn are mutually
+        // exclusive — true of a seat at one instant, false across a window
+        // closing. When the deadline expires rather than this bot answering, the
+        // turn can pass to *this* seat, and the `setImmediate` that would issue
+        // its draw is deduped away against the claim it superseded. The claim
+        // callback then arrives, finds no window, releases the slot and returns
+        // — and the room is left owing a draw with nothing scheduled to make it.
+        // Not slow: dead, and silent, because nothing rejected anything.
+        //
+        // Reachable by configuration. The lobby clamps the pace to 5s and the
+        // shortest window a host can pick is 8s, but `SM_BOT_DELAY_MS` is read
+        // straight into `paceOverride` without the clamp.
+        if (w === null || w.passed[seat] || w.claims[seat] !== null) {
+          this.scheduleNext();
+          return;
+        }
         this.applyAndPropagate(play.claim(this.state, seat));
       });
     }
