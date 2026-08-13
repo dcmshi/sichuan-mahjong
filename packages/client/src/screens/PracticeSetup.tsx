@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useT } from '../i18n/useT.js';
 import type { BotLevel, PracticePrefs } from '../prefs.js';
 import { BOT_LEVELS, botLevelKey, loadPracticePrefs, persistPracticePrefs } from '../prefs.js';
@@ -72,6 +72,18 @@ export function PracticeSetup() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Cancelled on unmount, as Landing's rejoin deadline is: the guard below is
+  // "are we still on this screen", which goes true again on a second visit, and
+  // the pending deadline from the first would then fail a start that is
+  // succeeding. (A65)
+  const startTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (startTimer.current) clearTimeout(startTimer.current);
+    },
+    [],
+  );
+
   function update(patch: Partial<PracticePrefs>) {
     setPrefs(prev => {
       const next = { ...prev, ...patch };
@@ -117,7 +129,8 @@ export function PracticeSetup() {
       }).send({ t: 'join', name });
 
       // The socket can also fail by going quiet, which no error handler sees.
-      setTimeout(() => {
+      startTimer.current = setTimeout(() => {
+        startTimer.current = null;
         if (useStore.getState().screen !== 'practiceSetup') return;
         setLoading(false);
         setError('landing.practiceError');

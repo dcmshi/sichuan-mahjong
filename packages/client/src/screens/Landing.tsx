@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { HowToPlay } from '../components/HowToPlay.js';
 import { LangSwitch } from '../components/LangSwitch.js';
 import { useT } from '../i18n/useT.js';
@@ -50,6 +50,20 @@ export function Landing() {
     goTo('joinForm');
   }
 
+  // The rejoin deadline below outlived this screen. Its guard is "are we still
+  // on landing", which is true again the moment a player who rejoined
+  // successfully walks back out to the menu — so a good rejoin followed by a
+  // Leave inside six seconds closed the fresh connection and raised "Could not
+  // rejoin." over it. Landing unmounts on every screen change, so cancelling
+  // here is the whole fix. (A65)
+  const rejoinTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (rejoinTimer.current) clearTimeout(rejoinTimer.current);
+    },
+    [],
+  );
+
   function rejoin() {
     if (!saved) return;
     setRejoining(true);
@@ -67,7 +81,8 @@ export function Landing() {
     });
     // A stale token isn't rejected — the server just falls through to the
     // lobby handler and waits — so failure looks like silence.
-    setTimeout(() => {
+    rejoinTimer.current = setTimeout(() => {
+      rejoinTimer.current = null;
       if (useStore.getState().screen !== 'landing') return;
       closeConnection();
       clearSession();
