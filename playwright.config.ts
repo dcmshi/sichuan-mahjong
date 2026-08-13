@@ -67,6 +67,23 @@ export default defineConfig({
     // toss, and it failed a full-suite run after passing three isolated ones.
     // A fixed seed makes it the same round every time, so a failure means the
     // layout changed rather than the deal did. (`SM_SEED`, room.ts)
-    env: { SM_SEED: 'e2e-fixed-deal' },
+    env: {
+      SM_SEED: 'e2e-fixed-deal',
+      // **Keep the suite out of the developer's real database.** (A79)
+      //
+      // e2e runs a real server, so unlike the unit suites — which `vi.mock` the
+      // persistence module — every lobby it opens is written to `live_rooms` in
+      // `%APPDATA%/sichuan-mahjong/games.db`, and every finished round adds a
+      // `games` row. Those rows are restored at boot and count against the
+      // concurrent-games ceiling, which CLAUDE.md documents as a trap with a
+      // manual remedy ("clear it with the server stopped"). One session of
+      // repeated e2e runs left **72 live rooms** behind — above the hosted
+      // ceiling of 50.
+      //
+      // The remedy is not to remember to clear it. `test-results/` is already
+      // gitignored as Playwright's own output, so the suite gets its own
+      // throwaway database and the trap stops being reachable from here.
+      SICHUAN_DATA_DIR: 'test-results/e2e-data',
+    },
   },
 });

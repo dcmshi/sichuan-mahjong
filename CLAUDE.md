@@ -437,9 +437,14 @@ reasoning and measurements in
 - **Restart the server after any client rebuild.** `@fastify/static` snapshots its
   asset list at boot, so a fresh bundle 404s into the SPA fallback and the page
   dies with a MIME-type error on a `text/html` module script.
-- **`games.db` accumulates rooms from every automated run, and they are restored at
-  boot** — enough of them and the concurrent-games ceiling refuses new lobbies
-  before you have played one. Clear it at `%APPDATA%\sichuan-mahjong\games.db`
+- **`games.db` accumulates rooms and they are restored at boot** — enough of them
+  and the concurrent-games ceiling refuses new lobbies before you have played
+  one. **`pnpm e2e` no longer contributes**: it runs a *real* server, so unlike
+  the unit suites (which mock persistence) every lobby it opened was written to
+  the developer's own database — one session of repeated runs left 72 live rooms,
+  above the hosted ceiling of 50. It now gets a throwaway db under
+  `test-results/`, which was already gitignored (A79). What still accumulates is
+  whatever you start by hand; clear it at `%APPDATA%\sichuan-mahjong\games.db`
   with the server stopped.
 - **The deal's dice overlay is `pointer-events-none` and the game plays on
   underneath it.** No phase, screen or click failure reveals it — `getPhase()`

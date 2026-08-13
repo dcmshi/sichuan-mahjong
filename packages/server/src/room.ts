@@ -1223,9 +1223,36 @@ export function sweepIdleRooms(maxIdleMs: number, now = Date.now()): number {
   let swept = 0;
   for (const room of [...rooms.values()]) {
     if (room.idleMs(now) <= maxIdleMs) continue;
-    console.log(
-      `[sweep] Ending idle room ${room.code} (idle ${Math.round(room.idleMs(now) / 60_000)}m).`,
-    );
+    const minutes = Math.round(room.idleMs(now) / 60_000);
+    const phase = room.getState().phase;
+    const watching = room.getLobbyPlayers().filter(p => !p.isBot && p.connected).length;
+    /**
+     * **An unfinished round with players still connected is the shape of a
+     * stall, and the sweep is the only thing that ever sees one.**
+     *
+     * A68 was exactly that failure: `turnDrawNeeded` true, no timer pending,
+     * nothing owed the table a move — and it logged nothing, rejected nothing,
+     * and looked from outside like a slow game. It is fixed, but the *class* is
+     * not, and this line is what would make the next one visible instead of
+     * arriving months later as "the game froze once".
+     *
+     * Any phase but `roundEnd` counts. A huan or void phase waiting forever on
+     * a submission that will never come is as dead as a turn that is owed a
+     * draw, and the seats sitting in it cannot tell the difference either.
+     *
+     * The ordinary case — everyone left and the bots played on, or a lobby
+     * nobody started — stays at `log`, because that is housekeeping. Only
+     * "unfinished" *and* "somebody was still connected" is worth an error a log
+     * search will find. (A80)
+     */
+    if (phase !== 'roundEnd' && watching > 0) {
+      console.error(
+        `[sweep] Room ${room.code} was still in ${phase} with ${watching} player(s) connected ` +
+          `and nothing happened for ${minutes}m — that is a stall, not an abandonment.`,
+      );
+    } else {
+      console.log(`[sweep] Ending idle room ${room.code} (${phase}, idle ${minutes}m).`);
+    }
     room.endMatch();
     swept++;
   }
