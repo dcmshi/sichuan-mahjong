@@ -207,6 +207,15 @@ export function sweepStaleLobbies(maxAgeMs: number, now = Date.now()): number {
   return swept;
 }
 
+/**
+ * Codes still holding a lobby connection map. A test seam: the map is the one
+ * piece of lobby state no sweep can reach once `deleteLobby` has run, so "did
+ * anything outlive the lobby" is not observable from outside otherwise. (A61)
+ */
+export function lobbyConnectionCodes(): string[] {
+  return [...lobbyConnections.keys()];
+}
+
 function getLobbyConns(code: string): Map<Seat, WebSocket> {
   let m = lobbyConnections.get(code);
   if (!m) {
@@ -253,9 +262,14 @@ function bindLobbySocket(
     if (msg) handleLobbyMessage(socket, code, seat, isHost, msg, hostToken);
   });
   socket.on('close', () => {
-    const conns = getLobbyConns(code);
+    // Read, never create. `bindGameSocket` replaces only the *message* listener
+    // when startGame hands a lobby socket to the room, so this handler outlives
+    // the lobby — and `getLobbyConns` would then insert a fresh empty Map under
+    // a code that no lobby sweep will ever visit again, one per started game for
+    // the life of the process. (A61)
+    const conns = lobbyConnections.get(code);
     // Skip if a reconnect already replaced this socket for the seat.
-    if (conns.get(seat) !== socket) return;
+    if (!conns || conns.get(seat) !== socket) return;
     conns.delete(seat);
     const l = getLobby(code);
     if (l && !l.started) {
