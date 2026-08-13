@@ -117,7 +117,22 @@ export function saveLiveRoom(code: string, snapshot: unknown): void {
     .run(code, JSON.stringify(snapshot), Date.now());
 }
 
-/** Load all persisted live-room snapshots (called once at server boot). */
+/**
+ * Load all persisted live-room snapshots (called once at server boot).
+ *
+ * **Parsed per row, because one unreadable row must not take the others with
+ * it.** `restoreRoomsFromDisk` drops a row it cannot use, precisely so a bad one
+ * cannot fail on every boot forever — and that logic never got to run, because
+ * this mapped `JSON.parse` over every row in one expression. A single truncated
+ * `snapshot_json` (a half-finished write, a corrupted file) threw before any
+ * per-row handling, the caller's try/catch turned it into "restored 0 rooms",
+ * and every healthy game on the disk was lost with it. Nothing was dropped
+ * either, so the next boot did the same thing. (A69)
+ *
+ * An unreadable row comes back with a `null` snapshot rather than being skipped
+ * here: validation refuses it by name and the restore loop deletes it, which
+ * keeps the decision to drop a row in the one place that already makes it.
+ */
 export function loadLiveRooms(): Array<{ code: string; snapshot: unknown }> {
   const database = getDb();
   if (!database) return [];
@@ -125,7 +140,17 @@ export function loadLiveRooms(): Array<{ code: string; snapshot: unknown }> {
     code: string;
     snapshot_json: string;
   }>;
-  return rows.map(r => ({ code: r.code, snapshot: JSON.parse(r.snapshot_json) as unknown }));
+  return rows.map(r => {
+    try {
+      return { code: r.code, snapshot: JSON.parse(r.snapshot_json) as unknown };
+    } catch (err) {
+      console.error(
+        `[persistence] Unreadable snapshot for room ${r.code}:`,
+        err instanceof Error ? err.message : err,
+      );
+      return { code: r.code, snapshot: null };
+    }
+  });
 }
 
 export function deleteLiveRoom(code: string): void {

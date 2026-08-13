@@ -163,3 +163,35 @@ describe('live-room snapshots', () => {
     deleteLiveRoom('RM03');
   });
 });
+
+/**
+ * One unreadable row must not take the others with it. (A69)
+ *
+ * `restoreRoomsFromDisk` drops a row it cannot use, precisely so a bad one
+ * cannot fail on every boot forever. That logic never gets to run if the *parse*
+ * fails first: `loadLiveRooms` mapped `JSON.parse` over every row in one
+ * expression, so a single truncated `snapshot_json` — a half-finished write, a
+ * corrupted file — threw before any per-row handling, and the caller's own
+ * try/catch turned it into "restored 0 rooms". Every healthy game on the disk
+ * lost, and nothing dropped, so the next boot did it again.
+ */
+describe('a corrupt row (A69)', () => {
+  it('does not stop the healthy rows loading', () => {
+    const db = getDb();
+    if (!db) return; // node:sqlite unavailable — the suite above already skips
+    saveLiveRoom('GOOD', { code: 'GOOD', state: freshState() });
+    db.prepare(
+      'INSERT OR REPLACE INTO live_rooms (code, snapshot_json, updated_at) VALUES (?, ?, ?)',
+    ).run('TRNC', '{"code":"TRNC","state":{"pha', Date.now());
+
+    const rows = loadLiveRooms();
+    expect(rows.map(r => r.code).sort()).toEqual(['GOOD', 'TRNC']);
+    // The unreadable one comes back as a null snapshot, which validation
+    // refuses by name and the restore loop then drops from disk.
+    expect(rows.find(r => r.code === 'TRNC')?.snapshot).toBeNull();
+    expect(rows.find(r => r.code === 'GOOD')?.snapshot).not.toBeNull();
+
+    deleteLiveRoom('GOOD');
+    deleteLiveRoom('TRNC');
+  });
+});

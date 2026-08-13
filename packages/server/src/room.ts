@@ -666,10 +666,10 @@ export class GameRoom {
   persistNow(): void {
     if (!this.started || this.ended) return; // never re-persist a torn-down room (A11)
     try {
-      if (this.state.phase === 'roundEnd') {
-        // Keep the snapshot so a restart resumes at the round-end screen,
-        // but a finished match is torn down via endMatch() → deleteLiveRoom.
-      }
+      // Written at round end too, so a restart resumes at the round-end screen.
+      // A *finished match* is a different thing and is torn down through
+      // endMatch() → deleteLiveRoom. (This was an empty `if` holding the same
+      // sentence, which reads as a branch someone forgot to write.)
       saveLiveRoom(this.code, this.serialize());
     } catch (err) {
       console.error('[persistence] Failed to snapshot live room:', err);
@@ -1005,19 +1005,38 @@ export function createRoom(
 }
 
 /**
- * Fields a snapshot must carry, taken from a freshly created game rather than
- * a hand-written list — so the check cannot drift as `GameState` grows. This is
- * what makes the validation below self-maintaining: add a field to the engine
- * and old snapshots start being rejected for it automatically.
+ * What a value *is*, for shape comparison — arrays kept apart from objects,
+ * because "an array became an object" is the mutation that breaks a hand.
  */
-function requiredShape(): { state: string[]; player: string[] } {
+function kindOf(v: unknown): string {
+  if (Array.isArray(v)) return 'array';
+  if (v === null) return 'null';
+  return typeof v;
+}
+
+/**
+ * Fields a snapshot must carry **and what kind each one is**, taken from a
+ * freshly created game rather than a hand-written list — so the check cannot
+ * drift as `GameState` grows. This is what makes the validation below
+ * self-maintaining: add a field to the engine and old snapshots start being
+ * rejected for it automatically.
+ *
+ * A field that is `null` in a fresh game records `'null'` and is exempted from
+ * the kind check — `lastDiscard`, `pendingClaims`, a player's `hu` and the rest
+ * are legitimately either, and a fresh deal cannot say which. Those are the one
+ * gap left here, and they are the shallow ones: it is `hand`, `melds`,
+ * `discards`, `wall` and `players` whose kind changing does real damage. (A69)
+ */
+function requiredShape(): { state: Record<string, string>; player: Record<string, string> } {
   const fresh = createGame('shape-probe', [
     { name: 'a', isBot: true },
     { name: 'b', isBot: true },
     { name: 'c', isBot: true },
     { name: 'd', isBot: true },
   ]);
-  return { state: Object.keys(fresh), player: Object.keys(fresh.players[0]) };
+  const kinds = (o: object): Record<string, string> =>
+    Object.fromEntries(Object.entries(o).map(([k, v]) => [k, kindOf(v)]));
+  return { state: kinds(fresh), player: kinds(fresh.players[0]) };
 }
 
 /**
@@ -1039,9 +1058,15 @@ function normalizeSnapshotState(state: Record<string, unknown>): void {
  * and soft-locks the seat. Silent corruption is the worst outcome available,
  * so an incompatible snapshot is refused instead.
  */
-export function validateRoomSnapshot(snapshot: unknown): string[] {
+export function validateRoomSnapshot(snapshot: unknown, expectedCode?: string): string[] {
   if (typeof snapshot !== 'object' || snapshot === null) return ['snapshot (not an object)'];
-  const snap = snapshot as { state?: unknown };
+  const snap = snapshot as {
+    state?: unknown;
+    slots?: unknown;
+    tokens?: unknown;
+    isHumanSeat?: unknown;
+    code?: unknown;
+  };
   if (typeof snap.state !== 'object' || snap.state === null) return ['state (missing)'];
 
   const state = snap.state as Record<string, unknown>;
@@ -1049,9 +1074,39 @@ export function validateRoomSnapshot(snapshot: unknown): string[] {
 
   const shape = requiredShape();
   const missing: string[] = [];
-  for (const key of shape.state) {
+
+  /**
+   * The envelope around `state`, which nothing checked. `restore` reaches
+   * straight into `slots.map` and `tokens`, so a row missing either was dropped
+   * by the try/catch — which works, but reports "restore threw" instead of
+   * naming the field, and that is the difference between a log line you can act
+   * on and one you cannot. (A69)
+   */
+  if (!Array.isArray(snap.slots) || snap.slots.length !== 4) missing.push('slots (expected 4)');
+  if (!Array.isArray(snap.tokens)) missing.push('tokens (expected an array)');
+  if (!Array.isArray(snap.isHumanSeat) || snap.isHumanSeat.length !== 4) {
+    missing.push('isHumanSeat (expected 4)');
+  }
+  /**
+   * **The row's key is authoritative, not the snapshot's.** `restore` registers
+   * the room under `snap.code` while `live_rooms` is keyed by the column — so a
+   * disagreement puts the room in memory under one code and leaves its row
+   * under another, where `deleteRoom` can never reach it and every boot
+   * restores it again. (A69)
+   */
+  if (expectedCode !== undefined && snap.code !== expectedCode) {
+    missing.push(`code (row says ${expectedCode}, snapshot says ${String(snap.code)})`);
+  }
+
+  for (const [key, kind] of Object.entries(shape.state)) {
     if (key === 'players') continue;
-    if (state[key] === undefined) missing.push(`state.${key}`);
+    const value = state[key];
+    if (value === undefined) {
+      missing.push(`state.${key}`);
+      continue;
+    }
+    if (kind === 'null') continue; // no kind to compare against — see requiredShape
+    if (kindOf(value) !== kind) missing.push(`state.${key} (expected ${kind})`);
   }
 
   const players = state.players;
@@ -1065,8 +1120,14 @@ export function validateRoomSnapshot(snapshot: unknown): string[] {
       return;
     }
     const player = p as Record<string, unknown>;
-    for (const key of shape.player) {
-      if (player[key] === undefined) missing.push(`players[${i}].${key}`);
+    for (const [key, kind] of Object.entries(shape.player)) {
+      const value = player[key];
+      if (value === undefined) {
+        missing.push(`players[${i}].${key}`);
+        continue;
+      }
+      if (kind === 'null') continue;
+      if (kindOf(value) !== kind) missing.push(`players[${i}].${key} (expected ${kind})`);
     }
   });
   return missing;
@@ -1117,9 +1178,10 @@ export function restoreRoomsFromDisk(): number {
       }
     };
 
-    const missing = validateRoomSnapshot(snapshot);
+    // The row's code is passed in so the snapshot cannot name a different one.
+    const missing = validateRoomSnapshot(snapshot, code);
     if (missing.length > 0) {
-      drop(`snapshot predates this version (missing ${missing.join(', ')})`);
+      drop(`snapshot does not match this version (${missing.join(', ')})`);
       continue;
     }
 
