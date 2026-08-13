@@ -130,6 +130,41 @@ describe('tokens across a host restart (A41)', () => {
   });
 });
 
+describe('the host’s bot pace survives a restart (A64)', () => {
+  it('rides in the snapshot, like roundIndex and the watch token', () => {
+    // Not a rule and not in GameConfig, which is why it needed saying: every
+    // other live setting is inside `state` and rides along for free. A restart
+    // used to put a table the host had set to slow back on normal, silently.
+    const code = 'WTC7';
+    const room = startedRoom(code);
+    room.setBotSpeed('slow');
+    expect(room.getBotSpeed()).toBe('slow');
+
+    const snap = JSON.parse(JSON.stringify(room.serialize()));
+    expect(snap.botSpeed).toBe('slow');
+
+    restart(code, snap);
+    expect(restoreRoomsFromDisk()).toBe(1);
+    expect(getRoom(code)?.getBotSpeed()).toBe('slow');
+
+    deleteRoom(code);
+  });
+
+  it('restores at the default when the snapshot predates the field', () => {
+    const code = 'WTC8';
+    const room = startedRoom(code);
+    const snap = JSON.parse(JSON.stringify(room.serialize()));
+    // biome-ignore lint/performance/noDelete: modelling an older snapshot exactly
+    delete snap.botSpeed;
+
+    restart(code, snap);
+    expect(restoreRoomsFromDisk()).toBe(1);
+    expect(getRoom(code)?.getBotSpeed()).toBe('normal');
+
+    deleteRoom(code);
+  });
+});
+
 describe('isWatchToken refuses rather than throws (A59)', () => {
   it('answers false for a candidate whose characters match but whose bytes do not', () => {
     // `timingSafeEqual` compares buffers and throws on a byte-length mismatch,

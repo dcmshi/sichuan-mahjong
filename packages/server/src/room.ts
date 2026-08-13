@@ -194,6 +194,15 @@ export type RoomSnapshot = {
   /** Optional: snapshots written before A39 don't carry it. */
   roundIndex?: number;
   /**
+   * The host's bot pace. Not a rule and not in `GameConfig` — which is exactly
+   * why it needs saying here: everything in `GameState` rides along in
+   * `state`, and this is the one live setting that does not. A restart put a
+   * table the host had set to slow back on normal, silently. Optional like the
+   * two below: an older snapshot restores at the default, which is what it had.
+   * (A64)
+   */
+  botSpeed?: BotSpeed;
+  /**
    * The room's spectator secret. Separate from `tokens` because it is a
    * separate store (see `tokens.ts`) — folding it in would make it resolvable
    * as a seat, which is the exact confusion that store exists to prevent.
@@ -319,7 +328,14 @@ export class GameRoom {
     // Close and drop the sockets so a client that ignores `matchEnd` can't keep
     // sending actions (re-arming persist / resurrecting the deleted live_rooms
     // row) or trigger a fresh bot-takeover on close. (A11)
-    for (const [, ws] of this.connections) {
+    //
+    // Spectators are closed for the second half of that reason, which A11 left
+    // out: a watcher's socket carries no message handler, so it can send
+    // nothing — but it is still a live connection with a heartbeat on it, and
+    // dropping it from the set without closing it left one per ignored
+    // `matchEnd` for the life of the process. The room is gone; so is the
+    // socket. (A63)
+    for (const ws of [...this.connections.values(), ...this.spectators]) {
       try {
         ws.close();
       } catch {
@@ -574,6 +590,7 @@ export class GameRoom {
       slots: this.slots.map(s => ({ ...s })),
       isHumanSeat: [...this.isHumanSeat],
       roundIndex: this.roundIndex,
+      botSpeed: this.botSpeed,
       tokens: tokensForCode(this.code).map(t => ({
         token: t.token,
         code: t.code,
@@ -592,6 +609,7 @@ export class GameRoom {
       snap.code,
       snap.slots.map(s => ({ ...s, connected: false })),
       snap.state.config,
+      isBotSpeed(snap.botSpeed) ? snap.botSpeed : DEFAULT_BOT_SPEED,
     );
     // Snapshots written before the payment ledger existed have no `ledger`;
     // without this the first clone() spreads undefined. Same defence as
