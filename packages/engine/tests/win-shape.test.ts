@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
+import type { GameEvent } from '../src/actions.js';
 import { findAllWinningShapes } from '../src/hand.js';
 import { calcHandScore } from '../src/scoring.js';
-import type { Seat } from '../src/state.js';
+import type { HuRecord, Seat } from '../src/state.js';
 import type { TileId, TileType } from '../src/tiles.js';
-import { projectSpectatorView, projectView } from '../src/views.js';
+import { projectSpectatorView, projectView, redactEventsFor } from '../src/views.js';
 import { tableAt } from './helpers/table.js';
 
 /**
@@ -138,5 +139,47 @@ describe('the shape is redacted until the hand has been revealed', () => {
     state.phase = 'roundEnd';
     const view = projectView(state, 0 as Seat);
     expect(view.others.find(o => o.seat === 1)?.hu?.shape).toBeDefined();
+  });
+
+  /**
+   * The event channel, which is the half that was leaking. (A58)
+   *
+   * `projectView` was right from the start; `redactEventsFor` was not, and the
+   * two run against every client on the same broadcast — so the field the view
+   * withheld arrived anyway, in the `hu` event beside it. Drawn tiles (A31) and
+   * void declarations (A40) each got here the same way, which is why the
+   * convention is written as "a field redacted in `views.ts` is not redacted
+   * until it is redacted here too".
+   */
+  describe('and the event carrying it is redacted the same way', () => {
+    const huEvent = (): GameEvent => {
+      const record = projectView(midRound(), 1 as Seat).you.hu as HuRecord;
+      return { e: 'hu', seat: 1 as Seat, record };
+    };
+
+    it('keeps the shape for the winner', () => {
+      const [ev] = redactEventsFor(1 as Seat, [huEvent()]);
+      expect(ev?.e === 'hu' && ev.record.shape).toBeDefined();
+    });
+
+    it('strips it for every other seat, and for spectators', () => {
+      for (const viewer of [0, 2, 3, 'spectator'] as const) {
+        const [ev] = redactEventsFor(viewer, [huEvent()]);
+        expect(ev?.e === 'hu' && ev.record.shape, `viewer ${viewer}`).toBeUndefined();
+        // Only the shape goes. The fans and the value are public the moment a
+        // hand is declared, and the feed says what the win was worth.
+        expect(ev?.e === 'hu' && ev.record.handValue).toBe(8);
+      }
+    });
+
+    it('leaves the caller-side record untouched', () => {
+      // Events are produced once and redacted per viewer, so redaction has to
+      // copy rather than mutate — the next seat in the broadcast reads the same
+      // array.
+      const events = [huEvent()];
+      redactEventsFor(0 as Seat, events);
+      const ev = events[0];
+      expect(ev?.e === 'hu' && ev.record.shape).toBeDefined();
+    });
   });
 });

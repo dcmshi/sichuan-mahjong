@@ -397,6 +397,15 @@ export function projectView(state: GameState, seat: Seat): PlayerView {
  * four suits — the one fact `projectView` withholds (`voidedSuit` is on `you`
  * alone) and that A37 put the declaration tile face down to protect. A table
  * learns a player's void suit when they flip that tile, not before. (A40)
+ *
+ * `hu` is the third, and it went out unredacted from the day N16 added the field:
+ * the event carries the whole `HuRecord`, `shape` included, while
+ * `toPublicPlayer` strips that same field from every seat but the winner's
+ * until the round settles. Bloody Rules
+ * keeps playing after a win, so the two seats still holding cards were handed the
+ * winner's full decomposition — every tile type in a concealed hand they can
+ * otherwise only count. **A field redacted in `views.ts` is not redacted until
+ * it is redacted here too.** (A58)
  */
 export function redactEventsFor(viewer: Seat | 'spectator', events: GameEvent[]): GameEvent[] {
   return events.map(ev => {
@@ -405,6 +414,9 @@ export function redactEventsFor(viewer: Seat | 'spectator', events: GameEvent[])
     }
     if (ev.e === 'voidDeclared') {
       return ev.seat === viewer ? ev : { ...ev, suit: null };
+    }
+    if (ev.e === 'hu' && ev.seat !== viewer) {
+      return { ...ev, record: withoutShape(ev.record) };
     }
     return ev;
   });
