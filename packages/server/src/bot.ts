@@ -209,6 +209,15 @@ function shouldPung(state: GameState, seat: Seat): boolean {
 // ---------------------------------------------------------------------------
 
 /**
+ * A meld whose rank is nobody else's business until the round ends (A27), so no
+ * bot may read its suit off another seat. One definition, because the two places
+ * that needed it disagreed. (A60)
+ */
+export function isConcealedKong(m: PlayerState['melds'][number]): boolean {
+  return m.kind === 'kong' && m.subtype === 'concealed';
+}
+
+/**
  * Tile types visible to `seat`: all discards, exposed melds, and the seat's own
  * concealed kongs. Other players' concealed kong ranks are hidden information
  * in real play (A27), so the bot must not count them either — even though it
@@ -220,7 +229,7 @@ export function visibleTileTypes(state: GameState, seat: Seat): number[] {
     for (const id of p.discards) visible.push(tileTypeOf(id));
     // Pungs and kongs only — Sichuan has no chow claims. (A47)
     for (const meld of p.melds) {
-      if (meld.kind === 'kong' && meld.subtype === 'concealed' && p.seat !== seat) continue;
+      if (isConcealedKong(meld) && p.seat !== seat) continue;
       const tt = tileToType(meld.tile);
       visible.push(tt, tt, tt);
       if (meld.kind === 'kong') visible.push(tt);
@@ -423,7 +432,11 @@ function dangerAgainst(tile: TileId, o: PlayerState, unseen: (type: TileType) =>
   for (const id of o.discards.slice(declaration)) if (suitOf(id) === suit) thrown++;
 
   let danger = thrown === 0 ? 3 : thrown === 1 ? 2 : 1;
-  if (o.melds.some(m => m.tile.suit === suit)) danger++;
+  // Exposed melds only. A concealed kong's rank is hidden until the round ends
+  // (A27) and `visibleTileTypes` already refuses to count one — this read the
+  // suit straight off the meld, which is the one thing in the danger model no
+  // player at the table can see. (A60)
+  if (o.melds.some(m => !isConcealedKong(m) && m.tile.suit === suit)) danger++;
   if (unseen(tileTypeOf(tile)) <= 1) danger--;
   return Math.max(1, danger);
 }
