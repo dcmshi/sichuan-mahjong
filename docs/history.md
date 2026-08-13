@@ -1,7 +1,7 @@
 # History — every closed item, newest first
 
 This is the record of work already done: the phase log (1–10), nine full-repo
-audit passes (A1–A61), the frontend/design pass (F1–F25), the mobile viewport work
+audit passes (A1–A65), the frontend/design pass (F1–F25), the mobile viewport work
 (R1–R7), the tile-rendering change, the hosting work (C1–C10), and the feature run
 N1–N46. Each entry keeps its diagnosis, not just its fix — that is the part worth
 having later.
@@ -41,6 +41,8 @@ Series: **N** features · **A** full-repo audits · **F** frontend/design ·
 | **A56, A57** | The two kong payments the refund log could not see |
 | **A58** | The winner's hand went out in the event beside the view that hid it |
 | **A59, A60, A61** | Three the size of a line each |
+| **A62** | Every bot konged its own void suit |
+| **A63, A64, A65** | Three things that outlived what they belonged to |
 | **F1–F25** | *Frontend & design audit — seventh pass*, a numbered list. Grep the id. |
 | **N2** | The dice are real now |
 | **N3, N11, N14** | Help that shows a hand, a discard you can arm early, and a wall that reads the dice |
@@ -85,6 +87,68 @@ Series: **N** features · **A** full-repo audits · **F** frontend/design ·
 | **O3** | Closed **won't-do** — reasoning in [TODO.md](../TODO.md) and ARCHITECTURE §12 |
 | **O4** | One tile face everywhere |
 | **O5** | An **accepted trade-off**, not a task — per-IP limits key to a Cloudflare edge address. ARCHITECTURE §12 |
+
+---
+
+## ✅ Three things that outlived what they belonged to (A63, A64, A65 — 2026-08-13)
+
+**A63 — `endMatch` closed the players' sockets and not the watchers'.** A11 closes
+player sockets on teardown so a client ignoring `matchEnd` cannot keep sending
+actions. Spectators were dropped from the set and left connected. Half of A11's
+reasoning does not apply to them — a spectate socket carries no message handler,
+so it can send nothing — but the other half does: it is a live connection with a
+heartbeat on it, and one survived per ignored `matchEnd` for the life of the
+process. The heartbeat only reaps a peer that stops answering pings, so an open
+tab holds one indefinitely. Same list, both sets.
+
+**A64 — the host's bot pace did not survive a restart.** Everything else a room
+needs is inside `GameState` and rides along in `snapshot.state` for free; bot
+pace is deliberately *not* in `GameConfig` (a replay of a seed is identical at
+any value), which is exactly what left it out of the snapshot. A host who had
+set the table to slow got it back on normal after a restart, silently.
+`botSpeed?` is optional like `roundIndex?` and `watchToken?`, so an older
+snapshot restores at the default — which is what it had.
+
+**A65 — a rejoin deadline outlived its screen.** Landing arms a six-second
+backstop because a stale token is not rejected: the server falls through to the
+lobby handler and waits, so failure looks like silence. Its guard is "are we
+still on the landing screen", which goes true *again* the moment a player who
+rejoined successfully walks back out to the menu — so a good rejoin followed by
+a Leave inside six seconds closed the fresh connection and raised "Could not
+rejoin." over it. `Landing` unmounts on every screen change, so cancelling on
+unmount is the whole fix. `PracticeSetup`'s start deadline has the same shape
+and got the same treatment.
+
+---
+
+## ✅ Every bot konged its own void suit (A62 — 2026-08-13)
+
+A concealed kong of the suit you declared void is legal, and it costs 48. That
+penalty is not decoration: `applyVoidMeldPenalty` is called from three places and
+this is the **only reachable one**, because `canPungOnTile` and `canKongOnTile`
+each refuse a void-suit tile, so no claim can ever bring one into a meld. The
+engine is right to offer the action.
+
+All three bots took it. Each does `legal.find(a => a.t === 'declareKongOnTurn')`
+and returns the first hit, and `getConcealedKongTypes` has no void filter — so a
+seat dealt four of its void suit konged them on the turn it could, collecting 6
+against a 48-point penalty. Measured: **−42 for the declarer against −2 each for
+the other three**, in a game where the largest possible hand is worth 8. Those
+four tiles can never sit in a winning hand, so there is no board on which it is
+the move.
+
+**No test could have caught it, and that is the interesting part.**
+`bot-smoke.test.ts` asserts "no rule violations or balance errors" over 100
+games — and this is neither. No rule is broken (the engine permits it), and the
+ledger balances exactly (48 goes to `penaltyPot`). A bot playing to lose looks
+identical to a bot playing badly, and the smoke test only knows about the rules.
+The ladder assertion would not catch it either: it needs four of a specific void
+type in one hand, which is rare enough to disappear into 40 deals of noise.
+
+`kongWorthTaking` is now the one place any level asks for a kong, and it filters
+the void suit. The regression test pins all four halves: that the engine still
+offers it, that taking it really costs 42, that no level does, and that a kong
+outside the void suit is still taken.
 
 ---
 

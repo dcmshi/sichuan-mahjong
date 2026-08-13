@@ -219,7 +219,13 @@ The long form, with the measurements behind each, is in
   hand is tenpai, so it had been discarding in hand order since it shipped.
   `shanten.ts` is what both now rank by. Hard sees no more of the table than medium
   (the same `anyOpponentTenpai` peek, and nothing else); its danger read is built
-  from declared void suits and per-seat discard piles, which are public.
+  from declared void suits and per-seat discard piles, which are public. **A legal
+  move is not automatically a move a bot may take** — all three asked
+  `legal.find(…)` for a kong and took the first, which is a concealed kong of
+  their own void suit whenever they hold four: 6 collected against a 48-point
+  penalty, on tiles that can never win. `bot-smoke.test.ts` cannot see it, and
+  that is not a gap in the test — no rule is broken and the ledger balances to the
+  point. `kongWorthTaking` is the one place any level asks for a kong. (A62)
 - **The dice are real, and they change which tiles a seed deals.** Both throws come
   from `rng.ts` on a stream of their own (`seed + ':dice'`), and the wall break is
   applied as a rotation of the wall array — so no distribution changes, only the
@@ -410,16 +416,16 @@ reasoning and measurements in
 ## Status
 
 **Everything is shipped and [TODO.md](./TODO.md) is empty.** All v1 work, nine
-full-repo audit passes (A1–A61), the frontend/design pass (F1–F25), the mobile
+full-repo audit passes (A1–A65), the frontend/design pass (F1–F25), the mobile
 viewport work (R1–R7), the hosting work (C1–C10), and the feature run N1–N46.
 
-The ninth pass (2026-08-13, **A56–A61**) closed the same day, and wrote up **A55**
+The ninth pass (2026-08-13, **A56–A65**) closed the same day, and wrote up **A55**
 alongside it — that one had shipped three days earlier without reaching the
-record. Three of the six were real: a promoted kong's payment never entering the
+record. Four of the ten were real: a promoted kong's payment never entering the
 refund log (A56), the shoot-after-kong refund running once per winner instead of
-once per discard (A57), and the winner's hand decomposition riding the `hu` event
-past the redaction that removed it from the view (A58). All three left an
-invariant above rather than only a fix.
+once per discard (A57), the winner's hand decomposition riding the `hu` event past
+the redaction that removed it from the view (A58), and every bot konging its own
+void suit for a net −42 (A62). Each left an invariant above rather than only a fix.
 
 This section deliberately does not list what shipped — that is
 [docs/history.md](./docs/history.md), newest first, **with a find-an-item-by-id
