@@ -177,6 +177,18 @@ Full tree: [ARCHITECTURE.md §3](./ARCHITECTURE.md#3-repo-layout).
   guard that only calls `projectView` cannot tell the difference.
 - **The WS boundary trusts nothing.** Inbound frames are validated in `ws.ts`;
   server-only actions (e.g. `claimWindowExpire`) are never accepted from a client.
+- **A socket does not stop mid-sentence.** `WsClient.close()` drops our reference
+  but the browser's stays open until the handshake finishes, so frames the server
+  had already sent still arrive — and the store acts on whatever reaches it. Both
+  `onclose` *and* `onmessage` guard on `closed`; only the first one used to, and a
+  `view` landing after a tap on Leave set `screen: 'game'` and pulled the player
+  back into the room they had left. (A70)
+- **`aria-modal="true"` is a claim about focus, so something has to make it true.**
+  It says everything outside the dialog is inert; if focus never enters, a screen
+  reader announces a dialog the user is not in and Tab walks out into content the
+  same attribute told it to ignore. `useDialogFocus` is the one place that enters,
+  cycles and restores — markup and behaviour disagreeing is worse than not marking
+  it a dialog at all. (A75)
 - **Client tests run without a DOM.** There's no jsdom or testing-library, so
   anything worth asserting lives in the store, the transport, or a pure helper
   the component calls — that's why `tileLabel`, `feedLineFor`, `voidChoice`,
@@ -449,24 +461,28 @@ reasoning and measurements in
 ## Status
 
 **Everything is shipped and [TODO.md](./TODO.md) is empty.** All v1 work, nine
-full-repo audit passes (A1–A69), the frontend/design pass (F1–F25), the mobile
+full-repo audit passes (A1–A76), the frontend/design pass (F1–F25), the mobile
 viewport work (R1–R7), the hosting work (C1–C10), and the feature run N1–N46.
 
-The ninth pass (2026-08-13, **A56–A69**) closed the same day, and wrote up **A55**
+The ninth pass (2026-08-13, **A56–A76**) closed the same day, and wrote up **A55**
 alongside it — that one had shipped three days earlier without reaching the
-record. It ran as six sweeps, each on a different axis: the third came back clean
+record. It ran as thirteen sweeps across nine axes: the third came back clean
 and left a whole-round invariant test plus `noUnusedLocals` rather than a fix
 (A66); the fourth checked the *ruleset* against native-language sources rather
 than the PDF alone (A67); the fifth drove the room's timers two at a time and
 found a room that could stall dead in silence (A68); the sixth fed the restore
 path corrupted snapshots and found a validator that only ever looked for missing
-fields (A69).
-Five of the twelve were real: a promoted kong's payment never entering the
-refund log (A56), the shoot-after-kong refund running once per winner instead of
-once per discard (A57), the winner's hand decomposition riding the `hu` event past
-the redaction that removed it from the view (A58), every bot konging its own void
-suit for a net −42 (A62), and a kong taking the last tile of the wall without the
-engine noticing (A67). Each left an invariant above rather than only a fix.
+fields (A69); and the last took the seven surfaces the others had named and not
+reached (A70–A76), including the release binary, which nobody had ever run.
+
+Ten of the twenty-one were real. The ones that left an invariant above: a
+promoted kong's payment never entering the refund log (A56), the shoot-after-kong
+refund running once per winner instead of once per discard (A57), the winner's
+hand decomposition riding the `hu` event past the redaction that removed it from
+the view (A58), every bot konging its own void suit for a net −42 (A62), a kong
+taking the last tile of the wall without the engine noticing (A67), a stale bot
+decision that could stall a room dead in silence (A68), and a snapshot validator
+that only checked for missing fields (A69).
 
 This section deliberately does not list what shipped — that is
 [docs/history.md](./docs/history.md), newest first, **with a find-an-item-by-id

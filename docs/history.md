@@ -1,7 +1,7 @@
 # History — every closed item, newest first
 
 This is the record of work already done: the phase log (1–10), nine full-repo
-audit passes (A1–A69), the frontend/design pass (F1–F25), the mobile viewport work
+audit passes (A1–A76), the frontend/design pass (F1–F25), the mobile viewport work
 (R1–R7), the tile-rendering change, the hosting work (C1–C10), and the feature run
 N1–N46. Each entry keeps its diagnosis, not just its fix — that is the part worth
 having later.
@@ -47,6 +47,7 @@ Series: **N** features · **A** full-repo audits · **F** frontend/design ·
 | **A67** | The fan table, checked against sources outside the PDF |
 | **A68** | A stale bot decision could kill the room |
 | **A69** | The snapshot check that only looked for missing fields |
+| **A70–A76** | The seven remaining surfaces, swept in one pass |
 | **F1–F25** | *Frontend & design audit — seventh pass*, a numbered list. Grep the id. |
 | **N2** | The dice are real now |
 | **N3, N11, N14** | Help that shows a hand, a discard you can arm early, and a wall that reads the dice |
@@ -91,6 +92,124 @@ Series: **N** features · **A** full-repo audits · **F** frontend/design ·
 | **O3** | Closed **won't-do** — reasoning in [TODO.md](../TODO.md) and ARCHITECTURE §12 |
 | **O4** | One tile face everywhere |
 | **O5** | An **accepted trade-off**, not a task — per-IP limits key to a Cloudflare edge address. ARCHITECTURE §12 |
+
+---
+
+## ✅ The seven remaining surfaces, swept in one pass (A70–A76 — 2026-08-13)
+
+Everything the six earlier sweeps had named and not reached. Four real defects
+in seven surfaces, and the three clean ones left guards behind.
+
+### A70 — a frame that lands after the player has left
+
+**`WsClient.close()` sets `closed`, calls `ws.close()` and drops its reference —
+but left `onmessage` attached to the socket it had just abandoned.** A close is a
+handshake, not an instant, so anything the server had already put on the wire
+still arrived, and the store acted on it: a `view` landing after a tap on Leave
+set `screen: 'game'` and **pulled the player back into the room they had just
+left**; a stale `error` raised a toast over the landing screen; a stale `joined`
+re-seated them.
+
+`onclose` had always guarded on that flag. `onmessage` had not, and the
+asymmetry is the whole bug. The threat is not a hostile server — it is ours —
+it is simply that a socket does not stop mid-sentence.
+
+### A71 — the WS boundary, reasoned safe and now executed
+
+An earlier pass read this boundary and judged it sound. This is that judgement
+run: every action type crossed with every hostile field value, ~4,000
+combinations of `undefined`, `NaN`, `Infinity`, arrays, `__proto__`, a
+10,000-character string, an object with `toString: null`.
+
+**Nothing.** No throw escaped into the socket handler, no crafted frame moved the
+game state, `Object.prototype` stayed clean, the server-only actions were refused
+by name, and the room was still playable afterwards. The reasoning was right —
+and it is now a test rather than an argument. The one failure in the run was the
+harness labelling its own input with `String({ toString: null })`, which throws.
+
+### A72 — a release script that could not fail
+
+The binary path had never been executed by anyone. It works: `bun build
+--compile` produces a 111 MB Windows executable that boots, serves the SPA with
+correct content types, 404s a missing asset rather than falling back to the
+shell, disables persistence exactly as A17 intended, and **plays a complete round
+through to `roundEnd` with the deltas summing to zero.**
+
+What is wrong is the script around it. Every target is attempted even when one
+breaks — deliberate, so a single bad cross-compile does not hide the other four —
+but the loop then printed `Done. Binaries in dist-bin/` and **exited 0 whatever
+happened**. A run that produced nothing was indistinguishable from a clean one.
+Found by running it: `bun-linux-x64` fails to extract its downloaded runtime on
+this machine, which is Bun's problem and not ours, and the script called it
+success, which is.
+
+### A73 — the service worker, and a comment that blurred a distinction
+
+No defect. The guards were added — a non-GET it must not intercept, a
+cross-origin request it must not answer, a 404 it must not remember (the
+stale-bundle case, where caching the failure would outlive the restart that
+fixes it) — and all passed.
+
+The comment was wrong, though: it described the whole cache-first set as
+"content-hashed build output and static art" when **only `/assets/` is hashed**.
+The icons, the manifest and the tile art are stable URLs, so cache-first means
+they are frozen until `CACHE` is bumped. That is the right trade for art that
+has not changed since it was drawn, but it is a coupling nothing enforced and
+the comment actively obscured.
+
+### A74 — placeholder parity, which key parity cannot see
+
+`translate` does a blind `replaceAll('{k}', v)`, so a translated string that
+**drops** a placeholder loses the value silently ("Join {code}" → a button naming
+no room) and one that **invents or misspells** one renders `{n}` to the user
+verbatim. Neither changes the key set, so the completeness test passes through
+both.
+
+All six catalogs are clean, and now guarded. The content spot-check found
+nothing either: the fan names are properly localised rather than transliterated
+(Japanese uses 嶺上開花 and 海底摸月, not the Chinese forms), the suit invariant
+holds exactly, and N21's 点数-not-番数 fix is still in place — Japanese even uses
+翻 rather than 番 for fan.
+
+### A75 — three dialogs that claimed `aria-modal` and did not take focus
+
+`useEscapeToClose` says it plainly: *"bound on the document rather than on the
+overlay so it works without the overlay holding focus, **which none of them
+currently take**."* Escape working was right; the missing half is that
+`aria-modal="true"` is a **claim**, and it was not true.
+
+What it claims is that everything outside the dialog is inert. A screen reader
+was told a dialog had opened and then left its cursor on the tile the user
+tapped, so they never heard it; Tab walked straight out into the board behind,
+which the same attribute had just told the screen reader to ignore. Markup and
+behaviour disagreeing is worse than not marking it a dialog at all.
+
+`useDialogFocus` supplies the three things the attribute promises: focus enters
+on open, Tab and Shift+Tab cycle within, and the previously focused element gets
+it back on close — the last being what stops a keyboard user losing their place
+on the board every time they glance at a discard pile. All 12 e2e specs still
+pass, including the real-tap ones across five viewports.
+
+### A76 — the tool you reach for once a year
+
+**`measure-glyphs.mjs` has thrown `ERR_MODULE_NOT_FOUND` on every run since
+`a3d13c1`.** It imports `flattenSvg` from `flatten-tiles.mjs`, which that commit
+deleted when the app switched to drawing the untouched art — the generator went,
+its consumer did not. CLAUDE.md went on listing the script as the way to
+re-derive `glyph-boxes.json` if the source art changes.
+
+Nothing noticed because nothing runs it, which is exactly the point: a tool used
+once a year is broken for a year, and it breaks at the moment you finally need
+it. `glyph-boxes.json` is **the evidence the 22.5% lap rests on** — the number
+the whole tile-rendering design is built from — so losing the ability to
+re-derive it matters more than the script's run count suggests.
+
+The strip logic is inlined rather than restoring the generator, which was
+deleted on purpose; only the measurement still has a job. **The repaired script
+reproduces the committed `glyph-boxes.json` byte for byte**, which is how the
+repair is known to be faithful rather than merely runnable. It also stopped
+leaving its `.measure.html` scratch page in the tree, untracked and unignored,
+one `git add -A` from being committed.
 
 ---
 

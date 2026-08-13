@@ -2,7 +2,7 @@
 
 What is actually open. **Everything closed lives in
 [docs/history.md](./docs/history.md)**, newest first, each entry with the diagnosis
-that made it worth writing down — the phase log, the nine audit passes (A1–A69), the
+that made it worth writing down — the phase log, the nine audit passes (A1–A76), the
 frontend pass (F1–F25), the viewport work (R1–R7), the tile rendering change, the
 hosting work (C1–C10), and the feature run N1–N46.
 
@@ -16,11 +16,11 @@ so it isn't rediscovered as a bug.
 
 ## Open
 
-**Nothing.** The ninth full-repo code audit of 2026-08-13, filed as **A56–A69**,
-closed the same day, all fourteen items — and **A55** was written up alongside them,
+**Nothing.** The ninth full-repo code audit of 2026-08-13, filed as **A56–A76**,
+closed the same day, all twenty-one items — and **A55** was written up alongside them,
 having shipped on 2026-08-10 without ever reaching the record.
 
-It ran as six sweeps. **The third came back clean** — no behavioural defect —
+It ran as thirteen sweeps across nine axes. **The third came back clean** — no behavioural defect —
 leaving two guards instead: a whole-round invariant test (**A66**) asserting the
 things a payment balance cannot see, which is why A56 survived a hundred smoke
 games; and `noUnusedLocals` in `tsconfig.base.json`, after six dead symbols had
@@ -51,8 +51,25 @@ which, having restored *successfully*, came back on every boot. Underneath it,
 one truncated row took every healthy game with it, because `loadLiveRooms`
 parsed them all in a single expression.
 
-Six were real defects in what a hand pays, who may see it, how a bot plays,
-whether the round advances, or whether a restart brings the table back.
+**The last pass took the seven surfaces the earlier ones had named and not
+reached** (**A70–A76**), and four of them held something. A frame already in
+flight when a player tapped Leave pulled them back into the room they had left,
+because `WsClient.close()` guarded `onclose` and not `onmessage` (**A70**). The
+release binary had never been run by anyone — it works, and plays a full round —
+but the script around it printed "Done" and exited 0 however many targets failed
+(**A72**). Three dialogs declared `aria-modal="true"` and never took focus, so
+the markup and the behaviour disagreed (**A75**). And `measure-glyphs.mjs` had
+thrown on every run since `a3d13c1` deleted the module it imports — the tool that
+re-derives the evidence the 22.5% lap rests on, broken for as long as nobody
+needed it (**A76**).
+
+The other three came back clean and left guards: ~4,000 hostile frames at the WS
+boundary changed nothing (**A71**), the service worker's guards all held
+(**A73**), and all six catalogs agree on every placeholder (**A74**).
+
+Ten were real defects in what a hand pays, who may see it, how a bot plays,
+whether the round advances, whether a restart brings the table back, or whether
+a player can leave.
 **A56** is the one that fired on the ordinary path: a promoted kong collects 1
 from each opponent before the robbing window, and those points were only
 committed to `kongPaymentLog` when a window had actually opened — which it almost
