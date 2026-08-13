@@ -21,6 +21,7 @@ belongs in `docs/history.md`, not here.
 | **[TODO.md](./TODO.md)** | What is *open*, and nothing else — kept short on purpose | …you open or close a piece of work |
 | **[docs/history.md](./docs/history.md)** | Everything closed, newest first, each with its diagnosis: the phase log, audits **A1–A48** / **F1–F25** / **R1–R7**, hosting **C1–C10**, features **N1–N46**. **Opens with a find-an-item-by-id table** — that is how you turn a bare `(N38)` in a comment into the entry that explains it | …you finish something; add a section at the top *and* a row to that table |
 | **[README.md](./README.md)** | User-facing: install, host/join, CLI flags | …you change the CLI or the player-facing flow |
+| **[docs/README.md](./docs/README.md)** | Index of `docs/`, and **the register of every source outside this repo that a decision rests on** — each row saying what it *established*, not just its URL, because links rot and this project settles rule disputes by citation | …a decision comes to rest on something outside the repo |
 
 **Before you touch it** — the deep dives, each written after something went wrong
 
@@ -46,7 +47,8 @@ belongs in `docs/history.md`, not here.
 | File | Holds | |
 |---|---|---|
 | **[LICENSE](./LICENSE)** | MIT for code, CC-BY-SA 4.0 for the tile art, and the binary as a combined work carrying both | …you add or change a tile, or change what the release build embeds |
-| `SBR_ENG_part_1.pdf` | Novikov, *Sichuan Mahjong? It's that simple!* — the canonical ruleset | read-only; extract with `pdftotext` when a rule is in question |
+| `SBR_ENG_part_1.pdf` | Novikov, *Sichuan Mahjong? It's that simple!* — the base ruleset. **Not gospel**: Sichuan is a family of variants, and `fanCap` and 龙七对 are both places where sources genuinely disagree. Every rule claim wants the PDF *plus one source outside it* | read-only; extract with `pdftotext -layout` when a rule is in question |
+| **[docs/README.md](./docs/README.md)** | **Every outside source, and what each one established** — the native-language rule references, the tile-art licence chain, the platform docs behind `trustProxy`. Start here rather than re-searching | you need to check a rule, or you are adding a source of your own |
 | [themahjong.guide](https://themahjong.guide/) | *Mahjong: a Visual Guide* — the second reference used alongside the PDF, and **where the tile SVGs were obtained**. The licence chain is Commons/Cangjie6, evidenced per file in `credits.json` | cite it beside the PDF when a rule or a tile's provenance is in question |
 
 ---
