@@ -8,6 +8,18 @@ packages:
 overrides:
   vite@<6.4.2: ^6.4.2
   esbuild@<0.25.0: ^0.25.0
+  # Transitive, and reachable only through Fastify's own tree — the direct
+  # dependencies were bumped in package.json instead. Each is pinned to the
+  # first patched version rather than to `latest`, so the override says what it
+  # is for and stops mattering once the parent catches up. (A77)
+  #
+  # find-my-way is Fastify's router and 5.12.0 still resolves 9.6.0; fast-uri is
+  # reached through @fastify/ajv-compiler; brace-expansion sits under
+  # @fastify/static's glob. All three are denial-of-service advisories, which on
+  # a 512MB free-tier instance is the class that actually matters.
+  find-my-way@<9.7.0: ^9.7.0
+  fast-uri@<3.1.5: ^3.1.5
+  brace-expansion@>=2.0.0 <5.0.9: ^5.0.9
 
 onlyBuiltDependencies:
   - '@biomejs/biome'
