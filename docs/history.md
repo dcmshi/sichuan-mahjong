@@ -1,7 +1,7 @@
 # History — every closed item, newest first
 
-This is the record of work already done: the phase log (1–10), eight full-repo
-audit passes (A1–A54), the frontend/design pass (F1–F25), the mobile viewport work
+This is the record of work already done: the phase log (1–10), nine full-repo
+audit passes (A1–A61), the frontend/design pass (F1–F25), the mobile viewport work
 (R1–R7), the tile-rendering change, the hosting work (C1–C10), and the feature run
 N1–N46. Each entry keeps its diagnosis, not just its fix — that is the part worth
 having later.
@@ -37,6 +37,10 @@ Series: **N** features · **A** full-repo audits · **F** frontend/design ·
 | **A52** | The engine read the clock in two places |
 | **A53** | The two micro-inefficiencies, measured first |
 | **A54** | The modulo bias, and the reason it was filed being wrong |
+| **A55** | A pung-entered turn is not after-kong |
+| **A56, A57** | The two kong payments the refund log could not see |
+| **A58** | The winner's hand went out in the event beside the view that hid it |
+| **A59, A60, A61** | Three the size of a line each |
 | **F1–F25** | *Frontend & design audit — seventh pass*, a numbered list. Grep the id. |
 | **N2** | The dice are real now |
 | **N3, N11, N14** | Help that shows a hand, a discard you can arm early, and a wall that reads the dice |
@@ -81,6 +85,124 @@ Series: **N** features · **A** full-repo audits · **F** frontend/design ·
 | **O3** | Closed **won't-do** — reasoning in [TODO.md](../TODO.md) and ARCHITECTURE §12 |
 | **O4** | One tile face everywhere |
 | **O5** | An **accepted trade-off**, not a task — per-IP limits key to a Cloudflare edge address. ARCHITECTURE §12 |
+
+---
+
+## ✅ Three the size of a line each (A59, A60, A61 — 2026-08-13)
+
+**A59 — `isWatchToken` threw on input it was built to refuse.** The length guard
+compared `candidate.length` against `expected.length`, which are *character*
+counts, and then handed both to `timingSafeEqual`, which compares *bytes* and
+throws when they differ. Thirty-six non-ASCII characters match a UUID's `.length`
+and are 72 bytes, so `?watch=äää…` raised a `RangeError` inside the WS route.
+
+Nothing crashed — `@fastify/websocket` caught it and destroyed the socket — but
+the socket then closed with **no error frame**, where every other refusal closes
+with `no_game`. A function whose entire job is to answer in constant time
+answered differently, and the difference told you a watch token existed for that
+code. Compare `Buffer.byteLength` and the two answers converge again.
+
+**A60 — the hard bot's danger read included concealed kongs.** `dangerAgainst`
+raises a tile's risk when the opponent has a meld in that suit, and it read
+`o.melds` whole. A concealed kong's rank is hidden until the round ends (A27),
+and the function twenty lines above it — `visibleTileTypes` — already refuses to
+count one. So the two halves of the same bot's table read disagreed, and
+[CLAUDE.md](../CLAUDE.md)'s claim that "hard sees no more of the table than
+medium" was not true. `isConcealedKong` is now one definition and both ask it.
+The ladder in `bot-smoke.test.ts` still holds.
+
+**A61 — a started game left an empty `Map` behind, forever.** `startGame` hands
+each lobby socket to the room and deletes the lobby's connection map, but
+`bindGameSocket` replaces only the socket's *message* listener — the lobby's
+`close` handler stays attached. It reached for the map through `getLobbyConns`,
+which **creates one when it is missing**, so every game whose sockets eventually
+closed left an entry under a code no sweep visits again. Unbounded on a
+long-running host, invisible everywhere else: `sweepStaleLobbies` walks the lobby
+store, and the lobby is gone by then. Read the map, never create it.
+
+`removeAllListeners('close')` in `bindGameSocket` looks like the tidier fix and
+is not — `startHeartbeat` registers its `clearInterval` on the same event, so
+that trade a two-entry `Map` for a ping timer that never stops.
+
+---
+
+## ✅ The winner's hand went out in the event beside the view that hid it (A58 — 2026-08-13)
+
+`views.ts` carries a long comment explaining why `hu.shape` must be redacted:
+the fans name a *property* of a hand, the shape names every tile type in it, and
+under Bloody Rules a winner sits out the rest of the round with their tiles
+unrevealed — so handing the shape over tells the seats still playing exactly
+which tiles are dead. `toPublicPlayer` did that correctly from the day it was
+written.
+
+`redactEventsFor` did not. The `hu` event carries the whole `HuRecord`, `shape`
+included, and it fell through to the `return ev` at the bottom — so the field the
+view withheld arrived on the same broadcast, one message over. Reproduced with
+seat 1 winning off seat 0's discard mid-round: all three opponents *and*
+spectators received the full decomposition of thirteen concealed tiles.
+
+This is the third time. Drawn tiles were A31 and void declarations were A40, both
+found the same way and both already named in the convention — which is now
+stated as the rule it should have been from the start: **a field redacted in
+`views.ts` is not redacted until it is redacted here too.** The guard added with
+N16 tested `projectView` and `projectSpectatorView` and stopped there; it now
+covers the event channel, including that redaction copies rather than mutates,
+since the same array is redacted once per viewer.
+
+---
+
+## ✅ The two kong payments the refund log could not see (A56, A57 — 2026-08-13)
+
+Both are `kongPaymentLog` — the ledger every refund path reads and nothing else
+does. A56 is a payment that never reached it; A57 is a refund that read it twice.
+
+**A56 — a promoted kong nobody could rob was paid for and never logged.** A
+promoted kong collects 1 from each opponent *before* the robbing window, because
+the payment is reversed if the kong is robbed. Committing those amounts to the
+log happens in `resolveRobbingWindow`, when the window closes unrobbed — and
+`applyDeclareKongOnTurn` has two paths that never open a window at all: robbing
+disabled, and `openClaimWindow` returning null because no seat can Hu on that
+tile. **The second is the ordinary case.** A robbing window opens only when
+somebody is genuinely waiting on the tile being added, which is rare, so nearly
+every promoted kong in the game took its three points and left no record of them.
+
+The log is the only input to all three refunds — the wall-end blanket refund for
+a non-Hu, non-ready declarer, shoot-after-kong, and false-Hu — so those three
+points could never come back. Measured: a promoted kong and a concealed kong in
+the same position, both declarers ending non-Hu and non-ready, and only the
+concealed one refunded. The two branches are now one, and the commit sits where
+the kong becomes final.
+
+**A57 — shoot-after-kong refunded one kong group per winner.** The refund is
+"give back the group you just collected", and it ran *inside* the per-winner
+loop, re-deriving "most recent" each time from the entries not yet marked
+refunded. One winner refunds the right group. Bloody Rules lets two seats win on
+one discard — and the second winner then walked back to the discarder's
+*previous* kong and reversed that as well, so every payer of a kong nobody shot
+after got their points back. Reproduced: 12 points refunded where 6 were owed.
+
+Nothing in that loop read `winner`. The subtype was being derived per winner too,
+which is what made a once-per-discard action look like it belonged there; both
+are hoisted out, and the refund now runs once, after the winners are settled.
+
+**Neither was reachable from the fan tests.** `scoring-cases.test.ts` stops at
+`handValue`, and `payments.test.ts` had a promoted kong asserting `[3,-1,-1,-1]`
+at the moment of declaration — correct, and blind to whether the points can ever
+be given back. What the two new cases assert is the round *after* the kong.
+
+---
+
+## ✅ A pung-entered turn is not after-kong (A55 — 2026-08-10)
+
+Recorded late: the fix shipped in `b665da4` and never reached this file.
+
+`applyPungClaim` cleared `drewThisTurn` — that is the A7 fix, and it is what stops
+a claimed tile being laundered into a self-draw win — but left
+`lastDrawWasKongReplacement` set. So a discard made on a turn entered by a pung
+was stamped `afterKong`, and a Hu on it scored `shootAfterKong`: a fan, and a
+kong refund, for a kong the discarder never declared. The flag now goes with
+`drewThisTurn`, since it belongs to the turn that drew off the tail and a
+pung-entered turn has no draw at all.
 
 ---
 

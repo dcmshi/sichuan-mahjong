@@ -167,8 +167,12 @@ Full tree: [ARCHITECTURE.md §3](./ARCHITECTURE.md#3-repo-layout).
   concealed kongs, drawn tiles, and the face-down first discard are all redacted
   today, each after an audit caught the leak. **`GameEvent` is the second channel
   and needs the same decision:** events are produced once and broadcast to every
-  seat, so `redactEventsFor` has to strip them per viewer. Drawn tiles (A31) and
-  void declarations (A40) both leaked that way.
+  seat, so `redactEventsFor` has to strip them per viewer. Drawn tiles (A31),
+  void declarations (A40) and a winner's hand decomposition (A58) all leaked that
+  way — the last of them from the day N16 added the field, *while the comment
+  above `toPublicPlayer` explained at length why it was secret*. **A field
+  redacted in `views.ts` is not redacted until it is redacted here too**, and a
+  guard that only calls `projectView` cannot tell the difference.
 - **The WS boundary trusts nothing.** Inbound frames are validated in `ws.ts`;
   server-only actions (e.g. `claimWindowExpire`) are never accepted from a client.
 - **Client tests run without a DOM.** There's no jsdom or testing-library, so
@@ -241,6 +245,17 @@ The long form, with the measurements behind each, is in
   The same pass closed the PDF's second kong restriction, which nothing
   implemented: **no kong at all on a turn entered by a pung** — a pung is not a
   draw, and `turnEnteredByPung` reads the same `drewThisTurn` that A7 added. (A50)
+- **`kongPaymentLog` is the only thing a refund can see, so a kong payment that
+  is made must be logged in the same breath.** Three rules give kong points back
+  — the wall-end blanket refund for a non-Hu non-ready declarer, shoot-after-kong,
+  and false-Hu — and all three read that log and nothing else. A promoted kong
+  pays *before* its robbing window (so a robbed kong can reverse it), and the
+  commit lived only in `resolveRobbingWindow`; the two paths where no window ever
+  opens took the points and left no record, which is the path a promoted kong
+  almost always takes (A56). **The refunds are per-discard, not per-winner**:
+  Bloody Rules lets two seats win on one tile, and re-deriving "the most recent
+  kong" inside the winner loop walked back into an earlier group (A57). Nothing
+  in that loop reads `winner` — if something new there does, check it twice.
 - **A meld is a pung or a kong, never a chow.** Sichuan has no chow claims, so
   `Meld` is a two-way union and every meld is one tile type repeated. It carried a
   third `chow` variant until A47, which bought **seven** unreachable branches
@@ -394,14 +409,17 @@ reasoning and measurements in
 
 ## Status
 
-**Everything is shipped and [TODO.md](./TODO.md) is empty.** All v1 work, eight
-full-repo audit passes (A1–A54), the frontend/design pass (F1–F25), the mobile
+**Everything is shipped and [TODO.md](./TODO.md) is empty.** All v1 work, nine
+full-repo audit passes (A1–A61), the frontend/design pass (F1–F25), the mobile
 viewport work (R1–R7), the hosting work (C1–C10), and the feature run N1–N46.
 
-The eighth pass (2026-08-04, **A49–A54**) closed the same day. Two were real
-defects in what a hand pays — the Root fan never firing in a standard hand (A49)
-and a kong's subtype being taken off the wire (A50) — and both left an invariant
-above rather than only a fix.
+The ninth pass (2026-08-13, **A56–A61**) closed the same day, and wrote up **A55**
+alongside it — that one had shipped three days earlier without reaching the
+record. Three of the six were real: a promoted kong's payment never entering the
+refund log (A56), the shoot-after-kong refund running once per winner instead of
+once per discard (A57), and the winner's hand decomposition riding the `hu` event
+past the redaction that removed it from the view (A58). All three left an
+invariant above rather than only a fix.
 
 This section deliberately does not list what shipped — that is
 [docs/history.md](./docs/history.md), newest first, **with a find-an-item-by-id

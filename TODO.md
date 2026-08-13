@@ -2,7 +2,7 @@
 
 What is actually open. **Everything closed lives in
 [docs/history.md](./docs/history.md)**, newest first, each entry with the diagnosis
-that made it worth writing down — the phase log, the eight audit passes (A1–A54), the
+that made it worth writing down — the phase log, the nine audit passes (A1–A61), the
 frontend pass (F1–F25), the viewport work (R1–R7), the tile rendering change, the
 hosting work (C1–C10), and the feature run N1–N46.
 
@@ -16,8 +16,25 @@ so it isn't rediscovered as a bug.
 
 ## Open
 
-**Nothing.** The eighth full-repo code audit of 2026-08-04, filed as **A49–A54**,
-closed the same day, all six items. Each has its diagnosis in
+**Nothing.** The ninth full-repo code audit of 2026-08-13, filed as **A56–A61**,
+closed the same day, all six items — and **A55** was written up alongside them,
+having shipped on 2026-08-10 without ever reaching the record.
+
+Three were real defects in what a hand pays or who may see it. **A56** is the one
+that fired on the ordinary path: a promoted kong collects 1 from each opponent
+before the robbing window, and those points were only committed to
+`kongPaymentLog` when a window had actually opened — which it almost never does,
+because robbing needs a seat waiting on exactly that tile. Every refund reads
+that log, so the points could never come back. **A57** is its mirror: the
+shoot-after-kong refund ran inside the per-winner loop, so two seats winning on
+one discard reversed two kong groups. **A58** is the third redaction leak of the
+same shape as A31 and A40 — `views.ts` withheld a winner's decomposition and the
+`hu` event carried it anyway, to every opponent, mid-round.
+
+The other three are a line each: **A59** a token comparison that threw on
+multi-byte input instead of refusing it, **A60** the hard bot reading concealed
+kong suits its own `visibleTileTypes` refuses to count, **A61** an empty `Map`
+left behind by every started game. Each has its diagnosis in
 [docs/history.md](./docs/history.md).
 
 Two were real scoring or payment defects — **A49**, the Root fan never firing in
