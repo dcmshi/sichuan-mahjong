@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { applyAction } from '../src/actions.js';
 import type { Meld } from '../src/melds.js';
-import type { Seat } from '../src/state.js';
+import type { KongPaymentEntry, Seat } from '../src/state.js';
 import type { TileId, TileType } from '../src/tiles.js';
 import { deltas, tableAt } from './helpers/table.js';
 
@@ -150,6 +150,124 @@ describe('kongs', () => {
       subtype: 'promoted',
     });
     expect(deltas(s)).toEqual([3, -1, -1, -1]);
+  });
+
+  /**
+   * Taking the points is half of it. Every way a kong's payments come *back* —
+   * the wall-end blanket refund, shoot-after-kong, false-Hu — reads
+   * `kongPaymentLog` and nothing else, so a payment missing from that log is one
+   * the rules can never reverse. (A56)
+   */
+  describe('a promoted kong nobody could rob', () => {
+    const promotedPung: Meld[] = [
+      {
+        kind: 'pung',
+        tile: { suit: 'man', rank: 1 },
+        claimedFrom: 1 as Seat,
+        concealed: false,
+        turnDeclared: 2,
+      },
+    ];
+
+    /** No seat holds a man 1, so the robbing window never opens — the usual case. */
+    function promoted() {
+      const hand = [tid(M(1), 3), ...chow(P(2)), ...pair(P(9))];
+      return apply(
+        tableAt([{ hand, melds: promotedPung }, {}, {}, {}], { lastDrawnTile: tid(M(1), 3) }),
+        {
+          t: 'declareKongOnTurn',
+          seat: 0 as Seat,
+          tile: { suit: 'man', rank: 1 },
+          subtype: 'promoted',
+        },
+      );
+    }
+
+    it('logs what it collected, exactly as a robbed-and-survived one does', () => {
+      const s = promoted();
+      expect(s.pendingClaims, 'nothing to rob with, so no window opened').toBeNull();
+      expect(s.kongPaymentLog.filter(e => !e.refunded)).toHaveLength(3);
+    });
+
+    it('so a non-ready declarer gives it back when the wall runs out', () => {
+      const s = promoted();
+      // Drain the wall and pass the turn on: the next draw ends the round, and
+      // settlement refunds every kong a non-Hu, non-ready declarer was paid for.
+      const ended = apply(
+        { ...s, drawIndex: s.kongDrawIndex + 1, turn: 1 as Seat, turnDrawNeeded: true },
+        { t: 'draw', seat: 1 as Seat },
+      );
+      expect(ended.phase).toBe('roundEnd');
+      expect(ended.players[0].isReady, 'the declarer is nowhere near tenpai').toBe(false);
+      expect(deltas(ended)).toEqual([0, 0, 0, 0]);
+    });
+  });
+});
+
+/**
+ * The refund belongs to the *discard*, not to each winner of it. Bloody Rules
+ * lets two seats win on one tile, and re-deriving "the most recent kong" per
+ * winner walked back through the discarder's earlier kongs — a second winner
+ * reversed a second group nobody had shot. (A57)
+ */
+describe('shoot-after-kong', () => {
+  /** Seat 1 is one man 9 short of the all-pung flush; so, here, is seat 2. */
+  const waiting = () => bigWin().filter(t => t !== tid(M(9), 1));
+
+  const kongGroup = (kongSeq: number): KongPaymentEntry[] =>
+    ([1, 2, 3] as Seat[]).map(paidBy => ({
+      declarer: 0 as Seat,
+      kongSeq,
+      paidBy,
+      amount: 2,
+      refunded: false,
+    }));
+
+  /** Seat 0 has two kongs already paid for and throws man 9 off a replacement draw. */
+  function afterTwoKongs() {
+    return tableAt(
+      [
+        { hand: [tid(M(9), 1), ...chow(P(2))] },
+        { hand: waiting() },
+        { hand: waiting() },
+        { hand: [] },
+      ],
+      {
+        turn: 0 as Seat,
+        drewThisTurn: true,
+        lastDrawWasKongReplacement: true,
+        kongPaymentLog: [...kongGroup(0), ...kongGroup(1)],
+        nextKongSeq: 2,
+      },
+    );
+  }
+
+  function shootAt(secondWinner: boolean) {
+    let s = apply(afterTwoKongs(), { t: 'discard', seat: 0 as Seat, tile: tid(M(9), 1) });
+    s = apply(s, { t: 'claim', seat: 1 as Seat, claim: { kind: 'hu' } });
+    if (s.pendingClaims !== null) {
+      s = secondWinner
+        ? apply(s, { t: 'claim', seat: 2 as Seat, claim: { kind: 'hu' } })
+        : apply(s, { t: 'pass', seat: 2 as Seat });
+    }
+    return s;
+  }
+
+  const refundedGroups = (s: ReturnType<typeof shootAt>) =>
+    [...new Set(s.kongPaymentLog.filter(e => e.refunded).map(e => e.kongSeq))].sort();
+
+  it('refunds the discarder’s most recent kong when one seat wins', () => {
+    const s = shootAt(false);
+    expect(s.players[1].hu?.subtype).toBe('shootAfterKong');
+    expect(refundedGroups(s)).toEqual([1]);
+  });
+
+  it('refunds that same one group when two seats win on the same tile', () => {
+    const s = shootAt(true);
+    expect(s.huOrder).toHaveLength(2);
+    expect(s.players[2].hu?.subtype).toBe('shootAfterKong');
+    // Not [0, 1]: kong 0 was declared earlier and nobody shot after it.
+    expect(refundedGroups(s)).toEqual([1]);
   });
 });
 

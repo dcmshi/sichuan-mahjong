@@ -631,9 +631,22 @@ function applyHuResolution(
   const fromRobbingKong = robbingTile !== undefined;
   const discarder = fromRobbingKong ? (robbedFrom ?? null) : (s.lastDiscard?.from ?? null);
   const actualWinTile = fromRobbingKong ? robbingTile! : s.lastDiscard!.tile;
-  // takeClaimedDiscard below clears lastDiscard along with the pond entry, but
-  // the shootAfterKong subtype is judged inside the winner loop — capture it now.
+  // takeClaimedDiscard below clears lastDiscard along with the pond entry, so
+  // capture what the subtype is judged on first.
   const discardAfterKong = !fromRobbingKong && (s.lastDiscard?.afterKong ?? false);
+
+  // One discard, one subtype: nothing here reads `winner`, and deriving it per
+  // winner is what let the refund below fire more than once. (A57)
+  let subtype: HuRecord['subtype'];
+  if (fromRobbingKong) {
+    subtype = 'robbingTheKong';
+  } else if (s.wallEndReached) {
+    subtype = 'underTheSea';
+  } else if (discardAfterKong) {
+    subtype = 'shootAfterKong';
+  } else {
+    subtype = 'normal';
+  }
 
   // The won discard leaves the discarder's pond — it now lives in the winner's
   // Hu record, same as a claimed pung/kong tile leaves for the meld (A15/A28).
@@ -644,17 +657,6 @@ function applyHuResolution(
 
   for (const winner of winners) {
     const player = s.players[winner]!;
-
-    let subtype: HuRecord['subtype'];
-    if (fromRobbingKong) {
-      subtype = 'robbingTheKong';
-    } else if (s.wallEndReached) {
-      subtype = 'underTheSea';
-    } else if (discardAfterKong) {
-      subtype = 'shootAfterKong';
-    } else {
-      subtype = 'normal';
-    }
 
     const score = calcHandScore(
       [...player.hand, actualWinTile],
@@ -688,21 +690,26 @@ function applyHuResolution(
       pay(s, discarder, winner, score.handValue);
       events.push({ e: 'huPayment', from: discarder, to: winner, amount: score.handValue });
     }
+  }
 
-    // Shoot-after-kong refund: refund most recent kong payment group for the discarder
-    if (subtype === 'shootAfterKong' && discarder !== null) {
-      const maxSeq = s.kongPaymentLog
-        .filter(e => e.declarer === discarder && !e.refunded)
-        .reduce((max, e) => Math.max(max, e.kongSeq), -1);
-      if (maxSeq >= 0) {
-        events.push(
-          ...refundLogEntries(
-            s,
-            e => e.declarer === discarder && e.kongSeq === maxSeq,
-            'shootAfterKong',
-          ),
-        );
-      }
+  // Shoot-after-kong refund: the discarder gives back the kong group they had
+  // just collected. **Once for the discard, not once per winner.** This sat
+  // inside the loop and re-derived "most recent" from the entries not yet
+  // refunded — so under Bloody Rules, where two seats can win on one tile, the
+  // second winner refunded a second and older kong group as well. Every payer
+  // of that earlier kong got their points back for a kong nobody shot. (A57)
+  if (subtype === 'shootAfterKong' && discarder !== null) {
+    const maxSeq = s.kongPaymentLog
+      .filter(e => e.declarer === discarder && !e.refunded)
+      .reduce((max, e) => Math.max(max, e.kongSeq), -1);
+    if (maxSeq >= 0) {
+      events.push(
+        ...refundLogEntries(
+          s,
+          e => e.declarer === discarder && e.kongSeq === maxSeq,
+          'shootAfterKong',
+        ),
+      );
     }
   }
 
@@ -1351,12 +1358,21 @@ function applyDeclareKongOnTurn(
       events.push({ e: 'claimWindowOpened', tile: kongTileInstance, from: seat });
       return ok(s, events);
     }
-    events.push(...completePromotedPostponedKong(s, seat, kongTileInstance, kongSubtype));
-    s.pendingKongTile = null;
-  } else {
-    events.push(...completePromotedPostponedKong(s, seat, kongTileInstance, kongSubtype));
-    s.pendingKongTile = null;
   }
+
+  // No window to wait on — nobody could rob it, or the rule is off — so the kong
+  // is final here and its payments are committed here, exactly as
+  // `resolveRobbingWindow` commits them when a window closes unrobbed.
+  //
+  // **`kongPaymentLog` is the only thing any refund path reads**, and this branch
+  // is the one a promoted kong almost always takes: a robbing window opens only
+  // when some seat is actually waiting on that tile. So the 1-from-each it
+  // collects was taken and then invisible — the wall-end blanket refund, the
+  // shoot-after-kong refund and the false-Hu refund could none of them find it,
+  // and a non-ready declarer kept points the rules say they give back. (A56)
+  if (paidAmounts.length > 0) logKongPayments(s, seat, paidAmounts);
+  events.push(...completePromotedPostponedKong(s, seat, kongTileInstance, kongSubtype));
+  s.pendingKongTile = null;
 
   return ok(s, events);
 }
