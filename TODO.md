@@ -2,7 +2,7 @@
 
 What is actually open. **Everything closed lives in
 [docs/history.md](./docs/history.md)**, newest first, each entry with the diagnosis
-that made it worth writing down — the phase log, the nine audit passes (A1–A65), the
+that made it worth writing down — the phase log, the nine audit passes (A1–A66), the
 frontend pass (F1–F25), the viewport work (R1–R7), the tile rendering change, the
 hosting work (C1–C10), and the feature run N1–N46.
 
@@ -16,9 +16,16 @@ so it isn't rediscovered as a bug.
 
 ## Open
 
-**Nothing.** The ninth full-repo code audit of 2026-08-13, filed as **A56–A65**,
-closed the same day, all ten items — and **A55** was written up alongside them,
+**Nothing.** The ninth full-repo code audit of 2026-08-13, filed as **A56–A66**,
+closed the same day, all eleven items — and **A55** was written up alongside them,
 having shipped on 2026-08-10 without ever reaching the record.
+
+It ran as three sweeps, and **the third came back clean** — no behavioural
+defect. What it left instead is two guards: a whole-round invariant test
+(**A66**) asserting the things a payment balance cannot see, which is why A56
+survived a hundred smoke games; and `noUnusedLocals` in `tsconfig.base.json`,
+after six dead symbols had accumulated with neither biome nor tsc configured to
+notice.
 
 Four were real defects in what a hand pays, who may see it, or how a bot plays.
 **A56** is the one that fired on the ordinary path: a promoted kong collects 1

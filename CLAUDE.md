@@ -416,12 +416,14 @@ reasoning and measurements in
 ## Status
 
 **Everything is shipped and [TODO.md](./TODO.md) is empty.** All v1 work, nine
-full-repo audit passes (A1–A65), the frontend/design pass (F1–F25), the mobile
+full-repo audit passes (A1–A66), the frontend/design pass (F1–F25), the mobile
 viewport work (R1–R7), the hosting work (C1–C10), and the feature run N1–N46.
 
-The ninth pass (2026-08-13, **A56–A65**) closed the same day, and wrote up **A55**
+The ninth pass (2026-08-13, **A56–A66**) closed the same day, and wrote up **A55**
 alongside it — that one had shipped three days earlier without reaching the
-record. Four of the ten were real: a promoted kong's payment never entering the
+record. It ran as three sweeps and the third came back clean, leaving a
+whole-round invariant test and `noUnusedLocals` rather than a fix (A66).
+Four of the eleven were real: a promoted kong's payment never entering the
 refund log (A56), the shoot-after-kong refund running once per winner instead of
 once per discard (A57), the winner's hand decomposition riding the `hu` event past
 the redaction that removed it from the view (A58), and every bot konging its own

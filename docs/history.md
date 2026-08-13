@@ -1,7 +1,7 @@
 # History — every closed item, newest first
 
 This is the record of work already done: the phase log (1–10), nine full-repo
-audit passes (A1–A65), the frontend/design pass (F1–F25), the mobile viewport work
+audit passes (A1–A66), the frontend/design pass (F1–F25), the mobile viewport work
 (R1–R7), the tile-rendering change, the hosting work (C1–C10), and the feature run
 N1–N46. Each entry keeps its diagnosis, not just its fix — that is the part worth
 having later.
@@ -43,6 +43,7 @@ Series: **N** features · **A** full-repo audits · **F** frontend/design ·
 | **A59, A60, A61** | Three the size of a line each |
 | **A62** | Every bot konged its own void suit |
 | **A63, A64, A65** | Three things that outlived what they belonged to |
+| **A66** | The pass that came back clean, and the two guards it left |
 | **F1–F25** | *Frontend & design audit — seventh pass*, a numbered list. Grep the id. |
 | **N2** | The dice are real now |
 | **N3, N11, N14** | Help that shows a hand, a discard you can arm early, and a wall that reads the dice |
@@ -87,6 +88,56 @@ Series: **N** features · **A** full-repo audits · **F** frontend/design ·
 | **O3** | Closed **won't-do** — reasoning in [TODO.md](../TODO.md) and ARCHITECTURE §12 |
 | **O4** | One tile face everywhere |
 | **O5** | An **accepted trade-off**, not a task — per-IP limits key to a Cloudflare edge address. ARCHITECTURE §12 |
+
+---
+
+## ✅ The pass that came back clean, and the two guards it left (A66 — 2026-08-13)
+
+The third sweep of the day found no behavioural defect. That is the finding, and
+what it cost to establish is the part worth keeping.
+
+**A whole-round invariant harness, and the three false alarms it opened with.**
+`bot-smoke.test.ts` plays these same games and asserts one thing at the end:
+`sum(scoreDelta) + penaltyPot === 0`. Real, and not enough — **A56 passed it for
+the life of the bug**, because the payment was right and only the record of it
+was missing. So the new guard asserts what a balance cannot see: where all 108
+tiles are after *every* action, that every surviving kong payment reached
+`kongPaymentLog`, that the derived ledger explains each seat's delta, and that a
+winner holds 14 tiles plus one per kong.
+
+Its first run reported 25 failures across 1000 games. All three signatures were
+the harness being wrong, and each is worth writing down because each is a place
+a tile legitimately sits that is not a hand, a meld or a pond:
+
+- **A tile won off a discard is in no collection at all.** `takeClaimedDiscard`
+  lifts it out of the pond and the `HuRecord` is the only thing holding it — and
+  **two winners on one discard share one tile**, so the count is of distinct ids.
+  Counting per winner made every multi-winner round read as a duplicated tile.
+- **The fourth tile of a promoted kong sits in `pendingKongTile`** while the
+  robbing window is open: out of the hand, not yet in the meld. One frame of
+  "a tile went missing", once per promoted kong.
+- **A robbed kong's payments are reversed on the spot and never logged**, which
+  is correct — there is nothing left for a later refund to find. Counting
+  `kongPayment` events against log entries without subtracting them flagged it.
+
+Corrected, 1000 games across easy, medium, hard and mixed tables hold every
+invariant, over 2049 wins, 1030 kongs and 700 multi-winner rounds. Thirty games
+per table now run in the suite at ~4s.
+
+**`noUnusedLocals` and `noUnusedParameters` are on.** A43 swept dead symbols by
+hand and nothing stopped them coming back: biome's config does not flag an unused
+import and `tsconfig.base.json` did not ask tsc to either. Six had accumulated —
+`ccwDist` in `actions.ts`, `execSync` in `networking.ts`, `EW_H` in
+`WallDiagram.tsx`, `setPlayerName` in `Landing.tsx`, a `Lang` type in two test
+files, and a `const player` in `applyClaim` sitting directly under a comment
+describing validation that was never written (it lives in `resolveWindow`, which
+the comment now says). The class is a typecheck failure from here rather than
+something a reader has to notice.
+
+The rest of the pass was reading: the remaining server modules (`shanten`,
+`rateLimit`, `profile`, `cli`, `seo`, `networking`), the client screens and
+components not covered by the first two passes, and every literal `t('…')` key
+checked against the `en` catalog. Nothing.
 
 ---
 
