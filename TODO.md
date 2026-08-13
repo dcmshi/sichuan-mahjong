@@ -2,7 +2,7 @@
 
 What is actually open. **Everything closed lives in
 [docs/history.md](./docs/history.md)**, newest first, each entry with the diagnosis
-that made it worth writing down — the phase log, the nine audit passes (A1–A67), the
+that made it worth writing down — the phase log, the nine audit passes (A1–A68), the
 frontend pass (F1–F25), the viewport work (R1–R7), the tile rendering change, the
 hosting work (C1–C10), and the feature run N1–N46.
 
@@ -16,8 +16,8 @@ so it isn't rediscovered as a bug.
 
 ## Open
 
-**Nothing.** The ninth full-repo code audit of 2026-08-13, filed as **A56–A67**,
-closed the same day, all twelve items — and **A55** was written up alongside them,
+**Nothing.** The ninth full-repo code audit of 2026-08-13, filed as **A56–A68**,
+closed the same day, all thirteen items — and **A55** was written up alongside them,
 having shipped on 2026-08-10 without ever reaching the record.
 
 It ran as four sweeps. **The third came back clean** — no behavioural defect —
@@ -36,7 +36,14 @@ tile of the wall and nothing noticed, so the discard after it never scored Under
 the Sea. Working in
 [docs/audit-payments.md](./docs/audit-payments.md).
 
-Four were real defects in what a hand pays, who may see it, or how a bot plays.
+**The fifth drove the room's timers two at a time** — the axis the other four
+could not reach — and found the worst failure of the run: the room could stall
+dead with `turnDrawNeeded` true and **zero timers pending**, owed a draw nothing
+would ever issue, silently (**A68**). Eight of its nine adversarial scenarios
+passed first time.
+
+Five were real defects in what a hand pays, who may see it, how a bot plays, or
+whether the round advances at all.
 **A56** is the one that fired on the ordinary path: a promoted kong collects 1
 from each opponent before the robbing window, and those points were only
 committed to `kongPaymentLog` when a window had actually opened — which it almost

@@ -1,7 +1,7 @@
 # History — every closed item, newest first
 
 This is the record of work already done: the phase log (1–10), nine full-repo
-audit passes (A1–A67), the frontend/design pass (F1–F25), the mobile viewport work
+audit passes (A1–A68), the frontend/design pass (F1–F25), the mobile viewport work
 (R1–R7), the tile-rendering change, the hosting work (C1–C10), and the feature run
 N1–N46. Each entry keeps its diagnosis, not just its fix — that is the part worth
 having later.
@@ -45,6 +45,7 @@ Series: **N** features · **A** full-repo audits · **F** frontend/design ·
 | **A63, A64, A65** | Three things that outlived what they belonged to |
 | **A66** | The pass that came back clean, and the two guards it left |
 | **A67** | The fan table, checked against sources outside the PDF |
+| **A68** | A stale bot decision could kill the room |
 | **F1–F25** | *Frontend & design audit — seventh pass*, a numbered list. Grep the id. |
 | **N2** | The dice are real now |
 | **N3, N11, N14** | Help that shows a hand, a discard you can arm early, and a wall that reads the dice |
@@ -89,6 +90,62 @@ Series: **N** features · **A** full-repo audits · **F** frontend/design ·
 | **O3** | Closed **won't-do** — reasoning in [TODO.md](../TODO.md) and ARCHITECTURE §12 |
 | **O4** | One tile face everywhere |
 | **O5** | An **accepted trade-off**, not a task — per-IP limits key to a Cloudflare edge address. ARCHITECTURE §12 |
+
+---
+
+## ✅ A stale bot decision could kill the room (A68 — 2026-08-13)
+
+The fifth sweep, on the axis the other four could not reach: **`room.ts`'s
+timers, driven two at a time.** Every prior audit checked them one at a time,
+which is the only state a real table is never in.
+
+**The room could stall dead, and nothing would say so.** Measured state at the
+moment of death: `phase: 'play'`, `turn: 1`, `turnDrawNeeded: true`, no claim
+window — and **zero timers pending**. Seat 1 is owed a draw and there is nothing
+left in the process that will ever issue one. No error, no rejection, no log
+line; from outside it is indistinguishable from a slow game.
+
+**The mechanism is one assumption that is true of an instant and false across a
+transition.** `scheduleBot` and `scheduleBotImmediate` share a single
+`botPendingSeats` set, on the ground A26 states: a seat only ever has one
+decision outstanding, because huan, void, claim and turn are mutually exclusive.
+They are — *at any one moment*. They are not across a claim window closing:
+
+1. A window opens; the bot at seat 1 is scheduled to decide, and takes its slot
+   in `botPendingSeats`.
+2. The **deadline expires first**, rather than that bot answering. The window
+   force-passes and resolves, and the turn passes to seat 1.
+3. `scheduleNext` reaches the draw path and calls `scheduleBotImmediate(1, …)` —
+   which returns immediately, because seat 1 is still marked pending against the
+   claim it no longer has.
+4. The claim callback finally fires, finds no window, releases the slot and
+   returns. Nothing re-evaluates. The room is owed a draw and has nothing
+   scheduled to make it.
+
+**Reachable by configuration rather than only by a crafted test**, which is what
+moved it from curiosity to defect. The lobby clamps the bot pace to 5s and the
+shortest claim window a host can pick is 8s, so the bot always answers first —
+but `SM_BOT_DELAY_MS` was read straight into `paceOverride` **without the clamp
+`setBotPaceMs` applies**, so the two ways of setting the same value disagreed
+above 5s. That is fixed too: the env seam now takes the same ceiling as
+`--bot-delay`, which the CLI help already documented.
+
+**The fix is to make a declined decision re-evaluate rather than just release.**
+Acting already re-enters `scheduleNext` through `afterStateChange`; declining now
+does the same. It is general rather than aimed at this one sequence — any pending
+decision whose precondition disappears now heals on the next tick — and it
+terminates, because a bot only declines when the state has moved on, and the
+schedulers dedup per seat. `scheduleNext` also gained the `ended` guard
+`schedulePersist` already had, since the bot callbacks can now call into it.
+
+**Eight of the nine adversarial scenarios passed first time**, which is worth
+recording as much as the failure: teardown mid-claim-window leaves nothing
+scheduled, a reconnect storm neither stalls the round nor takes the seat over
+early, a stale socket close does not evict the live one (A5), `nextRound` with
+bot work in flight starts cleanly (A32), a restored room whose deadline expired
+while the server was down resumes, and fifty reconnects in a row schedule no
+duplicate work. The timer handling was right everywhere the invariant held; it
+failed in the one place the invariant itself does not.
 
 ---
 

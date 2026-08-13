@@ -285,6 +285,16 @@ The long form, with the measurements behind each, is in
 - **換三張 is opt-in and off by default** — it is not in Novikov's ruleset, which
   deals straight into the void declaration. Practice mode therefore never reaches
   the huan phase, which is why `e2e/house-rules.spec.ts` exists.
+- **A scheduled bot decision can go stale, and something has to notice.**
+  `scheduleBot` and `scheduleBotImmediate` share one `botPendingSeats` set,
+  because a seat has one decision outstanding — true of an instant, false across
+  a claim window closing. If the deadline expires rather than the bot answering,
+  the turn can pass to that same seat and the `setImmediate` issuing its draw is
+  deduped away against the claim it superseded; the claim callback then releases
+  the slot and returns, leaving the room owed a draw with **nothing scheduled and
+  no error**. Acting re-enters `scheduleNext` through `afterStateChange`, so
+  **declining must call it too** — that is the general repair, not a patch for
+  one sequence. (A68)
 - **Bot pace is a pace, not a rule.** A `GameRoom` field rather than `GameConfig`,
   because a replay of the same seed is identical at any value. **`--bot-delay` /
   `SM_BOT_DELAY_MS` outrank the lobby and the ⚙ menu both**, which is what keeps
@@ -429,15 +439,16 @@ reasoning and measurements in
 ## Status
 
 **Everything is shipped and [TODO.md](./TODO.md) is empty.** All v1 work, nine
-full-repo audit passes (A1–A67), the frontend/design pass (F1–F25), the mobile
+full-repo audit passes (A1–A68), the frontend/design pass (F1–F25), the mobile
 viewport work (R1–R7), the hosting work (C1–C10), and the feature run N1–N46.
 
-The ninth pass (2026-08-13, **A56–A67**) closed the same day, and wrote up **A55**
+The ninth pass (2026-08-13, **A56–A68**) closed the same day, and wrote up **A55**
 alongside it — that one had shipped three days earlier without reaching the
-record. It ran as four sweeps: the third came back clean, leaving a whole-round
-invariant test and `noUnusedLocals` rather than a fix (A66), and the fourth
-changed axis to the *ruleset*, checking the fan table against native-language
-sources rather than the PDF alone (A67).
+record. It ran as five sweeps: the third came back clean, leaving a whole-round
+invariant test and `noUnusedLocals` rather than a fix (A66); the fourth changed
+axis to the *ruleset*, checking the fan table against native-language sources
+rather than the PDF alone (A67); and the fifth drove the room's timers two at a
+time and found a room that could stall dead in silence (A68).
 Five of the twelve were real: a promoted kong's payment never entering the
 refund log (A56), the shoot-after-kong refund running once per winner instead of
 once per discard (A57), the winner's hand decomposition riding the `hu` event past
