@@ -47,6 +47,32 @@ function connectScore(id: TileId, hand: TileId[]): number {
   return score;
 }
 
+type KongOnTurn = Extract<GameAction, { t: 'declareKongOnTurn' }>;
+
+/**
+ * The kong a seat should actually want, which is not simply the first one on the
+ * list.
+ *
+ * `computeLegalActions` offers a concealed kong of the seat's **own void suit**,
+ * and it is right to: the rule permits it and charges 48 for it, which is the
+ * only reachable path to `applyVoidMeldPenalty` — no claim can bring a void tile
+ * in, because `canPungOnTile` and `canKongOnTile` both refuse one. So the engine
+ * is not what is wrong here.
+ *
+ * The bots were. It collects 6, the four tiles can never sit in a winning hand,
+ * and the largest hand in the game is worth 8 — there is no board on which this
+ * is the move. All three levels took it, because all three took the first kong
+ * `legal.find` returned, and the seat came out of the exchange at -42 against -2
+ * each. Rare (it needs four of your void suit in hand) and ruinous when it
+ * lands, which is why no smoke test noticed: the ledger balances and no rule is
+ * broken. (A62)
+ */
+function kongWorthTaking(legal: GameAction[], player: PlayerState): KongOnTurn | undefined {
+  return legal.find(
+    (a): a is KongOnTurn => a.t === 'declareKongOnTurn' && a.tile.suit !== player.voidedSuit,
+  );
+}
+
 /** Pick most isolated tile from candidates. Tiebreak: terminals first, then lower rank. */
 function pickDiscard(candidates: TileId[], hand: TileId[]): TileId | null {
   if (candidates.length === 0) return null;
@@ -131,7 +157,7 @@ export function botTurnAction(state: GameState, seat: Seat): GameAction | null {
   const hu = legal.find(a => a.t === 'declareHuOnDraw' || a.t === 'declareHeavenly');
   if (hu) return hu;
 
-  const kong = legal.find(a => a.t === 'declareKongOnTurn');
+  const kong = kongWorthTaking(legal, player);
   if (kong) return kong;
 
   // The face-down void tile is this turn's mandatory discard — there is nothing
@@ -304,7 +330,7 @@ export function botTurnActionMedium(state: GameState, seat: Seat): GameAction | 
   const hu = legal.find(a => a.t === 'declareHuOnDraw' || a.t === 'declareHeavenly');
   if (hu) return hu;
 
-  const kong = legal.find(a => a.t === 'declareKongOnTurn');
+  const kong = kongWorthTaking(legal, player);
   if (kong) return kong;
 
   // The face-down void tile is this turn's mandatory discard — there is nothing
@@ -516,7 +542,7 @@ export function botTurnActionHard(state: GameState, seat: Seat): GameAction | nu
   // Kong is a fan and a replacement draw, but it is also the one fan that
   // SevenPairs refuses to sit beside (Table 9), and four of a kind is two of the
   // seven pairs. A hand already reading that way gives up more than it gains.
-  const kong = legal.find(a => a.t === 'declareKongOnTurn');
+  const kong = kongWorthTaking(legal, player);
   if (kong && !prefersSevenPairs(player.hand, player.melds.length, player.voidedSuit)) return kong;
 
   const flip = legal.find(a => a.t === 'flipFirstDiscard');

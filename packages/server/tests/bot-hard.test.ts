@@ -1,9 +1,17 @@
-import { DEFAULT_CONFIG, createGame, suitOf } from '@sichuan-mahjong/engine';
+import {
+  DEFAULT_CONFIG,
+  applyAction,
+  computeLegalActions,
+  createGame,
+  suitOf,
+} from '@sichuan-mahjong/engine';
 import type { GameState, PlayerInit, Seat } from '@sichuan-mahjong/engine';
 import { describe, expect, it } from 'vitest';
 import {
   botClaimAction,
   botClaimActionHard,
+  botTurnAction,
+  botTurnActionMedium,
   botVoidAction,
   botVoidActionHard,
 } from '../src/bot.js';
@@ -273,5 +281,114 @@ describe('hard bot: the void declaration (N19)', () => {
     };
     expect(action.firstDiscard).not.toBeNull();
     expect(suitOf(action.firstDiscard as number)).toBe(action.suit);
+  });
+});
+
+/**
+ * The kong no level should take. (A62)
+ *
+ * `computeLegalActions` offers a concealed kong of the seat's own void suit, and
+ * it is right to — the rule permits it and charges 48, which is the only
+ * reachable path to `applyVoidMeldPenalty`, since no claim can bring a void tile
+ * in. But it collects 6, the four tiles can never sit in a winning hand, and the
+ * largest hand in the game is worth 8. All three levels took it, because all
+ * three took the first kong `legal.find` returned.
+ */
+describe('a kong of your own void suit (A62)', () => {
+  /** Seat 0 declared sou void and holds all four sou 3, plus other sou to shed. */
+  function rigVoidKong(): GameState {
+    const state = base();
+    state.phase = 'play';
+    state.turn = 0;
+    state.turnDrawNeeded = false;
+    state.drewThisTurn = true;
+    state.lastDrawnTile = id('s', 3, 3);
+    for (const p of state.players) {
+      p.voidedSuit = 'sou';
+      p.usedIndicator = true;
+      p.pendingFirstDiscard = null;
+    }
+    state.players[0]!.hand = [
+      id('s', 3, 0),
+      id('s', 3, 1),
+      id('s', 3, 2),
+      id('s', 3, 3),
+      id('s', 7),
+      id('s', 8),
+      id('m', 1),
+      id('m', 2),
+      id('m', 3),
+      id('p', 4),
+      id('p', 5),
+      id('p', 6),
+      id('m', 9),
+      id('m', 9, 1),
+    ];
+    return state;
+  }
+
+  it('is on the table — the engine offers it, and that is not the bug', () => {
+    const kongs = computeLegalActions(rigVoidKong(), 0).filter(a => a.t === 'declareKongOnTurn');
+    expect(kongs).toHaveLength(1);
+    expect(kongs[0]).toMatchObject({ tile: { suit: 'sou', rank: 3 } });
+  });
+
+  it('costs 42 net, which is why no level may take it', () => {
+    const before = rigVoidKong();
+    const r = applyAction(before, {
+      t: 'declareKongOnTurn',
+      seat: 0 as Seat,
+      tile: { suit: 'sou', rank: 3 },
+      subtype: 'concealed',
+    });
+    if (!r.ok) throw new Error(`kong rejected: ${r.reason}`);
+    // 6 collected, 48 to the pot. The biggest hand in the game is worth 8.
+    expect(r.state.players[0]!.scoreDelta).toBe(-42);
+    expect(r.events.some(e => e.e === 'voidMeldPenalty')).toBe(true);
+  });
+
+  it('so every level discards instead', () => {
+    for (const [name, fn] of [
+      ['easy', botTurnAction],
+      ['medium', botTurnActionMedium],
+      ['hard', botTurnActionHard],
+    ] as const) {
+      const action = fn(rigVoidKong(), 0);
+      expect(action?.t, name).not.toBe('declareKongOnTurn');
+      // Strict mode, and the seat still holds sou: the discard must be one.
+      expect(action?.t, name).toBe('discard');
+      const tile = (action as { tile: number }).tile;
+      expect(suitOf(tile), `${name} discards a void tile`).toBe('sou');
+    }
+  });
+
+  it('still takes a kong that is not in the void suit', () => {
+    const state = rigVoidKong();
+    // Swap the four sou 3 for four man 5, and clear the rest of the sou so the
+    // strict-discard rule is not what is doing the work.
+    state.players[0]!.hand = [
+      id('m', 5, 0),
+      id('m', 5, 1),
+      id('m', 5, 2),
+      id('m', 5, 3),
+      id('m', 1),
+      id('m', 2),
+      id('m', 3),
+      id('p', 4),
+      id('p', 5),
+      id('p', 6),
+      id('p', 7),
+      id('p', 8),
+      id('m', 9),
+      id('m', 9, 1),
+    ];
+    state.lastDrawnTile = id('m', 5, 3);
+    for (const [name, fn] of [
+      ['easy', botTurnAction],
+      ['medium', botTurnActionMedium],
+      ['hard', botTurnActionHard],
+    ] as const) {
+      expect(fn(state, 0)?.t, name).toBe('declareKongOnTurn');
+    }
   });
 });
