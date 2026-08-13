@@ -96,6 +96,13 @@ pnpm tiles:sandbox                   # same page, rendered headless to a PNG
 # the 22.5% overlap, so rerun it only if the source art changes.
 node scripts/tiles/measure-glyphs.mjs
 
+# Mutation testing — "would the tests fail if the code were wrong?" Slow
+# (~900 mutants, minutes), never in CI, run it when you want to know whether a
+# guard is real rather than merely present. It is what found A78: the void-suit
+# refusal in all three claim predicates could be deleted and every test passed.
+# Baseline 2026-08-13: scoring 92.3, hand 82.0, claims 80.5, state 80.4.
+pnpm --filter @sichuan-mahjong/engine mutate
+
 # Release binaries (embed the client, no persistence): needs Bun
 bun run scripts/release/compile.ts
 

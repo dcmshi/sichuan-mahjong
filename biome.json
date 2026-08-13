@@ -37,7 +37,9 @@
       "**/src/generated/**",
       "**/test-results/**",
       "**/playwright-report/**",
-      "**/dist-bin/**"
+      "**/dist-bin/**",
+      "**/.stryker-tmp/**",
+      "**/coverage/**"
     ]
   }
 }

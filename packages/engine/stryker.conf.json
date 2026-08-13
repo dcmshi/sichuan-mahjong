@@ -1,0 +1,11 @@
+{
+  "packageManager": "pnpm",
+  "testRunner": "vitest",
+  "plugins": ["@stryker-mutator/vitest-runner"],
+  "reporters": ["clear-text", "progress"],
+  "coverageAnalysis": "perTest",
+  "mutate": ["src/scoring.ts", "src/claims.ts", "src/state.ts", "src/hand.ts"],
+  "clearTextReporter": { "maxTestsToLog": 0 },
+  "timeoutMS": 30000,
+  "concurrency": 4
+}
