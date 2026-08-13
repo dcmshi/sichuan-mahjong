@@ -402,6 +402,16 @@ reasoning and measurements in
   recorded as O5.
 - **Free tier, so persistence stays off** — `getDb()` returns null and every caller
   handles it. Anything you add that touches the database needs the same treatment.
+- **A snapshot is untrusted input, and "the field is present" is not validation.**
+  `validateRoomSnapshot` derives both the field list *and each field's kind* from
+  a freshly created game, so it cannot drift as `GameState` grows — it was
+  presence-only, and a `hand` stored as a string restored happily and read as a
+  three-tile hand with no error anywhere. Fields that are `null` in a fresh game
+  are exempt from the kind check, which is the gap that remains. **The row's
+  `code` column is authoritative over the snapshot's own**, or a mismatch parks
+  the room under one key with its row under another. And **`loadLiveRooms` parses
+  per row**: mapping `JSON.parse` over all of them let one truncated write lose
+  every healthy game on the disk. (A69)
 
 **Process**
 
@@ -439,16 +449,18 @@ reasoning and measurements in
 ## Status
 
 **Everything is shipped and [TODO.md](./TODO.md) is empty.** All v1 work, nine
-full-repo audit passes (A1–A68), the frontend/design pass (F1–F25), the mobile
+full-repo audit passes (A1–A69), the frontend/design pass (F1–F25), the mobile
 viewport work (R1–R7), the hosting work (C1–C10), and the feature run N1–N46.
 
-The ninth pass (2026-08-13, **A56–A68**) closed the same day, and wrote up **A55**
+The ninth pass (2026-08-13, **A56–A69**) closed the same day, and wrote up **A55**
 alongside it — that one had shipped three days earlier without reaching the
-record. It ran as five sweeps: the third came back clean, leaving a whole-round
-invariant test and `noUnusedLocals` rather than a fix (A66); the fourth changed
-axis to the *ruleset*, checking the fan table against native-language sources
-rather than the PDF alone (A67); and the fifth drove the room's timers two at a
-time and found a room that could stall dead in silence (A68).
+record. It ran as six sweeps, each on a different axis: the third came back clean
+and left a whole-round invariant test plus `noUnusedLocals` rather than a fix
+(A66); the fourth checked the *ruleset* against native-language sources rather
+than the PDF alone (A67); the fifth drove the room's timers two at a time and
+found a room that could stall dead in silence (A68); the sixth fed the restore
+path corrupted snapshots and found a validator that only ever looked for missing
+fields (A69).
 Five of the twelve were real: a promoted kong's payment never entering the
 refund log (A56), the shoot-after-kong refund running once per winner instead of
 once per discard (A57), the winner's hand decomposition riding the `hu` event past

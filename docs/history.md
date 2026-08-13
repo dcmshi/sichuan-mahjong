@@ -1,7 +1,7 @@
 # History — every closed item, newest first
 
 This is the record of work already done: the phase log (1–10), nine full-repo
-audit passes (A1–A68), the frontend/design pass (F1–F25), the mobile viewport work
+audit passes (A1–A69), the frontend/design pass (F1–F25), the mobile viewport work
 (R1–R7), the tile-rendering change, the hosting work (C1–C10), and the feature run
 N1–N46. Each entry keeps its diagnosis, not just its fix — that is the part worth
 having later.
@@ -46,6 +46,7 @@ Series: **N** features · **A** full-repo audits · **F** frontend/design ·
 | **A66** | The pass that came back clean, and the two guards it left |
 | **A67** | The fan table, checked against sources outside the PDF |
 | **A68** | A stale bot decision could kill the room |
+| **A69** | The snapshot check that only looked for missing fields |
 | **F1–F25** | *Frontend & design audit — seventh pass*, a numbered list. Grep the id. |
 | **N2** | The dice are real now |
 | **N3, N11, N14** | Help that shows a hand, a discard you can arm early, and a wall that reads the dice |
@@ -90,6 +91,65 @@ Series: **N** features · **A** full-repo audits · **F** frontend/design ·
 | **O3** | Closed **won't-do** — reasoning in [TODO.md](../TODO.md) and ARCHITECTURE §12 |
 | **O4** | One tile face everywhere |
 | **O5** | An **accepted trade-off**, not a task — per-IP limits key to a Cloudflare edge address. ARCHITECTURE §12 |
+
+---
+
+## ✅ The snapshot check that only looked for missing fields (A69 — 2026-08-13)
+
+The sixth sweep, on the restore surface: **what a corrupted or partial snapshot
+does to a booting server.** A41 built the validation after `restore` assigned
+`snap.state` verbatim, and its comment states the standard plainly — *"silent
+corruption is the worst outcome available, so an incompatible snapshot is
+refused instead."* It was refusing exactly one kind of incompatibility.
+
+**The check was presence-only.** `Object.keys` of a freshly created game, each
+tested for `!== undefined`. So a snapshot with every field present and the wrong
+*kind* in it passed and restored into the live registry. Sixteen mutations were
+fed to it; ten got in, failing three different ways:
+
+- **`hand` as a string is the worst**, because nothing goes wrong. It has a
+  `.length`, so `projectView` reports a thirteen-tile hand as three and no error
+  is raised anywhere. That is the silent corruption the comment is about.
+- **`hand` as an object, or `melds` as a number, makes `projectView` throw** —
+  so the room destroys every socket that touches it. And because it restored
+  *successfully* its row was never dropped, so it came back on every boot. That
+  is the repeating-restore-error failure the drop-on-invalid logic exists to
+  prevent, reached from underneath it.
+- `turn`, `phase` or `config` of the wrong kind leaves a room that is merely
+  inert.
+
+The kinds now come from the same fresh-game probe the field list does, so the
+check stays self-maintaining. **Fields that are `null` in a fresh game are
+exempt** — `lastDiscard`, a player's `hu` and the rest are legitimately either,
+and a fresh deal cannot say which — which leaves a shallow gap and no deep one.
+
+**Nothing looked at the envelope around `state` at all.** `restore` reaches
+straight into `slots.map`, `isHumanSeat` and `tokens`; a row missing any of them
+was dropped by the try/catch, which works but logs "restore threw" instead of
+naming the field. All three are checked now.
+
+**And the snapshot's own `code` was trusted over the column it was stored
+under.** `restore` registers the room under `snap.code` while `live_rooms` is
+keyed by the row — so a disagreement put the room in memory under one code and
+left its row under another, unreachable by `deleteRoom` and restored again every
+boot. The row's key is authoritative and a mismatch is now refused.
+
+**Underneath all of it, one unreadable row took every healthy one with it.**
+`loadLiveRooms` mapped `JSON.parse` over every row in a single expression, so a
+truncated `snapshot_json` — a half-finished write, a corrupted file — threw
+*before* any per-row handling could run. The caller's try/catch turned that into
+"restored 0 rooms": every in-progress game on the disk lost, nothing dropped,
+and the same thing again on the next boot. Parsed per row now, with an
+unreadable one returning a `null` snapshot so that validation refuses it by name
+and the existing drop path deletes it — the decision to drop a row stays in the
+one place that already makes it.
+
+**What is deliberately still not checked**, so the boundary is recorded rather
+than implied: enum membership (`phase: 'bogus'` restores) and numeric ranges
+(`drawIndex: -5`, `kongDrawIndex: 99999`). Both leave an inert or garbage room
+rather than a silently wrong one, and validating them properly is
+re-implementing the type system at runtime. Structural validation is where this
+line is drawn.
 
 ---
 

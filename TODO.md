@@ -2,7 +2,7 @@
 
 What is actually open. **Everything closed lives in
 [docs/history.md](./docs/history.md)**, newest first, each entry with the diagnosis
-that made it worth writing down — the phase log, the nine audit passes (A1–A68), the
+that made it worth writing down — the phase log, the nine audit passes (A1–A69), the
 frontend pass (F1–F25), the viewport work (R1–R7), the tile rendering change, the
 hosting work (C1–C10), and the feature run N1–N46.
 
@@ -16,11 +16,11 @@ so it isn't rediscovered as a bug.
 
 ## Open
 
-**Nothing.** The ninth full-repo code audit of 2026-08-13, filed as **A56–A68**,
-closed the same day, all thirteen items — and **A55** was written up alongside them,
+**Nothing.** The ninth full-repo code audit of 2026-08-13, filed as **A56–A69**,
+closed the same day, all fourteen items — and **A55** was written up alongside them,
 having shipped on 2026-08-10 without ever reaching the record.
 
-It ran as four sweeps. **The third came back clean** — no behavioural defect —
+It ran as six sweeps. **The third came back clean** — no behavioural defect —
 leaving two guards instead: a whole-round invariant test (**A66**) asserting the
 things a payment balance cannot see, which is why A56 survived a hundred smoke
 games; and `noUnusedLocals` in `tsconfig.base.json`, after six dead symbols had
@@ -42,8 +42,17 @@ dead with `turnDrawNeeded` true and **zero timers pending**, owed a draw nothing
 would ever issue, silently (**A68**). Eight of its nine adversarial scenarios
 passed first time.
 
-Five were real defects in what a hand pays, who may see it, how a bot plays, or
-whether the round advances at all.
+**The sixth took the restore surface** — what a corrupted or partial snapshot
+does to a booting server (**A69**). The validation was presence-only, so ten of
+sixteen hostile snapshots restored into the live registry: a `hand` stored as a
+string reads as a three-tile hand with no error anywhere, and a `hand` stored as
+an object makes `projectView` throw on every socket that touches the room —
+which, having restored *successfully*, came back on every boot. Underneath it,
+one truncated row took every healthy game with it, because `loadLiveRooms`
+parsed them all in a single expression.
+
+Six were real defects in what a hand pays, who may see it, how a bot plays,
+whether the round advances, or whether a restart brings the table back.
 **A56** is the one that fired on the ordinary path: a promoted kong collects 1
 from each opponent before the robbing window, and those points were only
 committed to `kongPaymentLog` when a window had actually opened — which it almost
