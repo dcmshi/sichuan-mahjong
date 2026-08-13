@@ -7,22 +7,28 @@ otherwise have raised were tracked elsewhere and are not repeated here: the
 landscape layout (R4 Phase 2) and the central discard pool (O3), both now shelved
 in [TODO.md](../TODO.md) — O3 as **won't do**, 2026-08-03.
 
-**Shelved 2026-08-02, with 17 of 20 done.** The remainder is deliberately
-parked in favour of the feature work in [TODO.md](../TODO.md) — none of the
-three is user-facing breakage, which is why they are the ones left:
+**Shelved 2026-08-02 with 17 of 20 done; 18 of 20 as of 2026-08-13.** The
+remainder is deliberately parked in favour of the feature work in
+[TODO.md](../TODO.md) — neither is user-facing breakage, which is why they are
+the ones left:
 
 - **Keyboard hand reordering** (Low) — the hand is draggable with a pointer and
   not with a keyboard. Reordering is cosmetic: it changes no legal action and
   the engine sorts on its own, so the keyboard user loses arrangement, not play.
-- **Modal focus trapping and restore** (Low, partly done) — `role`/`aria-modal`
-  and Escape-to-close shipped; Tab can still walk out of an open dialog into the
-  board behind it.
 - **Spectator parity** (Medium, partly done) — the language switch and match
   totals shipped; sound, move history and How-to-play are still play-screen
   only.
 
-Pick these back up when the feature list is clear, or sooner if one starts
-costing a real player something.
+**Modal focus trapping was the third until A75 built it** (2026-08-13). It came
+back not as an accessibility nicety but as a correctness problem: three dialogs
+declared `aria-modal="true"`, which asserts that everything outside them is
+inert, and nothing made it true — so a screen reader announced a dialog the user
+was not in, and Tab walked out into content the same attribute said to ignore.
+Markup and behaviour disagreeing is worse than not marking it a dialog at all.
+`useDialogFocus` is now the one place that enters, cycles and restores.
+
+Pick the other two back up when the feature list is clear, or sooner if one
+starts costing a real player something.
 
 ---
 
@@ -127,7 +133,7 @@ costing a real player something.
   benefit from `autoCapitalize="characters" autoCorrect="off"
   spellCheck={false}` for mobile keyboards.
 
-- [~] **Modals lack dialog semantics and Escape-to-close.** *(role/aria-modal + Escape on HowToPlay and PlayHistory; focus trapping and restore still open.)* HowToPlay,
+- [x] **Modals lack dialog semantics and Escape-to-close.** *(role/aria-modal + Escape shipped 2026-08-02; focus trapping and restore followed in **A75** — `useDialogFocus` enters, cycles and restores, wired into DiscardPileModal, PlayHistory and HowToPlay. `aria-modal="true"` is a claim about focus, and for a year three dialogs made it without anything being true.)* HowToPlay,
   PlayHistory, the scores dropdown, ConnectionLost, and the long-press tile
   preview all overlay the app with no `role="dialog"`/`aria-modal`, no focus
   management (focus stays on whatever launched them; the background is still

@@ -268,8 +268,11 @@ coin, because Sichuan has them and riichi does not — 欠け色, 金鉤釣, 槓
   [docs/viewport-audit.md](./docs/viewport-audit.md); landscape shows a
   rotate-to-portrait prompt during play instead.
 
-- **The last three frontend-audit items** (2026-08-02), 17 of 20 having shipped.
-  Keyboard hand reordering, modal focus trapping, and spectator parity for
-  sound / move history / How-to-play. None is user-facing breakage, which is why
-  they are the ones left; each with its reasoning at the top of
-  [docs/frontend-audit.md](./docs/frontend-audit.md).
+- **The last two frontend-audit items** (2026-08-02), 18 of 20 having shipped.
+  Keyboard hand reordering, and spectator parity for sound / move history /
+  How-to-play. Neither is user-facing breakage, which is why they are the ones
+  left; each with its reasoning at the top of
+  [docs/frontend-audit.md](./docs/frontend-audit.md). **Modal focus trapping was
+  the third until A75**, which took it not as an accessibility nicety but as a
+  correctness problem: `aria-modal="true"` is a claim about focus, and three
+  dialogs were making it with nothing to back it.

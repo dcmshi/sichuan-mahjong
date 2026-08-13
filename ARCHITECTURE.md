@@ -70,7 +70,7 @@ been added as post-v1 features — see §12.)
 Both server and client import from engine. Protocol message types live in `engine/src/protocol.ts`.
 
 **Runtime:** Node 22 LTS, single process, runs on the host's own machine.
-**Tooling:** Biome (lint+format, enforced in CI), Vitest, fast-check (engine property tests), Playwright (e2e: full 3-bot round, 2-round match, and a real-UI-click opening).
+**Tooling:** Biome (lint+format, enforced in CI), Vitest, fast-check (engine property tests), Playwright (e2e: full 3-bot round, 2-round match, and a real-UI-click opening). Two measurement tools sit outside CI deliberately, both slow: `@vitest/coverage-v8` (`pnpm test:coverage`) and Stryker (`pnpm --filter @sichuan-mahjong/engine mutate`) — see §11.7.
 **Distribution:** self-contained npm package `sichuan-mahjong` (esbuild inlines the private engine; the built client SPA ships in `dist/client`) invokable via `npx sichuan-mahjong`. Optional precompiled single binaries (Bun compile) per OS for hosts without Node — these embed the client SPA too, but run with persistence disabled (Bun has no `node:sqlite`; see §9/§10.5).
 
 ---
@@ -119,7 +119,7 @@ sichuan-mahjong/
 │   │   │   ├── screens/          # Landing, HostSetup, JoinForm, Lobby, Game, RoundEnd, MatchEnd, Spectate, About
 │   │   │   ├── store/
 │   │   │   ├── ws/
-│   │   │   ├── hooks/           # useSound, useAnimation (per-player pace), useDismissable
+│   │   │   ├── hooks/           # useSound, useAnimation (per-player pace), useDismissable, useDialogFocus (A75)
 │   │   │   ├── i18n/            # EN / zh-Hans / zh-Hant / FR / ES / JA catalogs
 │   │   │   ├── session.ts       # seat token in localStorage — survives a refresh
 │   │   │   ├── prefs.ts         # per-player display prefs in localStorage (animation pace)
@@ -571,7 +571,7 @@ This blocks Hu via discard claim when the new winning hand's `totalFan` would be
 | Promoted | Drew the 4th tile fresh from wall, add to existing exposed pung | Yes (§5.5.7) | 1 from each non-Hu |
 | Postponed | The 4th tile was already in hand from earlier, add to existing exposed pung | Yes (§5.5.7) | 0 |
 
-After any kong, draw a replacement from `kongDrawIndex` (`kongDrawIndex--`). `lastDrawWasKongReplacement = true`.
+After any kong, draw a replacement from `kongDrawIndex` (`kongDrawIndex--`). `lastDrawWasKongReplacement = true`. **`takeKongReplacement` in `actions.ts` is the one definition of that draw** — three paths had it inline and all three forgot that the replacement can be the wall's last tile (§5.5.9). (A67)
 
 **Promoted vs. postponed is derived, never read off the wire.** `declareKongOnTurn` carries a `subtype`, but for these two the engine ignores it and asks `promotedKongSubtype(state, tileType)` in `state.ts` — promoted iff `drewThisTurn && tileTypeOf(lastDrawnTile) === tileType`. The classification is worth 3 points a kong, so taking it as sent made it forgeable in one frame; `views.ts` reads the same helper, so the offered button and the payment cannot disagree. `concealed` stays a genuine choice on the wire (a player may hold four of one type *and* an exposed pung of another) and is validated by the hand. (A50)
 
@@ -591,6 +591,7 @@ The PDF names exactly two, and the engine enforces both:
 - The player who draws the wall's last live-end tile may only declare Hu (subtype `underTheSea`) or discard. No new kongs.
 - If discarding, the resulting `lastDiscard` may be claimed only for Hu (subtype `underTheSea`) or Pung (no Kong).
 - If Pung'd, the punger discards, that discard again allows only Hu / Pung. Pung-chain at the very end of the wall.
+- **A kong replacement can be the tile that empties the wall**, and it comes off the far end — so `wallEndReached` is set by `takeKongReplacement` as well as by `applyDraw`. It was set by the draw alone, which cost two things: the round ran an action past its end, and the discard that followed was not treated as "the discard after the last tile", which is half of what Under the Sea means. A win on that replacement is **both** Win after Kong and Under the Sea; `calcHandScore` takes an `alsoUnderTheSea` flag for it, since `HuSubtype` can only name one. (A67)
 
 ### 5.6 Bloody to the end (血战到底)
 
@@ -671,17 +672,20 @@ const COMPATIBILITY: Record<FanType, { selfMax: number; incompatible: FanType[] 
   GoldenWait:     { selfMax: 1, incompatible: ['Root', 'SevenPairs', 'RobbingTheKong'] },
   FullFlush:      { selfMax: 1, incompatible: [] },
   SevenPairs:     { selfMax: 1, incompatible: ['Kong', 'AllPungs', 'GoldenWait', 'WinAfterKong', 'RobbingTheKong'] },
-  WinAfterKong:   { selfMax: 1, incompatible: ['SevenPairs', 'ShootAfterKong', 'RobbingTheKong', 'UnderTheSea'] },
-  ShootAfterKong: { selfMax: 1, incompatible: ['WinAfterKong'] },
-  RobbingTheKong: { selfMax: 1, incompatible: ['AllPungs', 'GoldenWait', 'SevenPairs', 'WinAfterKong', 'UnderTheSea'] },
-  UnderTheSea:    { selfMax: 1, incompatible: ['RobbingTheKong', 'WinAfterKong'] },
+  WinAfterKong:   { selfMax: 1, incompatible: ['SevenPairs', 'ShootAfterKong', 'RobbingTheKong'] },
+  ShootAfterKong: { selfMax: 1, incompatible: ['WinAfterKong', 'RobbingTheKong'] },
+  RobbingTheKong: { selfMax: 1, incompatible: ['AllPungs', 'GoldenWait', 'SevenPairs', 'WinAfterKong', 'ShootAfterKong', 'UnderTheSea'] },
+  UnderTheSea:    { selfMax: 1, incompatible: ['RobbingTheKong'] },
 };
 ```
+
+(Abridged: each entry also carries its `fanValue` from the table in §5.8.)
 
 Notable consequences worth a comment in `scoring.ts`:
 - Root + All Pungs / Golden Wait incompatible: structurally impossible (pair-tile + pung-of-same-tile = 5 of one tile, only 4 exist).
 - Seven Pairs + Kong incompatible: kongs can't appear inside seven-pairs structure. A 4-of-a-kind in a seven-pairs hand counts as 2 pairs + Root, not Kong.
 - This is also why "Dragon Seven Pairs" (some apps' +1 fan) doesn't exist as its own combo here — it's just Seven Pairs (2) + Root (1) = 3 fan.
+- **Win after Kong and Under the Sea stack**, and this table said they did not until A67. Table 9 marks the pair compatible in both directions and the native-language sources say it outright — Japanese mahjong forbids the combination, Chinese Official and Sichuan allow it. It is reachable: a kong declared with one tile left takes that tile, so a win on the replacement is both (§5.5.9). Shoot after Kong and Robbing the Kong went the other way in the same pass — Table 9 marks them incompatible and this said they were fine, though nothing can reach the pair. `HuSubtype` names one situation, so the stacking case is a flag on `calcHandScore` rather than a widened subtype.
 
 **Self-draw bonus** is NOT a fan. Per PDF Table 6: self-drawn Hu pays Hand Value + 1 from each non-Hu player. Discard Hu pays Hand Value from the discarder only.
 
@@ -821,7 +825,7 @@ export type ServerMsg =
 
 Server pushes `view` to each player after every state-changing action (filtered through `projectView`). `events` is a delta log so the client can animate ("seat 2 claimed pung", "kong on 3-pin from seat 1").
 
-Both halves are per-viewer redacted before send: melds project as `PublicMeld` (a concealed kong's tile is `null` for everyone but its owner until round end — A27), the unflipped first discard projects as a bare `pendingFirstDiscard: boolean` (its owner alone gets the id, in `you.pendingFirstDiscardTile` — A37), and `redactEventsFor` nulls the tile on `drew`/`kongReplacement` events for everyone but the drawer; spectators never see drawn tiles (A31). It also nulls `voidDeclared.suit` for everyone but the declarer (A40) — the void phase resolves all four declarations in one batch, so an unredacted event handed each client the three suits its own view withholds. Anything added to `GameEvent` needs a redaction decision as much as anything added to `GameState` does: the event log is the second channel to a client, and two leaks have now reached it.
+Both halves are per-viewer redacted before send: melds project as `PublicMeld` (a concealed kong's tile is `null` for everyone but its owner until round end — A27), the unflipped first discard projects as a bare `pendingFirstDiscard: boolean` (its owner alone gets the id, in `you.pendingFirstDiscardTile` — A37), and `redactEventsFor` nulls the tile on `drew`/`kongReplacement` events for everyone but the drawer; spectators never see drawn tiles (A31). It also nulls `voidDeclared.suit` for everyone but the declarer (A40) — the void phase resolves all four declarations in one batch, so an unredacted event handed each client the three suits its own view withholds — and strips the winner's hand decomposition from a `hu` event for every seat but the winner's (A58), which `toPublicPlayer` had been withholding from the view since the day N16 added the field. Anything added to `GameEvent` needs a redaction decision as much as anything added to `GameState` does: the event log is the second channel to a client, and **three** leaks have now reached it, each one a field already redacted in `views.ts`.
 
 `roundEnd` also goes to spectators — on broadcast and on a late join, mirroring the A9 player path — so the store keeps a spectating client on its own screen rather than navigating it to the player round-end screen. `RoundResult.players[]` carries each seat's revealed `hand` and `melds`, its `isReady` state, and its slice of the round's payment `ledger`; it is only ever built once the round has ended, which is what keeps the reveal out of `PlayerView` and out of the redaction rules above.
 
@@ -864,12 +868,14 @@ Heuristic, server-side. Each bot subscribes to its own `PlayerView` and emits `G
 - **Concealed kong on own turn:** always.
 - **Promoted kong on own turn:** always when fresh tile completes existing exposed pung.
 
+**A legal kong is not automatically a kong worth taking, and this holds at every level.** All three asked `legal.find(…)` for a kong and took the first, which is a concealed kong of the seat's *own void suit* whenever it holds four of one: 6 points collected against the 48-point penalty, on tiles that can never sit in a winning hand. `kongWorthTaking(legal, player)` is now the one place any level asks for a kong, and it skips the void suit. No smoke test could have caught it — the ledger balances, no rule is broken, and the engine is right to allow it. (A62)
+
 ### 7.2 Medium bot
 
 - **Discard:** minimum shanten after the discard; ties broken by `ukeire(...)`, then by the easy bot's isolation score.
 - **Claim:** as easy, plus a defensive gate — no pung while any opponent is tenpai.
 
-> The shanten term arrived in N19, and until it did this level was **weaker than easy**. `ukeire` is `isTenpai` with counts attached, so it answers only for a hand already one tile away: every candidate scored 0 for most of a round and the "maximise acceptance" loop kept whichever tile came first in hand order. Head to head over 60 deals it lost by 60 points with two-thirds of easy's wins. The ladder is now asserted rather than assumed — see §11.3.
+> The shanten term arrived in N19, and until it did this level was **weaker than easy**. `ukeire` is `isTenpai` with counts attached, so it answers only for a hand already one tile away: every candidate scored 0 for most of a round and the "maximise acceptance" loop kept whichever tile came first in hand order. Head to head over 60 deals it lost by 60 points with two-thirds of easy's wins. The ladder is now asserted rather than assumed — see §11.2.
 
 ### 7.3 Hard bot
 
@@ -1123,6 +1129,7 @@ After step 4, every future game uses the same URL — no per-session re-sharing.
   - Compatibility table: for any winning hand and Hu subtype, `calcHandScore` never produces a result containing two mutually-incompatible fans per the matrix (`phase4.test.ts`).
 - **Dice** (`dice.test.ts`, §4.3.1): the sum-to-wall table is asserted against the PDF's tabulation entry by entry (5/9 → East and so on); the seating throw is a property test that each round's contenders are a strict subset of the last and the winner threw in every round; the cap is pinned with a scripted RNG where every seat rolls 6+6 forever, which must terminate on the lowest seat rather than loop. `rotateWall` is checked as a permutation. One test asserts East lands on all four seats across 200 seeds — everything else would pass if the throw always returned seat 0.
 - **Replay tests:** canned action logs from real games → expected end states. Include at least one game per fan combination from §5.8. **The wall break rotates what a seed deals**, so these are regenerated whenever §4.3.1's geometry changes — deliberately, and in one pass rather than twice.
+- **Claim predicates** (`claims.test.ts`, A78): each of `canHuOnTile`, `canPungOnTile` and `canKongOnTile` refusing a tile of the claimer's own void suit. Added because mutation testing found all three guards could be replaced with `if (false)` and every one of 738 tests still passed — three lines holding up an invariant that both N46 and A62 argue from, with no test anywhere. `canHuOnTile`'s mutant survives deliberately and the test says why: `isWinningHand` already rejects the shape, so that guard is belt-and-braces and no behavioural test can kill it.
 - **Standing-tile rhythm** (`first-discard.test.ts`): across a sample of full rounds, every player who separated a face-down tile must reach the `14 − 3·melds` tiles a win needs, wins must actually occur for them, and wall-end readiness must be computable. Synthetic-state tests can't catch this class of bug — they build a correctly-sized hand by construction, which is exactly how A35 survived five audit passes.
 
 ### 11.2 Server
@@ -1133,7 +1140,11 @@ After step 4, every future game uses the same URL — no per-session re-sharing.
 - **Bot-vs-bot smoke:** 100 full games with 4 easy bots, plus 30 each with medium and hard. Assert no crashes, no rule violations rejected mid-game, payment-matrix balance for every game, exposed pungs actually form (A13), and — crucially — that wins come from players who separated a face-down first discard, not only from the rare indicator user. A bare "some Hu happened" assertion is what let A35 hide behind indicator users through five audit passes.
 - Tailscale detection mock tests (unit-level): given mocked `tailscale status --json` outputs, verify URL generation.
 - Round-end reveals: `buildRoundResult` carries hands, melds, ready state and a per-seat ledger, and a spectator joining at round end is handed the result.
-- Snapshot validation: `validateRoomSnapshot` names every field a persisted snapshot is missing, checked against the keys of a freshly created game so the required set cannot drift. `restoreRoomsFromDisk` drops an incompatible row rather than half-restoring it — `restore` used to assign the persisted state verbatim, and of the fields that could go missing, two throw and seventeen silently corrupt the projected view.
+- Snapshot validation (A69): `validateRoomSnapshot` derives both the field list **and each field's kind** from a freshly created game, so neither can drift as `GameState` grows; it also checks the envelope (`slots`, `tokens`, `isHumanSeat`) and that the row's `code` matches the snapshot's. It was presence-only, and ten of sixteen hostile snapshots restored into the live registry — a `hand` stored as a string reads as a three-tile hand with no error anywhere. Fields that are `null` in a fresh game are exempt from the kind check, which is the gap that remains. `restoreRoomsFromDisk` drops an incompatible row rather than half-restoring it — `restore` used to assign the persisted state verbatim, and of the fields that could go missing, two throw and seventeen silently corrupt the projected view.
+- **Whole-round invariants (`round-invariants.test.ts`, A66):** the things a payment balance cannot see, asserted after every action of every round — tile conservation across hands, melds, river and both wall ends; no seat acting after it has Hu'd; the turn never resting on a seat that has; and every kong payment reaching `kongPaymentLog`. The balance property is satisfied by any internally consistent set of transfers, which is exactly how A56 survived a hundred smoke games.
+- **Concurrent timers (`room-concurrency.test.ts`, A68):** the room's scheduled work driven two deadlines at a time under fake timers — a claim window expiring into the turn of the seat that had the claim, a bot declining while another is pending, a disconnect landing mid-window. Eight of the nine scenarios passed first time; the ninth left the room owed a draw with nothing scheduled and no error.
+- **WS fuzz (`ws-fuzz.test.ts`, A71):** ~4,000 malformed, hostile and type-confused frames at the gateway — wrong types in every field, server-only actions, oversized payloads, prototype-pollution keys. It changed nothing and found nothing, which is the result the boundary's convention predicts; it is kept as the executable form of that reasoning.
+- **Lobby connection leak (`lobby-conn-leak.test.ts`, A61):** every started game used to leave an empty `Map` behind in `lobbyConnections`.
 - Replay back-compat lives in its own file because `server.test.ts` mocks `src/persistence.js` wholesale.
 - **Host privilege (A42):** every host-only command refused for a non-host — `startGame`, `addBot`, `setBotDifficulty`, `kickBot` in the lobby, and `nextRound`, `endMatch`, `setBotSpeed` in game. Each gets a refusal *and* a positive control, because a negative-only test cannot tell a working guard from a typo'd message name. Where a refusal has an observable effect the test asserts the state is unchanged, not merely that an error frame came back. Verified by mutation: disabling all seven guards fails all seven cases.
 - **Token restore (A41):** the watch token round-trips `serialize` → `restoreRoomsFromDisk` beside the seat tokens, snapshots predating the field still restore, and a restored watch token still cannot resolve as a seat token.
@@ -1148,9 +1159,9 @@ helpers behind the components rather than rendered output:
 - `session.ts` round-trip and rejection of unusable stored values (F2), including `isPractice` in **both** directions — it was written and never read back, so the field survived storage and vanished on the way out — and a CJK name surviving the round trip.
 - `prefs.ts`: the animation scale, with `fast` pinned at exactly 1× because the component constants *are* the fast values, and a drifting multiplier would silently retime what shipped. Skip collapses to zero at every speed, and stored values are parsed field-by-field so an older entry missing a key still restores the half it carries (N4).
 - `DiceOverlay`'s two pure helpers: `diceKey`, which is what stops the overlay re-showing on every one of the dozens of views a round pushes, and `decidingRound`. Plus `faceRotation`, asserted on the property that makes a cube read as a die — opposite faces sum to 7, so they must be half a turn apart on exactly one axis (N2).
-- `WsClient`: the retry cap and budget reset (F6), and that only the `join` handshake survives a closed socket (F21).
+- `WsClient`: the retry cap and budget reset (F6), that only the `join` handshake survives a closed socket (F21), and that a frame already in flight when the client closes is ignored (`stale-frames.test.ts`, A70) — the browser's socket stays open until the handshake finishes, so a `view` could land after a tap on Leave and pull the player back into the room they had left.
 - Pure helpers extracted for exactly this reason — `tileLabel` (F16), the event-feed sound/announcement mapping (F7), `joinErrorForStatus` (F22), the claim countdown's skew handling (F25) — each also asserted against the catalog so a rendered key can't go missing.
-- i18n catalog parity across every language in LANGS (A18, N23).
+- i18n catalog parity across every language in LANGS (A18, N23), **and placeholder parity on top of it** (A74): key parity proves a string exists, not that it still interpolates, so a translation dropping a `{count}` renders a sentence with a hole in it and passes. Every catalog is asserted to carry the same placeholder set per key.
 - Round-end display helpers in `src/roundEnd.ts`: `formatFan` localizes a `FanEntry` and only shows a multiplier above 1; `ledgerLines` signs each entry from the viewing seat's perspective, since a redistributive entry appears in both the payer's and the payee's ledger.
 - `tests/sw.test.ts` runs the real `public/sw.js` in a stubbed worker global. Three of its four cases fail against the pre-F5 file, which is the point: the worker ships as a plain asset and nothing else type-checks or exercises it.
 - **`riverCells` (A44)** — the declaration pinned at the head of a capped river, the face-down cell before the flip, the `+N` count, and the uncapped own-river case. One definition for all three trays; the three copies it replaced are what N42, N43 and N44 each got wrong in a different seat, and none of it was reachable by a unit test while it lived in components.
@@ -1172,6 +1183,14 @@ helpers behind the components rather than rendered output:
 ### 11.6 CI
 
 GitHub Actions: build engine → lint → typecheck → test (vitest) → build server + client → e2e (playwright) → package smoke.
+
+### 11.7 Mutation testing — "would the tests fail if the code were wrong?"
+
+`pnpm --filter @sichuan-mahjong/engine mutate` (Stryker, config in `packages/engine/stryker.conf.json`). **Never in CI** — ~900 mutants and minutes to run. Coverage says a line was executed; this says something depended on it, which is a different question and the one worth asking of a guard.
+
+Baseline 2026-08-13: scoring 92.3, hand 82.0, claims 80.5, state 80.4. It is what found A78, and the reason `claims.ts` was the outlier before the fix: its survivors were not scattered but clustered on one invariant nothing tested.
+
+Read a surviving mutant as a question rather than a defect. Some are genuinely unkillable — a guard behind another guard has no behavioural consequence to assert — and the honest response is a comment saying so, not a test that passes for a different reason.
 
 ---
 
@@ -1312,6 +1331,12 @@ Full text: [LICENSE](./LICENSE). In short:
 ---
 
 ## 14. References
+
+> **[docs/README.md](./docs/README.md) is the register**, and it is the one to
+> read: it records what each source was used to *establish*, not just its
+> address, because links rot and this project settles rule disputes by citation.
+> It carries the native-language sources A67 rests on, which are not repeated
+> here. What follows is the older list, kept for the primary/secondary split.
 
 **Primary (canonical for v1):**
 - Vitaly Novikov, *Sichuan Mahjong? It's that simple!* — authoritative ruleset reference.

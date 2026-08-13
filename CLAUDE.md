@@ -19,7 +19,7 @@ belongs in `docs/history.md`, not here.
 |---|---|---|
 | **[ARCHITECTURE.md](./ARCHITECTURE.md)** | The reference — types, engine API, full ruleset, protocol, persistence, networking, testing strategy. Has a §-index at the top | …you change behavior, a type, or a rule |
 | **[TODO.md](./TODO.md)** | What is *open*, and nothing else — kept short on purpose | …you open or close a piece of work |
-| **[docs/history.md](./docs/history.md)** | Everything closed, newest first, each with its diagnosis: the phase log, audits **A1–A48** / **F1–F25** / **R1–R7**, hosting **C1–C10**, features **N1–N46**. **Opens with a find-an-item-by-id table** — that is how you turn a bare `(N38)` in a comment into the entry that explains it | …you finish something; add a section at the top *and* a row to that table |
+| **[docs/history.md](./docs/history.md)** | Everything closed, newest first, each with its diagnosis: the phase log, audits **A1–A80** / **F1–F25** / **R1–R7**, hosting **C1–C10**, features **N1–N46**. **Opens with a find-an-item-by-id table** — that is how you turn a bare `(N38)` in a comment into the entry that explains it | …you finish something; add a section at the top *and* a row to that table |
 | **[README.md](./README.md)** | User-facing: install, host/join, CLI flags | …you change the CLI or the player-facing flow |
 | **[docs/README.md](./docs/README.md)** | Index of `docs/`, and **the register of every source outside this repo that a decision rests on** — each row saying what it *established*, not just its URL, because links rot and this project settles rule disputes by citation | …a decision comes to rest on something outside the repo |
 
@@ -40,7 +40,7 @@ belongs in `docs/history.md`, not here.
 | **[docs/audit-refactor-and-coverage.md](./docs/audit-refactor-and-coverage.md)** | The 2026-08-04 refactor/coverage pass (A41–A48): measured coverage per package, one real bug, the dead symbols, the duplications, and why the client's 42% is not a finding | …you run `pnpm test:coverage`, or wonder what is deliberately untested |
 | **[docs/audit-payments.md](./docs/audit-payments.md)** | Every payment rule checked against three sources outside the PDF, with a decision each. The fan cap is the one divergence | …you change a payment, a fan value, or `fanCap` |
 | **[docs/audit-public-deployment.md](./docs/audit-public-deployment.md)** | What a public URL exposes that a LAN never did — five findings, each reproduced against the live service | …you touch the WS boundary, the HTTP routes, or anything a stranger can reach |
-| **[docs/frontend-audit.md](./docs/frontend-audit.md)** | The 2026-08-02 client audit: 17 of 20 shipped, the three shelved with reasons | …you pick up one of the three, or run another client sweep |
+| **[docs/frontend-audit.md](./docs/frontend-audit.md)** | The 2026-08-02 client audit: 18 of 20 shipped, the two shelved with reasons — focus trapping was the third until A75 built it | …you pick up one of the two, or run another client sweep |
 
 **External and legal**
 
@@ -64,7 +64,7 @@ pnpm test                                    # Vitest (engine + server + client)
 pnpm test:coverage                           # same, with v8 coverage per package.
 # The server run reports one unhandled `Timeout calling "onTaskUpdate"` — an
 # instrumentation artifact (coverage makes bot-smoke's ladder ~6x slower and the
-# worker RPC gives up mid-test), not a failure. All 167 server tests still pass.
+# worker RPC gives up mid-test), not a failure. All 227 server tests still pass.
 pnpm --filter @sichuan-mahjong/client build
 pnpm --filter sichuan-mahjong build
 pnpm --filter sichuan-mahjong start          # run server (serves built client)
@@ -147,6 +147,7 @@ packages/client/src/
   components/DiceOverlay.tsx  the two throws, revealed at the deal
   components/WallDiagram.tsx  the wall, opened where the dice said
   components/SettingsMenu.tsx the ⚙ popover: sound, language, animation + bot pace
+  hooks/useDialogFocus.ts  the one place a dialog enters, cycles and restores focus
 e2e/
   game.spec.ts   full bot round      } chromium only (drive the game via __e2e)
   match.spec.ts  2-round match       }
@@ -439,13 +440,14 @@ reasoning and measurements in
   dies with a MIME-type error on a `text/html` module script.
 - **`games.db` accumulates rooms and they are restored at boot** — enough of them
   and the concurrent-games ceiling refuses new lobbies before you have played
-  one. **`pnpm e2e` no longer contributes**: it runs a *real* server, so unlike
-  the unit suites (which mock persistence) every lobby it opened was written to
-  the developer's own database — one session of repeated runs left 72 live rooms,
-  above the hosted ceiling of 50. It now gets a throwaway db under
-  `test-results/`, which was already gitignored (A79). What still accumulates is
-  whatever you start by hand; clear it at `%APPDATA%\sichuan-mahjong\games.db`
-  with the server stopped.
+  one. **`pnpm e2e` and `pnpm shots` no longer contribute**: both run a *real*
+  server, so unlike the unit suites (which mock persistence) every lobby they
+  opened was written to the developer's own database — one session of repeated
+  e2e runs left 72 live rooms, above the hosted ceiling of 50. Each now gets a
+  throwaway db under `test-results/`, which was already gitignored (A79). What
+  still accumulates is whatever you start **by hand**, `layout-probe.mjs`
+  included; clear it at `%APPDATA%\sichuan-mahjong\games.db` with the server
+  stopped.
 - **The deal's dice overlay is `pointer-events-none` and the game plays on
   underneath it.** No phase, screen or click failure reveals it — `getPhase()`
   reaches `play` while it is still animating — so anything that screenshots a

@@ -18,6 +18,15 @@ checks, which no test in the repo touches.
 > (`persistence.ts` 41.1% → 89.7%, `tokens.ts` → 100%, `ws.ts` → 81.6%),
 > client 42.5% → 42.9% with its pure-helper layer at 67.1%.
 >
+> **Superseded numbers, 2026-08-13.** Everything below is the record of *this*
+> pass and its measurements are kept as taken. What `pnpm test:coverage`
+> reports today is **750 unit tests** (engine 269, client 254, server 227),
+> engine **95.79%** and server **82.88%** — both up despite the A56–A80 pass
+> adding code. The server coverage run still emits the `onTaskUpdate` timeout
+> described below. Coverage answers "was this line executed"; for "would a test
+> notice if it were wrong", A78 added mutation testing
+> ([ARCHITECTURE §11.7](../ARCHITECTURE.md#117-mutation-testing--would-the-tests-fail-if-the-code-were-wrong)).
+>
 > **Two things this audit got wrong, both by undercounting.** It found six
 > host-privilege gates; there are seven — `startGame` is the first one in the
 > file. And it found two unreachable `chow` branches; there are seven, four of
@@ -54,7 +63,8 @@ several cases, e2e. Section 4 lists the specific pieces.
 One tooling note: the server coverage run reports `Timeout calling "onTaskUpdate"` as an
 unhandled error. That is an instrumentation artifact, not a product fault — v8 coverage
 makes `bot-smoke`'s ladder test ~6× slower (7s → 45s) and the worker RPC gives up
-mid-test. All 167 server tests pass in that run.
+mid-test. All 167 server tests passed in that run (227 as of 2026-08-13, and the
+timeout still appears — it is the one thing about this run that has not changed).
 
 ---
 

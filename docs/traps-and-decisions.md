@@ -101,9 +101,18 @@ touching a tile: [handoff-tile-rendering.md](./handoff-tile-rendering.md).
   `reuseExistingServer: false`.
 - **`VITE_E2E=1` builds are for tests only.** Rebuild without it before handing the
   app to a human.
-- **The specs' game is random and unseeded.** `room.ts` uses `randomUUID()`, so a
-  local pass proves little — R6 passed locally every time while failing CI three
-  times running.
+- **A local e2e pass is weak evidence for the layout guards.** R6 passed locally
+  every time while failing CI three times running; CI has less slack. Poll the
+  run. (The deal itself is no longer the variable — `playwright.config.ts` sets
+  `SM_SEED`, so the suite plays the same round every time and a failure means the
+  layout changed rather than the deal did. `pnpm shots` is still deliberately
+  unseeded; see below.)
+- **`pnpm e2e` and `pnpm shots` each get a throwaway database** under
+  `test-results/`, because both run a *real* server and every lobby they open is
+  written to `live_rooms` and restored at the next boot. One session of repeated
+  e2e runs left 72 live rooms — above the hosted ceiling of 50 — before A79.
+  Anything you start **by hand** still writes to the real one at
+  `%APPDATA%\sichuan-mahjong\games.db`; clear it with the server stopped.
 - **Playwright's `devices['iPhone SE']` is 320×568, not 375×568.** The whole R6 bug
   was the audit's numbers being measured at 375 while CI asserted at 320.
 - **Don't put a Tailwind class in an e2e selector.** `ui-clicks.spec.ts` found
@@ -140,6 +149,13 @@ pnpm e2e                                      # needs 8080 free
 ```
 
 Push to `main` runs the same in CI. **Poll the run rather than assuming** — the
-e2e suite is where the layout guards live, the specs' game is unseeded, and a
-local pass has been wrong before (R6 passed locally three times running while
-failing CI three times running).
+e2e suite is where the layout guards live, CI has less slack than a dev machine,
+and a local pass has been wrong before (R6 passed locally three times running
+while failing CI three times running).
+
+Two things this list does not include, both slow and both deliberate: `pnpm
+test:coverage`, and `pnpm --filter @sichuan-mahjong/engine mutate`. Coverage says
+a line ran; mutation says something depended on it. Neither belongs in the loop
+above, and mutation is not in CI either — run it when you want to know whether a
+guard is real rather than merely present
+([ARCHITECTURE §11.7](../ARCHITECTURE.md#117-mutation-testing--would-the-tests-fail-if-the-code-were-wrong)).
