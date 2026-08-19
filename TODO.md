@@ -16,134 +16,20 @@ so it isn't rediscovered as a bug.
 
 ## Open
 
-**Nothing.** The ninth full-repo code audit of 2026-08-13, filed as **A56–A80**,
-closed the same day, all twenty-five items — and **A55** was written up alongside them,
-having shipped on 2026-08-10 without ever reaching the record.
+**Nothing.** Every item filed to date is closed; the ranges are in the header
+above, and what each one *was* is in [docs/history.md](./docs/history.md),
+newest first, opening with a find-an-item-by-id table — so a bare `(A68)` in a
+comment resolves to the entry that explains it.
 
-It ran as nineteen sweeps across fifteen axes. **The third came back clean** — no behavioural defect —
-leaving two guards instead: a whole-round invariant test (**A66**) asserting the
-things a payment balance cannot see, which is why A56 survived a hundred smoke
-games; and `noUnusedLocals` in `tsconfig.base.json`, after six dead symbols had
-accumulated with neither biome nor tsc configured to notice.
+**This section does not summarise that record**, and neither does
+[CLAUDE.md](./CLAUDE.md)'s status any more. Both used to, and the three copies
+drifted from each other and from the entries. For which passes to read *before*
+touching the code they cover, CLAUDE.md's status names three; for every document
+in `docs/` and what it holds, [docs/README.md](./docs/README.md) is the index.
 
-**The fourth changed axis — from "is the code self-consistent" to "are the rules
-right"** — and finished the second pass N21 had deferred, checking Table 4 and
-Table 9 against native-language sources rather than the PDF's authority
-(**A67**). The values corroborate once the 番 convention is pinned; Table 9
-disagreed with us in two cells, both symmetric, one of them real and one
-unreachable. Chasing the real one found the larger half: a kong takes the last
-tile of the wall and nothing noticed, so the discard after it never scored Under
-the Sea. Working in
-[docs/audit-payments.md](./docs/audit-payments.md).
-
-**The fifth drove the room's timers two at a time** — the axis the other four
-could not reach — and found the worst failure of the run: the room could stall
-dead with `turnDrawNeeded` true and **zero timers pending**, owed a draw nothing
-would ever issue, silently (**A68**). Eight of its nine adversarial scenarios
-passed first time.
-
-**The sixth took the restore surface** — what a corrupted or partial snapshot
-does to a booting server (**A69**). The validation was presence-only, so ten of
-sixteen hostile snapshots restored into the live registry: a `hand` stored as a
-string reads as a three-tile hand with no error anywhere, and a `hand` stored as
-an object makes `projectView` throw on every socket that touches the room —
-which, having restored *successfully*, came back on every boot. Underneath it,
-one truncated row took every healthy game with it, because `loadLiveRooms`
-parsed them all in a single expression.
-
-**The last pass took the seven surfaces the earlier ones had named and not
-reached** (**A70–A76**), and four of them held something. A frame already in
-flight when a player tapped Leave pulled them back into the room they had left,
-because `WsClient.close()` guarded `onclose` and not `onmessage` (**A70**). The
-release binary had never been run by anyone — it works, and plays a full round —
-but the script around it printed "Done" and exited 0 however many targets failed
-(**A72**). Three dialogs declared `aria-modal="true"` and never took focus, so
-the markup and the behaviour disagreed (**A75**). And `measure-glyphs.mjs` had
-thrown on every run since `a3d13c1` deleted the module it imports — the tool that
-re-derives the evidence the 22.5% lap rests on, broken for as long as nobody
-needed it (**A76**).
-
-The other three came back clean and left guards: ~4,000 hostile frames at the WS
-boundary changed nothing (**A71**), the service worker's guards all held
-(**A73**), and all six catalogs agree on every placeholder (**A74**).
-
-**The final pass stopped auditing the code and audited the audit** (**A77–A80**):
-what we depend on, whether the tests would notice if the code were wrong, what
-the server does under load, and what it leaves behind when it fails.
-
-`pnpm audit` had never been run — **ten production vulnerabilities on a live
-public URL**, nine high, now zero (**A77**). Mutation testing, run for the first
-time, put the engine at 81.83% and found the **void-suit guard in all three
-claim predicates had no test at all**: three lines that could be deleted with
-738 tests still green, holding up an invariant N46 and A62 both rest on
-(**A78**). e2e was writing to the developer's real database and had left 72 live
-rooms above the hosted ceiling (**A79**). Load came back clean — 50 concurrent
-rooms for ~2MB, flat across five cycles — but a stalled room still left no
-trace, so the idle sweep now tells a stall apart from an abandonment (**A80**).
-
-Twelve were real defects in what a hand pays, who may see it, how a bot plays,
-whether the round advances, whether a restart brings the table back, whether a
-player can leave, or what a stranger can reach.
-**A56** is the one that fired on the ordinary path: a promoted kong collects 1
-from each opponent before the robbing window, and those points were only
-committed to `kongPaymentLog` when a window had actually opened — which it almost
-never does, because robbing needs a seat waiting on exactly that tile. Every
-refund reads that log, so the points could never come back. **A57** is its
-mirror: the shoot-after-kong refund ran inside the per-winner loop, so two seats
-winning on one discard reversed two kong groups. **A58** is the third redaction
-leak of the same shape as A31 and A40 — `views.ts` withheld a winner's
-decomposition and the `hu` event carried it anyway, to every opponent, mid-round.
-**A62** is the one no guard could have caught: all three bots konged their own
-void suit, collecting 6 against a 48-point penalty, because a kong that is legal
-and ruinous breaks no rule and balances the ledger exactly.
-
-The rest are a line each: **A59** a token comparison that threw on multi-byte
-input instead of refusing it, **A60** the hard bot reading concealed kong suits
-its own `visibleTileTypes` refuses to count, **A61** an empty `Map` left behind by
-every started game, **A63** spectator sockets left open by `endMatch`, **A64** the
-host's bot pace missing from the room snapshot, **A65** a rejoin deadline that
-outlived its screen. Each has its diagnosis in
-[docs/history.md](./docs/history.md).
-
-Two were real scoring or payment defects — **A49**, the Root fan never firing in
-a standard hand, which halved every payment off one; and **A50**, a kong's
-promoted/postponed subtype taken off the wire, worth 3 points a frame, with the
-PDF's second kong restriction closed alongside it. **A51** could seat a stranger
-into a running game once in ~21,000 lobby creates. **A52** and **A53** were
-convention and measurement: the engine now takes the clock instead of reading it,
-and `isWinningHand` stops at the first shape (`isTenpai` 24.3ms → 12.5ms over 664
-hands). **A54** ended by disproving its own premise — rejection sampling would
-change 0 of 200,000 seeds' deals, not all of them, so the bias is left on the
-honest ground that neither it nor its fix is observable.
-
----
-
-The refactor/coverage audit of 2026-08-04 — the seventh full-repo pass, filed as
-**A41–A48** — closed the same day, all eight items. The evidence is in
-[docs/audit-refactor-and-coverage.md](./docs/audit-refactor-and-coverage.md) and
-each has a diagnosis in [docs/history.md](./docs/history.md).
-
-One real bug (**A41**, spectator links dying on a host restart), one gap that
-mattered more than its size (**A42** — nothing anywhere tested a host-privilege
-gate, and there was no bug behind it, which is why it survived six audit passes),
-the river construction unified after three passes had each got it wrong in a
-different seat (**A44**), and the rest cleanup: dead symbols, a missing `isSeat`
-guard, an unreachable `chow` variant, the hand-order rule lifted out of a
-`useEffect`, and the SQLite layer executed for the first time. **663 unit tests,
-up from 624.** Coverage: engine 93.5% → **94.3%**, server 76.7% → **81.4%**,
-with `persistence.ts` 41.1% → 89.7% and `tokens.ts` and `state.ts` at 100%.
-`pnpm test:coverage` reproduces it.
-
-Everything filed on 2026-08-03 shipped the same day: N19 (a hard bot, and the ladder guard that
-found medium losing to easy), N26 (the nine wind call sites), **N36** (the
-right-hand seat's pile ran downward and lapped over ink), **N37** (the across
-seat's void declaration sat on the near side of its pile), and **N38** (the side
-seats' declarations moved beside their piles, and the board stopped rebuilding
-itself when a pile opens). **N40–N44** followed on 2026-08-04 — the declaration in
-your own river, the centre of the table, the declaration standing out of the lap,
-the ghost plus the engine bug under it, and every river seated in its own chair.
-Each is written up in [docs/history.md](./docs/history.md), with the full working
-record in [docs/layout_investigation.md](./docs/layout_investigation.md).
+**Not a task, but not finished either:** N23 had to coin four Japanese terms,
+because Sichuan has them and riichi does not — 欠け色, 金鉤釣, 槓上放銃,
+花豚 — and they **want a native speaker's eye**. The borrowed ones do not.
 
 ---
 
@@ -213,8 +99,9 @@ opening a new one, and it was accepted knowingly. The clean fix is six rows belo
 600px tall and eight above, which wants the same `matchMedia` hook two other
 deferred items want.
 
-**The original defect is gone regardless** — N40 caps the tray's *height* at six
-tiles however deep the pile gets, because the second row grows sideways. What is
+**The original defect is gone regardless** — N40 caps the tray's *height* at
+`RIVER_ROWS` tiles (six then, eight today) however deep the pile gets, because
+the second row grows sideways instead. What is
 below is the diagnosis, kept because the arithmetic is what any future attempt
 would need. Reopen only if seats start discarding materially more than 14 times a
 round, or if the side columns widen for some other reason.
@@ -231,8 +118,10 @@ stack of black outlines with no tile visible between them.
 
 Two mitigations are in, and neither computes anything. N38 capped the pile;
 **N40 replaced that cap with a river of six-tile rows, two of them — twelve
-cells** (`RIVER_ROWS × RIVER_COLS` in `OpponentSide`) — so the second row grows
-sideways and the tray's *height* stops at six tiles however deep the pile gets.
+cells** (`RIVER_ROWS × RIVER_COLS` in `OpponentSide`, **8 × 2 = 16 in the code
+today** — those are the eight rows the paragraph above records taking) — so the
+second row grows sideways and the tray's *height* stops at `RIVER_ROWS` however
+deep the pile gets.
 `+N` and N33's tap-to-open carry the rest. Below 600px tall, `--tile-w` drops the
 whole tile to 24px proportionally, which is the one honest answer on this axis:
 it moves box, art and both lap margins together, so the tile stays coherent and
@@ -281,10 +170,6 @@ constant, so tablet-only would need a `matchMedia` hook the client has none of �
 the same one Bot 3's tall-screen layout wants. §18.2.
 
 </details>
-
-N23 left one thing open that is not a task: the four Japanese terms it had to
-coin, because Sichuan has them and riichi does not — 欠け色, 金鉤釣, 槓上放銃,
-花豚 — **want a native speaker's eye**. The borrowed ones do not.
 
 ---
 

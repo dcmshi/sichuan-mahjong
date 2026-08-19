@@ -27,7 +27,7 @@ belongs in `docs/history.md`, not here.
 
 | File | Holds | Read it when… |
 |---|---|---|
-| **[docs/traps-and-decisions.md](./docs/traps-and-decisions.md)** | The long form of the traps below, plus decisions already settled so they are not relitigated | …you are picking this up cold, or hit a layout/CSS surprise |
+| **[docs/traps-and-decisions.md](./docs/traps-and-decisions.md)** | The **CSS, layout and process** traps, with the measurement behind each — a different set from the rules-and-geometry invariants below, not a long form of them — plus decisions already settled so they are not relitigated | …you are picking this up cold, or hit a layout/CSS surprise |
 | **[docs/handoff-tile-rendering.md](./docs/handoff-tile-rendering.md)** | How tiles are drawn (the art, lapped), the measured layer geometry, every knob, the four things easy to get wrong | …you are changing how a tile looks |
 | **[docs/layout_investigation.md](./docs/layout_investigation.md)** | The N40–N44 play-screen pass: how the height divides, every rejected option with its measurement, the seated-river rule, and how the probe lies if you let it | …you change the play screen, or run `layout-probe.mjs` |
 | **[docs/viewport-audit.md](./docs/viewport-audit.md)** | Measured mobile viewport overflow, and why the landscape layout is shelved | …you change the play or round-end layout |
@@ -395,8 +395,8 @@ The long form, with the measurements behind each, is in
   `transform` — a probe reading only `getComputedStyle().transform` reports `none`
   and concludes wrongly.
 - **Never put a Tailwind class in an e2e selector.** Add a `data-` hook instead —
-  eleven exist (`grep -ro 'data-[a-z-]*' packages/client/src`) because a class
-  rename once silently broke four projects.
+  twelve exist (`grep -rho 'data-[a-z][a-z-]*' packages/client/src | sort -u`)
+  because a class rename once silently broke four projects.
 - **A `flex-shrink-0` control beside one shrinkable sibling crushes that sibling.**
   The sibling absorbs the entire shortfall while its text stays in the DOM, so
   nothing errors — it just renders at zero (N7's turn indicator, and N19's lobby
@@ -489,39 +489,24 @@ reasoning and measurements in
 full-repo audit passes (A1–A80), the frontend/design pass (F1–F25), the mobile
 viewport work (R1–R7), the hosting work (C1–C10), and the feature run N1–N48.
 
-The ninth pass (2026-08-13, **A56–A80**) closed the same day, and wrote up **A55**
-alongside it — that one had shipped three days earlier without reaching the
-record. It ran as nineteen sweeps across fifteen axes: the third came back clean
-and left a whole-round invariant test plus `noUnusedLocals` rather than a fix
-(A66); the fourth checked the *ruleset* against native-language sources rather
-than the PDF alone (A67); the fifth drove the room's timers two at a time and
-found a room that could stall dead in silence (A68); the sixth fed the restore
-path corrupted snapshots and found a validator that only ever looked for missing
-fields (A69); and the last took the seven surfaces the others had named and not
-reached (A70–A76), including the release binary, which nobody had ever run. The
-last stopped auditing the code and audited the audit (A77–A80) — dependencies,
-mutation score, load, and what a failure leaves behind.
-
-Twelve of the twenty-five were real. The ones that left an invariant above: a
-promoted kong's payment never entering the refund log (A56), the shoot-after-kong
-refund running once per winner instead of once per discard (A57), the winner's
-hand decomposition riding the `hu` event past the redaction that removed it from
-the view (A58), every bot konging its own void suit for a net −42 (A62), a kong
-taking the last tile of the wall without the engine noticing (A67), a stale bot
-decision that could stall a room dead in silence (A68), and a snapshot validator
-that only checked for missing fields (A69). **A77 is the one to know about if you
-read nothing else**: ten production vulnerabilities on a live public URL,
-including a WebSocket fragment DoS aimed squarely at what this service is.
-
-This section deliberately does not list what shipped — that is
-[docs/history.md](./docs/history.md), newest first, **with a find-an-item-by-id
-table at the top**: see a bare `(N38)` in a comment and that table says which
-entry writes it up. Deferrals are O1–O5 in
+**What each item was is in [docs/history.md](./docs/history.md)**, newest first,
+**with a find-an-item-by-id table at the top**: see a bare `(N38)` in a comment
+and that table says which entry writes it up. This section does not summarise it
+— a recap here is a copy to keep in step with the entries, and it drifted from
+them once already. Deferrals are O1–O5 in
 [ARCHITECTURE.md §12](./ARCHITECTURE.md#12-open-questions--explicit-deferrals).
 
-Two recent passes are worth knowing before you touch the code they cover, because
-each left an invariant above rather than just a fix:
+**If you read nothing else, read A77**: ten production vulnerabilities on a live
+public URL, including a WebSocket fragment DoS aimed squarely at what this
+service is, found because `pnpm audit` had never been run.
 
+Three passes are worth knowing *before* you touch the code they cover, because
+each left an invariant in the section above rather than just a fix:
+
+- **A56–A80**, the ninth pass — nineteen sweeps across fifteen axes, twelve of
+  twenty-five findings real. It is where most of the rules-and-pacing invariants
+  above come from. Payment working record in
+  [docs/audit-payments.md](./docs/audit-payments.md).
 - **N40–N44**, the phone-first play-screen pass — nine viewports, measured with
   `scripts/screenshots/layout-probe.mjs`. Full record in
   [docs/layout_investigation.md](./docs/layout_investigation.md).

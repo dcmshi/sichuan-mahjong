@@ -6,8 +6,17 @@ they are not relitigated. It began as a handoff from the viewport/density sessio
 
 Nothing here is a status report — for what shipped and when, read
 [history.md](./history.md), newest first; for what is open, [TODO.md](../TODO.md).
-The short form of the traps below is in [CLAUDE.md](../CLAUDE.md); this is where
-the measurements behind each one live.
+
+**This file and [CLAUDE.md](../CLAUDE.md) are not a long form and a short form of
+one list**, which is how this header used to describe them. They divide by
+subject: CLAUDE.md holds the *rules and geometry* invariants — winds, kongs, void
+suits, the lap, the four seats' rivers — because those are what a session gets
+wrong while writing game code. What is below is **CSS, layout and process**, with
+the measurement behind each. Six items appear in both, in one line there and at
+length here (the server restart after a rebuild, `VITE_E2E` builds, the tray
+guard, Tailwind classes in e2e selectors, a local pass as weak evidence, and the
+throwaway database); that overlap is deliberate, since CLAUDE.md is read every
+session and this file is read when something has already gone wrong.
 
 **How tiles are drawn has its own document**, and it is the one to read before
 touching a tile: [handoff-tile-rendering.md](./handoff-tile-rendering.md).
@@ -153,9 +162,15 @@ e2e suite is where the layout guards live, CI has less slack than a dev machine,
 and a local pass has been wrong before (R6 passed locally three times running
 while failing CI three times running).
 
-Two things this list does not include, both slow and both deliberate: `pnpm
-test:coverage`, and `pnpm --filter @sichuan-mahjong/engine mutate`. Coverage says
-a line ran; mutation says something depended on it. Neither belongs in the loop
-above, and mutation is not in CI either — run it when you want to know whether a
-guard is real rather than merely present
-([ARCHITECTURE §11.7](../ARCHITECTURE.md#117-mutation-testing--would-the-tests-fail-if-the-code-were-wrong)).
+Three things this list does not include, all deliberate, none of them a pass/fail:
+
+- `pnpm test:coverage` — says a line ran.
+- `pnpm --filter @sichuan-mahjong/engine mutate` — says something *depended* on
+  it, which is the question worth asking of a guard. Not in CI either; ~900
+  mutants and minutes to run
+  ([ARCHITECTURE §11.7](../ARCHITECTURE.md#117-mutation-testing--would-the-tests-fail-if-the-code-were-wrong)).
+- `node scripts/perf/interaction-probe.mjs` — says how long the player waits for
+  the draw and the discard tap, at 4× CPU throttle. It asserts nothing, and its
+  two headline numbers go frame-quantised once an interaction fits in a frame, so
+  read the Event Timing line beside them
+  ([ARCHITECTURE §11.8](../ARCHITECTURE.md#118-interaction-latency--how-long-until-the-player-sees-it)).
