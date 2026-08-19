@@ -4,7 +4,10 @@ dist/
 *.db
 *.db-journal
 
-# Playwright artifacts
+# Playwright artifacts, the e2e/shots throwaway database (A79), and
+# `scripts/perf/interaction-probe.mjs`'s per-run JSON. Same rule as
+# prototype-shots/ below: working evidence, not a deliverable — the numbers that
+# matter go in docs/optimization.md and the probe regenerates the rest.
 test-results/
 
 # Generated at binary-build time (embedded client SPA); Bun-only, never committed

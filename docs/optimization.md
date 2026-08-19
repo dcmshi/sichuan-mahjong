@@ -1,7 +1,10 @@
 # Mobile performance: draw step & discard selection
 
 **Status: shipped as N47 (2026-08-19)** — everything below except §4, the PNG
-pipeline, which is gated on the re-measure in step 4 of the order of work.
+pipeline, **closed won't-do as N48 on the re-measure step 4 asked for**. The
+numbers are at the bottom of §4; the short version is that both interactions now
+land inside two frames at 4× throttle, and what §4 targets is 2.5% of wall time
+on threads that are not the main one.
 
 An investigation into the two interactions reported as laggy on phones: the
 **draw step** (a server view push lands and your hand gains a tile / your turn
@@ -131,6 +134,64 @@ theirs, `index.css:169-171`).
   GPUs blit PNGs far cheaper than they re-raster SVGs under filters. Verify
   against `docs/handoff-tile-rendering.md` before touching the art.
 
+**Measured, and closed won't-do (N48, 2026-08-19).** `scripts/perf/interaction-probe.mjs`
+at 4× CPU throttle on 390×844, on a board carrying **75 tiles / 75 `<img>`** —
+the ~80 this section is about, reached by playing six turns first, because a
+board three turns into a round flatters exactly the cost being weighed:
+
+| | n | min | median | p90 | max |
+|---|---|---|---|---|---|
+| draw → painted hand | 7 | 23ms | **23ms** | 26ms | 26ms |
+| tap → painted lift | 7 | 22ms | **25ms** | 27ms | 27ms |
+
+A second run of the same seed, same board, gave 25ms median for both.
+
+**Those two rows are frame-quantised, not work-bound, and the proof is that
+taking the throttle *off* does not improve them.** Same board, same seed, at 1×:
+draw 27ms median, tap 30ms median — the tap is *higher* unthrottled than at 4×,
+which no amount of real work explains. Both interactions finish inside the one or
+two frames this method can resolve, and the method reports the frame rather than
+the work.
+
+The Event Timing API is what does resolve it, measuring input to next paint
+including the queueing delay this probe's `t0` starts after. It moves exactly as
+it should, and it is the number to quote:
+
+| | median | worst |
+|---|---|---|
+| 1× throttle | 16ms | 16ms — pinned to the API's own reporting floor |
+| 4× throttle | 32–40ms | 48–64ms (two runs; it buckets to 8ms) |
+
+So unthrottled, every tap is at or under a single frame; at 4× the worst is four.
+N38's comparable figure, before any of this, was 126–236ms.
+
+Where the time actually went over that 36.5s phase, which is the part that
+decides §4:
+
+| | total | share of wall | thread |
+|---|---|---|---|
+| `RasterTask` | 924ms | 2.5% | five `ThreadPoolForegroundWorker`s |
+| `PaintImage` | 158ms | 0.43% | `CrRendererMain` |
+| image decode | below the reporting cut | — | — |
+
+So the premise — that a `drop-shadow` re-rastering the source is what is left —
+does not hold at a size worth a build step. Pre-rasterising would target 2.5% of
+wall time that is already **off** the main thread, and cannot move a number the
+frame clock is setting. Against that: a generated bitmap set at four-plus sizes ×
+27 tile types has to carry the per-file licence evidence in `credits.json` and
+reproduce the lap geometry, which is derived from the art's own proportions (the
+129% width and the 22.5% body band in
+[docs/handoff-tile-rendering.md](./handoff-tile-rendering.md)).
+
+The cheap half is refused on the same evidence rather than on cost: dropping the
+trays' per-tile shadows for a run-level one is a visible change to how the board
+reads, bought with 0.43% of one thread.
+
+**Reopen if** a real phone — not a throttled desktop — shows the draw or the tap
+past ~100ms, or if the tile art gains gradients or transparency that make an SVG
+raster materially dearer than the flat faces measured here. The probe is the way
+to check: it prints the same two rows and the same thread table.
+
 ### 5. Forced synchronous layout in the tap path
 
 `boxOf()` (`getBoundingClientRect`) is called in the pointerup handler on the
@@ -184,10 +245,17 @@ draw.
 3. Move `boxOf` off the tap handler (§5); memoise `WallDiagram` (§7).
 4. Re-measure at 4× throttle on a 390px viewport (the setup the N38 comments
    used): tap → painted lift, and push → painted hand. Only then consider the
-   PNG pipeline (§4).
+   PNG pipeline (§4). **Done — `scripts/perf/interaction-probe.mjs`, which exists
+   because N38's measurement was taken by hand in DevTools and could not be
+   repeated. §4 closed won't-do on it (N48).**
 
 ## How to verify
 
+- `node scripts/perf/interaction-probe.mjs <label> --runs 7 --warmup 6` — the two
+  numbers above, repeatable, with the thread and trace-event breakdown under
+  them. Needs the VITE_E2E client and a server, both documented at the top of the
+  script. **Pass `--warmup`**: without it the probe measures a board three turns
+  into a round, which is not the board any of this is about.
 - Chrome DevTools Performance tab, 4× CPU throttle, 390×844: record one draw
   and one tap-to-lift; look at long tasks and dropped frames around
   `Reorder.Group` render and `filter` paint.

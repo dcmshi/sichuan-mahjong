@@ -4,7 +4,7 @@ What is actually open. **Everything closed lives in
 [docs/history.md](./docs/history.md)**, newest first, each entry with the diagnosis
 that made it worth writing down — the phase log, the nine audit passes (A1–A80), the
 frontend pass (F1–F25), the viewport work (R1–R7), the tile rendering change, the
-hosting work (C1–C10), and the feature run N1–N46.
+hosting work (C1–C10), and the feature run N1–N48.
 
 Deferrals are also recorded as O1–O5 in
 [ARCHITECTURE.md §12](./ARCHITECTURE.md#12-open-questions--explicit-deferrals).
@@ -148,6 +148,43 @@ record in [docs/layout_investigation.md](./docs/layout_investigation.md).
 ---
 
 ## Closed on the evidence
+
+### ❌ N48 — pre-rasterise the tile art to PNG/WebP (won't do, 2026-08-19)
+
+**The verdict first.** §4 of [docs/optimization.md](./docs/optimization.md) was
+the one item N47 left, gated behind the re-measure the audit itself asked for.
+Measured at 4× CPU throttle on 390×844, on a board carrying 75 tiles: the draw
+lands a painted hand in **23–25ms** and a tap paints its lift in **25ms** (48–64ms
+worst by the Event Timing API, which counts the input queueing delay too).
+N38's comparable number was 126–236ms. Both are inside two frames — the same
+probe *unthrottled* reports the same figures, which is what frame-bound looks
+like.
+
+And the cost §4 targets is not where it was assumed to be: `RasterTask` totals
+2.5% of wall time across five worker threads, already **off** the main thread;
+`PaintImage` is 0.43% on main; image decode does not reach the reporting cut.
+Pre-rasterising cannot move a number the frame clock is setting, and a build step
+emitting four-plus sizes × 27 tile types would have to carry the per-file licence
+evidence in `credits.json` and reproduce the lap geometry, which is derived from
+the art's own proportions.
+
+The cheap half — a run-level shadow in the trays instead of per-tile ones — is
+refused on the same evidence rather than on cost: it changes how the board reads,
+for 0.43% of one thread.
+
+**What it left instead is the measurement.** `scripts/perf/interaction-probe.mjs`
+exists because N38's numbers were taken by hand in DevTools and could not be
+re-run. Full diagnosis, including the three things about the probe that were
+wrong first, in [docs/history.md](./docs/history.md) (N48).
+
+**Reopen if** a real phone — not a throttled desktop — shows either interaction
+past ~100ms, or if the tile art gains gradients or transparency that make an SVG
+raster materially dearer than the flat faces measured here.
+
+**One thing is knowingly not measured:** there is no pre-N47 baseline, so N47 has
+no before/after of its own the way N38 has 225ms → 96ms. The probe's selectors
+were chosen as ones both builds share, so producing one is a checkout of
+`packages/client/src` at `6f92833` and a rebuild.
 
 ### ❌ N39 — fit a side tray's count to the height it actually has (won't do, 2026-08-04)
 

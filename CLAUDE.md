@@ -19,7 +19,7 @@ belongs in `docs/history.md`, not here.
 |---|---|---|
 | **[ARCHITECTURE.md](./ARCHITECTURE.md)** | The reference — types, engine API, full ruleset, protocol, persistence, networking, testing strategy. Has a §-index at the top | …you change behavior, a type, or a rule |
 | **[TODO.md](./TODO.md)** | What is *open*, and nothing else — kept short on purpose | …you open or close a piece of work |
-| **[docs/history.md](./docs/history.md)** | Everything closed, newest first, each with its diagnosis: the phase log, audits **A1–A80** / **F1–F25** / **R1–R7**, hosting **C1–C10**, features **N1–N46**. **Opens with a find-an-item-by-id table** — that is how you turn a bare `(N38)` in a comment into the entry that explains it | …you finish something; add a section at the top *and* a row to that table |
+| **[docs/history.md](./docs/history.md)** | Everything closed, newest first, each with its diagnosis: the phase log, audits **A1–A80** / **F1–F25** / **R1–R7**, hosting **C1–C10**, features **N1–N48**. **Opens with a find-an-item-by-id table** — that is how you turn a bare `(N38)` in a comment into the entry that explains it | …you finish something; add a section at the top *and* a row to that table |
 | **[README.md](./README.md)** | User-facing: install, host/join, CLI flags | …you change the CLI or the player-facing flow |
 | **[docs/README.md](./docs/README.md)** | Index of `docs/`, and **the register of every source outside this repo that a decision rests on** — each row saying what it *established*, not just its URL, because links rot and this project settles rule disputes by citation | …a decision comes to rest on something outside the repo |
 
@@ -78,6 +78,14 @@ pnpm e2e
 # Regenerate the README screenshots in docs/ (needs the VITE_E2E client +
 # built server above; drives the real app and writes into the repo)
 pnpm shots
+
+# Interaction probe — the draw and the discard tap, timed on a phone. Needs the
+# VITE_E2E client and a server (its header has the exact command, including the
+# throwaway SICHUAN_DATA_DIR). `--warmup` is not optional in practice: without it
+# you measure a board three turns into a round, which is not the loaded board any
+# of this is about. Prints two latency rows plus a thread/trace breakdown; §4 of
+# docs/optimization.md was closed won't-do on it (N48).
+node scripts/perf/interaction-probe.mjs <label> --runs 7 --throttle 4 --warmup 6
 
 # Layout probe — the worst case at nine viewports, measured and shot. Needs the
 # VITE_E2E client above and a server started with --bot-delay 120 (not 0: the
@@ -156,6 +164,7 @@ e2e/
   ui-clicks.spec.ts  real UI taps — runs on 5 viewports (phone/tablet × orientation)
 scripts/
   icons/         PWA PNG generation (rerun if icon.svg changes)
+  perf/          interaction-probe.mjs — the draw and the tap, timed at 4× throttle
   screenshots/   docs/*.png capture — `pnpm shots`, kept out of `pnpm e2e`
   tiles/         sandbox.html (open it directly) + measure-glyphs.mjs (needs chromium)
 ```
@@ -478,7 +487,7 @@ reasoning and measurements in
 
 **Everything is shipped and [TODO.md](./TODO.md) is empty.** All v1 work, nine
 full-repo audit passes (A1–A80), the frontend/design pass (F1–F25), the mobile
-viewport work (R1–R7), the hosting work (C1–C10), and the feature run N1–N46.
+viewport work (R1–R7), the hosting work (C1–C10), and the feature run N1–N48.
 
 The ninth pass (2026-08-13, **A56–A80**) closed the same day, and wrote up **A55**
 alongside it — that one had shipped three days earlier without reaching the

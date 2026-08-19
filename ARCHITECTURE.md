@@ -130,6 +130,7 @@ sichuan-mahjong/
 │   │   └── vite.config.ts
 ├── scripts/
 │   ├── icons/                    # PWA PNG generation (no image dependency)
+│   ├── perf/                     # interaction-probe.mjs — the draw and the tap, timed
 │   ├── screenshots/              # docs/*.png capture — `pnpm shots`, not in `pnpm e2e`
 │   ├── tiles/                    # sandbox.html + glyph measurement (measure-glyphs.mjs)
 │   └── release/                  # Bun compile per OS
@@ -1191,6 +1192,18 @@ GitHub Actions: build engine → lint → typecheck → test (vitest) → build 
 Baseline 2026-08-13: scoring 92.3, hand 82.0, claims 80.5, state 80.4. It is what found A78, and the reason `claims.ts` was the outlier before the fix: its survivors were not scattered but clustered on one invariant nothing tested.
 
 Read a surviving mutant as a question rather than a defect. Some are genuinely unkillable — a guard behind another guard has no behavioural consequence to assert — and the honest response is a comment saying so, not a test that passes for a different reason.
+
+### 11.8 Interaction latency — "how long until the player sees it?"
+
+`node scripts/perf/interaction-probe.mjs <label> --runs 7 --throttle 4 --warmup 6`. Asserts nothing and is not in CI; it reports two numbers at 4× CPU throttle on 390×844 — a server push to a painted hand, and a `pointerup` to a painted lift — with the thread and trace-event breakdown under them. Needs the `VITE_E2E` client and a server, both in the script's header.
+
+It exists because N38's 126–236ms was taken by hand in DevTools, so "re-measure at the setup N38 used" was not something anyone could actually do. §4 of `docs/optimization.md` — pre-rasterising the tile art — was closed **won't-do** on it (N48).
+
+Three things to know before trusting a number out of it:
+
+- **`--warmup` is not a convenience.** Without it the probe measures a board three turns into a round: rivers two deep, nobody melded. That flatters exactly the per-tile paint cost anything in this area is about. The board's tile count is printed beside every run for that reason.
+- **The two latency rows are frame-quantised.** "Painted" is the start of the frame *after* the one that first has the new DOM, because a `requestAnimationFrame` callback runs before that frame's paint. Once an interaction fits inside a frame or two, the rows report the frame rather than the work — measurably so: unthrottled, the tap reads *higher* than at 4×.
+- **Event Timing is the discriminating signal**, and it is printed beside them. It measures input to next paint including the queueing delay the probe's own `t0` starts after, so it moves when the rows cannot: pinned to its 16ms floor at 1×, 32–40ms at 4×. It buckets to 8ms and drops anything under 16ms, which means it goes quiet exactly when things are fast — that silence is a result, not a failure.
 
 ---
 

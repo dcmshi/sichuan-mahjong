@@ -3,7 +3,7 @@
 This is the record of work already done: the phase log (1–10), nine full-repo
 audit passes (A1–A80), the frontend/design pass (F1–F25), the mobile viewport work
 (R1–R7), the tile-rendering change, the hosting work (C1–C10), and the feature run
-N1–N47. Each entry keeps its diagnosis, not just its fix — that is the part worth
+N1–N48. Each entry keeps its diagnosis, not just its fix — that is the part worth
 having later.
 
 **Live work lives in [TODO.md](../TODO.md).** This file only grows at the top, and
@@ -83,6 +83,7 @@ Series: **N** features · **A** full-repo audits · **F** frontend/design ·
 | **N45** | Eight rows a side — folded into N39's closure in [TODO.md](../TODO.md) |
 | **N46** | The void suit you drew back |
 | **N47** | The draw step and the discard tap, taken off the main thread |
+| **N48** | The re-measure, and the PNG pipeline it closed |
 | **R1–R4** | Mobile viewport remediation |
 | **R5, R6** | The R5 guard was red in CI from the day it landed |
 | **R7** | Tile density — and *The two melds gaps R7 left* above it |
@@ -94,6 +95,98 @@ Series: **N** features · **A** full-repo audits · **F** frontend/design ·
 | **O3** | Closed **won't-do** — reasoning in [TODO.md](../TODO.md) and ARCHITECTURE §12 |
 | **O4** | One tile face everywhere |
 | **O5** | An **accepted trade-off**, not a task — per-IP limits key to a Cloudflare edge address. ARCHITECTURE §12 |
+
+---
+
+## ✅ The re-measure, and the PNG pipeline it closed (N48 — 2026-08-19)
+
+N47 shipped six of the seven items in
+[docs/optimization.md](./optimization.md) and left §4 — pre-rasterising the tile
+art to PNG/WebP — because the audit gates it behind a re-measure. This is that
+measurement, and it closes §4 **won't-do**.
+
+**The measurement had to be built, which is the part worth keeping.** N38 quotes
+126–236ms tap-to-painted-modal at 4× CPU throttle on a 390px viewport, and that
+number was taken by hand in DevTools: there was nothing in the repo to re-run, so
+"re-measure at the setup N38 used" was not a thing anyone could do.
+`scripts/perf/interaction-probe.mjs` is now that setup — Playwright, CDP
+`Emulation.setCPUThrottlingRate`, 390×844 at dsf 3 with touch, driving the real
+app against the real server.
+
+Three things about it are not obvious and all three were arrived at by getting
+them wrong first:
+
+- **The rAF loop has to be armed before the gesture, not after it.** Starting it
+  in the `page.evaluate` that follows the tap means the class may already have
+  been painted three frames ago, and the probe reports the frame it happens to
+  observe. Armed first, `t0` is a capture-phase `pointerup` on `window` — which
+  runs ahead of React's handler, so it is the input rather than our reaction to
+  it — and the draw's `t0` is a `message` listener registered *inside* the
+  WebSocket constructor, ahead of the app's own `onmessage`.
+- **"Painted" is the frame after the one that first has the new DOM.** A rAF
+  callback runs before that frame's style, layout and paint, so seeing the change
+  there means it has not been presented. Both numbers are therefore upper bounds
+  by part of a frame, which is why the Event Timing API's own input-to-next-paint
+  is reported beside them instead of trusting one clock.
+- **`--warmup` is not a convenience.** §4's premise is ~80 tile `<img>`s on the
+  board; three turns into a round the rivers are two deep and nobody has melded,
+  so measuring from turn one flatters exactly the cost being weighed. The probe
+  plays turns through `__e2e.autoPlay` first and prints the tile count beside
+  every number — the same reason `layout-probe.mjs` drives to melds and deep
+  rivers before it photographs anything.
+
+A fourth was a stall rather than a wrong number: the first version got one sample
+and then waited 60s and reported "the round has probably ended". It had not. A
+confirming tap that framer read as a drag leaves you *on* your turn, and the draw
+arm only ever fires on the transition *onto* it — so the loop now leaves the turn
+by whatever means works, `autoPlay` included, before arming anything.
+
+**The result.** 4× throttle, 390×844, on a board carrying 75 tiles and 75
+`<img>` after six warm-up turns, over two runs of the same seed: draw → painted
+hand **23–25ms median** (29ms worst), tap → painted lift **25ms median** (27ms
+worst). Event Timing, which includes the input queueing delay this probe's `t0`
+starts after and is the number to quote: **32–40ms median, 48–64ms worst** — it
+buckets to 8ms, so that spread is two or three buckets. Against N38's
+126–236ms.
+
+Both are inside two frames, and the giveaway is that taking the throttle *off*
+does not improve them: same board, same seed, at 1× the draw is 27ms and the tap
+**30ms** — higher than at 4×, which no amount of real work explains. The frame
+clock is setting those numbers, not work, and the rAF method reports the frame.
+
+Event Timing is what resolves it, and it moves exactly as it should: pinned to its
+own 16ms reporting floor at 1× (median *and* max), 32–40ms median at 4×. So
+unthrottled every tap is at or inside one frame; at 4× the worst is four. At 20×
+the probe gets no samples at all — the main thread saturates (27.9s busy in 46.7s)
+and the app can no longer be driven, which is the other end of the same
+sensitivity check.
+
+**So §4 is refused on where the time is, not on effort.** Over the measured
+phase, `RasterTask` totals 924ms — 2.5% of wall time, spread across five
+`ThreadPoolForegroundWorker`s, so already off the main thread — `PaintImage` 158ms
+on main (0.43%), and image decode does not reach the reporting cut at all. The
+claim §4 rests on is that a `drop-shadow` re-rasters the source instead of
+blitting a bitmap; that is true and it costs 2.5% of the wrong thread. A build
+step emitting four-plus sizes × 27 tile types would have to carry the per-file
+licence evidence in `credits.json` and reproduce a lap geometry derived from the
+art's own proportions, to move a number the frame clock is already setting.
+
+§4's cheap half — giving the trays a run-level shadow instead of per-tile ones —
+is refused on the same evidence rather than on cost: it changes how the board
+reads, to buy 0.43% of one thread.
+
+Note on the aggregates: the probe runs the server at `--bot-delay 150`, so the
+board was pushed about 4.7× more often than the 700ms a human sees. The thread
+totals are pessimistic by roughly that much; the per-interaction latencies are
+not affected by pace at all.
+
+**Not done: a pre-N47 baseline.** Everything above is the current build in
+absolute terms, which is what the §4 gate needs — but there is no measured
+before/after for N47 itself, the way N38 has 225ms → 96ms. Getting one means
+checking out `packages/client/src` at `6f92833` and rebuilding, and the probe's
+selectors (`ul.tile-run`, `li[data-discardable]`, `.is-selected`,
+`.hand-your-turn`) were deliberately chosen as ones both builds share so that
+it is a rebuild and nothing more.
 
 ---
 
