@@ -1,6 +1,6 @@
 import { type PlayerView, type TileId, tileToType, tileTypeOf } from '@sichuan-mahjong/engine';
 import { AnimatePresence, Reorder, motion } from 'framer-motion';
-import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { type StandDownReason, armedDiscardOutcome } from '../armedDiscard.js';
 import { riverCells } from '../discardPile.js';
 import { reconcileHandOrder } from '../handOrder.js';
@@ -89,6 +89,111 @@ function HuCelebration() {
 }
 
 /**
+ * One tile in the hand. Memoised on primitives, so a tap re-renders the tile
+ * that changed rather than all fourteen — OwnZone re-renders on every server
+ * push and every selection change, and a `Reorder.Item` is the heaviest subtree
+ * on the board to reconcile. (docs/optimization.md §1)
+ *
+ * It also owns its own ref registration and tap/drag discrimination: an inline
+ * `ref={(el) => ...}` from the parent is a new function identity every render,
+ * which breaks the memo and makes React detach/reattach the ref on every pass —
+ * 28 ref calls per render on the hottest component. (docs/optimization.md §6)
+ */
+const HandTile = memo(function HandTile({
+  id,
+  selected,
+  discardable,
+  kongMarked,
+  onTap,
+  tileEls,
+}: {
+  id: TileId;
+  selected: boolean;
+  discardable: boolean;
+  kongMarked: boolean;
+  onTap: (id: TileId, takeoffBox?: Flight['from']) => void;
+  tileEls: { current: Map<TileId, HTMLElement> };
+}) {
+  const t = useT();
+  // Distinguish a tap (select/discard) from a drag (reorder) by pointer travel,
+  // since Framer's Reorder.Item preventDefaults pointerdown and eats onClick/onTap.
+  // The takeoff box is captured at pointerdown, not pointerup: reading layout in
+  // the pointerup handler forces a synchronous layout flush inside the input
+  // path, while at pointerdown the frame is clean. A tap barely moves, so the
+  // box is still exact when the confirming pointerup lands. (optimization.md §5)
+  const tapStart = useRef<{ x: number; y: number; box: Flight['from'] } | null>(null);
+  const setTileEl = useCallback(
+    (el: HTMLLIElement | null) => {
+      if (el) tileEls.current.set(id, el);
+      else tileEls.current.delete(id);
+    },
+    [id, tileEls],
+  );
+  return (
+    <Reorder.Item
+      value={id}
+      ref={setTileEl}
+      // Shrink-to-fit: every tile flexes to share the row width (capped so
+      // small hands don't balloon), so the whole hand fits with no scroll.
+      // What the e2e spec reads to find a tile it may discard. It used
+      // to key off the dimming class itself, which silently stopped
+      // matching the moment that class changed value.
+      data-discardable={discardable ? 'true' : undefined}
+      data-kong-tile={kongMarked ? 'true' : undefined}
+      // 75, not 60: early in a hand the void suit is the only legal
+      // discard, so most of the hand is dimmed at once and 60 read as
+      // "these tiles are barely here" rather than "not this turn".
+      //
+      // The cap rises with the screen. 42px is a phone number — it stops
+      // a three-tile hand ballooning across a 320px row — and it used to
+      // be the only one, so a 1024px tablet drew the same 42px tiles and
+      // left **420px of its own hand row unused**. The `md`/`lg`
+      // breakpoints are 768 and 1024, which is exactly where the measured
+      // slack appears (164px at 768, 206px at 810, 420px at 1024). Still
+      // a cap rather than `none`: 13 tiles sharing a 1024px row would draw
+      // 78px each, which is bigger than the round-end reveal. (N38)
+      className={[
+        'flex-1 min-w-0 max-w-[42px] md:max-w-[60px] lg:max-w-[72px]',
+        discardable ? '' : 'opacity-75',
+        kongMarked ? 'tile-kong-mark' : '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
+      onPointerDown={e => {
+        tapStart.current = { x: e.clientX, y: e.clientY, box: boxOf(e.currentTarget) };
+      }}
+      onPointerUp={e => {
+        const s = tapStart.current;
+        tapStart.current = null;
+        // Treat as a tap (not a drag-to-reorder) only if the pointer barely moved.
+        if (s && Math.hypot(e.clientX - s.x, e.clientY - s.y) < 10) onTap(id, s.box);
+      }}
+      whileDrag={{ scale: 1.08, zIndex: 10 }}
+    >
+      {/* The list item owns tap and drag; this button is what makes the
+          tile reachable from the keyboard and gives it a spoken name. (F16) */}
+      <button
+        type="button"
+        className="block w-full"
+        aria-label={tileLabel(id, t)}
+        // The lift is the only cue that a tile is armed, and it is purely
+        // visual; this is the same state spoken. Both kinds of raised tile
+        // count — a tile held ready for the next turn is as "pressed" as
+        // one waiting for its confirming tap.
+        aria-pressed={selected}
+        onKeyDown={e => {
+          if (e.key !== 'Enter' && e.key !== ' ') return;
+          e.preventDefault();
+          onTap(id);
+        }}
+      >
+        <Tile id={id} selected={selected} interactive={false} fill />
+      </button>
+    </Reorder.Item>
+  );
+});
+
+/**
  * Your melds, discards, and hand — plus everything that acts on them (flip,
  * kong, Hu/Heavenly declare, sort). Pulled out of `PlayPhase` so the play
  * screen doesn't keep growing as one file; the game logic and gesture wiring
@@ -124,16 +229,18 @@ function OwnZoneImpl({ view, onOpenPile }: { view: PlayerView; onOpenPile: () =>
   // half of it is there, lives in `reconcileHandOrder`. (A46)
   const hand = view.you.hand;
   const [handOrder, setHandOrder] = useState<TileId[]>(() => [...hand]);
-  // Distinguish a tap (select/discard) from a drag (reorder) by pointer travel,
-  // since Framer's Reorder.Item preventDefaults pointerdown and eats onClick/onTap.
-  const tapStart = useRef<{ x: number; y: number } | null>(null);
   // Reconcile on hand *contents* (handKey), not the fresh-every-push `hand` array
   // reference, so the player's manual drag order isn't reset on every server view.
+  // Derived state set during render rather than in an effect: React re-renders
+  // immediately without committing the first pass, so a draw lands in one commit
+  // instead of two — and every commit reconciles the Reorder.Group. (§2 of
+  // docs/optimization.md)
   const handKey = hand.join(',');
-  // biome-ignore lint/correctness/useExhaustiveDependencies: intentionally keyed on handKey, not hand
-  useEffect(() => {
+  const [prevHandKey, setPrevHandKey] = useState(handKey);
+  if (prevHandKey !== handKey) {
+    setPrevHandKey(handKey);
     setHandOrder(prev => reconcileHandOrder(prev, hand));
-  }, [handKey]);
+  }
 
   useEffect(() => {
     if (!showHuCelebration) return;
@@ -266,13 +373,18 @@ function OwnZoneImpl({ view, onOpenPile }: { view: PlayerView; onOpenPile: () =>
     }
   }, [standDown, armedTile, isMyTurn, inClaimWindow]);
 
-  function handleTileTap(id: TileId, source?: Element | null) {
+  function handleTileTap(id: TileId, box?: Flight['from']) {
     setStandDown(null);
     if (canDiscard) {
       play('tile');
       if (selectedTile === id) {
         play('discard');
-        if (source) takeoff.current = { tile: id, from: boxOf(source) };
+        // The pointer path captured the box at pointerdown; the keyboard path
+        // measures the live element instead. A forced layout there is fine —
+        // it is a keypress, not the hot pointer path.
+        const el = tileEls.current.get(id);
+        const from = box ?? (el ? boxOf(el) : undefined);
+        if (from) takeoff.current = { tile: id, from };
         sendAction({ t: 'action', action: { t: 'discard', seat, tile: id } });
         setSelectedTile(null);
       } else {
@@ -285,6 +397,16 @@ function OwnZoneImpl({ view, onOpenPile }: { view: PlayerView; onOpenPile: () =>
     firedTile.current = null;
     setArmedTile(prev => (prev === id ? null : id));
   }
+
+  // A stable trampoline for HandTile: handleTileTap closes over state that
+  // changes on every tap (selectedTile, canDiscard), so passing it straight
+  // down would hand every tile a new prop each render and break the memo on
+  // exactly the renders the memo exists to skip. (docs/optimization.md §1)
+  const tapRef = useRef(handleTileTap);
+  useEffect(() => {
+    tapRef.current = handleTileTap;
+  });
+  const tileTap = useCallback((id: TileId, box?: Flight['from']) => tapRef.current(id, box), []);
 
   function flipFirstDiscard() {
     play('discard');
@@ -541,76 +663,15 @@ function OwnZoneImpl({ view, onOpenPile }: { view: PlayerView; onOpenPile: () =>
           className="tile-run tile-lap w-full pb-1 list-none justify-center"
         >
           {handOrder.map(id => (
-            <Reorder.Item
+            <HandTile
               key={id}
-              value={id}
-              ref={(el: HTMLLIElement | null) => {
-                if (el) tileEls.current.set(id, el);
-                else tileEls.current.delete(id);
-              }}
-              // Shrink-to-fit: every tile flexes to share the row width (capped so
-              // small hands don't balloon), so the whole hand fits with no scroll.
-              // What the e2e spec reads to find a tile it may discard. It used
-              // to key off the dimming class itself, which silently stopped
-              // matching the moment that class changed value.
-              data-discardable={legalDiscards.has(id) ? 'true' : undefined}
-              data-kong-tile={kongTypes.has(tileTypeOf(id)) ? 'true' : undefined}
-              // 75, not 60: early in a hand the void suit is the only legal
-              // discard, so most of the hand is dimmed at once and 60 read as
-              // "these tiles are barely here" rather than "not this turn".
-              //
-              // The cap rises with the screen. 42px is a phone number — it stops
-              // a three-tile hand ballooning across a 320px row — and it used to
-              // be the only one, so a 1024px tablet drew the same 42px tiles and
-              // left **420px of its own hand row unused**. The `md`/`lg`
-              // breakpoints are 768 and 1024, which is exactly where the measured
-              // slack appears (164px at 768, 206px at 810, 420px at 1024). Still
-              // a cap rather than `none`: 13 tiles sharing a 1024px row would draw
-              // 78px each, which is bigger than the round-end reveal. (N38)
-              className={[
-                'flex-1 min-w-0 max-w-[42px] md:max-w-[60px] lg:max-w-[72px]',
-                legalDiscards.has(id) ? '' : 'opacity-75',
-                kongTypes.has(tileTypeOf(id)) ? 'tile-kong-mark' : '',
-              ]
-                .filter(Boolean)
-                .join(' ')}
-              onPointerDown={e => {
-                tapStart.current = { x: e.clientX, y: e.clientY };
-              }}
-              onPointerUp={e => {
-                const s = tapStart.current;
-                tapStart.current = null;
-                // Treat as a tap (not a drag-to-reorder) only if the pointer barely moved.
-                if (s && Math.hypot(e.clientX - s.x, e.clientY - s.y) < 10)
-                  handleTileTap(id, e.currentTarget);
-              }}
-              whileDrag={{ scale: 1.08, zIndex: 10 }}
-            >
-              {/* The list item owns tap and drag; this button is what makes the
-                  tile reachable from the keyboard and gives it a spoken name. (F16) */}
-              <button
-                type="button"
-                className="block w-full"
-                aria-label={tileLabel(id, t)}
-                // The lift is the only cue that a tile is armed, and it is purely
-                // visual; this is the same state spoken. Both kinds of raised tile
-                // count — a tile held ready for the next turn is as "pressed" as
-                // one waiting for its confirming tap.
-                aria-pressed={selectedTile === id || armedTile === id}
-                onKeyDown={e => {
-                  if (e.key !== 'Enter' && e.key !== ' ') return;
-                  e.preventDefault();
-                  handleTileTap(id, e.currentTarget);
-                }}
-              >
-                <Tile
-                  id={id}
-                  selected={selectedTile === id || armedTile === id}
-                  interactive={false}
-                  fill
-                />
-              </button>
-            </Reorder.Item>
+              id={id}
+              selected={selectedTile === id || armedTile === id}
+              discardable={legalDiscards.has(id)}
+              kongMarked={kongTypes.has(tileTypeOf(id))}
+              onTap={tileTap}
+              tileEls={tileEls}
+            />
           ))}
         </Reorder.Group>
         {/* "You won this round!" was wrong three ways, and this renders the

@@ -3,7 +3,7 @@
 This is the record of work already done: the phase log (1–10), nine full-repo
 audit passes (A1–A80), the frontend/design pass (F1–F25), the mobile viewport work
 (R1–R7), the tile-rendering change, the hosting work (C1–C10), and the feature run
-N1–N46. Each entry keeps its diagnosis, not just its fix — that is the part worth
+N1–N47. Each entry keeps its diagnosis, not just its fix — that is the part worth
 having later.
 
 **Live work lives in [TODO.md](../TODO.md).** This file only grows at the top, and
@@ -82,6 +82,7 @@ Series: **N** features · **A** full-repo audits · **F** frontend/design ·
 | **N40–N44** | The board, seated |
 | **N45** | Eight rows a side — folded into N39's closure in [TODO.md](../TODO.md) |
 | **N46** | The void suit you drew back |
+| **N47** | The draw step and the discard tap, taken off the main thread |
 | **R1–R4** | Mobile viewport remediation |
 | **R5, R6** | The R5 guard was red in CI from the day it landed |
 | **R7** | Tile density — and *The two melds gaps R7 left* above it |
@@ -93,6 +94,44 @@ Series: **N** features · **A** full-repo audits · **F** frontend/design ·
 | **O3** | Closed **won't-do** — reasoning in [TODO.md](../TODO.md) and ARCHITECTURE §12 |
 | **O4** | One tile face everywhere |
 | **O5** | An **accepted trade-off**, not a task — per-IP limits key to a Cloudflare edge address. ARCHITECTURE §12 |
+
+---
+
+## ✅ The draw step and the discard tap, taken off the main thread (N47 — 2026-08-19)
+
+[docs/optimization.md](./optimization.md) measured the two interactions reported
+laggy on phones — the server push at the draw, and the tap that raises a discard
+— and ranked seven bottlenecks. All shipped except the PNG pipeline (its §4),
+which the audit itself gates behind a re-measure.
+
+- The two infinite animations that ran exactly while the player was choosing —
+  the `hand-your-turn` ring and the last-discard pulse — animated `box-shadow`
+  and `filter`, repainting the whole hand and re-rasterising an SVG every frame.
+  Both now fade a pre-drawn ring's `opacity`, which the compositor does off the
+  main thread. The blanket `transition: filter` on `.tile-face` moved to
+  `.tile-run`, the only place a face's filter changes at runtime.
+- The lift was a framer spring, which made every hand tile a `motion.div` at all
+  times. It is a CSS transform on `.tile.is-selected` now, and `Tile` is only a
+  motion component when it answers a gesture — which also retires the
+  element-type-swap trap the old code carried a comment about.
+- A tap used to re-render all fourteen `Reorder.Item`s. `HandTile` is memoised
+  on primitives, owns its own stable ref registration, and is fed through a
+  callback trampoline because `handleTileTap` closes over state that changes on
+  every tap. A tap now re-renders one item.
+- `handOrder` reconciled in an effect, so every draw committed OwnZone twice.
+  Derived state during render instead: one commit, and no intermediate frame.
+- The discard takeoff box was measured with `getBoundingClientRect` in the
+  pointerup handler — a forced synchronous layout inside the input path. It is
+  captured at pointerdown, when the frame is clean; a tap barely moves, so the
+  box is still exact when the confirming pointerup lands. The keyboard path
+  measures from the ref map, off the hot path.
+- `WallDiagram` recomputed and re-rendered its 56 slots on every push, because
+  `state` arrives as a fresh object each time. It is `memo` with a comparison on
+  the state's three primitives, and `wallSlots` is memoised on the same.
+
+Verified: typecheck, biome, the full unit suite, and the two guards the audit
+names — `e2e/viewport.spec.ts` and `e2e/ui-clicks.spec.ts`, green on the rebuilt
+client.
 
 ---
 

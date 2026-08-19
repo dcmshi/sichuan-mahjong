@@ -30,9 +30,8 @@ const SIZE_CLASSES = {
 export type TileProps = {
   id: TileId;
   /**
-   * Raised, and animated on the way. Left `undefined` rather than defaulted,
-   * because *being passed at all* is what tells the tile it has a lift to
-   * animate — see `animated` below.
+   * Raised (the `.tile.is-selected` CSS lift) and given the selection glow.
+   * The lift is a class, not a framer spring — see `animated` below.
    */
   selected?: boolean;
   lastDiscard?: boolean;
@@ -93,10 +92,11 @@ export function TileRun({
  *
  * The props are all primitives (plus an optional handler), so `memo` is exact
  * rather than a guess. And framer-motion is only earning its keep on a tile that
- * lifts (`selected`) or answers a gesture (`onClick`): `animate` is otherwise the
- * constant `y: 0`, and `whileHover`/`whileTap` are already conditional on
- * `onClick`. Everything else — trays, melds, opponents' zones, the pile modal —
- * is a static image and now says so.
+ * answers a gesture (`onClick`): the lift (`selected`) is a CSS transform now —
+ * `.tile.is-selected` in index.css — which the compositor animates for free,
+ * where the spring it replaced made every tile in the hand a motion component
+ * at all times. Everything else — trays, melds, opponents' zones, the pile
+ * modal — is a static image and now says so.
  */
 function TileImpl({
   id,
@@ -115,10 +115,14 @@ function TileImpl({
   const [preview, setPreview] = useState(false);
   const t = useT();
   const label = tileLabel(id, t);
-  // Passing `selected` at all — even `false` — opts a tile into the lift, and
-  // has to, because swapping the element type mid-lift would remount the tile
-  // and make it jump to its new position instead of springing there.
-  const animated = selected !== undefined || (interactive && onClick !== undefined);
+  // Only a tile that answers a gesture is a motion component. The lift used to
+  // qualify too — and had to, because swapping the element type mid-lift would
+  // remount the tile and make it jump to its new position instead of springing
+  // there — which made every tile in the hand a motion.div at all times. The
+  // CSS lift (`.tile.is-selected`) never changes the element type, so the hand
+  // is plain divs now; the framer `animate` below stays for clickable tiles
+  // (the void-swap screen), whose inline transform simply overrides the class.
+  const animated = interactive && onClick !== undefined;
 
   const longPress = useLongPress(() => setPreview(true), onClick ? () => onClick(id) : undefined);
 
@@ -188,9 +192,8 @@ function TileImpl({
         <motion.div
           className={className}
           animate={{ y: selected ? -10 : 0 }}
-          {...(interactive && onClick
-            ? { whileHover: { y: selected ? -10 : -3 }, whileTap: { scale: 0.93 } }
-            : {})}
+          whileHover={{ y: selected ? -10 : -3 }}
+          whileTap={{ scale: 0.93 }}
           transition={{ type: 'spring', stiffness: 500, damping: 22 }}
           title={label}
           {...a11yProps}

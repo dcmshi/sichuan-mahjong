@@ -1,5 +1,6 @@
 import type { PlayerView, Seat } from '@sichuan-mahjong/engine';
 import { WALL_SIZE } from '@sichuan-mahjong/engine';
+import { memo, useMemo } from 'react';
 import { useT } from '../i18n/useT.js';
 import { TileBack } from './Tile.js';
 
@@ -225,20 +226,35 @@ export function wallStateOf(view: Pick<PlayerView, 'dice' | 'wallDrawn' | 'you'>
  * Absolutely positioned over the well, so it costs no height in a row that has
  * none to give, and `pointer-events: none` so it can't take a tap from the
  * history button underneath it.
+ *
+ * Memoised on the state's primitives: the caller builds `state` fresh from the
+ * view on every server push, so a default prop comparison never bites and the
+ * 56 slot divs re-rendered on every draw. (docs/optimization.md §7)
  */
-export function WallDiagram({ remaining, state }: { remaining: number; state: WallState }) {
-  const t = useT();
-  return (
-    <div className="wall-diagram" role="img" aria-label={t('play.wall', { n: remaining })}>
-      {wallSlots(state).map((slot, i) => (
-        <div
-          key={i}
-          className={slot.filled ? 'wall-cell' : 'wall-cell is-empty'}
-          style={{ left: `${slot.left}%`, top: `${slot.top}%`, width: `${slot.width}%` }}
-        >
-          {slot.filled ? <TileBack fill /> : null}
-        </div>
-      ))}
-    </div>
-  );
-}
+export const WallDiagram = memo(
+  function WallDiagram({ remaining, state }: { remaining: number; state: WallState }) {
+    const t = useT();
+    // Keyed on the primitives, not `state` — same fresh-identity reason as the
+    // memo comparison below.
+    // biome-ignore lint/correctness/useExhaustiveDependencies: wallSlots depends on exactly these three numbers
+    const slots = useMemo(() => wallSlots(state), [state.head, state.drawnHead, state.drawnTail]);
+    return (
+      <div className="wall-diagram" role="img" aria-label={t('play.wall', { n: remaining })}>
+        {slots.map((slot, i) => (
+          <div
+            key={i}
+            className={slot.filled ? 'wall-cell' : 'wall-cell is-empty'}
+            style={{ left: `${slot.left}%`, top: `${slot.top}%`, width: `${slot.width}%` }}
+          >
+            {slot.filled ? <TileBack fill /> : null}
+          </div>
+        ))}
+      </div>
+    );
+  },
+  (a, b) =>
+    a.remaining === b.remaining &&
+    a.state.head === b.state.head &&
+    a.state.drawnHead === b.state.drawnHead &&
+    a.state.drawnTail === b.state.drawnTail,
+);

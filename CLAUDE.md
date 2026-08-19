@@ -208,8 +208,10 @@ Full tree: [ARCHITECTURE.md §3](./ARCHITECTURE.md#3-repo-layout).
   mounted — 225ms → 96ms, measured at 4× CPU throttle. Memo on a zone only bites
   while `onOpenPile` keeps its identity, which is why those handlers are
   `useCallback` keyed on the **seat number** and not on `view`. A tile is a plain
-  `<div>` unless it can lift (`selected` *passed*, whatever its value) or answer a
-  gesture (`onClick`); anything else gets no framer-motion at all. (N38)
+  `<div>` unless it answers a gesture (`onClick`); the lift is a CSS transform on
+  `.tile.is-selected`, not a framer spring, and the hand's rows are memoised
+  `HandTile`s reached through a stable callback trampoline, so a tap re-renders
+  one item instead of fourteen. (N38, docs/optimization.md)
 - **Screenshots are generated, not taken.** `docs/*.png` come from `pnpm shots`;
   regenerate them rather than hand-capturing, or they drift out of date again.
 
