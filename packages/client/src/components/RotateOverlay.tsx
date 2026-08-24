@@ -39,7 +39,7 @@ export function RotateOverlay() {
           <line x1="12" y1="47" x2="20" y2="47" />
         </svg>
       </div>
-      <p className="text-lg font-semibold">{t('play.rotateTitle')}</p>
+      <p className="text-lg font-display">{t('play.rotateTitle')}</p>
       <p className="text-sm text-white/70 max-w-xs">{t('play.rotateHint')}</p>
     </div>
   );

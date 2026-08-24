@@ -1,4 +1,13 @@
 import './index.css';
+// Display serif for headings, quiet sans for everything else. Bundled (not a
+// CDN) so the PWA stays fully offline; latin subsets only, CJK falls through
+// to the system stacks declared in index.css's @theme. Marcellus ships in one
+// weight (400) — it is an engraved face, so headings get their presence from
+// size and colour rather than bold.
+import '@fontsource/marcellus/400.css';
+import '@fontsource/outfit/400.css';
+import '@fontsource/outfit/500.css';
+import '@fontsource/outfit/700.css';
 import { tileFromType, tileTypeOf } from '@sichuan-mahjong/engine';
 import type { Suit } from '@sichuan-mahjong/engine';
 import { createRoot } from 'react-dom/client';

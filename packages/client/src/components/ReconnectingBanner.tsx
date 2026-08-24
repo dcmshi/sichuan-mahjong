@@ -21,7 +21,7 @@ export function ReconnectingBanner() {
           initial={{ y: -40 }}
           animate={{ y: 0 }}
           exit={{ y: -40 }}
-          className="fixed top-0 left-0 right-0 bg-amber-600 text-white text-center py-1.5 text-sm font-semibold z-30"
+          className="fixed top-0 left-0 right-0 bg-amber-600 text-white text-center py-1.5 text-sm font-display tracking-wide z-30"
         >
           {t('common.reconnecting')}
         </motion.div>

@@ -87,7 +87,7 @@ export function ClaimPanel({ seat, legalActions, claimDeadline, windowMs, onHeig
 
   return (
     // Felt palette, not the gray chrome it used to wear — the claim bar read as
-    // a foreign element against the jade-and-amber board. (F14)
+    // a foreign element against the jade-and-brass board. (F14)
     //
     // Stays `fixed`, and the board pads instead. In flow it covered nothing, but
     // it added a row to a column that on CI's metrics was already at the limit,
@@ -97,7 +97,7 @@ export function ClaimPanel({ seat, legalActions, claimDeadline, windowMs, onHeig
     // column height does not change. (N8)
     <div
       ref={barRef}
-      className="claim-panel fixed bottom-0 left-0 right-0 bg-green-950/95 backdrop-blur text-white p-3 border-t border-amber-400/30 z-20"
+      className="claim-panel fixed bottom-0 left-0 right-0 bg-lacquer/95 backdrop-blur text-white p-3 border-t border-amber-400/30 z-20"
     >
       {/* The bar is decorative: a progressbar role would have to be focusable to
           be valid, and a tab stop in front of the claim buttons is the last thing
@@ -123,7 +123,7 @@ export function ClaimPanel({ seat, legalActions, claimDeadline, windowMs, onHeig
         {canHu && (
           <button
             type="button"
-            className="flex-1 py-3 bg-red-600 hover:bg-red-500 active:bg-red-700 rounded-xl font-bold text-lg disabled:opacity-40"
+            className="flex-1 py-3 bg-red-600 hover:bg-red-500 active:bg-red-700 rounded-xl font-display text-lg disabled:opacity-40 shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_4px_10px_rgba(0,0,0,0.4)]"
             onClick={() => act({ t: 'claim', seat, claim: { kind: 'hu' } })}
             disabled={sent}
           >
@@ -133,7 +133,7 @@ export function ClaimPanel({ seat, legalActions, claimDeadline, windowMs, onHeig
         {canKong && (
           <button
             type="button"
-            className="flex-1 py-3 bg-purple-600 hover:bg-purple-500 active:bg-purple-700 rounded-xl font-bold text-lg disabled:opacity-40"
+            className="flex-1 py-3 bg-purple-600 hover:bg-purple-500 active:bg-purple-700 rounded-xl font-display text-lg disabled:opacity-40 shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_4px_10px_rgba(0,0,0,0.4)]"
             onClick={() => act({ t: 'claim', seat, claim: { kind: 'kong' } })}
             disabled={sent}
           >
@@ -143,7 +143,7 @@ export function ClaimPanel({ seat, legalActions, claimDeadline, windowMs, onHeig
         {canPung && (
           <button
             type="button"
-            className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 rounded-xl font-bold text-lg disabled:opacity-40"
+            className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 rounded-xl font-display text-lg disabled:opacity-40 shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_4px_10px_rgba(0,0,0,0.4)]"
             onClick={() => act({ t: 'claim', seat, claim: { kind: 'pung' } })}
             disabled={sent}
           >
@@ -153,7 +153,7 @@ export function ClaimPanel({ seat, legalActions, claimDeadline, windowMs, onHeig
         {canPass && (
           <button
             type="button"
-            className="flex-1 py-3 bg-green-800 hover:bg-green-700 active:bg-green-900 rounded-xl font-bold text-lg disabled:opacity-40"
+            className="flex-1 py-3 bg-green-800 hover:bg-green-700 active:bg-green-900 rounded-xl font-display text-lg disabled:opacity-40 shadow-[inset_0_1px_0_rgba(244,237,220,0.08),0_4px_10px_rgba(0,0,0,0.4)]"
             onClick={() => act({ t: 'pass', seat })}
             disabled={sent}
           >

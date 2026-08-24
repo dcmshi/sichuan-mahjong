@@ -63,14 +63,17 @@ export function JoinForm() {
 
   return (
     <div className="min-h-dvh bg-green-900 flex flex-col items-center justify-center gap-6 p-6 text-white">
-      <div className="text-4xl" aria-hidden="true">
-        🀄
-      </div>
-      <h2 className="text-2xl font-bold">{t('join.title')}</h2>
+      <img
+        src="/tiles/pin-1.svg"
+        alt=""
+        aria-hidden="true"
+        className="w-12 [filter:drop-shadow(0_4px_6px_rgba(0,0,0,0.5))]"
+      />
+      <h2 className="heading-display text-3xl">{t('join.title')}</h2>
 
       <div className="flex flex-col gap-3 w-full max-w-xs">
         <input
-          className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/50 text-xl font-mono uppercase tracking-widest text-center focus:outline-none focus:border-amber-400"
+          className="w-full px-4 py-3 bg-lacquer/60 border border-white/15 rounded-xl text-amber-300 placeholder-white/40 text-xl font-mono uppercase tracking-widest text-center focus:outline-none focus:border-brass/60"
           placeholder={t('join.code')}
           // A placeholder vanishes the moment you type, so it was never the label
           // it was standing in for.
@@ -85,7 +88,7 @@ export function JoinForm() {
           autoFocus
         />
         <input
-          className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/50 text-lg focus:outline-none focus:border-amber-400"
+          className="w-full px-4 py-3 bg-lacquer/60 border border-white/15 rounded-xl text-white placeholder-white/40 text-lg focus:outline-none focus:border-brass/60"
           placeholder={t('join.name')}
           aria-label={t('join.name')}
           value={name}
@@ -96,7 +99,7 @@ export function JoinForm() {
         {error && <p className="text-red-400 text-sm text-center">{t(error)}</p>}
         <button
           type="button"
-          className="w-full py-3 bg-amber-500 hover:bg-amber-400 rounded-xl font-bold text-lg disabled:opacity-50"
+          className="btn-brass w-full py-3 rounded-xl font-bold text-lg disabled:opacity-50"
           onClick={() => void handleJoin()}
           disabled={loading}
         >
@@ -104,7 +107,7 @@ export function JoinForm() {
         </button>
         <button
           type="button"
-          className="py-2 text-white/60 hover:text-white"
+          className="py-2 text-white/60 hover:text-amber-300"
           onClick={() => goTo('landing')}
         >
           {t('nav.back')}

@@ -41,6 +41,26 @@ touching a tile: [handoff-tile-rendering.md](./handoff-tile-rendering.md).
   overflow), and every tray (`w-fit mx-auto`, which still wraps because
   `fit-content` is `min(max-content, available)`).
 
+**Visual system and typography**
+
+- **The palette is ink-jade, lacquer, warm ivory and brass.** The Tailwind v4
+  `@theme` block in `index.css` remaps the green, amber and white ramps so existing
+  opacity utilities stay coherent. Hu red, Kong purple, Pung blue and the suit
+  triad remain semantic game language; do not retint them as decoration.
+- **Marcellus marks decisions and moments; Outfit carries information.** Use the
+  display face for headings, actions, segmented choices, phase prompts and short
+  prominent instructions. Keep longer prose, names, scores, counts, badges and
+  event lines in Outfit, and codes/URLs in monospace. Marcellus only has weight
+  400 — size, color and spacing make hierarchy, not synthetic bold.
+- **The font files are part of the offline app.** They are imported from
+  `@fontsource` in `main.tsx`; do not replace them with a CDN request. Latin is
+  bundled and CJK falls through to the system stacks declared in `index.css`.
+- **Shared recipes own component chrome.** `.btn-brass`, `.btn-outline`,
+  `.choice-segment`, `.panel-lacquer`, `.heading-display` and `.hairline-brass`
+  are the source of truth. In particular, selected choices are driven by
+  `aria-pressed` through `.choice-segment`, rather than repeating bold Outfit +
+  flat amber classes in each screen.
+
 **Rules and pacing**
 
 - **換三張 is off by default** and host-opt-in. It is not in Novikov's ruleset.

@@ -137,7 +137,7 @@ function OpponentSideImpl({
             // it needs. The 5px back comes off the padding rather than the glyphs.
             'text-xs font-semibold px-1.5 py-0.5 rounded-full min-w-0 truncate',
             view.turn === opp.seat
-              ? 'bg-amber-400 text-black shadow-[0_0_10px_rgba(251,191,36,0.7)]'
+              ? 'bg-amber-400 text-[#2a1f08] shadow-[0_0_10px_rgba(224,179,78,0.7)]'
               : 'bg-black/25 text-green-200',
           ].join(' ')}
         >

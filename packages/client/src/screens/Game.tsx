@@ -76,7 +76,7 @@ function HuanPhase({ view }: { view: PlayerView }) {
   return (
     <div className="min-h-dvh board-felt flex flex-col p-4 text-white gap-4">
       <div className="flex items-center justify-between mt-2 gap-2">
-        <h2 className="text-xl font-bold">{t('huan.title')}</h2>
+        <h2 className="heading-display text-2xl">{t('huan.title')}</h2>
         <LangSwitch />
       </div>
       <p className="text-green-300 text-sm">{t('huan.hint')}</p>
@@ -108,7 +108,7 @@ function HuanPhase({ view }: { view: PlayerView }) {
       <div className="mt-auto">
         <button
           type="button"
-          className="w-full py-4 bg-amber-500 hover:bg-amber-400 rounded-xl font-bold text-lg disabled:opacity-40"
+          className="btn-brass w-full py-4 rounded-xl font-bold text-lg disabled:opacity-40"
           onClick={submit}
           disabled={selected.length !== 3}
         >
@@ -199,24 +199,24 @@ function VoidDeclarePhase({ view }: { view: PlayerView }) {
     // that goes off the bottom to make room for them. (R3's lesson)
     <div className="h-dvh board-felt flex flex-col p-4 text-white gap-4 overflow-y-auto">
       <div className="flex items-center justify-between mt-2 gap-2">
-        <h2 className="text-xl font-bold">{t('void.title')}</h2>
+        <h2 className="heading-display text-2xl">{t('void.title')}</h2>
         <LangSwitch />
       </div>
-      <p className="text-green-300 text-sm">{t('void.hint')}</p>
+      <p className="font-display text-green-300 text-sm leading-relaxed">{t('void.hint')}</p>
       <div className="flex gap-3">
         {(['man', 'pin', 'sou'] as Suit[]).map(suit => (
           <button
             type="button"
             key={suit}
             className={[
-              'flex-1 py-4 rounded-xl border-2 font-bold text-lg transition-all',
+              'flex-1 py-4 rounded-xl border-2 font-display text-lg transition-all',
               SUIT_COLORS[suit],
               // The mark is drawn *inside* the button and the button doesn't
               // grow. Both were outside before — a 4px ring plus `scale-105`,
               // which widened it by 14px — and since the three sit in one
               // `gap-3` row, whichever you picked ate 7px out of the gap beside
               // it: 5px against the untouched 12px on the other side.
-              chosenSuit === suit ? 'shadow-[inset_0_0_0_4px_#fbbf24]' : 'opacity-80',
+              chosenSuit === suit ? 'shadow-[inset_0_0_0_4px_#e0b34e]' : 'opacity-80',
             ].join(' ')}
             onClick={() => pickSuit(suit)}
           >
@@ -232,7 +232,9 @@ function VoidDeclarePhase({ view }: { view: PlayerView }) {
           you can't compare what isn't on screen. The suit you pick is marked in
           its button's colour instead of being the only thing shown. */}
       <div className="min-h-0 overflow-y-auto">
-        <p className="text-sm text-green-300 mb-2">{t('void.yourHand')}</p>
+        <p className="font-display text-sm text-green-300 leading-relaxed mb-2">
+          {t('void.yourHand')}
+        </p>
         {/* pb-1 so the last row's flash ring has somewhere to be drawn: it is a
             3px spread on the tile's own box, and this container scrolls, so on
             the bottom row it was clipped by the scroller's edge. pt-2 is the same
@@ -289,7 +291,7 @@ function VoidDeclarePhase({ view }: { view: PlayerView }) {
       <div className="mt-auto pt-2">
         <button
           type="button"
-          className="w-full py-3 bg-amber-500 hover:bg-amber-400 rounded-xl font-bold text-lg disabled:opacity-40"
+          className="btn-brass w-full py-3 rounded-xl font-bold text-lg disabled:opacity-40"
           onClick={submit}
           disabled={choice.kind !== 'ready'}
         >
@@ -448,7 +450,7 @@ function PlayPhase({ view }: { view: PlayerView }) {
               middle of the board is the empty space anyway. (O2) */}
           <button
             type="button"
-            className="absolute bottom-0 right-0 min-h-10 min-w-10 flex items-center justify-center text-white/40 hover:text-white text-base"
+            className="absolute bottom-0 right-0 min-h-10 min-w-10 flex items-center justify-center text-white/40 hover:text-amber-300 text-base"
             onClick={() => setShowHistory(true)}
             title={t('play.history')}
             aria-label={t('play.history')}

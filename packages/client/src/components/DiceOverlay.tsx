@@ -178,7 +178,7 @@ export function DiceOverlay({
                 </div>
                 {/* See `throwerKey`: your own seat needs its own sentence, because
                     `nameOf` returns "You" and this template reads third-person. */}
-                <div className="text-lg font-semibold text-amber-300">
+                <div className="font-display text-xl text-amber-300">
                   {t(throwerKey('seating', view.dealer, view.you.seat), {
                     name: nameOf(view.dealer),
                   })}

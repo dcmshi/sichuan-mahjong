@@ -22,7 +22,7 @@ function SeatRow({ view, seat }: { view: SpectatorView; seat: number }) {
     <div
       className={[
         'rounded-xl p-2 flex flex-col gap-1',
-        isTurn ? 'bg-amber-500/15 ring-1 ring-amber-400/50' : 'bg-black/15',
+        isTurn ? 'bg-amber-500/15 ring-1 ring-amber-400/50' : 'bg-lacquer/60',
       ].join(' ')}
     >
       <div className="flex items-center gap-2">
@@ -32,7 +32,7 @@ function SeatRow({ view, seat }: { view: SpectatorView; seat: number }) {
         <span
           className={[
             'text-xs font-semibold px-2 py-0.5 rounded-full',
-            isTurn ? 'bg-amber-400 text-black' : 'bg-black/25 text-green-200',
+            isTurn ? 'bg-amber-400 text-[#2a1f08]' : 'bg-black/25 text-green-200',
           ].join(' ')}
         >
           {p.name}
@@ -123,7 +123,7 @@ export function Spectate() {
   return (
     <div className="min-h-dvh board-felt flex flex-col text-white">
       <ReconnectingBanner />
-      <div className="flex items-center justify-between px-3 py-1.5 bg-black/30 text-xs">
+      <div className="flex items-center justify-between px-3 py-1.5 bg-lacquer/80 text-xs shadow-[inset_0_-1px_0_rgba(212,175,90,0.25)]">
         <span>{t('play.wall', { n: view.wallRemaining })}</span>
         <span className="text-amber-300 font-semibold">
           {view.phase === 'roundEnd'
@@ -134,7 +134,7 @@ export function Spectate() {
           <LangSwitch />
           <button
             type="button"
-            className="text-white/60 hover:text-white"
+            className="text-white/60 hover:text-amber-300"
             onClick={() => resetSession()}
           >
             {t('nav.leave')}
@@ -185,7 +185,7 @@ export function Spectate() {
                 .map(p => (
                   <div
                     key={p.seat}
-                    className="flex items-center gap-2 bg-black/15 rounded-lg px-3 py-1.5 text-xs"
+                    className="flex items-center gap-2 bg-lacquer/60 rounded-lg px-3 py-1.5 text-xs"
                   >
                     {/* A chair, not a wind — the total spans rounds. (N26) */}
                     <span className="text-green-300 w-10">{t(seatKey(p.seat))}</span>

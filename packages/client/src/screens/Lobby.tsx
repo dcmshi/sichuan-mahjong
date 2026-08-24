@@ -19,19 +19,22 @@ export function Lobby() {
       <div className="absolute top-4 right-4">
         <LangSwitch />
       </div>
-      <div className="text-4xl" aria-hidden="true">
-        🀄
-      </div>
+      <img
+        src="/tiles/sou-1.svg"
+        alt=""
+        aria-hidden="true"
+        className="w-12 [filter:drop-shadow(0_4px_6px_rgba(0,0,0,0.5))]"
+      />
       <div className="text-center">
-        <h2 className="text-2xl font-bold">{t('lobby.title')}</h2>
-        <p className="text-green-300 text-lg font-mono tracking-widest mt-1">{code}</p>
+        <h2 className="heading-display text-3xl">{t('lobby.title')}</h2>
+        <p className="text-amber-300 text-lg font-mono tracking-widest mt-1">{code}</p>
       </div>
 
       <div className="flex flex-col gap-2 w-full max-w-xs">
         {[0, 1, 2, 3].map(i => {
           const p = lobbyPlayers[i];
           return (
-            <div key={i} className="flex items-center gap-3 bg-black/20 rounded-xl px-3 py-2.5">
+            <div key={i} className="flex items-center gap-3 panel-lacquer px-3 py-2.5">
               {/* A chair, not a wind — no dealer exists before the game starts. (N26) */}
               <span className="text-green-400 text-sm w-16 flex-shrink-0">{t(seatKey(i))}</span>
               {p?.name ? (
@@ -67,7 +70,7 @@ export function Lobby() {
       {/* Abandoning a lobby used to mean closing the tab. (F10) */}
       <button
         type="button"
-        className="py-2 px-4 min-h-11 text-white/60 hover:text-white"
+        className="py-2 px-4 min-h-11 text-white/60 hover:text-amber-300"
         onClick={() => resetSession()}
       >
         {t('nav.leave')}

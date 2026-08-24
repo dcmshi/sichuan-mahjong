@@ -61,7 +61,7 @@ export function DiscardPileModal({
         onClick={onClose}
       >
         <motion.div
-          className="bg-green-950 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-sm max-h-[70dvh] flex flex-col"
+          className="bg-lacquer rounded-t-2xl sm:rounded-2xl w-full sm:max-w-sm max-h-[70dvh] flex flex-col shadow-[inset_0_0_0_1px_rgba(212,175,90,0.18),0_16px_48px_rgba(0,0,0,0.6)]"
           initial={{ y: '100%' }}
           animate={{ y: 0 }}
           exit={{ y: '100%' }}
@@ -71,14 +71,14 @@ export function DiscardPileModal({
           ref={panel}
           tabIndex={-1}
         >
-          <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 flex-shrink-0">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-amber-400/20 flex-shrink-0">
             <div className="min-w-0">
-              <h2 className="text-white font-bold truncate">{t('pile.title', { name })}</h2>
+              <h2 className="heading-display truncate">{t('pile.title', { name })}</h2>
               <p className="text-green-300/70 text-xs">{t('pile.count', { n: total })}</p>
             </div>
             <button
               type="button"
-              className="text-white/60 hover:text-white text-xl px-2"
+              className="text-white/60 hover:text-amber-300 text-xl px-2"
               onClick={onClose}
               aria-label={t('common.close')}
             >

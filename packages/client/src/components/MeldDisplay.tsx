@@ -22,7 +22,7 @@ function BadgedGroup({ label, children }: { label: string; children: React.React
   return (
     <div className="relative">
       <TileRun>{children}</TileRun>
-      <span className="absolute -top-1 -right-1 px-1 rounded bg-amber-500 text-black text-[8px] font-bold leading-tight">
+      <span className="absolute -top-1 -right-1 px-1 rounded bg-amber-400 text-[#2a1f08] text-[8px] font-bold leading-tight">
         {label}
       </span>
     </div>
@@ -74,7 +74,7 @@ export function MeldChip({ meld, sideways = false }: { meld: PublicMeld; sideway
       ) : (
         <Tile id={ids[0]} size="sm" interactive={false} sideways={sideways} />
       )}
-      <span className="absolute -bottom-1 -right-1 px-0.5 rounded bg-amber-500 text-black text-[8px] font-bold leading-tight">
+      <span className="absolute -bottom-1 -right-1 px-0.5 rounded bg-amber-400 text-[#2a1f08] text-[8px] font-bold leading-tight">
         {t(meld.kind === 'kong' ? 'claim.kong' : 'claim.pung')}
       </span>
     </div>

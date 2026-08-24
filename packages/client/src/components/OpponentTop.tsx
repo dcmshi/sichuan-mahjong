@@ -61,7 +61,7 @@ function OpponentTopImpl({
           className={[
             'text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0',
             view.turn === opp.seat
-              ? 'bg-amber-400 text-black shadow-[0_0_10px_rgba(251,191,36,0.7)]'
+              ? 'bg-amber-400 text-[#2a1f08] shadow-[0_0_10px_rgba(224,179,78,0.7)]'
               : 'bg-black/25 text-green-200',
           ].join(' ')}
         >
@@ -104,7 +104,7 @@ function OpponentTopImpl({
           that box onto itself, so `viewport.spec.ts` reads the same rects. */}
       {/* The void declaration heads the river rather than sitting in a row of its
           own. (N38, replacing N37's placement.) It *is* this seat's first
-          discard, which is where a table puts it, and it keeps its white glow so
+          discard, which is where a table puts it, and it keeps its ivory ring so
           it still reads as the one public statement rather than an ordinary
           throw. The row it used to occupy was 43px of a zone that measures a
           constant 227px on every phone — and the middle row below is the board's

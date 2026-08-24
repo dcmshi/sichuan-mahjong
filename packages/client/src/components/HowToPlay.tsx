@@ -103,7 +103,7 @@ export function HowToPlay({ onClose }: { onClose: () => void }) {
         onClick={onClose}
       >
         <motion.div
-          className="bg-green-950 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg max-h-[85dvh] overflow-y-auto"
+          className="bg-lacquer rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg max-h-[85dvh] overflow-y-auto shadow-[inset_0_0_0_1px_rgba(212,175,90,0.18),0_16px_48px_rgba(0,0,0,0.6)]"
           ref={panel}
           tabIndex={-1}
           initial={{ y: '100%' }}
@@ -112,32 +112,53 @@ export function HowToPlay({ onClose }: { onClose: () => void }) {
           transition={{ type: 'spring', damping: 30, stiffness: 300 }}
           onClick={e => e.stopPropagation()}
         >
-          <div className="sticky top-0 bg-green-950 flex items-center justify-between px-4 py-3 border-b border-white/10">
-            <h2 className="text-white font-bold text-lg">{t('htp.title')}</h2>
-            <button
-              type="button"
-              className="text-white/60 hover:text-white text-xl px-2"
-              onClick={onClose}
-              aria-label={t('common.close')}
-            >
-              ✕
-            </button>
+          {/* Title and the section pills share one sticky header: the sheet is
+              long, and the pills are how a reader jumps instead of scrolling
+              past seven sections to reach the eighth. scroll-mt on each card
+              is what keeps a jumped-to section out from under this header. */}
+          <div className="sticky top-0 bg-lacquer border-b border-amber-400/20">
+            <div className="flex items-center justify-between px-4 py-3">
+              <h2 className="heading-display text-xl">{t('htp.title')}</h2>
+              <button
+                type="button"
+                className="text-white/60 hover:text-amber-300 text-xl px-2"
+                onClick={onClose}
+                aria-label={t('common.close')}
+              >
+                ✕
+              </button>
+            </div>
+            <nav className="flex flex-wrap gap-1.5 px-4 pb-3" aria-label={t('htp.title')}>
+              {SECTION_KEYS.map(k => (
+                <a
+                  key={k}
+                  href={`#htp-sec-${k}`}
+                  className="px-2.5 py-1 rounded-full text-[11px] font-display tracking-wide bg-white/[0.06] text-green-200 shadow-[inset_0_0_0_1px_rgba(244,237,220,0.15)] hover:text-amber-300 hover:shadow-[inset_0_0_0_1px_rgba(212,175,90,0.5)]"
+                >
+                  {t(`htp.${k}.title`)}
+                </a>
+              ))}
+            </nav>
           </div>
 
-          <div className="px-4 py-4 flex flex-col gap-5">
+          <div className="px-4 py-4 flex flex-col gap-3">
             {/* The illustrations sit under the prose that already states the rule
                 rather than in a section of their own: "how a hand wins" was
                 written twice over already, and a fourth restatement would be the
                 thing to fix, not the thing to add. */}
             {SECTION_KEYS.map(k => (
-              <div key={k}>
-                <h3 className="text-amber-400 font-semibold mb-1">{t(`htp.${k}.title`)}</h3>
+              <section
+                key={k}
+                id={`htp-sec-${k}`}
+                className="scroll-mt-28 bg-white/[0.04] rounded-xl p-3.5 shadow-[inset_0_0_0_1px_rgba(212,175,90,0.12)]"
+              >
+                <h3 className="font-display text-amber-300 text-lg mb-1">{t(`htp.${k}.title`)}</h3>
                 <p className="text-green-100 text-sm leading-relaxed whitespace-pre-line">
                   {t(`htp.${k}.body`, { cap, max: 2 ** cap })}
                 </p>
                 {k === 'winning' && <WinningShapes />}
                 {k === 'scoring' && <FanTable cap={cap} />}
-              </div>
+              </section>
             ))}
           </div>
         </motion.div>

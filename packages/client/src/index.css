@@ -1,5 +1,50 @@
 @import "tailwindcss";
 
+/* ---------------------------------------------------------------------------
+   Teahouse-luxe theme — ink-jade felt, brass accents, warm ivory type.
+
+   The palette is set as @theme token overrides rather than per-file class
+   edits: Tailwind v4 derives every `/opacity` variant by color-mix from these
+   values, so the ~30 components written against the green, amber and white
+   ramps re-tint without touching their markup. Semantic colours outside the
+   theme (red Hu, purple Kong, blue Pung, the suit triad) are deliberately left
+   on Tailwind's defaults — they are game language, not decoration.
+--------------------------------------------------------------------------- */
+@theme {
+  --font-display: "Marcellus", Georgia, "Times New Roman", serif;
+  --font-sans: "Outfit", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  /* Ivory instead of pure white; every text-white/60, border-white/10 warms. */
+  --color-white: #f4eddc;
+
+  /* Ink-jade ramp, light celadon to lacquer-black. */
+  --color-green-100: #dcebe0;
+  --color-green-200: #b9d9c7;
+  --color-green-300: #8fc4ae;
+  --color-green-400: #6bac93;
+  --color-green-500: #4c9078;
+  --color-green-600: #35705c;
+  --color-green-700: #1f5546;
+  --color-green-800: #143c31;
+  --color-green-900: #0d2a22;
+  --color-green-950: #081c16;
+
+  /* Brass ramp — the confirm/turn/selection colour, off the traffic-amber. */
+  --color-amber-100: #f7ecc9;
+  --color-amber-200: #f0ddaa;
+  --color-amber-300: #eccd85;
+  --color-amber-400: #e0b34e;
+  --color-amber-500: #c9962e;
+  --color-amber-600: #a87820;
+  --color-amber-700: #8a6319;
+  --color-amber-800: #6b4c13;
+  --color-amber-900: #4d360e;
+
+  /* Named tokens for the recipes below. */
+  --color-lacquer: #0a1c17;
+  --color-brass: #d4af5a;
+}
+
 /* Suit accent colors (man=red, pin=blue, sou=green) */
 :root {
   --suit-man: #dc2626;
@@ -8,7 +53,144 @@
 }
 
 body {
-  background: #0c5f57;
+  background: #081c16;
+}
+
+/* Film grain over the whole app — the thing that keeps large flat felts and
+   lacquer panels from reading as vector fills. Fixed and pointer-events-none;
+   4% opacity is felt rather than seen. z-index 60 puts it above modals on
+   purpose: grain is a lens, not a surface, and a panel that loses its grain
+   while the felt behind keeps it reads as floating glass. */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  opacity: 0.04;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 160px 160px;
+}
+
+/* ---------------------------------------------------------------------------
+   Shared recipes — colour and light only; layout stays in the components'
+   utilities. These are unlayered, so anything they declare beats a Tailwind
+   utility on the same element: they declare no radius, padding or width on
+   purpose, or the rounded and py classes they are combined with would stop
+   working.
+--------------------------------------------------------------------------- */
+
+/* Primary confirm. Dark text on a lit-brass gradient; hover lifts the light,
+   the press sinks the button rather than dimming it. Labels are the display
+   serif at its one weight — an etched plaque, not a bold sans shout — so the
+   recipe sets the family and beats the font-bold utilities the buttons carry
+   (this sheet is unlayered, theirs are not). */
+.btn-brass {
+  background: linear-gradient(180deg, #eccd85 0%, #d4af5a 45%, #b8891f 100%);
+  color: #2a1f08;
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0.03em;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 244, 214, 0.55);
+  transition: filter 0.15s ease, transform 0.05s ease;
+}
+
+.btn-brass:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.btn-brass:active:not(:disabled) {
+  filter: brightness(0.94);
+  transform: translateY(1px);
+}
+
+/* Secondary door in: quiet ivory fill that warms to a brass hairline on hover.
+   Same etched-serial label as btn-brass, so the menu reads as one type system. */
+.btn-outline {
+  background: rgba(244, 237, 220, 0.07);
+  color: var(--color-white);
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0.03em;
+  box-shadow: inset 0 0 0 1px rgba(244, 237, 220, 0.28), 0 2px 8px rgba(0, 0, 0, 0.35);
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.btn-outline:hover:not(:disabled) {
+  background: rgba(244, 237, 220, 0.13);
+  box-shadow: inset 0 0 0 1px rgba(212, 175, 90, 0.55), 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+.btn-outline:active:not(:disabled) {
+  background: rgba(244, 237, 220, 0.04);
+}
+
+/* Compact option rows: restrained lacquer tabs until selected, then the same
+   warm brass language as the primary actions. These used to repeat a bold
+   Outfit + flat amber recipe in every setup screen, which made the labels look
+   inflated beside the etched Marcellus actions. aria-pressed owns the visual
+   state so every segmented control follows one recipe. */
+.choice-segment {
+  background: rgba(4, 17, 13, 0.52);
+  color: rgba(244, 237, 220, 0.72);
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0.025em;
+  box-shadow: inset 0 0 0 1px rgba(244, 237, 220, 0.09);
+  transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+}
+
+.choice-segment:hover:not(:disabled):not([aria-pressed="true"]) {
+  background: rgba(244, 237, 220, 0.09);
+  color: var(--color-white);
+  box-shadow: inset 0 0 0 1px rgba(212, 175, 90, 0.35);
+}
+
+.choice-segment[aria-pressed="true"] {
+  background: linear-gradient(180deg, #eccd85 0%, #d4af5a 52%, #b8891f 100%);
+  color: #2a1f08;
+  box-shadow: inset 0 1px 0 rgba(255, 244, 214, 0.48), 0 1px 5px rgba(0, 0, 0, 0.35);
+}
+
+.choice-segment[aria-pressed="true"]:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+
+/* Panels, dropdowns, modals: deep lacquer with a brass inlay hairline. Radius
+   included — panels in this app never compose a different rounded-* on top. */
+.panel-lacquer {
+  background: linear-gradient(180deg, rgba(13, 42, 34, 0.97), rgba(8, 28, 22, 0.97));
+  border-radius: 1rem;
+  box-shadow: inset 0 0 0 1px rgba(212, 175, 90, 0.18), 0 8px 24px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px);
+}
+
+/* Screen titles in the display serif. */
+.heading-display {
+  font-family: var(--font-display);
+  letter-spacing: 0.01em;
+  color: var(--color-white);
+}
+
+/* Ornamental divider: a brass hairline that fades out both ways, with whatever
+   glyph or label the screen centres in it. */
+.hairline-brass {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--color-brass);
+}
+
+.hairline-brass::before,
+.hairline-brass::after {
+  content: "";
+  height: 1px;
+  flex: 1;
+  background: linear-gradient(90deg, transparent, rgba(212, 175, 90, 0.55));
+}
+
+.hairline-brass::after {
+  transform: scaleX(-1);
 }
 
 /* ---------------------------------------------------------------------------
@@ -77,7 +259,7 @@ body {
 }
 
 .tile.is-selected .tile-face {
-  filter: drop-shadow(0 0 3px rgba(251, 191, 36, 0.95)) drop-shadow(0 4px 4px rgba(0, 0, 0, 0.45));
+  filter: drop-shadow(0 0 3px rgba(224, 179, 78, 0.95)) drop-shadow(0 4px 4px rgba(0, 0, 0, 0.45));
 }
 
 /* The pulse is an opacity fade on a pre-drawn ring now. It used to animate two
@@ -91,7 +273,7 @@ body {
   position: absolute;
   inset: 0;
   border-radius: 18.1% / 14.9%;
-  box-shadow: 0 0 4px 1px rgba(251, 191, 36, 0.95);
+  box-shadow: 0 0 4px 1px rgba(224, 179, 78, 0.95);
   animation: tile-pulse 1.4s ease-in-out infinite;
   pointer-events: none;
 }
@@ -448,7 +630,7 @@ body {
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.92), 0 2px 5px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 0 0 2px rgba(244, 237, 220, 0.92), 0 2px 5px rgba(0, 0, 0, 0.45);
   pointer-events: none;
 }
 
@@ -579,7 +761,7 @@ body {
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  box-shadow: 0 0 0 3px #fbbf24, 0 5px 9px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 0 0 3px #e0b34e, 0 5px 9px rgba(0, 0, 0, 0.5);
   pointer-events: none;
 }
 
@@ -604,23 +786,22 @@ body {
 }
 
 /* ---------------------------------------------------------------------------
-   Board — vibrant jade felt table with recessed wells
+   Board — lamp-lit jade felt with recessed wells. A warm overhead glow sits
+   on top of the jade radial: the light on a teahouse table comes from above
+   it, and the tiles catch it.
 --------------------------------------------------------------------------- */
 .board-felt {
-  background: radial-gradient(
-    125% 90% at 50% -10%,
-    #16b8a6 0%,
-    #0f8a7e 38%,
-    #0c5f57 72%,
-    #07433d 100%
-  );
+  background: radial-gradient(70% 45% at 50% -5%, rgba(224, 179, 78, 0.1) 0%, transparent 70%),
+    radial-gradient(125% 90% at 50% -10%, #14806e 0%, #0e6353 38%, #0a453a 72%, #052019 100%);
 }
 
-/* Recessed center play area (where the last discard sits) */
+/* Recessed center play area (where the last discard sits). The hairline is
+   brass now, not white — an inlay ring in the table, not a chalk outline. */
 .play-well {
-  background: radial-gradient(80% 80% at 50% 40%, rgba(3, 40, 36, 0.55), rgba(2, 28, 26, 0.78));
+  background: radial-gradient(80% 80% at 50% 40%, rgba(2, 26, 21, 0.6), rgba(1, 16, 13, 0.85));
   border-radius: 1rem;
-  box-shadow: inset 0 2px 12px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 2px 12px rgba(0, 0, 0, 0.55), inset 0 0 0 1px rgba(212, 175, 90, 0.22), inset
+    0 0 0 4px rgba(0, 0, 0, 0.15);
   /* A stacking context, so `.wall-diagram`'s negative z-index lands between this
      background and the well's contents rather than behind the felt. */
   isolation: isolate;
@@ -645,9 +826,9 @@ body {
    exactly what an asymmetry of one bleed gives. Every tray is `sm`, where the
    bleed is 0.29 × 1.55rem ≈ 0.45rem. */
 .discard-tray {
-  background: rgba(0, 0, 0, 0.18);
+  background: rgba(0, 0, 0, 0.22);
   border-radius: 0.6rem;
-  box-shadow: inset 0 1px 5px rgba(0, 0, 0, 0.4);
+  box-shadow: inset 0 1px 5px rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(244, 237, 220, 0.05);
   padding: 0.3rem 0.3rem 0.3rem 0.75rem;
 }
 
@@ -873,7 +1054,7 @@ body {
   position: absolute;
   inset: 0;
   border-radius: 0.75rem;
-  box-shadow: inset 0 0 0 2px rgba(251, 191, 36, 0.9);
+  box-shadow: inset 0 0 0 2px rgba(224, 179, 78, 0.9);
   /* Fading the ring, not animating the shadow: a box-shadow keyframe repaints
      the whole hand block — fourteen lapped SVG tiles — every frame, while
      opacity is a compositor fade of the already-painted ring. */

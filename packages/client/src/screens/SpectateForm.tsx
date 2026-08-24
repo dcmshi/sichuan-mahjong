@@ -38,11 +38,11 @@ export function SpectateForm() {
   return (
     <div className="min-h-dvh board-felt flex flex-col items-center justify-center gap-6 p-6 text-white">
       <div className="text-4xl">👀</div>
-      <h2 className="text-2xl font-bold">{t('spec.title')}</h2>
+      <h2 className="heading-display text-3xl">{t('spec.title')}</h2>
 
       <div className="flex flex-col gap-3 w-full max-w-xs">
         <input
-          className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/50 text-sm font-mono text-center focus:outline-none focus:border-amber-400"
+          className="w-full px-4 py-3 bg-lacquer/60 border border-white/15 rounded-xl text-white placeholder-white/40 text-sm font-mono text-center focus:outline-none focus:border-brass/60"
           placeholder={t('spec.linkPlaceholder')}
           aria-label={t('spec.linkPlaceholder')}
           autoCorrect="off"
@@ -57,7 +57,7 @@ export function SpectateForm() {
         {error && <p className="text-red-400 text-sm text-center">{t(error)}</p>}
         <button
           type="button"
-          className="w-full py-3 bg-amber-500 hover:bg-amber-400 rounded-xl font-bold text-lg disabled:opacity-50"
+          className="btn-brass w-full py-3 rounded-xl font-bold text-lg disabled:opacity-50"
           onClick={watch}
           disabled={loading}
         >
@@ -65,7 +65,7 @@ export function SpectateForm() {
         </button>
         <button
           type="button"
-          className="py-2 text-white/60 hover:text-white"
+          className="py-2 text-white/60 hover:text-amber-300"
           onClick={() => goTo('landing')}
         >
           {t('nav.back')}

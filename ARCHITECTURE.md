@@ -65,7 +65,7 @@ been added as post-v1 features — see §12.)
 | --- | --- | --- |
 | `packages/engine` | Pure rules engine. Zero runtime deps. | (none) |
 | `packages/server` | HTTP+WS gateway, lobby, bots, persistence, Tailscale detection | `fastify`, `@fastify/static`, `@fastify/websocket`, `multicast-dns`, `qrcode-terminal`; `node:sqlite` (Node built-in); `esbuild` (build-time bundling); `ws` (test client only) |
-| `packages/client` | Mobile-first PWA (hand-rolled manifest + `sw.js`) | `react@18`, `vite`, `tailwindcss`, `zustand`, `framer-motion` |
+| `packages/client` | Mobile-first PWA (hand-rolled manifest + `sw.js`) | `react@18`, `vite`, `tailwindcss`, `zustand`, `framer-motion`, self-hosted `@fontsource/marcellus` + `@fontsource/outfit` |
 
 Both server and client import from engine. Protocol message types live in `engine/src/protocol.ts`.
 
@@ -123,9 +123,9 @@ sichuan-mahjong/
 │   │   │   ├── i18n/            # EN / zh-Hans / zh-Hant / FR / ES / JA catalogs
 │   │   │   ├── session.ts       # seat token in localStorage — survives a refresh
 │   │   │   ├── prefs.ts         # per-player display prefs in localStorage (animation pace)
-│   │   │   ├── index.css        # Tailwind entry
+│   │   │   ├── index.css        # Tailwind theme tokens, shared UI recipes, tile/board geometry
 │   │   │   ├── App.tsx
-│   │   │   └── main.tsx
+│   │   │   └── main.tsx         # app root, bundled font imports, VITE_E2E helpers
 │   │   ├── index.html
 │   │   └── vite.config.ts
 ├── scripts/
@@ -903,27 +903,45 @@ Huan has no per-level split: 換三張 is off by default and off the Novikov pat
 
 Mobile-first. Portrait phone is the design target; tablets and desktop scale up cleanly. The play screen is budgeted to fit a phone viewport without scrolling — it renders at ~664px against an iPhone 14's 664px, worst case late in a round with full discard trays.
 
+The visual system is **teahouse-luxe**: ink-jade felt and lacquer, warm ivory
+type, restrained brass inlays, and semantic game colors kept separate (Hu red,
+Kong purple, Pung blue, plus the three suit colors). Tailwind v4 theme tokens in
+`index.css` retint the green, amber, and white ramps; `.btn-brass`,
+`.btn-outline`, `.choice-segment`, `.panel-lacquer`, `.heading-display`, and
+`.hairline-brass` are the shared recipes. Large flat surfaces carry a subtle
+fixed grain so the table reads as material rather than vector fill.
+
+Typography is semantic, not one face everywhere. Both families are bundled via
+`@fontsource`, so the PWA needs no font CDN: **Marcellus** is for screen and
+section headings, actions, segmented choices, game-phase prompts, and short
+prominent instructions; **Outfit** is for longer body copy and dense information
+such as names, scores, counts, badges, and event lines. Room codes and URLs stay
+monospace. Marcellus ships at 400 only, so hierarchy comes from size, color, and
+spacing rather than synthetic bold. CJK glyphs fall through to the declared
+system stacks.
+
 ### 8.1 Screens
 
-1. **Landing** — Host / Join / Practice-vs-bots / Watch, plus "Rejoin" when a stored seat is present (§8.4). Host info text: "runs the server on this machine; share the URL with friends." Join flow accepts a URL or a code if already on the host's network.
-2. **Host setup** — share URL as text + tap-to-copy (the QR code is printed by the CLI, §10.4, not rendered here), the lobby code, a difficulty toggle for newly added bots, the four seats with "+ Bot" / "Kick" controls, "Start" (disabled until 4 seats filled) and "Leave".
-3. **Join** — code input (auto-uppercased, 4 chars) + name input. Pre-filled if URL was `/j/CODE`.
-4. **Lobby (joiner view)** — waiting state, list of players, "Leave" button.
-5. **Game** (the main screen):
+1. **Landing** — Host / Join / Practice-vs-bots / Watch, plus "Rejoin" when a stored seat is present (§8.4), a dedicated About & Credits page, and the same sectioned How-to-Play sheet available during a game. Join flow accepts a URL or a code if already on the host's network.
+2. **Host setup** — name/create step, then share URL + tap-to-copy (the QR code is printed by the CLI, §10.4), lobby code, 換三張 switch, bot pace, claim-window and fan-cap choices, and four explicit seat rows. Empty seats offer Easy / Medium / Hard bot actions; seated bots keep per-seat difficulty controls. Start is sticky and disabled until four seats are filled; Leave remains available.
+3. **Practice setup** — bot pace plus an independent Easy / Medium / Hard level for each of the three opponents, persisted locally, before starting a solo game.
+4. **Join** — code input (auto-uppercased, 4 chars) + name input. Pre-filled if URL was `/j/CODE`.
+5. **Lobby (joiner view)** — waiting state, list of players, language switch, "Leave" button.
+6. **Game** (the main screen):
    - **Top:** opponent across the table — back-of-tile hand strip, exposed melds, recent discards.
    - **Left/right:** opponents to either side — a short overlapped stack of backs with the hand count beside it, plus melds and discards. One back per tile stood ~500px tall, which set the height of the whole middle row; the count is also easier to read than counting slivers.
    - **Bottom:** your hand (tappable, sorted), your melds, your discard row.
    - **Center:** the play well — the last discard, highlighted, the transient event feed (§8.5, capped at two lines so it cannot reach the centred label beneath it), and the **wall diagram** (`WallDiagram`): four walls round the rim, seven stacks a side, two tiles high, flush and lapped, which is 4 x 7 x 2 = 56 and so exactly what the deal leaves. Emptied slots stay drawn and go dark — a bar that only shrinks gives nothing to measure against. It is a square that fits the well and sits behind the contents, so it costs no height in a row that has none. A 🗒 button in its bottom-right corner opens the round's move history. Each seat's pond sits with that seat, not in the middle.
    - **Floating action panel:** appears during claim windows. Pung / Kong / Hu / Pass buttons + countdown bar. Big touch targets.
-   - **Top bar:** wall-remaining counter, whose turn it is, language toggle, sound and help buttons.
-   - **Score strip:** running score deltas per player, directly under the top bar.
+   - **Top bar:** wall-remaining counter, whose turn it is, your running score delta (opens the four-player score table), settings, and help. Language, sound, animation pace, and the host's live bot pace sit in the settings popover so the turn indicator survives a 320px viewport.
    - Huan and void declaration are whole screens of their own rather than states of this one, so there is no phase indicator here.
    - **Furiten badge:** visible to your own seat if you're in furiten state (skip-Hu locked until next self-draw). Tooltip explains the rule.
    - **First-discard flip panel:** on your first turn, if you separated a tile at void declaration (§5.4), the hand is not discardable and this panel shows that tile plus a "Flip your first discard" button — the one discard you don't get to choose.
    - **The void declaration is drawn beside each seat's pond, not in it** — face down until its owner flips it, then face up with a white glow. It is the one public statement of what that seat declared, and `PublicPlayer.firstDiscardIsVoid` is what says so (false until the flip). Holding it out of the pile is also what keeps it from scrolling out of an opponent's capped tray. It sits on the **far** side of the pile as that seat sees it, the way a tile pushed out onto the table ends up: above your own tray, *below* the across seat's, and for the two side seats *inboard* of theirs — nearest the wall drawn round the well, level with the pile's oldest end. Side-on that costs no height at all, which is the dimension an 80px column has none of. (N37, N38)
    - **Each side seat's pile runs the way that seat lays tiles down, and laps to match** — the left column downward, the right column upward, because the 22.5% band the lap hides is on opposite edges once the two quarter turns are opposite. `.tile-lap-v` and `.tile-lap-v-up`; see [docs/handoff-tile-rendering.md](./docs/handoff-tile-rendering.md). (N36)
-6. **Round end** — per-seat rank, wind, name, a Hu badge and this round's score delta, then match totals, then "Next round" / "End match" (host) or "Leave". Each row expands (`RoundEndRow`) to that seat's revealed hand and melds, its fan list and hand value if it won or its ready state if it didn't, and an itemised list of the payments that produced its delta. Winners' rows start expanded. Spectators get the same rows on their own screen once the round settles.
-7. **Match end** — final standings from the accumulated `matchScores`, then back to the menu. Reached on the server's `matchEnd` frame, which used to reset straight to Landing with no result shown. (F9)
+7. **Round end** — per-seat rank, wind, name, a Hu badge and this round's score delta, then match totals, then "Next round" / "End match" (host) or "Leave". Each row expands (`RoundEndRow`) to that seat's revealed hand and melds, its fan list and hand value if it won or its ready state if it didn't, and an itemised list of the payments that produced its delta. Winners' rows start expanded. Spectators get the same rows on their own screen once the round settles.
+8. **Match end** — final standings from the accumulated `matchScores`, then back to the menu. Reached on the server's `matchEnd` frame, which used to reset straight to Landing with no result shown. (F9)
+9. **Spectate** — tokenized watch-link entry followed by a read-only table that redacts concealed hands, carries language and match totals, and transitions into the same round-end reveal rows.
 
 App-root overlays, mounted alongside whichever screen is active:
 

@@ -484,7 +484,7 @@ function OwnZoneImpl({ view, onOpenPile }: { view: PlayerView; onOpenPile: () =>
             <motion.button
               type="button"
               whileTap={{ scale: 0.95 }}
-              className="flex-1 py-2.5 bg-yellow-500 hover:bg-yellow-400 rounded-xl font-bold text-black"
+              className="btn-brass flex-1 py-2.5 rounded-xl font-bold"
               onClick={declareHeavenly}
             >
               {t('play.heavenly')}
@@ -494,7 +494,7 @@ function OwnZoneImpl({ view, onOpenPile }: { view: PlayerView; onOpenPile: () =>
             <motion.button
               type="button"
               whileTap={{ scale: 0.95 }}
-              className="flex-1 py-2.5 bg-red-600 hover:bg-red-500 rounded-xl font-bold"
+              className="flex-1 py-2.5 bg-red-600 hover:bg-red-500 rounded-xl font-display shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_4px_10px_rgba(0,0,0,0.4)]"
               onClick={declareHu}
             >
               {t('play.huSelfDraw')}
@@ -517,7 +517,7 @@ function OwnZoneImpl({ view, onOpenPile }: { view: PlayerView; onOpenPile: () =>
           word per line. `basis-40` is what makes the row break instead: with no
           width the hint would shrink to nothing before wrapping ever triggers. */}
       {canFlip && !inClaimWindow && (
-        <div className="mx-3 my-1 p-2 rounded-xl bg-black/30 flex flex-wrap items-center gap-3">
+        <div className="mx-3 my-1 p-2 panel-lacquer flex flex-wrap items-center gap-3">
           {pendingFlipTile !== null && <Tile id={pendingFlipTile} size="md" interactive={false} />}
           <div className="flex-1 basis-40 min-w-0">
             <p className="text-[11px] text-green-300 leading-snug">{t('play.flipHint')}</p>
@@ -525,7 +525,7 @@ function OwnZoneImpl({ view, onOpenPile }: { view: PlayerView; onOpenPile: () =>
           <motion.button
             type="button"
             whileTap={{ scale: 0.95 }}
-            className="px-3 py-2.5 bg-amber-500 hover:bg-amber-400 rounded-xl font-bold text-black text-sm flex-shrink-0"
+            className="btn-brass px-3 py-2.5 rounded-xl font-bold text-sm flex-shrink-0"
             onClick={flipFirstDiscard}
           >
             {t('play.flipFirstDiscard')}
@@ -546,7 +546,7 @@ function OwnZoneImpl({ view, onOpenPile }: { view: PlayerView; onOpenPile: () =>
           The void declaration heads the river rather than sitting in a row above
           it, as it does for all three opponents: it *is* your first discard, and
           the row of its own cost ~34px of the one column on the board that has
-          nowhere left to give. It keeps its white glow, so it still reads as the
+          nowhere left to give. It keeps its ivory ring, so it still reads as the
           one public statement rather than an ordinary throw, and `.tile-lap`
           already lifts a `.tile-void-discard` above the tile lapping it. */}
       {/* The label belongs to the tray, so it is inside the same `w-fit mx-auto`
@@ -614,11 +614,11 @@ function OwnZoneImpl({ view, onOpenPile }: { view: PlayerView; onOpenPile: () =>
 
       {/* Your hand — drag tiles to rearrange; Sort resets to the standard order.
           `hand-your-turn` rings this block while the turn is yours: the top bar's
-          amber text is at the far end of the screen from the tiles you act with,
+          brass pill is at the far end of the screen from the tiles you act with,
           and the ring costs no layout box (inset box-shadow on a pseudo-element),
           which the bottom-most row of an exactly-fitting column cannot afford.
           Not shown during a claim window — the claim bar is the cue then, and two
-          competing amber prompts is worse than one. (N13) */}
+          competing brass prompts is worse than one. (N13) */}
       <div className={`px-2 py-2 ${isMyTurn && !inClaimWindow ? 'hand-your-turn' : ''}`}>
         <div className="flex items-center justify-between mb-1">
           {/* One status line, three states: confirming a discard, holding one
@@ -638,7 +638,7 @@ function OwnZoneImpl({ view, onOpenPile }: { view: PlayerView; onOpenPile: () =>
           </span>
           <button
             type="button"
-            className="text-xs px-3 min-h-10 rounded-md bg-black/25 text-white/70 hover:text-white"
+            className="text-xs px-3 min-h-10 rounded-md bg-lacquer/60 text-white/70 hover:text-amber-300"
             onClick={() => setHandOrder([...hand])}
             title={t('play.sort')}
           >
@@ -684,7 +684,7 @@ function OwnZoneImpl({ view, onOpenPile }: { view: PlayerView; onOpenPile: () =>
           <motion.div
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
-            className="flex items-center justify-center gap-2 text-amber-400 font-bold mt-2"
+            className="flex items-center justify-center gap-2 text-amber-400 font-display text-lg mt-2"
           >
             {/* The tile that won, when it is not in the hand above. A claimed tile
                 stays in the discarder's pile, so a discard win drew 13 tiles that

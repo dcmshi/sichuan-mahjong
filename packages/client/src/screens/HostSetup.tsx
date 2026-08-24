@@ -30,10 +30,7 @@ function BotLevelPicker({
           type="button"
           aria-pressed={value === level}
           onClick={() => onPick(level)}
-          className={[
-            'px-2 py-1 text-xs font-semibold transition-colors',
-            value === level ? 'bg-amber-400 text-black' : 'bg-black/20 text-white/60',
-          ].join(' ')}
+          className="choice-segment px-2 py-1 text-xs"
         >
           {t(botLevelKey(level))}
         </button>
@@ -118,13 +115,16 @@ export function HostSetup() {
   if (!inLobby) {
     return (
       <div className="min-h-dvh bg-green-900 flex flex-col items-center justify-center gap-6 p-6 text-white">
-        <div className="text-4xl" aria-hidden="true">
-          🀄
-        </div>
-        <h2 className="text-2xl font-bold">{t('host.title')}</h2>
+        <img
+          src="/tiles/man-5.svg"
+          alt=""
+          aria-hidden="true"
+          className="w-12 [filter:drop-shadow(0_4px_6px_rgba(0,0,0,0.5))]"
+        />
+        <h2 className="heading-display text-3xl">{t('host.title')}</h2>
         <div className="flex flex-col gap-3 w-full max-w-xs">
           <input
-            className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/50 text-lg focus:outline-none focus:border-amber-400"
+            className="w-full px-4 py-3 bg-lacquer/60 border border-white/15 rounded-xl text-white placeholder-white/40 text-lg focus:outline-none focus:border-brass/60"
             placeholder={t('join.name')}
             aria-label={t('join.name')}
             value={name}
@@ -135,7 +135,7 @@ export function HostSetup() {
           {error && <p className="text-red-400 text-sm">{t(error)}</p>}
           <button
             type="button"
-            className="w-full py-3 bg-amber-500 hover:bg-amber-400 rounded-xl font-bold text-lg disabled:opacity-50"
+            className="btn-brass w-full py-3 rounded-xl font-bold text-lg disabled:opacity-50"
             onClick={() => void createAndJoin()}
             disabled={loading}
           >
@@ -143,7 +143,7 @@ export function HostSetup() {
           </button>
           <button
             type="button"
-            className="py-2 text-white/60 hover:text-white"
+            className="py-2 text-white/60 hover:text-amber-300"
             onClick={() => goTo('landing')}
           >
             {t('nav.back')}
@@ -192,9 +192,9 @@ export function HostSetup() {
           They were two, with the code in a bare row above — 40px and a gap
           spent saying the same thing twice on the screen whose problem is
           length. (N31) */}
-      <div className="bg-black/30 rounded-xl p-3 mt-2">
+      <div className="panel-lacquer p-3 mt-2">
         <div className="flex items-baseline gap-3">
-          <span className="text-2xl font-mono font-bold text-amber-400 tracking-widest">
+          <span className="text-2xl font-mono font-bold text-amber-300 tracking-widest">
             {code}
           </span>
           <span className="text-green-300 text-sm">{t('host.shareCode')}</span>
@@ -203,7 +203,7 @@ export function HostSetup() {
         <p className="font-mono text-sm break-all text-amber-300">{shareUrl}</p>
         <button
           type="button"
-          className="mt-1 text-xs text-green-400 underline"
+          className="mt-1 text-xs text-green-300 underline hover:text-amber-300"
           onClick={() => copyText(shareUrl, 'share')}
         >
           {copied === 'share' ? t('host.copied') : t('host.copy')}
@@ -211,12 +211,12 @@ export function HostSetup() {
       </div>
 
       {watchLink && (
-        <div className="bg-black/30 rounded-xl p-3">
+        <div className="panel-lacquer p-3">
           <p className="text-green-300 text-xs mb-1">{t('host.watchUrl')}</p>
           <p className="font-mono text-xs break-all text-white/70">{watchLink}</p>
           <button
             type="button"
-            className="mt-1 text-xs text-green-400 underline"
+            className="mt-1 text-xs text-green-300 underline hover:text-amber-300"
             onClick={() => copyText(watchLink, 'watch')}
           >
             {copied === 'watch' ? t('host.copied') : t('host.copy')}
@@ -229,7 +229,7 @@ export function HostSetup() {
           GameConfig), so it is offered and starts off — the canonical ruleset is
           what you get if you touch nothing. Only the host sees this, and the
           choice rides along with startGame. */}
-      <div className="flex items-start gap-3 text-sm bg-black/20 rounded-xl px-3 py-2.5">
+      <div className="flex items-start gap-3 text-sm panel-lacquer px-3 py-2.5">
         <button
           type="button"
           role="switch"
@@ -248,7 +248,7 @@ export function HostSetup() {
           />
         </button>
         <span className="flex-1 min-w-0">
-          <span className="font-semibold">{t('host.huanSanZhang')}</span>
+          <span className="font-display tracking-wide text-white/90">{t('host.huanSanZhang')}</span>
           <span className="block text-xs text-green-300 leading-snug">
             {t('host.huanSanZhangHint')}
           </span>
@@ -259,8 +259,8 @@ export function HostSetup() {
           the same seed is identical at any of them — so it rides alongside the
           rules rather than inside them. Slow is for following what happened;
           fast is for players who already know. */}
-      <div className={`bg-black/20 rounded-xl px-3 py-2.5 text-sm ${allHuman ? 'opacity-50' : ''}`}>
-        <div className="font-semibold">{t('host.botSpeed')}</div>
+      <div className={`panel-lacquer px-3 py-2.5 text-sm ${allHuman ? 'opacity-50' : ''}`}>
+        <div className="font-display tracking-wide text-white/90">{t('host.botSpeed')}</div>
         <div className="text-xs text-green-300 leading-snug mb-2">
           {allHuman ? t('host.botSpeedNoBots') : t('host.botSpeedHint')}
         </div>
@@ -273,8 +273,7 @@ export function HostSetup() {
               disabled={allHuman}
               onClick={() => setBotSpeed(speed)}
               className={[
-                'flex-1 min-h-10 rounded-lg font-semibold transition-colors',
-                botSpeed === speed ? 'bg-amber-400 text-black' : 'bg-black/30 text-white/70',
+                'choice-segment flex-1 min-h-10 rounded-lg',
                 allHuman ? 'cursor-not-allowed' : '',
               ].join(' ')}
             >
@@ -289,8 +288,8 @@ export function HostSetup() {
           rides in `rules` and lands in GameConfig. Presets rather than a number:
           `houseRules` maps them server-side, so no integer off the wire can
           freeze a table or close the window before a human sees it. (N6) */}
-      <div className="bg-black/20 rounded-xl px-3 py-2.5 text-sm">
-        <div className="font-semibold">{t('host.claimWindow')}</div>
+      <div className="panel-lacquer px-3 py-2.5 text-sm">
+        <div className="font-display tracking-wide text-white/90">{t('host.claimWindow')}</div>
         <div className="text-xs text-green-300 leading-snug mb-2">{t('host.claimWindowHint')}</div>
         {/* Relaxed first, so this row runs slowest-to-fastest like Bot pace
             directly above it. Ordered quick-first it read as the same kind of
@@ -303,10 +302,7 @@ export function HostSetup() {
               type="button"
               aria-pressed={claimWindow === len}
               onClick={() => setClaimWindow(len)}
-              className={[
-                'flex-1 min-h-10 rounded-lg font-semibold transition-colors',
-                claimWindow === len ? 'bg-amber-400 text-black' : 'bg-black/30 text-white/70',
-              ].join(' ')}
+              className="choice-segment flex-1 min-h-10 rounded-lg"
             >
               {t(`host.claimWindow.${len}`)}
             </button>
@@ -319,8 +315,8 @@ export function HostSetup() {
           capped hand as paying half. Each option names the points it implies
           rather than only the fan count, because the points are what a dispute is
           about. (N27) */}
-      <div className="bg-black/20 rounded-xl px-3 py-2.5 text-sm">
-        <div className="font-semibold">{t('host.fanCap')}</div>
+      <div className="panel-lacquer px-3 py-2.5 text-sm">
+        <div className="font-display tracking-wide text-white/90">{t('host.fanCap')}</div>
         <div className="text-xs text-green-300 leading-snug mb-2">{t('host.fanCapHint')}</div>
         <div className="flex gap-1.5">
           {([3, 4] as const).map(cap => (
@@ -329,10 +325,7 @@ export function HostSetup() {
               type="button"
               aria-pressed={fanCap === cap}
               onClick={() => setFanCap(cap)}
-              className={[
-                'flex-1 min-h-10 rounded-lg font-semibold transition-colors',
-                fanCap === cap ? 'bg-amber-400 text-black' : 'bg-black/30 text-white/70',
-              ].join(' ')}
+              className="choice-segment flex-1 min-h-10 rounded-lg"
             >
               {t('host.fanCap.option', { n: cap, max: 2 ** cap })}
             </button>
@@ -357,10 +350,7 @@ export function HostSetup() {
             // absorbed the whole shortfall and rendered at zero width on a 320px
             // phone. Same shape as N7's turn indicator and N23's flip prompt;
             // the remedy is the same one written down in CLAUDE.md.
-            <div
-              key={i}
-              className="flex flex-wrap items-center gap-2 bg-black/20 rounded-xl px-3 py-2.5"
-            >
+            <div key={i} className="flex flex-wrap items-center gap-2 panel-lacquer px-3 py-2.5">
               {/* A chair, not a wind: the seating dice have not been thrown, so
                   there is no East yet to be a distance from. (N26) */}
               <span className="text-green-400 text-sm w-16 flex-shrink-0">{t(seatKey(i))}</span>
@@ -380,7 +370,7 @@ export function HostSetup() {
                       />
                       <button
                         type="button"
-                        className="text-xs bg-red-700 hover:bg-red-600 px-2 py-1 rounded flex-shrink-0"
+                        className="text-xs font-display bg-red-700 hover:bg-red-600 px-2 py-1 rounded flex-shrink-0"
                         onClick={() => sendAction({ t: 'kickBot', seat: i as Seat })}
                       >
                         {t('host.kick')}
@@ -407,7 +397,7 @@ export function HostSetup() {
                     <button
                       key={level}
                       type="button"
-                      className="text-xs bg-blue-700 hover:bg-blue-600 px-2 py-1 rounded flex-shrink-0"
+                      className="btn-outline text-xs px-2 py-1 rounded-lg flex-shrink-0"
                       onClick={() =>
                         sendAction({ t: 'addBot', difficulty: level, seat: i as Seat })
                       }
@@ -431,7 +421,7 @@ export function HostSetup() {
       <div className="sticky bottom-0 w-full -mx-4 px-4 pt-6 pb-4 mt-auto bg-gradient-to-t from-green-900 via-green-900/90 to-transparent">
         <button
           type="button"
-          className="w-full py-4 bg-amber-500 hover:bg-amber-400 active:bg-amber-600 rounded-xl font-bold text-lg disabled:opacity-40"
+          className="btn-brass w-full py-4 rounded-xl font-bold text-lg disabled:opacity-40"
           onClick={() =>
             sendAction({ t: 'startGame', rules: { huanSanZhang, botSpeed, claimWindow, fanCap } })
           }
@@ -444,7 +434,7 @@ export function HostSetup() {
             host's socket open until then. (F10) */}
         <button
           type="button"
-          className="w-full py-2 min-h-11 text-white/60 hover:text-white"
+          className="w-full py-2 min-h-11 text-white/60 hover:text-amber-300"
           onClick={() => resetSession()}
         >
           {t('nav.leave')}

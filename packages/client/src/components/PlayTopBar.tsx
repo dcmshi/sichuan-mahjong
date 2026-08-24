@@ -43,8 +43,10 @@ export function PlayTopBar({ view }: { view: PlayerView }) {
   const seat = view.you.seat;
 
   return (
-    <div className="relative flex items-center justify-between gap-2 px-3 bg-black/30 text-xs">
-      <span className="flex-shrink-0">{t('play.wall', { n: view.wallRemaining })}</span>
+    <div className="relative flex items-center justify-between gap-2 px-3 bg-lacquer/80 backdrop-blur-sm text-xs shadow-[inset_0_-1px_0_rgba(212,175,90,0.25)]">
+      <span className="flex-shrink-0 font-display tracking-wide text-white/80">
+        {t('play.wall', { n: view.wallRemaining })}
+      </span>
       {/* flex-1, not just shrinkable: the icon cluster is flex-shrink-0, so this
           was the only child that could absorb a shortfall and on a 320px phone it
           truncated to nothing — "Your turn" simply did not render on the smallest
@@ -52,13 +54,18 @@ export function PlayTopBar({ view }: { view: PlayerView }) {
           moved into the ⚙ menu; flex-1 is what claims it. (N7)
 
           A filled pill on your turn rather than a colour swap on 10px text: the
-          amber-vs-white distinction was the entire cue, and it was invisible at
-          this size. `data-your-turn` is what the guard reads. (N13) */}
+          brass-vs-ivory distinction was the entire cue, and it was invisible at
+          this size. `data-your-turn` is what the guard reads. (N13)
+
+          The pill is the same brass plaque as every other confirm in the app
+          (.btn-brass carries the gradient and the serif; rounded-full only sizes
+          the shape). The not-your-turn state stays dim Outfit — it's info text,
+          not an action. */}
       <span
         data-turn-indicator="true"
         data-your-turn={view.turn === seat ? 'true' : undefined}
-        className={`flex-1 min-w-0 truncate text-center font-semibold rounded-full px-2 py-0.5 ${
-          view.turn === seat ? 'bg-amber-400 text-black' : 'text-white/60'
+        className={`flex-1 min-w-0 truncate text-center rounded-full px-2 py-0.5 ${
+          view.turn === seat ? 'btn-brass' : 'text-white/60'
         }`}
       >
         {view.turn === seat
@@ -107,7 +114,7 @@ export function PlayTopBar({ view }: { view: PlayerView }) {
                 skipped, the panel is still fully visible at rest, just not
                 "grown" from its start scale — never invisible. (F12/F11 in spirit) */}
             <motion.div
-              className="absolute right-2 top-full mt-1 z-30 w-48 rounded-xl bg-green-950/95 backdrop-blur border border-white/10 shadow-lg overflow-hidden text-sm"
+              className="absolute right-2 top-full mt-1 z-30 w-48 panel-lacquer overflow-hidden text-sm"
               style={{ transformOrigin: 'top right' }}
               initial={{ scaleY: 0.85, y: -6 }}
               animate={{ scaleY: 1, y: 0 }}

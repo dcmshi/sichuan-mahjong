@@ -1,3 +1,4 @@
+import { type Variants, motion } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
 import { HowToPlay } from '../components/HowToPlay.js';
 import { LangSwitch } from '../components/LangSwitch.js';
@@ -14,6 +15,20 @@ import {
 
 /** How long to wait for the server to accept a stored token before giving up. */
 const REJOIN_TIMEOUT_MS = 6000;
+
+/* One-shot mount entrance: a gentle stagger up the masthead and the doors in.
+   Transform + opacity is safe here — Landing mounts once per visit, so the
+   "skipped animation leaves content invisible" failure mode (F11) can't
+   strand anything: worst case it renders at its final state. */
+const entrance: Variants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.07, delayChildren: 0.05 } },
+};
+
+const entranceItem: Variants = {
+  hidden: { y: 14, opacity: 0 },
+  show: { y: 0, opacity: 1, transition: { type: 'spring', stiffness: 260, damping: 24 } },
+};
 
 export function Landing() {
   const [rejoining, setRejoining] = useState(false);
@@ -93,23 +108,50 @@ export function Landing() {
   }
 
   return (
-    <div className="min-h-dvh bg-green-900 flex flex-col items-center justify-center gap-8 p-6 text-white">
+    <motion.div
+      className="min-h-dvh bg-green-900 flex flex-col items-center justify-center gap-8 p-6 text-white"
+      variants={entrance}
+      initial="hidden"
+      animate="show"
+    >
       <div className="absolute top-4 right-4">
         <LangSwitch />
       </div>
-      <div className="text-center">
-        <div className="text-6xl mb-2" aria-hidden="true">
-          🀄
+      <motion.div className="text-center" variants={entranceItem}>
+        {/* A fan of the real tile art as the masthead mark — the game introduces
+            itself with its own pieces rather than an emoji. */}
+        <div className="flex items-end justify-center mb-4" aria-hidden="true">
+          <img
+            src="/tiles/man-1.svg"
+            alt=""
+            className="w-11 -rotate-12 translate-y-1 [filter:drop-shadow(0_4px_6px_rgba(0,0,0,0.5))]"
+          />
+          <img
+            src="/tiles/pin-5.svg"
+            alt=""
+            className="w-13 -mx-1 z-10 [filter:drop-shadow(0_6px_8px_rgba(0,0,0,0.55))]"
+          />
+          <img
+            src="/tiles/sou-9.svg"
+            alt=""
+            className="w-11 rotate-12 translate-y-1 [filter:drop-shadow(0_4px_6px_rgba(0,0,0,0.5))]"
+          />
         </div>
-        <h1 className="text-3xl font-bold">{t('app.title')}</h1>
-        <p className="text-green-300 mt-1 text-sm">{t('app.subtitle')}</p>
-      </div>
+        <h1 className="heading-display text-4xl">{t('app.title')}</h1>
+        <p className="text-green-300 mt-2 text-sm">{t('app.subtitle')}</p>
+      </motion.div>
 
-      <div className="flex flex-col gap-4 w-full max-w-xs">
+      <motion.div className="w-full max-w-xs" variants={entranceItem}>
+        <div className="hairline-brass text-[10px] tracking-[0.3em] uppercase" aria-hidden="true">
+          ◆
+        </div>
+      </motion.div>
+
+      <motion.div className="flex flex-col gap-4 w-full max-w-xs -mt-4" variants={entranceItem}>
         {saved && (
           <button
             type="button"
-            className="w-full py-4 bg-sky-600 hover:bg-sky-500 active:bg-sky-700 rounded-2xl font-bold text-xl text-white shadow-lg disabled:opacity-50"
+            className="btn-outline w-full py-4 rounded-2xl font-bold text-xl disabled:opacity-50"
             onClick={rejoin}
             disabled={rejoining}
           >
@@ -118,14 +160,14 @@ export function Landing() {
         )}
         <button
           type="button"
-          className="w-full py-4 bg-amber-500 hover:bg-amber-400 active:bg-amber-600 rounded-2xl font-bold text-xl text-white shadow-lg"
+          className="btn-brass w-full py-4 rounded-2xl font-bold text-xl"
           onClick={() => goTo('hostSetup')}
         >
           {t('landing.host')}
         </button>
         <button
           type="button"
-          className="w-full py-4 bg-white/20 hover:bg-white/30 active:bg-white/10 rounded-2xl font-bold text-xl text-white shadow-lg"
+          className="btn-outline w-full py-4 rounded-2xl font-bold text-xl"
           onClick={handleJoin}
         >
           {urlCode ? t('landing.joinCode', { code: urlCode }) : t('landing.join')}
@@ -135,7 +177,7 @@ export function Landing() {
             as a footnote rather than a fourth door in. */}
         <button
           type="button"
-          className="w-full py-4 bg-white/10 hover:bg-white/20 active:bg-white/5 rounded-2xl font-bold text-xl text-white shadow-lg"
+          className="btn-outline w-full py-4 rounded-2xl font-bold text-xl"
           onClick={() => goTo('spectateForm')}
         >
           {t('landing.watch')}
@@ -148,30 +190,32 @@ export function Landing() {
             missing, which is the only test an affordance gets. */}
         <button
           type="button"
-          className="w-full py-4 bg-emerald-700 hover:bg-emerald-600 active:bg-emerald-800 rounded-2xl font-bold text-xl text-white shadow-lg"
+          className="btn-outline w-full py-4 rounded-2xl font-bold text-xl"
           onClick={() => goTo('practiceSetup')}
         >
           {t('landing.practice')}
         </button>
-      </div>
+      </motion.div>
 
-      <p className="text-green-400 text-xs text-center max-w-xs">{t('landing.hostHint')}</p>
+      <motion.p className="text-green-400 text-xs text-center max-w-xs" variants={entranceItem}>
+        {t('landing.hostHint')}
+      </motion.p>
 
       {/* The same overlay the play screen's ? opens, reached before a game exists:
           the rules were only readable from inside a round, which is the one place
           you already have something else to do. Reuses `htp.title` rather than a
           new key — it is the name of the thing being opened. */}
-      <div className="flex flex-col items-center gap-2">
+      <motion.div className="flex flex-col items-center gap-2" variants={entranceItem}>
         <button
           type="button"
-          className="text-green-500 hover:text-green-300 text-xs underline"
+          className="text-green-400 hover:text-amber-300 text-xs underline"
           onClick={() => goTo('about')}
         >
           {t('landing.about')}
         </button>
         <button
           type="button"
-          className="text-green-500 hover:text-green-300 text-xs underline"
+          className="text-green-400 hover:text-amber-300 text-xs underline"
           onClick={() => setShowHowToPlay(true)}
         >
           {t('htp.title')}
@@ -181,12 +225,12 @@ export function Landing() {
             and there is no room in a link to say so, so the qualification lives
             one row up and one tap away, on the screen that carries the
             attribution. Ordering is the whole of that decision. (N35) */}
-        <div className="flex items-center gap-2 text-[11px] text-green-600 mt-1">
+        <div className="flex items-center gap-2 text-[11px] text-green-500 mt-1">
           <a
             href="https://github.com/sponsors/dcmshi"
             target="_blank"
             rel="noopener noreferrer"
-            className="hover:text-green-300 hover:underline"
+            className="hover:text-amber-300 hover:underline"
           >
             {t('landing.support')}
           </a>
@@ -195,14 +239,14 @@ export function Landing() {
             href="https://github.com/dcmshi/sichuan-mahjong"
             target="_blank"
             rel="noopener noreferrer"
-            className="hover:text-green-300 hover:underline"
+            className="hover:text-amber-300 hover:underline"
           >
             {t('landing.source')}
           </a>
         </div>
-      </div>
+      </motion.div>
 
       {showHowToPlay && <HowToPlay onClose={() => setShowHowToPlay(false)} />}
-    </div>
+    </motion.div>
   );
 }

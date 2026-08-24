@@ -26,7 +26,7 @@ function Choice<T extends string>({
 }) {
   return (
     <div>
-      <div className="font-semibold">{label}</div>
+      <div className="font-display tracking-wide text-white/90">{label}</div>
       {hint && <div className="text-xs text-green-300 leading-snug mb-1.5">{hint}</div>}
       <div className="flex gap-1.5">
         {options.map(option => (
@@ -35,10 +35,7 @@ function Choice<T extends string>({
             type="button"
             aria-pressed={value === option}
             onClick={() => onPick(option)}
-            className={[
-              'flex-1 min-h-10 rounded-lg font-semibold transition-colors',
-              value === option ? 'bg-amber-400 text-black' : 'bg-black/30 text-white/70',
-            ].join(' ')}
+            className="choice-segment flex-1 min-h-10 rounded-lg"
           >
             {labelFor(option)}
           </button>
@@ -147,13 +144,13 @@ export function PracticeSetup() {
         <div className="flex items-center gap-3">
           <button
             type="button"
-            className="min-h-10 min-w-10 text-white/60 hover:text-white text-xl"
+            className="min-h-10 min-w-10 text-white/60 hover:text-amber-300 text-xl"
             onClick={() => goTo('landing')}
             aria-label={t('common.back')}
           >
             ←
           </button>
-          <h1 className="text-2xl font-bold flex-1">{t('practice.title')}</h1>
+          <h1 className="heading-display text-3xl flex-1">{t('practice.title')}</h1>
         </div>
 
         <p className="text-green-300 text-sm leading-snug">{t('practice.hint')}</p>
@@ -169,7 +166,9 @@ export function PracticeSetup() {
 
         <div className="flex flex-col gap-3">
           <div>
-            <div className="font-semibold">{t('practice.opponents')}</div>
+            <div className="font-display tracking-wide text-white/90">
+              {t('practice.opponents')}
+            </div>
             <div className="text-xs text-green-300 leading-snug">{t('practice.opponentsHint')}</div>
           </div>
           {([0, 1, 2] as const).map(i => (
@@ -186,7 +185,7 @@ export function PracticeSetup() {
 
         <button
           type="button"
-          className="w-full py-4 bg-emerald-700 hover:bg-emerald-600 active:bg-emerald-800 rounded-2xl font-bold text-xl shadow-lg disabled:opacity-50"
+          className="btn-brass w-full py-4 rounded-2xl font-bold text-xl disabled:opacity-50"
           onClick={() => void start()}
           disabled={loading}
         >

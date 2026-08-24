@@ -37,12 +37,12 @@ export function ConnectionLost() {
 
   return (
     <div className="fixed inset-0 z-50 bg-black/75 flex flex-col items-center justify-center gap-5 p-6 text-white text-center">
-      <p className="text-lg font-semibold">{t('common.connectionLost')}</p>
+      <p className="text-lg font-display">{t('common.connectionLost')}</p>
       <div className="flex flex-col gap-3 w-full max-w-xs">
         {saved && (
           <button
             type="button"
-            className="px-6 py-3 min-h-11 bg-amber-500 hover:bg-amber-400 rounded-xl font-bold disabled:opacity-50"
+            className="btn-brass px-6 py-3 min-h-11 rounded-xl font-bold disabled:opacity-50"
             onClick={tryAgain}
             disabled={retrying}
           >
@@ -53,7 +53,7 @@ export function ConnectionLost() {
           type="button"
           className={[
             'px-6 py-3 min-h-11 rounded-xl font-bold',
-            saved ? 'bg-white/10 hover:bg-white/20' : 'bg-amber-500 hover:bg-amber-400',
+            saved ? 'btn-outline' : 'btn-brass',
           ].join(' ')}
           onClick={() => resetSession()}
         >

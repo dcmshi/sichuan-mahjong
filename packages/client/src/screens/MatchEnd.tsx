@@ -43,7 +43,7 @@ export function MatchEnd() {
       >
         🏁
       </motion.div>
-      <h2 className="text-2xl font-bold">{t('match.title')}</h2>
+      <h2 className="heading-display text-3xl">{t('match.title')}</h2>
 
       {standings.length > 0 ? (
         <div className="w-full max-w-sm flex flex-col gap-2">
@@ -57,7 +57,9 @@ export function MatchEnd() {
                 key={s}
                 className={[
                   'flex items-center gap-3 rounded-xl px-4 py-3',
-                  rank === 0 ? 'bg-amber-600/60 border border-amber-400' : 'bg-black/20',
+                  rank === 0
+                    ? 'bg-amber-600/25 border border-amber-400/60 shadow-[0_4px_16px_rgba(0,0,0,0.4)]'
+                    : 'bg-lacquer/60 border border-white/10',
                 ].join(' ')}
               >
                 <span className="text-white/40 text-sm w-6">#{rank + 1}</span>
@@ -89,7 +91,7 @@ export function MatchEnd() {
       <div className="sticky bottom-0 w-full -mx-6 px-6 pt-6 pb-6 mt-auto bg-gradient-to-t from-green-900 via-green-900/90 to-transparent flex flex-col items-center">
         <button
           type="button"
-          className="w-full max-w-sm py-4 min-h-11 bg-amber-500 hover:bg-amber-400 rounded-xl font-bold text-lg"
+          className="btn-brass w-full max-w-sm py-4 min-h-11 rounded-xl font-bold text-lg"
           onClick={() => resetSession()}
         >
           {t('common.backToMenu')}

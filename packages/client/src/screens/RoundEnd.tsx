@@ -37,7 +37,7 @@ export function RoundEnd() {
       >
         🏆
       </motion.div>
-      <h2 className="text-2xl font-bold">{t('end.title')}</h2>
+      <h2 className="heading-display text-3xl">{t('end.title')}</h2>
       {/* Which limit these payments were settled at. Both values are canonical
           and at the cap every payment is exactly half of the other one's, so a
           screen full of numbers that never names the basis is where the dispute
@@ -84,10 +84,7 @@ export function RoundEnd() {
               .map(p => {
                 const total = matchScores[p.seat] ?? 0;
                 return (
-                  <div
-                    key={p.seat}
-                    className="flex items-center gap-3 bg-black/15 rounded-xl px-4 py-2"
-                  >
+                  <div key={p.seat} className="flex items-center gap-3 panel-lacquer px-4 py-2">
                     {/* A chair, not a wind: this total spans rounds, and East
                         moved between them. (N26) */}
                     <span className="text-xs text-green-300 w-12">{t(seatKey(p.seat))}</span>
@@ -114,14 +111,14 @@ export function RoundEnd() {
             <>
               <button
                 type="button"
-                className="w-full py-4 bg-green-600 hover:bg-green-500 rounded-xl font-bold text-lg"
+                className="btn-brass w-full py-4 rounded-xl font-bold text-lg"
                 onClick={() => sendAction({ t: 'nextRound' })}
               >
                 {t('end.nextRound')}
               </button>
               <button
                 type="button"
-                className="w-full py-3 bg-amber-500 hover:bg-amber-400 rounded-xl font-bold"
+                className="btn-outline w-full py-3 rounded-xl font-bold"
                 onClick={() => sendAction({ t: 'endMatch' })}
               >
                 {t('end.endMatch')}
@@ -132,7 +129,7 @@ export function RoundEnd() {
               <p className="text-center text-green-300 text-sm">{t('end.waitingHost')}</p>
               <button
                 type="button"
-                className="w-full py-3 bg-amber-500 hover:bg-amber-400 rounded-xl font-bold"
+                className="btn-outline w-full py-3 rounded-xl font-bold"
                 onClick={() => resetSession()}
               >
                 {t('nav.leave')}

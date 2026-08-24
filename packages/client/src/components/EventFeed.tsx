@@ -139,7 +139,7 @@ export function EventFeed({ view }: { view: PlayerView }) {
             // event-feed-line: on a short viewport (index.css) only the last
             // of these stays visible — the well has no room to spare for a
             // second line once the side columns stop setting its height. (R1)
-            className="event-feed-line px-2 py-1 rounded-lg bg-black/55 text-[11px] font-semibold text-green-100"
+            className="event-feed-line px-2 py-1 rounded-lg bg-lacquer/85 text-[11px] font-semibold text-green-100 shadow-[inset_0_0_0_1px_rgba(212,175,90,0.15)]"
           >
             {t(l.key, { name: nameOf(l.seat) })}
           </motion.div>

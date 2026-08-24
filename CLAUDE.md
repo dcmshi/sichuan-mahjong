@@ -141,7 +141,8 @@ packages/server/src/
   shanten.ts     how far a hand is from a win — the gradient the engine has none of
   ws.ts          WebSocket gateway (validates every inbound frame)
 packages/client/src/
-  main.tsx       window.__e2e test helpers (VITE_E2E builds only)
+  main.tsx       bundled font imports + window.__e2e helpers (VITE_E2E builds only)
+  index.css      Tailwind theme tokens, shared UI recipes, tile/board geometry
   armedDiscard.ts  fire, hold, or stand down with a reason
   voidSelection.ts suit + leading-tile choice on the void screen
   discardPile.ts   the declaration/pile split + `riverCells`, shared by all three trays
@@ -223,6 +224,14 @@ Full tree: [ARCHITECTURE.md §3](./ARCHITECTURE.md#3-repo-layout).
   one item instead of fourteen. (N38, docs/optimization.md)
 - **Screenshots are generated, not taken.** `docs/*.png` come from `pnpm shots`;
   regenerate them rather than hand-capturing, or they drift out of date again.
+- **Typography encodes role.** Marcellus is the one-weight display face for
+  headings, actions, segmented choices, phase prompts and short prominent
+  instructions; Outfit is the body/information face for prose, names, scores,
+  counts, badges and event lines; room codes and URLs stay monospace. The fonts
+  are bundled in `main.tsx`, not fetched from a CDN, and CJK falls through to the
+  system stacks in `index.css`. Use the shared `.btn-*`, `.choice-segment`,
+  `.heading-display` and panel recipes rather than reviving bold Outfit + flat
+  amber one component at a time.
 
 ---
 

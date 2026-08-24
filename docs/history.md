@@ -98,6 +98,37 @@ Series: **N** features · **A** full-repo audits · **F** frontend/design ·
 
 ---
 
+## ✅ The teahouse visual system and typography sweep (2026-08-24)
+
+The menus, rules/help surfaces and table had accumulated several visual
+languages: flat traffic amber, multiple near-black/green panels, rounded bold
+sans on some actions, serif on others, and a few game-phase prompts still
+looking like passive metadata. The redesign gave that hierarchy one source of
+truth instead of fixing screenshots one component at a time.
+
+- `index.css` now owns an ink-jade / lacquer / warm-ivory / brass theme through
+  Tailwind v4 tokens, plus shared brass, outline, segmented-choice, panel,
+  heading and divider recipes. Semantic claim and suit colors remain unchanged.
+- Marcellus and Outfit are bundled from `@fontsource`, so the PWA remains fully
+  offline. Marcellus marks headings, actions, choices, phase prompts and short
+  prominent instructions; Outfit carries longer prose and dense information;
+  room codes and URLs remain monospace.
+- Landing, join/watch/host/practice flows, lobby, About, How-to-Play, game
+  actions, status overlays and result screens were brought onto the same
+  material and typography system. About stays a dedicated attribution page but
+  dresses like the adjacent How-to-Play sheet; the latter gained card sections
+  and jump pills.
+- The second sweep caught the repeated bold-Outfit segmented controls in
+  practice, hosting, settings and language selection, then the two prominent
+  void-declaration instructions. `.choice-segment` now derives selection from
+  `aria-pressed`, so the next picker cannot silently reintroduce the old recipe.
+
+Biome, client typecheck, all 254 client tests and the full production build
+passed. The server was restarted after the final rebuild and the live HTML, CSS
+and JavaScript asset hashes were checked on `localhost:8080`.
+
+---
+
 ## ✅ The re-measure, and the PNG pipeline it closed (N48 — 2026-08-19)
 
 N47 shipped six of the seven items in

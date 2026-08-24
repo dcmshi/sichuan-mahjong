@@ -122,7 +122,7 @@ export function SettingsMenu({ view }: { view?: PlayerView }) {
                 the panel is still fully visible at rest rather than invisible.
                 (F12/F11) */}
             <motion.div
-              className="absolute right-2 top-full mt-1 z-30 w-60 rounded-xl bg-green-950/95 backdrop-blur border border-white/10 shadow-lg overflow-hidden text-sm"
+              className="absolute right-2 top-full mt-1 z-30 w-60 panel-lacquer overflow-hidden text-sm"
               style={{ transformOrigin: 'top right' }}
               initial={{ scaleY: 0.85, y: -6 }}
               animate={{ scaleY: 1, y: 0 }}
@@ -150,7 +150,9 @@ export function SettingsMenu({ view }: { view?: PlayerView }) {
               </button>
 
               <div className="border-t border-white/10 px-3 py-2">
-                <div className="text-white/80 mb-1.5">{t('settings.animSpeed')}</div>
+                <div className="font-display tracking-wide text-white/90 mb-1.5">
+                  {t('settings.animSpeed')}
+                </div>
                 <div className="flex gap-1">
                   {SPEEDS.map(speed => (
                     <button
@@ -159,12 +161,7 @@ export function SettingsMenu({ view }: { view?: PlayerView }) {
                       aria-pressed={animation.speed === speed}
                       disabled={animation.skip}
                       onClick={() => setAnimationSpeed(speed)}
-                      className={[
-                        'flex-1 min-h-10 rounded-lg text-xs font-semibold transition-colors disabled:opacity-40',
-                        animation.speed === speed
-                          ? 'bg-amber-400 text-black'
-                          : 'bg-black/30 text-white/70',
-                      ].join(' ')}
+                      className="choice-segment flex-1 min-h-10 rounded-lg text-xs disabled:opacity-40"
                     >
                       {t(`settings.animSpeed.${speed}`)}
                     </button>
@@ -174,7 +171,9 @@ export function SettingsMenu({ view }: { view?: PlayerView }) {
 
               {pace.show && (
                 <div className="border-t border-white/10 px-3 py-2">
-                  <div className="text-white/80 mb-1.5">{t('host.botSpeed')}</div>
+                  <div className="font-display tracking-wide text-white/90 mb-1.5">
+                    {t('host.botSpeed')}
+                  </div>
                   <div className="flex gap-1">
                     {BOT_SPEEDS.map(speed => (
                       <button
@@ -183,12 +182,7 @@ export function SettingsMenu({ view }: { view?: PlayerView }) {
                         aria-pressed={pace.selected === speed}
                         disabled={pace.disabled}
                         onClick={() => pickBotSpeed(speed)}
-                        className={[
-                          'flex-1 min-h-10 rounded-lg text-xs font-semibold transition-colors disabled:opacity-40',
-                          pace.selected === speed
-                            ? 'bg-amber-400 text-black'
-                            : 'bg-black/30 text-white/70',
-                        ].join(' ')}
+                        className="choice-segment flex-1 min-h-10 rounded-lg text-xs disabled:opacity-40"
                       >
                         {t(`host.botSpeed.${speed}`)}
                       </button>

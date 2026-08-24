@@ -30,6 +30,16 @@ Markup and behaviour disagreeing is worse than not marking it a dialog at all.
 Pick the other two back up when the feature list is clear, or sooner if one
 starts costing a real player something.
 
+**Visual-system follow-up (2026-08-24).** A later menu/game design pass replaced
+the flat green/amber presentation with the ink-jade, lacquer, ivory and brass
+theme now defined in `index.css`. Marcellus is the display/action/prompt face and
+Outfit remains the longer-copy/information face; both are bundled through
+`@fontsource` for offline use. About and How-to-Play now share lacquer cards and
+brass section headings, How-to-Play has section-jump pills, and repeated setup /
+settings choices use the shared `.choice-segment` recipe. This is recorded here
+as a follow-up, not retroactively turned into another item in the 2026-08-02
+audit.
+
 ---
 
 ## High — user-facing broken or misleading behaviour
@@ -158,7 +168,9 @@ starts costing a real player something.
 - [x] **Theme colour mismatch.** `index.html:6` sets `theme-color` and the SW
   background to `#0c5f57` (the felt), but Landing/Lobby/round-end screens
   paint `bg-green-900` (#14532d). The browser chrome and the page disagree on
-  every non-game screen.
+  every non-game screen. Resolved again in the 2026-08-24 visual pass: the
+  browser theme is ink-jade `#0d2a22`, the manifest background is `#0a453a`,
+  and both agree with the remapped client palette.
 
 - [ ] **Keyboard can't reorder the hand.** `components/OwnZone.tsx:380` —
   drag-to-sort is pointer-only (Framer `Reorder`); the inner tile button
@@ -192,3 +204,6 @@ starts costing a real player something.
   viewport media queries, tray guards in e2e.
 - i18n has a key-parity test and `<html lang>` is applied before first paint.
 - Session persistence + rejoin flow covers the mid-game refresh case (F2).
+- The teahouse visual system has named tokens and shared recipes rather than
+  per-screen approximations; its Marcellus/Outfit role split and offline font
+  loading are documented in `ARCHITECTURE.md` and `traps-and-decisions.md`.

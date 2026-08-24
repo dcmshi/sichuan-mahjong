@@ -50,7 +50,9 @@ export function RoundEndRow({
       transition={{ delay: rank * 0.1 }}
       className={[
         'rounded-xl',
-        rank === 0 ? 'bg-amber-600/60 border border-amber-400' : 'bg-black/20',
+        rank === 0
+          ? 'bg-amber-600/25 border border-amber-400/60 shadow-[0_4px_16px_rgba(0,0,0,0.4)]'
+          : 'bg-lacquer/60 border border-white/10',
       ].join(' ')}
     >
       <button
