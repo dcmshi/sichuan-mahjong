@@ -53,7 +53,7 @@ test('a host can turn on Swap three tiles, and the deal then opens on huan', asy
   await expect.poll(() => getPhase(page), { timeout: 25_000 }).toBe('huan');
 
   // Tap through the picker the toggle just unlocked — three of one suit, confirm.
-  const handTiles = page.locator('div.flex.flex-wrap img[alt]');
+  const handTiles = page.locator('[data-hand-tiles] img[alt]');
   await expect.poll(() => handTiles.count()).toBeGreaterThanOrEqual(13);
   const alts = await handTiles.evaluateAll(els => els.map(e => e.getAttribute('alt') ?? ''));
   const bySuit = new Map<string, number[]>();

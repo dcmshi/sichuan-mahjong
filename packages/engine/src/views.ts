@@ -233,8 +233,13 @@ export function computeLegalActions(state: GameState, seat: Seat): GameAction[] 
     return actions;
   }
 
-  // Normal turn: drew already (or after claim with no draw needed)
-  if (isWinningHand(player.hand, player.melds, player.voidedSuit) !== null) {
+  // Normal turn: drew already (or after claim with no draw needed).
+  // A pung-entered turn has no draw behind it — declaring Hu here would bypass
+  // furiten and award a self-draw bonus for what is really a claimed tile. The
+  // engine rejects it (must_draw_first), but advertising it in the legal list
+  // makes every bot pick it and stall the room when the rejection path does not
+  // reschedule. (A87)
+  if (state.drewThisTurn && isWinningHand(player.hand, player.melds, player.voidedSuit) !== null) {
     actions.push({ t: 'declareHuOnDraw', seat });
   }
 

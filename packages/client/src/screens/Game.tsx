@@ -80,7 +80,7 @@ function HuanPhase({ view }: { view: PlayerView }) {
         <LangSwitch />
       </div>
       <p className="text-green-300 text-sm">{t('huan.hint')}</p>
-      <div className="flex flex-wrap gap-1.5">
+      <div className="flex flex-wrap gap-1.5" data-hand-tiles>
         {view.you.hand.map(id => {
           const isSelected = selected.includes(id);
           const { suit } = tileFromType(tileTypeOf(id));
@@ -203,7 +203,7 @@ function VoidDeclarePhase({ view }: { view: PlayerView }) {
         <LangSwitch />
       </div>
       <p className="font-display text-green-300 text-sm leading-relaxed">{t('void.hint')}</p>
-      <div className="flex gap-3">
+      <div className="flex gap-3" data-void-choices>
         {(['man', 'pin', 'sou'] as Suit[]).map(suit => (
           <button
             type="button"

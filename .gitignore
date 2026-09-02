@@ -37,6 +37,9 @@ prototype-shots/
 .stryker-tmp/
 reports/mutation/
 
+# LLM session exports — working transcripts, not part of the source tree.
+kimi-export-session_*.md
+
 # Coverage reports. `pnpm test:coverage` is a documented command and it writes a
 # directory of generated HTML/CSS per package — which biome then lints and
 # reformats, so running it broke `pnpm lint` until you deleted the output by

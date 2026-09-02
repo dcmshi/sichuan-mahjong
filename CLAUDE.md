@@ -19,7 +19,7 @@ belongs in `docs/history.md`, not here.
 |---|---|---|
 | **[ARCHITECTURE.md](./ARCHITECTURE.md)** | The reference — types, engine API, full ruleset, protocol, persistence, networking, testing strategy. Has a §-index at the top | …you change behavior, a type, or a rule |
 | **[TODO.md](./TODO.md)** | What is *open*, and nothing else — kept short on purpose | …you open or close a piece of work |
-| **[docs/history.md](./docs/history.md)** | Everything closed, newest first, each with its diagnosis: the phase log, audits **A1–A80** / **F1–F25** / **R1–R7**, hosting **C1–C10**, features **N1–N48**. **Opens with a find-an-item-by-id table** — that is how you turn a bare `(N38)` in a comment into the entry that explains it | …you finish something; add a section at the top *and* a row to that table |
+| **[docs/history.md](./docs/history.md)** | Everything closed, newest first, each with its diagnosis: the phase log, audits **A1–A87** / **F1–F25** / **R1–R7**, hosting **C1–C10**, features **N1–N48**. **Opens with a find-an-item-by-id table** — that is how you turn a bare `(N38)` in a comment into the entry that explains it | …you finish something; add a section at the top *and* a row to that table |
 | **[README.md](./README.md)** | User-facing: install, host/join, CLI flags | …you change the CLI or the player-facing flow |
 | **[docs/README.md](./docs/README.md)** | Index of `docs/`, and **the register of every source outside this repo that a decision rests on** — each row saying what it *established*, not just its URL, because links rot and this project settles rule disputes by citation | …a decision comes to rest on something outside the repo |
 
@@ -64,7 +64,7 @@ pnpm test                                    # Vitest (engine + server + client)
 pnpm test:coverage                           # same, with v8 coverage per package.
 # The server run reports one unhandled `Timeout calling "onTaskUpdate"` — an
 # instrumentation artifact (coverage makes bot-smoke's ladder ~6x slower and the
-# worker RPC gives up mid-test), not a failure. All 227 server tests still pass.
+# worker RPC gives up mid-test), not a failure. All server tests still pass.
 pnpm --filter @sichuan-mahjong/client build
 pnpm --filter sichuan-mahjong build
 pnpm --filter sichuan-mahjong start          # run server (serves built client)
@@ -494,8 +494,8 @@ reasoning and measurements in
 
 ## Status
 
-**Everything is shipped and [TODO.md](./TODO.md) is empty.** All v1 work, nine
-full-repo audit passes (A1–A80), the frontend/design pass (F1–F25), the mobile
+**Everything is shipped and [TODO.md](./TODO.md) is empty.** All v1 work, ten
+full-repo audit passes (A1–A87), the frontend/design pass (F1–F25), the mobile
 viewport work (R1–R7), the hosting work (C1–C10), and the feature run N1–N48.
 
 **What each item was is in [docs/history.md](./docs/history.md)**, newest first,

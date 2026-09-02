@@ -40,6 +40,9 @@ jobs:
       # stayed green here and failed on Render.
       - run: pnpm install --frozen-lockfile
 
+      - name: Audit production dependencies (A81)
+        run: pnpm audit --prod
+
       - name: Build engine (required for downstream typecheck)
         run: pnpm --filter @sichuan-mahjong/engine build
 

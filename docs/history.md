@@ -1,7 +1,7 @@
 # History — every closed item, newest first
 
-This is the record of work already done: the phase log (1–10), nine full-repo
-audit passes (A1–A80), the frontend/design pass (F1–F25), the mobile viewport work
+This is the record of work already done: the phase log (1–10), ten full-repo
+audit passes (A1–A87), the frontend/design pass (F1–F25), the mobile viewport work
 (R1–R7), the tile-rendering change, the hosting work (C1–C10), and the feature run
 N1–N48. Each entry keeps its diagnosis, not just its fix — that is the part worth
 having later.
@@ -49,6 +49,7 @@ Series: **N** features · **A** full-repo audits · **F** frontend/design ·
 | **A69** | The snapshot check that only looked for missing fields |
 | **A70–A76** | The seven remaining surfaces, swept in one pass |
 | **A77–A80** | Auditing the audit: dependencies, mutation score, load, and what a failure leaves behind |
+| **A81–A87** | Tenth pass (2026-09-01): CI audit gate, e2e selector hygiene, docs drift, dep lag, and a real stall bug |
 | **F1–F25** | *Frontend & design audit — seventh pass*, a numbered list. Grep the id. |
 | **N2** | The dice are real now |
 | **N3, N11, N14** | Help that shows a hand, a discard you can arm early, and a wall that reads the dice |
@@ -95,6 +96,34 @@ Series: **N** features · **A** full-repo audits · **F** frontend/design ·
 | **O3** | Closed **won't-do** — reasoning in [TODO.md](../TODO.md) and ARCHITECTURE §12 |
 | **O4** | One tile face everywhere |
 | **O5** | An **accepted trade-off**, not a task — per-IP limits key to a Cloudflare edge address. ARCHITECTURE §12 |
+
+---
+
+## ✅ Tenth audit pass — A81–A86 (2026-09-01)
+
+Seven findings, five fixed in this pass. Full writeup in
+[docs/audit-2026-09-01.md](./audit-2026-09-01.md).
+
+- **A81** — `pnpm audit --prod` added to CI. A77 found ten production
+  vulnerabilities because no audit step existed; it existed in docs but not in
+  the workflow. Now gates every push to main.
+- **A82** — Three e2e selectors used Tailwind classes (`div.flex.flex-wrap`,
+  `div.flex.gap-3`), violating the project convention. Added `data-hand-tiles`
+  and `data-void-choices` hooks; replaced all three selectors.
+- **A83** — Untracked 165 KB Kimi session export at repo root. Added
+  `kimi-export-session_*.md` to `.gitignore`.
+- **A84** — CLAUDE.md hard-coded "All 227 server tests" — removed the count so
+  the sentence does not drift.
+- **A85** — Dev dependency lag documented (Biome 1→2, Vite 8.0→8.2, React
+  18→19, framer-motion 12→13, Vitest 3→4). Each a separate migration; none
+  urgent while prod audit is clean.
+- **A86** — Render deploy has no audit gate; covered by A81 since Render
+  deploys from main.
+- **A87** — `computeLegalActions` offered `declareHuOnDraw` after a pung into a
+  complete hand. The engine correctly rejected it, but all three bot levels
+  picked it and the room stalled dead — nothing rescheduled after the
+  rejection. Added `state.drewThisTurn` guard so the action is never advertised
+  after a pung. Found by the untracked scratch test.
 
 ---
 

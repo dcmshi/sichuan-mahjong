@@ -52,7 +52,7 @@ test('opening played via real UI clicks (huan tiles, void suit, discard tap)', a
 
   if ((await getPhase(page)) === 'huan') {
     // ── Huan: click 3 same-suit tiles (identified by their alt="suit-rank"), Confirm ──
-    const handTiles = page.locator('div.flex.flex-wrap img[alt]');
+    const handTiles = page.locator('[data-hand-tiles] img[alt]');
     await expect.poll(() => handTiles.count()).toBeGreaterThanOrEqual(13);
     const alts = await handTiles.evaluateAll(els => els.map(e => e.getAttribute('alt') ?? ''));
     const bySuit: Record<string, number[]> = {};
@@ -74,7 +74,7 @@ test('opening played via real UI clicks (huan tiles, void suit, discard tap)', a
 
   // ── Void: click the first suit button, tap which of its tiles leads, then the
   //    confirm ("Void <suit>") ──
-  await page.locator('div.flex.gap-3 > button').first().click();
+  await page.locator('[data-void-choices] > button').first().click();
   // The screen shows the whole hand and marks the chosen suit's tiles, so count
   // the marked ones — holding ≥1 means one gets separated face down, which is
   // what turn 1 must then flip (A35). Counting every tile in the container was
