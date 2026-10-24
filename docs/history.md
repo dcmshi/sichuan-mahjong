@@ -51,6 +51,7 @@ Series: **N** features · **A** full-repo audits · **F** frontend/design ·
 | **A77–A80** | Auditing the audit: dependencies, mutation score, load, and what a failure leaves behind |
 | **A81–A87** | Tenth pass (2026-09-01): CI audit gate, e2e selector hygiene, docs drift, dep lag, and a real stall bug |
 | **A88** | The A81 gate's first catch |
+| **A89** | Vitest 5, a clean full audit, and lint that ignores scratch |
 | **F1–F25** | *Frontend & design audit — seventh pass*, a numbered list. Grep the id. |
 | **N2** | The dice are real now |
 | **N3, N11, N14** | Help that shows a hand, a discard you can arm early, and a wall that reads the dice |
@@ -100,6 +101,43 @@ Series: **N** features · **A** full-repo audits · **F** frontend/design ·
 
 ---
 
+## ✅ Vitest 5, a clean full audit, and lint that ignores scratch (A89 — 2026-10-24)
+
+A88 left the *dev* tree with 32 advisories — two critical, in `tinypool` under
+Vitest 3 — which A85 had filed as lag. Closed by moving the test toolchain
+rather than pinning around it:
+
+- **Vitest 3.2 → 5.0.5** in all three packages, `@vitest/coverage-v8` with it,
+  **Stryker 9 → 10.1.1**, client **Vite → ^8.3.5**, server **esbuild 0.25 → 0.28**
+  (only `scripts/bundle-server.mjs` uses it; the bundle still inlines the engine
+  and `--help` runs). No config changed: none of the three `vitest.config.ts`
+  files used an option Vitest 4 or 5 removed.
+- **The client had never declared `@types/node`.** `sw.test.ts` and
+  `tile-credits.test.ts` import `node:fs`, and the types arrived through Vitest
+  3's own dependencies; Vitest 5 makes them an optional peer, so the client's
+  `tsc` failed — and with it the client build, which is what took down every
+  e2e spec at once. Declared at the server's `^25.9.0`.
+- **The `vite@<6.4.2` override was removed.** Nothing resolves a 6.x now, and
+  pnpm applies overrides to peer ranges too: it had been rewriting Vitest's and
+  `@tailwindcss/vite`'s `vite` peer to `^6.4.2` and warning against the 8.x every
+  package uses. That was the long-standing "unmet peer vite" noise on install.
+- **qs, zod, source-map-js** are pinned in `pnpm-workspace.yaml` — transitive
+  under Stryker 10 and coverage-v8 5, both already latest. `pnpm audit` (not
+  just `--prod`) is clean.
+
+Verified beyond CI's steps: `pnpm test:coverage` (A77's brace-expansion break
+was visible only to the coverage reporter) and a Stryker `--dryRunOnly` (248
+tests through the vitest runner).
+
+**Lint now skips scratch.** `biome.json` sets `vcs.useIgnoreFile`, and
+`.gitignore` takes `zz-*`, so an untracked probe like the one that found A87 no
+longer fails `pnpm lint`. Biome has no "tracked files only" mode, and linting
+`git ls-files` would silently skip every new file until it was staged — a
+naming convention ignores scratch without hiding real work. Vitest does not
+read `.gitignore`, so scratch tests still run locally.
+
+---
+
 ## ✅ The A81 gate's first catch (A88 — 2026-10-24)
 
 The push that pinned `NODE_VERSION` to 22.23.4 for the October Node security
@@ -141,8 +179,15 @@ into the dev tree. The overrides move exactly seven lockfile entries.
 `content-disposition` 2→3 rides in with `@fastify/static` 10.1.7 — the one
 major in the set, covered by the static-serving tests and a hosted boot.
 
-The full (dev-inclusive) audit is not clean — `@vitest/coverage-v8`'s and
-Stryker's trees, none of it shipped — which is A85's lag, not this gate's.
+The full (dev-inclusive) audit was not clean — `@vitest/coverage-v8`'s and
+Stryker's trees, none of it shipped — which was A85's lag, closed by A89.
+
+**Live, the 1009 does not reach the client.** Through Render's proxy an
+oversized frame is still refused before the handler (a 63 KB `join` gets
+`lobby_not_found`, a 70 KB one gets nothing), but the client sees 1005 or a
+1006 about 20s later rather than 1009. `onSocketError` restores the
+pre-11.3.4 close, so this is the proxy's handling of the close frame, not a
+regression; the client reconnects on any close code and never reads it.
 
 ---
 

@@ -45,3 +45,10 @@ kimi-export-session_*.md
 # reformats, so running it broke `pnpm lint` until you deleted the output by
 # hand. Ignored here and in biome.json.
 coverage/
+
+# Local scratch — probes, throwaway tests, audit harnesses. A `zz-` prefix keeps
+# a file out of git *and* out of `pnpm lint` (biome.json reads this file via
+# `vcs.useIgnoreFile`), so a half-finished probe can no longer fail lint for
+# code nobody will commit. Vitest does not read .gitignore, so a scratch test
+# still runs locally — which is how A87 was found. (A89)
+zz-*

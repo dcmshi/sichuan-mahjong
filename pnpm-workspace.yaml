@@ -6,8 +6,18 @@ packages:
 # set both drops the pins and fails `--frozen-lockfile` against a lockfile
 # that still records them.
 overrides:
-  vite@<6.4.2: ^6.4.2
+  # The `vite@<6.4.2` pin that sat here went with Vitest 3 (A89): nothing
+  # resolves a 6.x any more, and pnpm applies overrides to *peer* ranges too, so
+  # it had been rewriting Vitest's and @tailwindcss/vite's `vite` peers to ^6.4.2
+  # and printing unmet-peer warnings against the 8.x every package actually uses.
   esbuild@<0.25.0: ^0.25.0
+  # Dev-only, under tools already on their latest release (A89). qs is reached
+  # through Stryker's dashboard reporter, which typed-rest-client pins exactly
+  # and stryker.conf.json never enables; zod through Stryker's server protocol;
+  # source-map-js through @vitest/coverage-v8's magicast. None ships.
+  qs@<6.16.0: ^6.16.0
+  zod@>=4.0.0 <4.6.6: ^4.6.6
+  source-map-js@<1.2.2: ^1.2.2
   # Transitive, and reachable only through Fastify's own tree — the direct
   # dependencies were bumped in package.json instead. Each is pinned to the
   # first patched version rather than to `latest`, so the override says what it
