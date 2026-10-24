@@ -281,6 +281,21 @@ function bindLobbySocket(
   });
 }
 
+/**
+ * `@fastify/websocket`'s `errorHandler` for an established socket. (A88)
+ *
+ * Since 11.3.4 the socket's own `error` events reach this handler, and the
+ * default one calls `terminate()`. For a protocol error — an oversized frame
+ * above all (H1) — `ws` has already begun a close carrying the right code (1009)
+ * before it emits `error`, and terminating cuts that handshake off, so the peer
+ * sees a bare 1006. The frame is refused either way; this keeps the close
+ * honest. `ws`'s own close timeout still destroys a peer that never answers.
+ */
+export function onSocketError(error: Error, socket: WebSocket): void {
+  if ((error as NodeJS.ErrnoException).code?.startsWith('WS_ERR_')) return;
+  socket.terminate();
+}
+
 export async function registerWsRoutes(app: FastifyInstance): Promise<void> {
   app.get<{
     Params: { code: string };

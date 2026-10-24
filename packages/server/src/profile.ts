@@ -78,3 +78,22 @@ function trustProxyHops(env: NodeJS.ProcessEnv): number {
   const hops = Number.parseInt(raw, 10);
   return Number.isFinite(hops) && hops >= 0 ? hops : 1;
 }
+
+/**
+ * The `trustProxy` value to hand Fastify — the hop count, as a function. (A88)
+ *
+ * **Fastify 5.12.1 stopped honouring a bare number**: it now trusts *nothing*,
+ * because a hop count cannot check that the immediate peer is a proxy, and a
+ * client that reaches the server directly can supply the hops itself. Right for
+ * a server the internet can reach; moot for the hosted profile, which only runs
+ * behind Render's proxy — the one route to the instance. Passed through as a
+ * number it collapsed `req.ip` to that proxy's address for every player, so each
+ * per-IP limit became one global budget, and the types said so only by falling
+ * through to the HTTP/2 overload. This is the rule 5.12.0 applied to a number.
+ */
+export function fastifyTrustProxy(
+  trustProxy: number | false,
+): false | ((addr: string, hop: number) => boolean) {
+  if (trustProxy === false) return false;
+  return (_addr, hop) => hop < trustProxy;
+}

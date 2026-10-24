@@ -11,10 +11,10 @@ import {
   startMdns,
   stopMdns,
 } from './networking.js';
-import { type RuntimeProfile, profileFor } from './profile.js';
+import { type RuntimeProfile, fastifyTrustProxy, profileFor } from './profile.js';
 import { flushAllRooms, restoreRoomsFromDisk, setBotPaceMs, sweepIdleRooms } from './room.js';
 import { createTailscaleShare } from './tailscaleShare.js';
-import { registerWsRoutes, sweepStaleLobbies } from './ws.js';
+import { onSocketError, registerWsRoutes, sweepStaleLobbies } from './ws.js';
 
 // Stale-state GC (A29). The TTLs themselves are per-profile now: a day of dead
 // rooms is free on your own machine and is not on a shared 512MB instance.
@@ -41,8 +41,15 @@ async function buildApp(
   // logger stays false deliberately: both the seat token and the spectator watch
   // secret travel in query strings, and a request logger would write every one of
   // them into the platform's log console.
-  const app = Fastify({ logger: false, trustProxy: profile.trustProxy, ...serverOptions });
-  await app.register(fastifyWebsocket, { options: { maxPayload: MAX_WS_FRAME_BYTES } });
+  const app = Fastify({
+    logger: false,
+    trustProxy: fastifyTrustProxy(profile.trustProxy),
+    ...serverOptions,
+  });
+  await app.register(fastifyWebsocket, {
+    options: { maxPayload: MAX_WS_FRAME_BYTES },
+    errorHandler: onSocketError,
+  });
   await registerHttpRoutes(app, embeddedClient);
   await registerWsRoutes(app);
   return app;

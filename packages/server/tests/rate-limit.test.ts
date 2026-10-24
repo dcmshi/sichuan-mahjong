@@ -1,5 +1,6 @@
+import Fastify from 'fastify';
 import { describe, expect, it } from 'vitest';
-import { profileFor } from '../src/profile.js';
+import { fastifyTrustProxy, profileFor } from '../src/profile.js';
 import { createRateLimiter } from '../src/rateLimit.js';
 
 /**
@@ -103,5 +104,40 @@ describe('runtime profile', () => {
     expect(profileFor(false, {} as NodeJS.ProcessEnv).rateLimitEnabled).toBe(true);
     const off = { SM_RATE_LIMIT_OFF: '1' } as NodeJS.ProcessEnv;
     expect(profileFor(false, off).rateLimitEnabled).toBe(false);
+  });
+});
+
+/**
+ * What Fastify actually resolves `req.ip` to — not what the profile says. The
+ * tests above passed unchanged while fastify 5.12.1 turned the hop count into
+ * "trust nothing", which would have keyed every hosted player to Render's proxy
+ * address and shared one rate-limit budget among all of them. (A88)
+ */
+describe('req.ip under each profile', () => {
+  // Render's proxy appends the peer it saw; the leftmost entry is the client's own.
+  const request = {
+    url: '/ip',
+    remoteAddress: '10.0.0.5',
+    headers: { 'x-forwarded-for': '6.6.6.6, 203.0.113.7' },
+  };
+
+  async function ipUnder(hosted: boolean, env = {} as NodeJS.ProcessEnv): Promise<string> {
+    const app = Fastify({ trustProxy: fastifyTrustProxy(profileFor(hosted, env).trustProxy) });
+    app.get('/ip', async req => ({ ip: req.ip }));
+    const res = await app.inject(request);
+    await app.close();
+    return res.json().ip;
+  }
+
+  it('hosted takes the address the proxy appended, never the one the client wrote', async () => {
+    expect(await ipUnder(true)).toBe('203.0.113.7');
+  });
+
+  it('local ignores the header entirely', async () => {
+    expect(await ipUnder(false)).toBe('10.0.0.5');
+  });
+
+  it('a zero hop override trusts nothing', async () => {
+    expect(await ipUnder(true, { SM_TRUST_PROXY: '0' } as NodeJS.ProcessEnv)).toBe('10.0.0.5');
   });
 });

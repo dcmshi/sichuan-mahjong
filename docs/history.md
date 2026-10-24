@@ -50,6 +50,7 @@ Series: **N** features · **A** full-repo audits · **F** frontend/design ·
 | **A70–A76** | The seven remaining surfaces, swept in one pass |
 | **A77–A80** | Auditing the audit: dependencies, mutation score, load, and what a failure leaves behind |
 | **A81–A87** | Tenth pass (2026-09-01): CI audit gate, e2e selector hygiene, docs drift, dep lag, and a real stall bug |
+| **A88** | The A81 gate's first catch |
 | **F1–F25** | *Frontend & design audit — seventh pass*, a numbered list. Grep the id. |
 | **N2** | The dice are real now |
 | **N3, N11, N14** | Help that shows a hand, a discard you can arm early, and a wall that reads the dice |
@@ -96,6 +97,52 @@ Series: **N** features · **A** full-repo audits · **F** frontend/design ·
 | **O3** | Closed **won't-do** — reasoning in [TODO.md](../TODO.md) and ARCHITECTURE §12 |
 | **O4** | One tile face everywhere |
 | **O5** | An **accepted trade-off**, not a task — per-IP limits key to a Cloudflare edge address. ARCHITECTURE §12 |
+
+---
+
+## ✅ The A81 gate's first catch (A88 — 2026-10-24)
+
+The push that pinned `NODE_VERSION` to 22.23.4 for the October Node security
+release failed CI at the A81 audit step, which skips every step after it —
+lint, tests and builds never ran. Thirty advisories since the 2026-09-01 pass,
+all on the server's production tree and all denial-of-service, host-confusion
+or SSRF:
+
+- **fastify 5.12.0** — eight of its own (fixed by 5.12.5). Bumped to `^5.12.7`
+  with `@fastify/static ^10.1.7` and `@fastify/websocket ^11.3.4` alongside, in
+  `package.json` as A77 did.
+- **fast-uri 3.1.5 and 4.1.2** — reached twice, 3.x through
+  `@fastify/ajv-compiler` and 4.x through `fast-json-stringify`. **Bumping the
+  parent did not fix it**: 5.12.7's ranges still admit both, and the lockfile
+  keeps what it has. The A77 override was raised to `<3.1.9` and a 4.x line
+  added.
+- **brace-expansion 5.0.9** — under `@fastify/static`'s glob; the existing
+  override's floor raised to 5.0.12, its range kept to the advisories' per A77.
+
+**The fastify bump broke the server build, and the break was the useful part.**
+`tsc` reported `Fastify({...})` resolving to the *HTTP/2* overload, which is
+noise: the only change between 5.12.0's and 5.12.7's `fastify.d.ts` is that
+`trustProxy` no longer admits `number`. Behind it is a runtime change in
+5.12.1 — a numeric `trustProxy` now trusts **nothing**, since a hop count cannot
+tell a proxy from a client that connected directly and supplied the hops. On
+Render that collapses `req.ip` to the proxy's address for every player: each
+per-IP limit becomes one global budget, and ten lobby creations an hour would
+have been the whole site's. **The profile tests would have stayed green** — they
+asserted the profile's number, never what Fastify did with it. Fixed with
+`fastifyTrustProxy`, which hands Fastify the hop rule 5.12.0 applied as a
+function; the direct-connection threat the upstream change closes does not
+exist behind Render's proxy, and the local profile is still `false`. Three new
+tests in `rate-limit.test.ts` inject a request and assert on `req.ip` itself, and
+the hosted one fails if the number is passed through raw.
+
+`pnpm update --depth Infinity` was the obvious tool and the wrong one: it fixed
+nothing transitive here and re-resolved an unrelated `vite@6.4.5` + rollup set
+into the dev tree. The overrides move exactly seven lockfile entries.
+`content-disposition` 2→3 rides in with `@fastify/static` 10.1.7 — the one
+major in the set, covered by the static-serving tests and a hosted boot.
+
+The full (dev-inclusive) audit is not clean — `@vitest/coverage-v8`'s and
+Stryker's trees, none of it shipped — which is A85's lag, not this gate's.
 
 ---
 

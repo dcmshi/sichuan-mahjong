@@ -13,12 +13,16 @@ overrides:
   # first patched version rather than to `latest`, so the override says what it
   # is for and stops mattering once the parent catches up. (A77)
   #
-  # find-my-way is Fastify's router and 5.12.0 still resolves 9.6.0; fast-uri is
-  # reached through @fastify/ajv-compiler; brace-expansion sits under
-  # @fastify/static's glob. All three are denial-of-service advisories, which on
-  # a 512MB free-tier instance is the class that actually matters.
+  # find-my-way is Fastify's router and 5.12.0 still resolved 9.6.0; fast-uri is
+  # reached twice — 3.x through @fastify/ajv-compiler, 4.x through
+  # fast-json-stringify; brace-expansion sits under @fastify/static's glob. A77's
+  # three were denial-of-service advisories, which on a 512MB free-tier instance
+  # is the class that actually matters. A88 raised both fast-uri floors and the
+  # brace-expansion one: fastify 5.12.7 still allows 3.1.5 / 4.1.2, which carry
+  # host-confusion and SSRF advisories, so bumping the parent was not enough.
   find-my-way@<9.7.0: ^9.7.0
-  fast-uri@<3.1.5: ^3.1.5
+  fast-uri@<3.1.9: ^3.1.9
+  fast-uri@>=4.0.0 <4.2.3: ^4.2.3
   # **Exactly the advisory's range and not a character wider.** The first draft
   # of this said `>=2.0.0` on the reasoning that brace-expansion is one function
   # and majors are cheap. It is not: 5.x moved off a CommonJS default export, and
@@ -27,7 +31,7 @@ overrides:
   # tests and all 12 Playwright specs passed with it broken, because the only
   # thing that walks a glob is the coverage reporter. Widening an override past
   # the advisory buys nothing and costs the packages that were never affected.
-  brace-expansion@>=3.0.0 <5.0.9: ^5.0.9
+  brace-expansion@>=3.0.0 <5.0.12: ^5.0.12
 
 onlyBuiltDependencies:
   - '@biomejs/biome'

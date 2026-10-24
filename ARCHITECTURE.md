@@ -1067,7 +1067,9 @@ count, not `true`**: Fastify passes it to proxy-addr, where `true` trusts the
 whole chain and resolves `req.ip` to the *leftmost* `X-Forwarded-For` entry, which
 the client wrote — making every per-IP limit spoofable by adding a header. Hosted
 defaults to 1 hop (`SM_TRUST_PROXY` to override); self-host trusts nothing,
-because nothing is in front of it.
+because nothing is in front of it. **It reaches Fastify as a function, not a
+number** — `fastifyTrustProxy` in `profile.ts` — because Fastify 5.12.1 made a
+numeric `trustProxy` trust nothing at all (A88).
 
 **One hop is the tested answer, not a starting guess — do not raise it.** Render
 fronts the service with Cloudflare and *appends* to `X-Forwarded-For` rather than

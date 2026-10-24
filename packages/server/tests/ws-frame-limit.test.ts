@@ -11,14 +11,17 @@ import fastifyWebsocket from '@fastify/websocket';
 import Fastify from 'fastify';
 import WebSocket from 'ws';
 import { registerHttpRoutes } from '../src/http.js';
-import { registerWsRoutes } from '../src/ws.js';
+import { onSocketError, registerWsRoutes } from '../src/ws.js';
 
 // Mirrors MAX_WS_FRAME_BYTES in server.ts, which owns the Fastify instance.
 const MAX_WS_FRAME_BYTES = 64 * 1024;
 
 async function buildApp() {
   const app = Fastify({ logger: false });
-  await app.register(fastifyWebsocket, { options: { maxPayload: MAX_WS_FRAME_BYTES } });
+  await app.register(fastifyWebsocket, {
+    options: { maxPayload: MAX_WS_FRAME_BYTES },
+    errorHandler: onSocketError,
+  });
   await registerHttpRoutes(app);
   await registerWsRoutes(app);
   await app.listen({ port: 0, host: '127.0.0.1' });
